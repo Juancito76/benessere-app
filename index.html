@@ -1313,6 +1313,31 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       return null;
     }
 
+    // Copia el texto al portapapeles sin avisar ni romper nada si el navegador no lo permite
+    function legacyCopy(text) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed; top:0; left:0; opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { ta.setSelectionRange(0, text.length); } catch (e) {}
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (e) {}
+    }
+    function copyTextSilently(text) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(function() { legacyCopy(text); });
+          return;
+        }
+      } catch (e) {}
+      legacyCopy(text);
+    }
+
     function generateDirectWhatsAppLink() {
       var coachNameField = document.getElementById('coachName');
       if (!coachNameField.value.trim()) {
@@ -1336,7 +1361,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var cName = state.clientName;
       var clientCleanPhone = cleanPhone(document.getElementById('clientPhone').value);
 
-      var waMsg = encodeURIComponent(
+      var waText =
         '¡Hola ' + cName + '! 💪 Te saluda ' + displayCoach(state.coachName) + ' de Benessere Gym.\n\n' +
         'Aquí tienes tu aplicación personalizada de entrenamiento:\n\n' +
         '🔗 ' + clientAppUrl + '\n\n' +
@@ -1345,8 +1370,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         '2. Toca en Compartir / Menú y selecciona "Agregar a pantalla de inicio".\n' +
         '3. Abre siempre la app desde ese ícono para que tus cargas queden guardadas.\n\n' +
         '⚠️ Si al abrir el ícono no ves tu rutina, vuelve a tocar este mismo enlace.\n\n' +
-        '¡Juntos somos más fuertes! 🔥'
-      );
+        '¡Juntos somos más fuertes! 🔥';
+      var waMsg = encodeURIComponent(waText);
+
+      // Por si WhatsApp corta el borrador: el mensaje completo queda copiado para pegarlo
+      copyTextSilently(waText);
 
       var waUrl = clientCleanPhone ? ('https://wa.me/' + clientCleanPhone + '?text=' + waMsg) : ('https://wa.me/?text=' + waMsg);
       window.open(waUrl, '_blank');
