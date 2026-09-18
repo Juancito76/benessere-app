@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Benessere Gym | App & Constructor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #171717;
+      --card: #202020;
+      --card-inner: #282828;
+      --primary: #00e5ff;
+      --accent: #ff6d00;
+      --text: #ffffff;
+      --muted: #a3a3a3;
+      --border: #333333;
+      --border-focus: #00e5ff;
+      --danger: #ef4444;
+      --success: #25d366;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); line-height: 1.4; min-height: 100vh; }
+
+    /* ================= CONSTRUCTOR ================= */
+    #coach_builder_view { display: none; padding: 16px; max-width: 1100px; margin: 0 auto; padding-bottom: 95px; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border-bottom: 3px solid var(--accent);
+    }
+    .header-title h1 { font-size: 1.4rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .header-title p { font-size: 0.85rem; color: var(--muted); }
+    .header-brand { text-align: right; }
+    .gym-name { font-size: 1.7rem; font-weight: 900; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 1.5px; color: var(--primary); text-transform: uppercase; }
+    .gym-slogan { font-size: 0.85rem; font-style: italic; color: var(--accent); font-weight: 700; }
+
+    .gen-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; }
+    .gen-tab-btn {
+      padding: 10px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .gen-tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+    .gen-tab-btn.demo-btn { border-color: var(--accent); color: var(--accent); }
+
+    .gen-view { display: none; }
+    .gen-view.active { display: block; }
+
+    .section-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-size: 1.05rem;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    .section-title .badge {
+      font-size: 0.7rem;
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    .toggles-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #111;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      margin-bottom: 14px;
+    }
+    .toggle-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .toggle-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); }
+    .toggle-item span { font-size: 0.85rem; font-weight: 700; color: #eee; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    label { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    input, textarea, select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--border-focus); }
+    input[readonly] { background: #121212; color: #777; border-color: #262626; cursor: not-allowed; }
+    textarea { resize: vertical; min-height: 75px; }
+
+    .day-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+    .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .day-title-input { font-size: 1rem; font-weight: 700; color: var(--primary); background: transparent; border: 1px dashed var(--border); width: 65%; padding: 6px 10px; }
+    .habits-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; background: var(--card-inner); padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #333; }
+    .diet-box, .security-box { background: #181818; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .exercise-item { background: var(--card-inner); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .exercise-item.normal { border-left: 4px solid #ffffff; }
+    .exercise-item.biserie { border-left: 4px solid var(--primary); }
+    .exercise-item.triserie { border-left: 4px solid var(--accent); }
+    .sub-box { background: rgba(0,0,0,0.3); border: 1px solid #353535; border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+    .sub-box:last-child { margin-bottom: 0; }
+    .sub-tag { font-size: 0.75rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; border-radius: 8px; cursor: pointer; padding: 9px 14px; border: none; font-size: 0.85rem; transition: all 0.2s; }
+    .btn-secondary { background: var(--card-inner); border: 1px solid var(--border); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+    .import-example {
+      background: #000;
+      border: 1px solid #333;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--primary);
+      white-space: pre-wrap;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+
+    .export-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(18,18,18,0.96); backdrop-filter: blur(10px);
+      border-top: 2px solid var(--accent); padding: 14px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.7);
+    }
+    .btn-export-wa { background: var(--success); color: #000; font-size: 0.95rem; font-weight: 800; padding: 12px 20px; }
+    .btn-export-download { background: #222; border: 1px solid #555; color: #fff; font-size: 0.85rem; font-weight: 700; padding: 12px 14px; }
+    .btn-export-pdf { background: #ffffff; color: #000; font-size: 0.85rem; font-weight: 800; padding: 12px 14px; }
+
+    /* ================= VISTA ATLETA ================= */
+    #athlete_client_view { display: none; }
+    .home-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 30px 20px; text-align: center; }
+    .brand-top { font-size: 2.2rem; font-weight: 900; letter-spacing: 2px; color: var(--primary); text-transform: uppercase; font-family: 'Impact', 'Arial Black', sans-serif; }
+    .brand-slogan { font-size: 1rem; color: var(--accent); font-weight: 700; letter-spacing: 1px; margin-top: 2px; margin-bottom: 24px; }
+    .welcome-box { margin-bottom: 26px; }
+    .welcome-label { font-size: 1.1rem; color: #eaeaea; text-transform: uppercase; letter-spacing: 1.5px; }
+    .client-title { font-size: 1.6rem; font-weight: 900; color: #fff; margin-top: 4px; }
+    .week-tracker-pill { background: #181818; border: 1px solid var(--primary); border-radius: 20px; padding: 6px 16px; font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-bottom: 24px; }
+    .capsule-group { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
+    .capsule-btn { width: 100%; padding: 16px 20px; border-radius: 40px; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; border: none; cursor: pointer; color: #fff; transition: transform 0.1s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.6); }
+    .capsule-btn:active { transform: scale(0.98); }
+    .btn-coach { background: #ff6d00; }
+    .btn-historial { background: #191919; border: 2px solid var(--primary); color: var(--primary); }
+    .btn-medidas { background: #333333; border: 1px solid #555; }
+    .btn-intercambios { background: #00b4d8; margin-top: 14px; }
+
+    .view-screen { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 50; overflow-y: auto; padding: 16px 14px 60px 14px; }
+    .view-screen.active { display: block; }
+    .top-nav-bar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+    .back-btn { background: transparent; border: 1px solid var(--border); color: var(--primary); padding: 6px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .view-title { font-size: 1.05rem; font-weight: 800; color: #fff; text-transform: uppercase; }
+
+    .progression-banner { background: #14282c; border: 1px solid var(--primary); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .prog-title { font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 2px; }
+    .prog-desc { font-size: 0.8rem; color: #e0f7fa; line-height: 1.35; }
+    .security-card { background: #241913; border: 1px solid var(--accent); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+    .sec-title { font-size: 0.75rem; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
+    .sec-items { font-size: 0.78rem; color: #fff; line-height: 1.35; }
+    .day-toggle-container { display: flex; gap: 8px; margin-bottom: 16px; background: #191919; padding: 4px; border-radius: 30px; }
+    .toggle-choice { flex: 1; padding: 10px; border: none; border-radius: 25px; background: transparent; color: var(--muted); font-weight: 800; font-size: 0.85rem; cursor: pointer; }
+    .toggle-choice.active { background: var(--primary); color: #000; }
+    .day-section { display: none; }
+    .day-section.active { display: block; }
+    .btn-restore-all-day { width: 100%; margin-bottom: 14px; padding: 10px; background: #10262b; border: 1px dashed var(--primary); color: var(--primary); border-radius: 8px; font-size: 0.82rem; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .exercise-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .exercise-card.normal { border-left: 4px solid #ffffff; }
+    .exercise-card.biserie { border-left: 4px solid var(--primary); }
+    .exercise-card.triserie { border-left: 4px solid var(--accent); }
+    .badge-type { font-size: 0.68rem; font-weight: 800; color: #fff; background: #262626; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .exercise-item-box { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #2c2c2c; }
+    .exercise-item-box:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .ex-name { font-size: 0.95rem; font-weight: 800; color: #fff; }
+    .ex-target { font-size: 0.85rem; color: var(--primary); margin-top: 2px; }
+    .ex-notes { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+    .btn-yt-demo { display: inline-block; background: #121212; border: 1px solid #e50914; color: #fff; text-decoration: none; font-size: 0.75rem; font-weight: 800; padding: 5px 12px; border-radius: 6px; margin-top: 4px; }
+
+    .tracker-inputs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; background: #141414; padding: 8px; border-radius: 8px; }
+    .tracker-cell label { display: block; font-size: 0.65rem; color: var(--muted); font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+    .tracker-cell input { width: 100%; background: #202020; border: 1px solid #333; color: #fff; padding: 6px; font-size: 0.82rem; border-radius: 6px; text-align: center; outline: none; }
+    .prev-load-badge-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+    .prev-load-badge { font-size: 0.7rem; color: var(--primary); font-weight: 600; }
+    .btn-load-prev { background: #1b282c; border: 1px solid var(--primary); color: var(--primary); font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+
+    .nutri-accordion { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; padding: 10px; }
+    .nutri-accordion summary { font-weight: 800; color: var(--primary); cursor: pointer; font-size: 0.88rem; }
+    .nutri-content { margin-top: 8px; font-size: 0.85rem; color: #ddd; line-height: 1.45; border-top: 1px dashed #333; padding-top: 6px; }
+    .daily-goals-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-top: 16px; }
+    .goals-header { font-size: 0.88rem; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; }
+    .goals-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .goals-table th, .goals-table td { padding: 8px 6px; border-bottom: 1px solid #333; text-align: left; }
+    .goals-table th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; }
+    .goals-table input { width: 100%; background: #151515; border: 1px solid #333; color: #fff; padding: 5px 8px; border-radius: 4px; font-size: 0.8rem; outline: none; }
+
+    .btn-action-primary { width: 100%; padding: 12px; background: var(--accent); color: #fff; font-weight: 800; font-size: 0.85rem; border: none; border-radius: 8px; cursor: pointer; }
+    .btn-action-wa { width: 100%; padding: 12px; background: #25d366; color: #000; font-weight: 800; font-size: 0.85rem; border: none; border-radius: 8px; cursor: pointer; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; padding: 16px; }
+    .modal-overlay.active { display: flex; }
+    .modal-inner { background: #181818; border: 1px solid var(--primary); border-radius: 12px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; padding: 16px; }
+    .congrats-box { background: linear-gradient(135deg, #181818 0%, #241913 100%); border: 2px solid var(--accent); text-align: center; padding: 24px 18px; }
+    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .metric-title { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+    .metric-val { font-size: 1rem; color: var(--primary); font-weight: 800; margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+  <!-- ================= 1. MODO CONSTRUCTOR (COACH) ================= -->
+  <div id="coach_builder_view">
+    <header>
+      <div class="header-title">
+        <h1>Generador Pro Coach Juan</h1>
+        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp</p>
+      </div>
+      <div class="header-brand">
+        <div class="gym-name">BENESSERE GYM</div>
+        <div class="gym-slogan">Juntos somos más fuertes</div>
+      </div>
+    </header>
+
+    <div class="gen-tabs">
+      <button type="button" class="gen-tab-btn active" onclick="switchGenTab('tab_builder', this)">🏋️ Planificador de Rutina</button>
+      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">📂 Cargar HTML Anterior</button>
+      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto</button>
+      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
+      <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
+    </div>
+
+    <!-- TAB 1: PLANIFICADOR -->
+    <div id="tab_builder" class="gen-view active">
+      <section class="section-box">
+        <div class="section-title">
+          ⚙️ Opciones de Personalización
+          <span class="badge">Módulos</span>
+        </div>
+        <div class="toggles-panel">
+          <label class="toggle-item">
+            <input type="checkbox" id="featureNutrition" onchange="updateModulesVisibility()">
+            <span>🥗 Activar Nutrición (Método de la Mano)</span>
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" id="featureDemos" onchange="updateModulesVisibility()">
+            <span>🎥 Activar Demostraciones en Video</span>
+          </label>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group"><label>Coach Asignado</label><input type="text" id="coachName" value="Coach Juan" readonly></div>
+          <div class="form-group"><label>WhatsApp Coach</label><input type="text" id="coachPhone" value="50684949226" readonly></div>
+          <div class="form-group">
+            <label>Género del Saludo</label>
+            <select id="clientGender">
+              <option value="o">Masculino (Bienvenido)</option>
+              <option value="a">Femenino (Bienvenida)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Nombre del Atleta</label><input type="text" id="clientName" placeholder="Nombre de cliente"></div>
+          <div class="form-group"><label>WhatsApp Atleta</label><input type="text" id="clientPhone" placeholder="Ej: 50688888888"></div>
+          <div class="form-group"><label>Fecha de Inicio</label><input type="date" id="startDate"></div>
+          <div class="form-group"><label>Duración (Semanas)</label><input type="number" id="durationWeeks" min="1" max="24" value="4"></div>
+        </div>
+      </section>
+
+      <section class="section-box">
+        <div class="section-title">💬 Mensaje del Coach <span class="badge">Nota Inicial</span></div>
+        <div class="form-grid">
+          <div class="form-group full-width"><label>Título</label><input type="text" id="coachMsgTitle" placeholder="Ej: ¡Bienvenido a tu nuevo bloque de fuerza!"></div>
+          <div class="form-group full-width"><label>Pautas y Enfoque</label><textarea id="coachMsgBody" placeholder="Pautas técnicas, descansos, sobrecarga progresiva y metas del bloque..."></textarea></div>
+        </div>
+      </section>
+
+      <section class="section-box">
+        <div class="section-title">📋 Programación de Días <span class="badge" id="daysCounterBadge">1 Día</span></div>
+        <div id="daysList"></div>
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="addNewDay()">➕ Añadir Nuevo Día</button>
+      </section>
+    </div>
+
+    <!-- TAB 2: CARGAR HTML ANTERIOR -->
+    <div id="tab_load_html" class="gen-view">
+      <section class="section-box">
+        <div class="section-title">📂 Recargar Mesociclo Anterior <span class="badge">Restaurador Universal</span></div>
+        <p style="font-size:0.85rem; color:var(--muted); margin-bottom:14px;">
+          Sube el archivo <code>.html</code> generado previamente de tu atleta o pega su contenido aquí. El generador montará automáticamente todos sus días, medidas y ejercicios sin importar la versión anterior[cite: 1].
+        </p>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Opción A: Seleccionar archivo .html de tu dispositivo</label>
+          <input type="file" id="uploadHtmlFile" accept=".html,.htm" onchange="handleHtmlFileUpload(event)">
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Opción B: Pegar el código HTML directamente</label>
+          <textarea id="pasteHtmlCode" style="min-height:160px; font-family:monospace; font-size:0.8rem;" placeholder="Pega el código HTML completo aquí..."></textarea>
+        </div>
+        <button type="button" class="btn btn-accent" style="width: 100%; padding: 14px; font-size: 0.95rem;" onclick="parseAndRestoreFromHtmlString()">
+          🚀 Montar Todos los Días y Datos
+        </button>
+      </section>
+    </div>
+
+    <!-- TAB 3: IMPORTADOR DE TEXTO -->
+    <div id="tab_import" class="gen-view">
+      <section class="section-box">
+        <div class="section-title">⚡ Importador Rápido por Bloque de Texto <span class="badge">Autorelleno</span></div>
+        <div class="import-example" id="importTemplateText">[ATLETA]
+Nombre: Kenneth Solano
+Genero: o
+Fecha: 2026-09-18
+Semanas: 4
+Objetivo: Hipertrofia y Definición
+Peso: 78.5 kg
+
+[MENSAJE COACH]
+Titulo: ¡Bienvenido a tu nuevo bloque de fuerza y sobrecarga!
+Mensaje: Hola Kenneth. En este mesociclo nos enfocaremos en la sobrecarga progresiva real. Revisa los ítems de seguridad antes de cada sesión, respeta tus descansos e hidratación y anota cada serie en tu diario de cargas. ¡Juntos somos más fuertes!
+
+[DIA 1: Tren Inferior y Cuádriceps]
+Kcal: 2400 | Agua: 3.5L | Sueño: 8h | Pasos: 10000 | Entreno: Cuádriceps y Glúteo
+Seguridad: Calentamiento articular 8 min | Calzado plano de suela rígida | Rodillas alineadas con la punta del pie
+Desayuno: 1 palma Proteína + 1 puño Carbohidratos + 1 pulgar Grasa
+Snacks: 1 palma Proteína + 1 cuenco Fruta
+Almuerzo: 1.5 palmas Proteína + 1.5 puños Carbohidratos + 2 puños Vegetales + 1 pulgar Grasa
+Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
+--
+Vigencia: semanas 1-2
+Ejercicio: Sentadilla búlgara | Series: 3 | Reps: 10-12 — EP3 | Notas: Pausa 1s en fondo | Video: https://youtube.com/watch?v=3iG_8tBw6mU
+Vigencia: semanas 3-4
+Biserie: Sentadilla búlgara + Curl femoral | Series: 3 | Reps: 12 | Notas: Fusión de fase Intensificación | Video: https://youtube.com/watch?v=3iG_8tBw6mU
+--
+Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atrás sin redondear espalda | Video: https://youtube.com/watch?v=3iG_8tBw6mU</div>
+
+        <button type="button" class="btn btn-secondary" style="margin-bottom: 12px;" onclick="copyTemplateExample()">📋 Copiar Plantilla de Ejemplo</button>
+        <div class="form-group">
+          <textarea id="importRawText" style="min-height: 200px; font-family: monospace; font-size: 0.85rem;" placeholder="Pega el texto estructurado aquí..."></textarea>
+        </div>
+        <button type="button" class="btn btn-accent" style="width: 100%; margin-top: 14px; padding: 14px;" onclick="parseAndLoadImportData()">🚀 Procesar y Cargar en la Rutina</button>
+      </section>
+    </div>
+
+    <!-- TAB 4: FICHA ANTROPOMÉTRICA -->
+    <div id="tab_athlete" class="gen-view">
+      <section class="section-box">
+        <div class="section-title">📏 Ficha Antropométrica <span class="badge">Medidas</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Objetivo Principal</label><input type="text" id="m_objetivo" placeholder="Ej: Hipertrofia muscular"></div>
+          <div class="form-group"><label>Estatura</label><input type="text" id="m_estatura" placeholder="Ej: 178 cm"></div>
+          <div class="form-group"><label>Peso Corporal (KG)</label><input type="text" id="m_peso_kg" placeholder="Ej: 78.5 kg"></div>
+          <div class="form-group"><label>% Grasa Corporal</label><input type="text" id="m_grasa" placeholder="Ej: 15%"></div>
+          <div class="form-group"><label>% Masa Muscular</label><input type="text" id="m_musculo" placeholder="Ej: 41%"></div>
+          <div class="form-group"><label>Índice Visceral</label><input type="text" id="m_visceral" placeholder="Ej: Nivel 4"></div>
+          <div class="form-group"><label>Edad Metabólica</label><input type="text" id="m_edad_meta" placeholder="Ej: 24 años"></div>
+          <div class="form-group"><label>Espalda</label><input type="text" id="m_espalda" placeholder="Ej: 110 cm"></div>
+          <div class="form-group"><label>Cintura 1 (Ombligo)</label><input type="text" id="m_cintura1" placeholder="Ej: 84 cm"></div>
+          <div class="form-group"><label>Cintura 2 (Estrecha)</label><input type="text" id="m_cintura2" placeholder="Ej: 81 cm"></div>
+          <div class="form-group"><label>Cadera</label><input type="text" id="m_cadera" placeholder="Ej: 100 cm"></div>
+          <div class="form-group"><label>Muslo Derecho</label><input type="text" id="m_muslo_der" placeholder="Ej: 58 cm"></div>
+          <div class="form-group"><label>Muslo Izquierdo</label><input type="text" id="m_muslo_izq" placeholder="Ej: 57.5 cm"></div>
+          <div class="form-group"><label>Pantorrilla Derecha</label><input type="text" id="m_pant_der" placeholder="Ej: 38 cm"></div>
+          <div class="form-group"><label>Pantorrilla Izquierda</label><input type="text" id="m_pant_izq" placeholder="Ej: 38 cm"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- BARRA INFERIOR FIJA -->
+    <div class="export-bar">
+      <div>
+        <div style="font-weight: 800; color: #fff; font-size: 0.95rem;">Benessere Gym Pro</div>
+        <div style="font-size: 0.75rem; color: var(--muted);">Enlace Ultra-Corto sin Servidores Externos</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-export-pdf" onclick="generateGymPDF()">📄 PDF Ficha</button>
+        <button type="button" class="btn btn-export-download" onclick="downloadManualHTML()">💾 Guardar HTML</button>
+        <button type="button" class="btn btn-export-wa" onclick="generateDirectWhatsAppLink()">📲 Enviar por WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. MODO ATLETA (SMARTWOD - CERO MODO COACH) ================= -->
+  <div id="athlete_client_view">
+    <div class="home-screen">
+      <div class="brand-top">Benessere Gym</div>
+      <div class="brand-slogan">Juntos somos más fuertes</div>
+      <div class="welcome-box">
+        <div class="welcome-label" id="ath_welcomeWord">Bienvenido</div>
+        <div class="client-title" id="ath_clientTitle">Atleta Benessere</div>
+      </div>
+      <div class="week-tracker-pill" id="ath_weekDisplay">Semana 1</div>
+      <div class="capsule-group" id="ath_capsuleGroup"></div>
+    </div>
+
+    <div id="ath_modal_coach" class="view-screen">
+      <div class="top-nav-bar">
+        <button class="back-btn" onclick="closeModal('ath_modal_coach')">← Volver</button>
+        <div class="view-title">Nota del Coach</div>
+        <div style="width:50px;"></div>
+      </div>
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px;">
+        <h3 id="ath_coachMsgTitle" style="color:var(--primary); margin-bottom:8px;">Nota Inicial</h3>
+        <p id="ath_coachMsgBody" style="font-size:0.9rem; color:#eee; white-space:pre-line; line-height:1.6;"></p>
+      </div>
+    </div>
+
+    <div id="ath_daysContainer"></div>
+
+    <div id="ath_modal_historial" class="view-screen">
+      <div class="top-nav-bar">
+        <button class="back-btn" onclick="closeModal('ath_modal_historial')">← Volver</button>
+        <div class="view-title">Historial de Cargas</div>
+        <div style="width:50px;"></div>
+      </div>
+      <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:0.75rem; color:var(--muted);">Marcas con fecha y ejercicio</span>
+        <button onclick="clearHistorialData()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Borrar Historial</button>
+      </div>
+      <div id="historialListContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <div id="ath_modal_medidas" class="view-screen">
+      <div class="top-nav-bar">
+        <button class="back-btn" onclick="closeModal('ath_modal_medidas')">← Volver</button>
+        <div class="view-title">Ficha Antropométrica</div>
+        <div style="width:50px;"></div>
+      </div>
+      <div class="metrics-grid" id="ath_metricsGrid"></div>
+    </div>
+
+    <div id="modal_intercambios" class="modal-overlay">
+      <div class="modal-inner">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #333; padding-bottom:8px;">
+          <h3 style="font-size:1rem; color:var(--primary);">10 Intercambios por Grupo</h3>
+          <button onclick="closeModal('modal_intercambios')" style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✕</button>
+        </div>
+        <div style="font-size:0.8rem; color:#ddd; line-height:1.6;">
+          <p style="color:var(--accent); font-weight:bold; margin-top:8px;">🥩 PROTEÍNAS (1 Palma / 25-30g):</p>
+          1. Pechuga de pollo o pavo (120g)<br>2. Lomo magro de res (110g)<br>3. Pescado blanco (140g)<br>4. Salmón (110g)<br>5. Atún en agua (1 lata/120g)<br>6. Huevos enteros (3 uds)<br>7. Claras líquidas (180ml / 5-6 claras)<br>8. Queso blanco light (100g)<br>9. Proteína en polvo (1 scoop/30g)<br>10. Yogurt griego 0% (180g)
+          <p style="color:var(--accent); font-weight:bold; margin-top:12px;">🍚 CARBOHIDRATOS (1 Puño / 25-30g):</p>
+          1. Arroz cocido (1 taza)<br>2. Frijoles o lentejas (3/4 taza)<br>3. Papa hervida (160g)<br>4. Camote asado (150g)<br>5. Avena integral (1/2 taza)<br>6. Pasta cocida (1 taza rasa)<br>7. Tortillas de maíz (2 uds)<br>8. Pan integral (2 rebanadas)<br>9. Quinoa cocida (3/4 taza)<br>10. Yuca hervida (100g)
+          <p style="color:var(--accent); font-weight:bold; margin-top:12px;">🥑 GRASAS (1 Pulgar / 10-12g):</p>
+          1. Aguacate (1/3 ud / 50g)<br>2. Aceite de oliva virgen (1 cda sopera)<br>3. Mantequilla de maní (1 cda rasa)<br>4. Almendras (12-14 uds)<br>5. Nueces (5-6 uds)<br>6. Semillas de chía (1 cda)<br>7. Aceite de coco (1 cdita)<br>8. Aceitunas (8-10 uds)<br>9. Semillas de calabaza (1 cda)<br>10. Ghee (1 cdita)
+          <p style="color:var(--accent); font-weight:bold; margin-top:12px;">🍎 FRUTAS (1 Cuenco / 15-20g):</p>
+          1. Manzana (1 ud)<br>2. Banano (1 ud)<br>3. Fresas (1 taza / 150g)<br>4. Papaya o melón (1 taza)<br>5. Piña en cubos (3/4 taza)<br>6. Arándanos (3/4 taza)<br>7. Kiwi (2 uds)<br>8. Pera (1 ud)<br>9. Naranja (1-2 uds)<br>10. Sandía picada (1.5 tazas)
+        </div>
+      </div>
+    </div>
+
+    <div id="modal_congrats" class="modal-overlay">
+      <div class="modal-inner congrats-box">
+        <div style="font-size:3rem; margin-bottom:8px;">🏆🔥</div>
+        <div style="font-size:1.25rem; color:var(--primary); font-weight:900; text-transform:uppercase; margin-bottom:6px;">¡Entrenamiento Guardado!</div>
+        <div style="font-size:0.85rem; color:#f0f0f0; margin-bottom:16px; line-height:1.45;">
+          ¡Excelente trabajo hoy! Tus marcas han quedado archivadas con la fecha de hoy.<br><br>
+          💧 Cumple con tu agua y descanso. <em>¡Juntos somos más fuertes!</em>
+        </div>
+        <button class="btn-action-primary" style="margin-bottom:8px;" onclick="closeModal('modal_congrats')">Aceptar y Continuar</button>
+        <button class="btn-action-wa" onclick="sendWhatsAppFromCongrats()">📲 Enviar Reporte a Coach Juan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LÓGICA JAVASCRIPT ================= -->
+  <script>
+    var routineDays = [
+      {
+        id: 'd1',
+        title: 'Día 1: Tren Inferior y Cuádriceps',
+        habits: { kcal: '2400', agua: '3.5L', sueno: '8h', pasos: '10000', entreno: 'Pierna Completa' },
+        security: 'Calentamiento dinámico articular | Uso de seguros en barras | Control excéntrico de 2s | Hidratación entre series',
+        diet: {
+          desayuno: '1 palma Proteína + 1 puño Carbohidratos + 1 pulgar Grasa',
+          snack: '1 palma Proteína + 1 cuenco Fruta',
+          almuerzo: '1.5 palmas Proteína + 1.5 puños Carbohidratos + 2 puños Vegetales + 1 pulgar Grasa',
+          cena: '1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa'
+        },
+        items: [
+          { type: 'normal', slot: 1, vigenciaDesde: 1, vigenciaHasta: null, sub: [{ name: 'Sentadilla Goblet', series: '4', reps: '10-12', notes: 'RIR 2, pausa 1s en fondo', video: 'https://youtube.com/watch?v=3iG_8tBw6mU' }] }
+        ]
+      }
+    ];
+
+    var athleteActiveState = null;
+    var lastActiveDayId = '';
+    var CONFIG_COACH_PHONE = '50684949226';
+
+    function switchGenTab(viewId, btn) {
+      document.querySelectorAll('.gen-view').forEach(function(v) { v.classList.remove('active'); });
+      document.querySelectorAll('.gen-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      var target = document.getElementById(viewId);
+      if (target) target.classList.add('active');
+      if (btn) btn.classList.add('active');
+    }
+
+    function updateModulesVisibility() {
+      var nutriInput = document.getElementById('featureNutrition');
+      var demosInput = document.getElementById('featureDemos');
+      var showNutri = nutriInput ? nutriInput.checked : false;
+      var showDemos = demosInput ? demosInput.checked : false;
+
+      document.querySelectorAll('.diet-box').forEach(function(box) { box.style.display = showNutri ? 'block' : 'none'; });
+      document.querySelectorAll('.demo-field-box').forEach(function(box) { box.style.display = showDemos ? 'block' : 'none'; });
+    }
+
+    function renderDays() {
+      var container = document.getElementById('daysList');
+      if (!container) return;
+      container.innerHTML = '';
+      var badge = document.getElementById('daysCounterBadge');
+      if (badge) badge.innerText = routineDays.length + ' Día' + (routineDays.length > 1 ? 's' : '');
+
+      var nutriInput = document.getElementById('featureNutrition');
+      var demosInput = document.getElementById('featureDemos');
+      var showNutri = nutriInput ? nutriInput.checked : false;
+      var showDemos = demosInput ? demosInput.checked : false;
+
+      routineDays.forEach(function(day, dayIndex) {
+        var dayDiv = document.createElement('div');
+        dayDiv.className = 'day-card';
+
+        var itemsHtml = '';
+        (day.items || []).forEach(function(item, itemIndex) {
+          var isNormal = item.type === 'normal';
+          var badgeText = isNormal ? 'Serie Normal' : (item.type === 'biserie' ? 'Biserie (A + B)' : 'Triserie (A + B + C)');
+          var vigDesde = item.vigenciaDesde || 1;
+          var vigHasta = item.vigenciaHasta ? item.vigenciaHasta : 'Fin';
+          var slotNum = item.slot || (itemIndex + 1);
+
+          var subsHtml = '';
+          var subList = Array.isArray(item.sub) && item.sub.length > 0 ? item.sub : [{ name: item.name || '', series: item.series || '', reps: item.reps || '', notes: item.notes || '', video: item.video || '' }];
+
+          subList.forEach(function(sub, subIndex) {
+            var letter = ['A', 'B', 'C'][subIndex];
+            subsHtml += '<div class="sub-box">' +
+              '<div class="sub-tag">' + (!isNormal ? 'Ejercicio ' + letter + ':' : 'Detalle del Ejercicio:') + '</div>' +
+              '<div class="form-grid">' +
+                '<div class="form-group" style="grid-column: span 2;">' +
+                  '<label>Nombre del Ejercicio</label>' +
+                  '<input type="text" value="' + (sub.name || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].name = this.value" placeholder="Ej: Sentadilla Goblet">' +
+                '</div>' +
+                '<div class="form-group"><label>Series</label><input type="text" value="' + (sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
+                '<div class="form-group"><label>Reps</label><input type="text" value="' + (sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
+                '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + (sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
+                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';"><label>Video YouTube</label><input type="text" value="' + (sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value"></div>' +
+              '</div>' +
+            '</div>';
+          });
+
+          itemsHtml += '<div class="exercise-item ' + (item.type || 'normal') + '">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<div style="display:flex; gap:6px; align-items:center;">' +
+                '<span style="font-size:0.72rem; font-weight:800; background:#333; padding:2px 6px; border-radius:4px;">' + badgeText + '</span>' +
+                '<span style="font-size:0.72rem; font-weight:800; background:rgba(0, 229, 255, 0.2); color:var(--primary); padding:2px 6px; border-radius:4px;">Posición #' + slotNum + '</span>' +
+                '<span style="font-size:0.72rem; font-weight:800; background:rgba(255, 109, 0, 0.2); color:var(--accent); padding:2px 6px; border-radius:4px;">Sem ' + vigDesde + '-' + vigHasta + '</span>' +
+              '</div>' +
+              '<button type="button" class="btn btn-danger" style="padding:2px 8px; font-size:0.72rem;" onclick="removeItem(' + dayIndex + ', ' + itemIndex + ')">Eliminar</button>' +
+            '</div>' +
+            subsHtml +
+          '</div>';
+        });
+
+        dayDiv.innerHTML = '<div class="day-header">' +
+          '<input type="text" class="day-title-input" value="' + (day.title || 'Día') + '" oninput="routineDays[' + dayIndex + '].title = this.value">' +
+          '<button type="button" class="btn btn-danger" style="font-size:0.75rem; padding:4px 8px;" onclick="removeDay(' + dayIndex + ')">🗑️ Eliminar Día</button>' +
+        '</div>' +
+        '<div class="habits-bar">' +
+          '<div class="form-group"><label>🎯 Calorías</label><input type="text" value="' + (day.habits ? day.habits.kcal || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.kcal = this.value"></div>' +
+          '<div class="form-group"><label>💧 Hidratación</label><input type="text" value="' + (day.habits ? day.habits.agua || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.agua = this.value"></div>' +
+          '<div class="form-group"><label>😴 Sueño</label><input type="text" value="' + (day.habits ? day.habits.sueno || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.sueno = this.value"></div>' +
+          '<div class="form-group"><label>👟 Meta Pasos</label><input type="text" value="' + (day.habits ? day.habits.pasos || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.pasos = this.value"></div>' +
+          '<div class="form-group"><label>🏋️ Entrenamiento</label><input type="text" value="' + (day.habits ? day.habits.entreno || 'Sesión programada' : 'Sesión programada') + '" oninput="routineDays[' + dayIndex + '].habits.entreno = this.value"></div>' +
+        '</div>' +
+        '<div class="security-box"><label style="color:var(--primary); font-weight:800; margin-bottom:6px; display:block;">🛡️ Protocolo de Seguridad</label><input type="text" value="' + (day.security || '') + '" oninput="routineDays[' + dayIndex + '].security = this.value"></div>' +
+        '<div class="diet-box" style="display:' + (showNutri ? 'block' : 'none') + ';"><label style="color:var(--accent); font-weight:800; margin-bottom:8px; display:block;">🥗 Nutrición (Método de la Mano)</label>' +
+          '<div class="form-grid">' +
+            '<div class="form-group"><label>🍳 Desayuno</label><textarea style="min-height:50px;" oninput="routineDays[' + dayIndex + '].diet.desayuno = this.value">' + (day.diet ? day.diet.desayuno || '' : '') + '</textarea></div>' +
+            '<div class="form-group"><label>🍏 Snacks</label><textarea style="min-height:50px;" oninput="routineDays[' + dayIndex + '].diet.snack = this.value">' + (day.diet ? day.diet.snack || '' : '') + '</textarea></div>' +
+            '<div class="form-group"><label>🍗 Almuerzo</label><textarea style="min-height:50px;" oninput="routineDays[' + dayIndex + '].diet.almuerzo = this.value">' + (day.diet ? day.diet.almuerzo || '' : '') + '</textarea></div>' +
+            '<div class="form-group"><label>🐟 Cena</label><textarea style="min-height:50px;" oninput="routineDays[' + dayIndex + '].diet.cena = this.value">' + (day.diet ? day.diet.cena || '' : '') + '</textarea></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="items-list">' + itemsHtml + '</div>' +
+        '<div class="btn-row">' +
+          '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'normal\')">➕ Serie Normal</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'biserie\')">➕ Biserie</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'triserie\')">➕ Triserie</button>' +
+        '</div>';
+
+        container.appendChild(dayDiv);
+      });
+    }
+
+    function addNewDay() {
+      var nextNum = routineDays.length + 1;
+      routineDays.push({
+        id: 'd' + nextNum, title: 'Día ' + nextNum + ': Entrenamiento',
+        habits: { kcal: '2200', agua: '3L', sueno: '8h', pasos: '10000', entreno: 'Sesión programada' },
+        security: 'Calentamiento dinámico articular | Uso de seguros | Control excéntrico de 2s | Hidratación entre series',
+        diet: { desayuno: '', snack: '', almuerzo: '', cena: '' },
+        items: [{ type: 'normal', slot: 1, vigenciaDesde: 1, vigenciaHasta: null, sub: [{ name: '', series: '', reps: '', notes: '', video: '' }] }]
+      });
+      renderDays();
+    }
+
+    function removeDay(index) { if (confirm('¿Eliminar este día?')) { routineDays.splice(index, 1); renderDays(); } }
+    function addItem(dayIndex, type) {
+      var count = type === 'normal' ? 1 : (type === 'biserie' ? 2 : 3);
+      var sub = [];
+      for (var i = 0; i < count; i++) sub.push({ name: '', series: '', reps: '', notes: '', video: '' });
+      routineDays[dayIndex].items.push({ type: type, slot: routineDays[dayIndex].items.length + 1, vigenciaDesde: 1, vigenciaHasta: null, sub: sub });
+      renderDays();
+    }
+    function removeItem(dayIndex, itemIndex) { routineDays[dayIndex].items.splice(itemIndex, 1); renderDays(); }
+
+    function copyTemplateExample() {
+      var text = document.getElementById('importTemplateText').innerText;
+      navigator.clipboard.writeText(text);
+      alert('¡Plantilla copiada al portapapeles!');
+    }
+
+    // ================= RESTAURADOR UNIVERSAL (RECUPERA TODOS LOS DÍAS) =================
+    function handleHtmlFileUpload(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('pasteHtmlCode').value = e.target.result;
+        parseAndRestoreFromHtmlString();
+      };
+      reader.readAsText(file);
+    }
+
+    function parseAndRestoreFromHtmlString() {
+      var raw = document.getElementById('pasteHtmlCode').value.trim();
+      if (!raw) return alert('Por favor selecciona un archivo HTML o pega su código primero.');
+
+      var state = null;
+
+      try {
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(raw, 'text/html');
+        var stateEl = doc.getElementById('benessere_raw_state');
+        if (stateEl && stateEl.textContent) {
+          state = JSON.parse(stateEl.textContent);
+        }
+      } catch (e) {}
+
+      if (!state) {
+        var matchScript = raw.match(/<script[^>]*id=["']benessere_raw_state["'][^>]*>([\s\S]*?)<\/script>/i);
+        if (matchScript && matchScript[1]) {
+          try { state = JSON.parse(matchScript[1].trim()); } catch(e) {}
+        }
+      }
+
+      if (!state && raw.indexOf('?r=') !== -1) {
+        var matchQ = raw.match(/\?r=([A-Za-z0-9+/=_-]+)/);
+        if (matchQ && matchQ[1]) {
+          try {
+            var decomp = LZString.decompressFromEncodedURIComponent(matchQ[1]);
+            if (decomp) state = expandUltraCompactState(JSON.parse(decomp));
+          } catch(e) {}
+        }
+      }
+
+      if (!state && raw.indexOf('#r=') !== -1) {
+        var matchHash = raw.match(/#r=([A-Za-z0-9+/=_-]+)/);
+        if (matchHash && matchHash[1]) {
+          try {
+            var decomp2 = LZString.decompressFromEncodedURIComponent(matchHash[1]);
+            if (decomp2) state = expandUltraCompactState(JSON.parse(decomp2));
+          } catch(e) {}
+        }
+      }
+
+      if (!state && raw.startsWith('{') && raw.endsWith('}')) {
+        try { state = expandUltraCompactState(JSON.parse(raw)); } catch(e) {}
+      }
+
+      // Si es un archivo muy antiguo sin JSON, rescatar directamente del DOM visual
+      if (!state) {
+        try {
+          var domParser = new DOMParser();
+          var domDoc = domParser.parseFromString(raw, 'text/html');
+          var dayScreens = domDoc.querySelectorAll('.view-screen');
+          if (dayScreens.length > 0) {
+            var extractedDays = [];
+            dayScreens.forEach(function(sc) {
+              var sId = sc.id;
+              if (sId && sId.indexOf('modal_') === -1) {
+                var dTitle = sc.getAttribute('data-day-title') || (sc.querySelector('.view-title') ? sc.querySelector('.view-title').innerText : 'Día');
+                var dSec = sc.querySelector('.sec-items') ? sc.querySelector('.sec-items').innerText : '';
+                var exercises = [];
+                sc.querySelectorAll('.exercise-card').forEach(function(card, cIdx) {
+                  var isBi = card.classList.contains('biserie');
+                  var isTri = card.classList.contains('triserie');
+                  var type = isBi ? 'biserie' : (isTri ? 'triserie' : 'normal');
+                  var subList = [];
+                  card.querySelectorAll('.exercise-item-box').forEach(function(box) {
+                    var n = box.querySelector('.ex-name') ? box.querySelector('.ex-name').innerText.replace(/^[A-C]\s*/, '').trim() : '';
+                    var t = box.querySelector('.ex-target') ? box.querySelector('.ex-target').innerText : '';
+                    var sParts = t.split('×');
+                    var series = sParts[0] ? sParts[0].replace(/series/i,'').trim() : '';
+                    var reps = sParts[1] ? sParts[1].replace(/reps/i,'').trim() : '';
+                    var notes = box.querySelector('.ex-notes') ? box.querySelector('.ex-notes').innerText.replace(/^📌\s*/, '').trim() : '';
+                    var vidA = box.querySelector('.btn-yt-demo');
+                    var video = vidA ? vidA.getAttribute('href') : '';
+                    subList.push({ name: n, series: series, reps: reps, notes: notes, video: video });
+                  });
+                  exercises.push({ type: type, slot: cIdx + 1, vigenciaDesde: 1, vigenciaHasta: null, sub: subList });
+                });
+                extractedDays.push({ id: sId, title: dTitle, habits: {}, security: dSec, diet: {}, items: exercises });
+              }
+            });
+            if (extractedDays.length > 0) {
+              state = { clientName: 'Atleta Benessere', routineDays: extractedDays };
+            }
+          }
+        } catch(e) {}
+      }
+
+      if (!state) {
+        return alert('No se encontró la estructura de rutina en este archivo. Asegúrate de que sea un archivo de Benessere Gym.');
+      }
+
+      applyRestoredState(state);
+      alert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
+      switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+    }
+
+    function applyRestoredState(state) {
+      if (state.clientName) document.getElementById('clientName').value = state.clientName;
+      if (state.clientGender) document.getElementById('clientGender').value = state.clientGender;
+      if (state.startDate) document.getElementById('startDate').value = state.startDate;
+      if (state.durationWeeks) document.getElementById('durationWeeks').value = state.durationWeeks;
+      if (state.coachMsgTitle) document.getElementById('coachMsgTitle').value = state.coachMsgTitle;
+      if (state.coachMsgBody) document.getElementById('coachMsgBody').value = state.coachMsgBody;
+
+      if (state.configFeatures) {
+        document.getElementById('featureNutrition').checked = state.configFeatures.nutrition === true;
+        document.getElementById('featureDemos').checked = state.configFeatures.demos === true;
+      } else {
+        document.getElementById('featureNutrition').checked = false;
+        document.getElementById('featureDemos').checked = false;
+      }
+
+      if (state.measures) {
+        Object.keys(state.measures).forEach(function(k) {
+          var el = document.getElementById(k);
+          if (el) el.value = state.measures[k] || '';
+        });
+      }
+
+      // Compatibilidad universal con cualquier clave de días antigua
+      var rawDays = state.routineDays || state.days || state.dias || state.d || [];
+      if (!Array.isArray(rawDays) && typeof rawDays === 'object') {
+        rawDays = Object.values(rawDays);
+      }
+
+      if (rawDays.length > 0) {
+        routineDays = rawDays.map(function(d, dIdx) {
+          var rawItems = d.items || d.exercises || d.ejercicios || d.it || [];
+          if (!Array.isArray(rawItems) && typeof rawItems === 'object') {
+            rawItems = Object.values(rawItems);
+          }
+
+          var normItems = rawItems.map(function(item, itIdx) {
+            var subList = [];
+            var rawSubs = item.sub || item.subs || item.ejercicios;
+            if (Array.isArray(rawSubs) && rawSubs.length > 0) {
+              subList = rawSubs.map(function(s) {
+                if (Array.isArray(s)) {
+                  return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||'') };
+                }
+                return { name: s.name||s.nombre||'', series: s.series||'', reps: s.reps||s.repeticiones||'', notes: s.notes||s.notas||'', video: expandYtUrl(s.video||'') };
+              });
+            } else {
+              subList = [{
+                name: item.name || item.nombre || item.ejercicio || '',
+                series: item.series || '',
+                reps: item.reps || item.repeticiones || '',
+                notes: item.notes || item.notas || '',
+                video: expandYtUrl(item.video || '')
+              }];
+            }
+            return {
+              type: item.type === 'b' ? 'biserie' : (item.type === 't' ? 'triserie' : (item.type || 'normal')),
+              slot: item.slot || item.sl || (itIdx + 1),
+              vigenciaDesde: item.vigenciaDesde || item.vd || 1,
+              vigenciaHasta: item.vigenciaHasta !== undefined ? item.vigenciaHasta : (item.vh !== undefined ? item.vh : null),
+              sub: subList
+            };
+          });
+
+          return {
+            id: d.id || ('d' + (dIdx + 1)),
+            title: d.title || d.t || ('Día ' + (dIdx + 1)),
+            habits: d.habits || (Array.isArray(d.h) ? { kcal: d.h[0]||'', agua: d.h[1]||'', sueno: d.h[2]||'', pasos: d.h[3]||'', entreno: d.h[4]||'' } : { kcal: '', agua: '', sueno: '', pasos: '', entreno: '' }),
+            security: d.security || d.s || '',
+            diet: d.diet || (Array.isArray(d.dt) ? { desayuno: d.dt[0]||'', snack: d.dt[1]||'', almuerzo: d.dt[2]||'', cena: d.dt[3]||'' } : { desayuno: '', snack: '', almuerzo: '', cena: '' }),
+            items: normItems
+          };
+        });
+
+        renderDays();
+        updateModulesVisibility();
+      }
+    }
+
+    // ================= IMPORTADOR DE TEXTO =================
+    function parseAndLoadImportData() {
+      var raw = document.getElementById('importRawText').value.trim();
+      if (!raw) return alert('Pega el texto estructurado primero.');
+      var lines = raw.split('\n').map(function(l) { return l.trim(); });
+      var curSection = null, curDay = null, parsedDays = [];
+      var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1;
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (!line) continue;
+        if (line.indexOf('[ATLETA]') === 0) { curSection = 'ATLETA'; continue; }
+        if (line.indexOf('[MENSAJE') === 0 || line.indexOf('[COACH') === 0) { curSection = 'MENSAJE_COACH'; continue; }
+        if (line.indexOf('[DIA') === 0) {
+          curSection = 'DIA';
+          var titleMatch = line.match(/\[DIA\s*(\d*)\s*:?\s*(.*)\]/i);
+          var title = titleMatch ? (titleMatch[2] ? 'Día ' + (titleMatch[1] || (parsedDays.length + 1)) + ': ' + titleMatch[2] : line.replace('[','').replace(']','')) : ('Día ' + (parsedDays.length + 1));
+          curDay = {
+            id: 'd' + (parsedDays.length + 1), title: title,
+            habits: { kcal: '', agua: '', sueno: '', pasos: '', entreno: 'Sesión programada' },
+            security: 'Calentamiento dinámico articular | Uso de seguros | Hidratación entre series',
+            diet: { desayuno: '', snack: '', almuerzo: '', cena: '' }, items: []
+          };
+          parsedDays.push(curDay);
+          pendingVigencia = null; currentSlotCounter = 0; lastHandledSlot = 1;
+          continue;
+        }
+        if (curSection === 'ATLETA') {
+          var lineLower = line.toLowerCase();
+          if (lineLower.indexOf('nombre:') === 0) document.getElementById('clientName').value = line.split(':')[1].trim();
+          if (lineLower.indexOf('genero:') === 0 || lineLower.indexOf('género:') === 0) {
+            var g = line.split(':')[1].trim().toLowerCase();
+            document.getElementById('clientGender').value = (g === 'f' || g === 'mujer' || g === 'a') ? 'a' : 'o';
+          }
+          if (lineLower.indexOf('fecha:') === 0) document.getElementById('startDate').value = line.split(':')[1].trim();
+          if (lineLower.indexOf('semanas:') === 0) document.getElementById('durationWeeks').value = line.split(':')[1].trim();
+          if (lineLower.indexOf('objetivo:') === 0) document.getElementById('m_objetivo').value = line.split(':')[1].trim();
+          if (lineLower.indexOf('peso:') === 0) document.getElementById('m_peso_kg').value = line.split(':')[1].trim();
+          continue;
+        }
+        if (curSection === 'MENSAJE_COACH') {
+          var mLower = line.toLowerCase();
+          if (mLower.indexOf('titulo:') === 0 || mLower.indexOf('título:') === 0) document.getElementById('coachMsgTitle').value = line.substring(line.indexOf(':') + 1).trim();
+          else if (mLower.indexOf('mensaje:') === 0 || mLower.indexOf('pautas:') === 0) document.getElementById('coachMsgBody').value = line.substring(line.indexOf(':') + 1).trim();
+          else {
+            var cb = document.getElementById('coachMsgBody').value;
+            document.getElementById('coachMsgBody').value = cb ? (cb + '\n' + line) : line;
+          }
+          continue;
+        }
+        if (curSection === 'DIA' && curDay) {
+          var dLower = line.toLowerCase();
+          if (dLower.indexOf('kcal:') !== -1 || dLower.indexOf('agua:') !== -1 || dLower.indexOf('sueño:') !== -1 || dLower.indexOf('pasos:') !== -1) {
+            var parts = line.split('|');
+            parts.forEach(function(p) {
+              var pair = p.split(':');
+              if (pair.length >= 2) {
+                var k = pair[0].trim().toLowerCase();
+                var v = pair[1].trim();
+                if (k.indexOf('kcal') !== -1) curDay.habits.kcal = v;
+                if (k.indexOf('agua') !== -1) curDay.habits.agua = v;
+                if (k.indexOf('sueño') !== -1 || k.indexOf('sueno') !== -1) curDay.habits.sueno = v;
+                if (k.indexOf('pasos') !== -1) curDay.habits.pasos = v;
+                if (k.indexOf('entreno') !== -1) curDay.habits.entreno = v;
+              }
+            });
+            continue;
+          }
+          if (dLower.indexOf('seguridad:') === 0) { curDay.security = line.substring(line.indexOf(':') + 1).trim(); continue; }
+          var mealKeys = { 'desayuno': 'desayuno', 'snacks': 'snack', 'snack': 'snack', 'almuerzo': 'almuerzo', 'cena': 'cena' };
+          var mealMatch = Object.keys(mealKeys).find(function(k) { return dLower.indexOf(k + ':') === 0; });
+          if (mealMatch) { curDay.diet[mealKeys[mealMatch]] = line.substring(line.indexOf(':') + 1).trim(); continue; }
+          if (line === '--') { pendingVigencia = null; continue; }
+          if (dLower.indexOf('vigencia:') === 0) {
+            var rawVig = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
+            var mR = rawVig.match(/semanas?\s*(\d+)\s*-\s*(\d+)/i);
+            var mP = rawVig.match(/semanas?\s*(\d+)\s*\+/i);
+            if (mR) pendingVigencia = { desde: parseInt(mR[1]), hasta: parseInt(mR[2]) };
+            else if (mP) pendingVigencia = { desde: parseInt(mP[1]), hasta: null };
+            else pendingVigencia = { desde: 1, hasta: null };
+            continue;
+          }
+
+          function resolveSlotAndVig() {
+            var vDesde = 1, vHasta = null, slot = currentSlotCounter + 1;
+            if (pendingVigencia) {
+              vDesde = pendingVigencia.desde; vHasta = pendingVigencia.hasta;
+              if (vDesde > 1) slot = lastHandledSlot;
+              else { currentSlotCounter++; slot = currentSlotCounter; lastHandledSlot = slot; }
+            } else {
+              currentSlotCounter++; slot = currentSlotCounter; lastHandledSlot = slot;
+            }
+            pendingVigencia = null;
+            return { slot: slot, vDesde: vDesde, vHasta: vHasta };
+          }
+
+          if (dLower.indexOf('ejercicio:') === 0) {
+            var meta = resolveSlotAndVig();
+            var props = line.substring(10).split('|');
+            var sub = { name: props[0].trim(), series: '', reps: '', notes: '', video: '' };
+            props.slice(1).forEach(function(pr) {
+              var pair = pr.split(':');
+              if (pair.length >= 2) {
+                var pk = pair[0].trim().toLowerCase(), pv = pair.slice(1).join(':').trim();
+                if (pk.indexOf('serie') !== -1) sub.series = pv;
+                if (pk.indexOf('rep') !== -1) sub.reps = pv;
+                if (pk.indexOf('nota') !== -1) sub.notes = pv;
+                if (pk.indexOf('video') !== -1) sub.video = pv;
+              }
+            });
+            curDay.items.push({ type: 'normal', slot: meta.slot, vigenciaDesde: meta.vDesde, vigenciaHasta: meta.vHasta, sub: [sub] });
+            continue;
+          }
+
+          if (dLower.indexOf('biserie:') === 0 || dLower.indexOf('triserie:') === 0) {
+            var meta2 = resolveSlotAndVig();
+            var isBi = dLower.indexOf('biserie:') === 0;
+            var props2 = line.substring(line.indexOf(':') + 1).split('|');
+            var namesRaw = props2[0].trim();
+            if (namesRaw.indexOf('+') !== -1) {
+              var names = namesRaw.split('+').map(function(n) { return n.trim(); }).filter(Boolean);
+              var series2 = '', reps2 = '', notes2 = '', video2 = '';
+              props2.slice(1).forEach(function(pr) {
+                var pair = pr.split(':');
+                if (pair.length >= 2) {
+                  var pk = pair[0].trim().toLowerCase(), pv = pair.slice(1).join(':').trim();
+                  if (pk.indexOf('serie') !== -1) series2 = pv;
+                  if (pk.indexOf('rep') !== -1) reps2 = pv;
+                  if (pk.indexOf('nota') !== -1) notes2 = pv;
+                  if (pk.indexOf('video') !== -1) video2 = pv;
+                }
+              });
+              var subList = names.map(function(n) { return { name: n, series: series2, reps: reps2, notes: notes2, video: video2 }; });
+              curDay.items.push({ type: isBi ? 'biserie' : 'triserie', slot: meta2.slot, vigenciaDesde: meta2.vDesde, vigenciaHasta: meta2.vHasta, sub: subList });
+            }
+            continue;
+          }
+        }
+      }
+
+      if (parsedDays.length > 0) {
+        routineDays = parsedDays;
+        renderDays();
+        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días.');
+      } else {
+        alert('No se detectaron días válidos.');
+      }
+    }
+
+    // ================= ENLACE ULTRA-COMPACTO =================
+    function extractYtId(url) {
+      if (!url) return '';
+      var m = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([^#\&\?]*)/);
+      return (m && m[1].length === 11) ? m[1] : url.trim();
+    }
+
+    function expandYtUrl(id) {
+      if (!id) return '';
+      return (id.length === 11 && id.indexOf('/') === -1 && id.indexOf('.') === -1) ? ('https://www.youtube.com/watch?v=' + id) : id;
+    }
+
+    function getBuilderState() {
+      var cName = document.getElementById('clientName').value.trim() || 'Atleta Benessere';
+      var cGender = document.getElementById('clientGender').value;
+      var sDate = document.getElementById('startDate').value || new Date().toISOString().split('T')[0];
+      var dWeeks = parseInt(document.getElementById('durationWeeks').value) || 4;
+      var msgTitle = document.getElementById('coachMsgTitle').value.trim() || 'Nota del Coach';
+      var msgBody = document.getElementById('coachMsgBody').value.trim() || 'Sigue las pautas del plan y anota tus cargas en cada sesión.';
+      var isNutri = document.getElementById('featureNutrition').checked;
+      var isDemos = document.getElementById('featureDemos').checked;
+
+      return {
+        clientName: cName, clientGender: cGender, startDate: sDate, durationWeeks: dWeeks,
+        coachMsgTitle: msgTitle, coachMsgBody: msgBody,
+        configFeatures: { nutrition: isNutri, demos: isDemos },
+        measures: {
+          m_objetivo: document.getElementById('m_objetivo').value.trim() || '-',
+          m_estatura: document.getElementById('m_estatura').value.trim() || '-',
+          m_peso_kg: document.getElementById('m_peso_kg').value.trim() || '-',
+          m_grasa: document.getElementById('m_grasa').value.trim() || '-',
+          m_musculo: document.getElementById('m_musculo').value.trim() || '-',
+          m_visceral: document.getElementById('m_visceral').value.trim() || '-',
+          m_edad_meta: document.getElementById('m_edad_meta').value.trim() || '-',
+          m_espalda: document.getElementById('m_espalda').value.trim() || '-',
+          m_cintura1: document.getElementById('m_cintura1').value.trim() || '-',
+          m_cintura2: document.getElementById('m_cintura2').value.trim() || '-',
+          m_cadera: document.getElementById('m_cadera').value.trim() || '-',
+          m_muslo_der: document.getElementById('m_muslo_der').value.trim() || '-',
+          m_muslo_izq: document.getElementById('m_muslo_izq').value.trim() || '-',
+          m_pant_der: document.getElementById('m_pant_der').value.trim() || '-',
+          m_pant_izq: document.getElementById('m_pant_izq').value.trim() || '-'
+        },
+        routineDays: routineDays
+      };
+    }
+
+    // Matriz pura sin llaves JSON repetidas para lograr el enlace más corto posible
+    function buildUltraCompactState(full) {
+      return [
+        full.clientName,
+        full.clientGender,
+        full.startDate,
+        full.durationWeeks,
+        full.coachMsgTitle,
+        full.coachMsgBody,
+        [full.configFeatures.nutrition ? 1 : 0, full.configFeatures.demos ? 1 : 0],
+        [
+          full.measures.m_objetivo, full.measures.m_estatura, full.measures.m_peso_kg,
+          full.measures.m_grasa, full.measures.m_musculo, full.measures.m_visceral,
+          full.measures.m_edad_meta, full.measures.m_espalda, full.measures.m_cintura1,
+          full.measures.m_cintura2, full.measures.m_cadera, full.measures.m_muslo_der,
+          full.measures.m_muslo_izq, full.measures.m_pant_der, full.measures.m_pant_izq
+        ],
+        full.routineDays.map(function(d) {
+          var dArr = [
+            d.id,
+            d.title,
+            [d.habits.kcal||'', d.habits.agua||'', d.habits.sueno||'', d.habits.pasos||'', d.habits.entreno||''],
+            d.security || '',
+            full.configFeatures.nutrition ? [d.diet.desayuno||'', d.diet.snack||'', d.diet.almuerzo||'', d.diet.cena||''] : [],
+            d.items.map(function(it) {
+              return [
+                it.type === 'normal' ? 'n' : (it.type === 'biserie' ? 'b' : 't'),
+                it.slot,
+                it.vigenciaDesde,
+                it.vigenciaHasta,
+                it.sub.map(function(s) {
+                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', full.configFeatures.demos ? extractYtId(s.video) : ''];
+                })
+              ];
+            })
+          ];
+          return dArr;
+        })
+      ];
+    }
+
+    function expandUltraCompactState(c) {
+      if (!Array.isArray(c)) {
+        if (c.clientName) return c;
+        if (c.cn) {
+          var mOld = c.m || [];
+          return {
+            clientName: c.cn, clientGender: c.cg || 'o', startDate: c.sd || '', durationWeeks: c.w || 4,
+            coachMsgTitle: c.mt || 'Nota del Coach', coachMsgBody: c.mb || '',
+            configFeatures: { nutrition: c.fn === 1, demos: c.fd === 1 },
+            measures: { m_objetivo: mOld[0]||'-', m_estatura: mOld[1]||'-', m_peso_kg: mOld[2]||'-', m_grasa: mOld[3]||'-', m_musculo: mOld[4]||'-', m_visceral: mOld[5]||'-', m_edad_meta: mOld[6]||'-', m_espalda: mOld[7]||'-', m_cintura1: mOld[8]||'-', m_cintura2: mOld[9]||'-', m_cadera: mOld[10]||'-', m_muslo_der: mOld[11]||'-', m_muslo_izq: mOld[12]||'-', m_pant_der: mOld[13]||'-', m_pant_izq: mOld[14]||'-' },
+            routineDays: (c.d || []).map(function(d) {
+              var h = d.h || []; var dt = d.dt || [];
+              return { id: d.id, title: d.t, habits: { kcal: h[0]||'', agua: h[1]||'', sueno: h[2]||'', pasos: h[3]||'', entreno: h[4]||'' }, security: d.s||'', diet: { desayuno: dt[0]||'', snack: dt[1]||'', almuerzo: dt[2]||'', cena: dt[3]||'' }, items: (d.it||[]).map(function(it) { return { type: it.y==='n'?'normal':(it.y==='b'?'biserie':'triserie'), slot: it.sl, vigenciaDesde: it.vd, vigenciaHasta: it.vh, sub: (it.sub||[]).map(function(s) { return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||'') }; }) }; }) };
+            })
+          };
+        }
+        return c;
+      }
+
+      var m = c[7] || [];
+      var feats = c[6] || [0, 0];
+      return {
+        clientName: c[0] || 'Atleta',
+        clientGender: c[1] || 'o',
+        startDate: c[2] || '',
+        durationWeeks: c[3] || 4,
+        coachMsgTitle: c[4] || 'Nota del Coach',
+        coachMsgBody: c[5] || '',
+        configFeatures: { nutrition: feats[0] === 1, demos: feats[1] === 1 },
+        measures: {
+          m_objetivo: m[0]||'-', m_estatura: m[1]||'-', m_peso_kg: m[2]||'-',
+          m_grasa: m[3]||'-', m_musculo: m[4]||'-', m_visceral: m[5]||'-',
+          m_edad_meta: m[6]||'-', m_espalda: m[7]||'-', m_cintura1: m[8]||'-',
+          m_cintura2: m[9]||'-', m_cadera: m[10]||'-', m_muslo_der: m[11]||'-',
+          m_muslo_izq: m[12]||'-', m_pant_der: m[13]||'-', m_pant_izq: m[14]||'-'
+        },
+        routineDays: (c[8] || []).map(function(d) {
+          var h = d[2] || [];
+          var dt = d[4] || [];
+          return {
+            id: d[0],
+            title: d[1],
+            habits: { kcal: h[0]||'', agua: h[1]||'', sueno: h[2]||'', pasos: h[3]||'', entreno: h[4]||'' },
+            security: d[3] || '',
+            diet: { desayuno: dt[0]||'', snack: dt[1]||'', almuerzo: dt[2]||'', cena: dt[3]||'' },
+            items: (d[5] || []).map(function(it) {
+              return {
+                type: it[0] === 'n' ? 'normal' : (it[0] === 'b' ? 'biserie' : 'triserie'),
+                slot: it[1],
+                vigenciaDesde: it[2],
+                vigenciaHasta: it[3],
+                sub: (it[4] || []).map(function(s) {
+                  return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||'') };
+                })
+              };
+            })
+          };
+        })
+      };
+    }
+
+    // ================= ENVÍO AUTOMÁTICO POR WHATSAPP =================
+    function generateDirectWhatsAppLink() {
+      var state = getBuilderState();
+      var ultraCompact = buildUltraCompactState(state);
+      var jsonStr = JSON.stringify(ultraCompact);
+      var compressed = LZString.compressToEncodedURIComponent(jsonStr);
+
+      var baseUrl = window.location.origin + window.location.pathname;
+      if (baseUrl.indexOf('file://') === 0 || baseUrl === 'null' || !baseUrl) {
+        baseUrl = 'https://benessere-app.netlify.app';
+      }
+      var clientAppUrl = baseUrl + '?r=' + compressed;
+
+      var cName = state.clientName;
+      var cPhoneRaw = document.getElementById('clientPhone').value.trim();
+      var clientCleanPhone = cPhoneRaw.replace(/[^0-9]/g, '');
+
+      var waMsg = encodeURIComponent(
+        '¡Hola ' + cName + '! 💪 Te saluda Coach Juan de Benessere Gym.\n\n' +
+        'Aquí tienes tu aplicación personalizada de entrenamiento:\n\n' +
+        '🔗 ' + clientAppUrl + '\n\n' +
+        '📌 *Pasos para guardarla en tu celular:*\n' +
+        '1. Toca el enlace para abrirlo en Safari (iPhone) o Chrome (Android).\n' +
+        '2. Toca en Compartir / Menú y selecciona "Agregar a pantalla de inicio".\n' +
+        '3. Te quedará el ícono en tu teléfono para registrar tus cargas en cada sesión.\n\n' +
+        '¡Juntos somos más fuertes! 🔥'
+      );
+
+      var waUrl = clientCleanPhone ? ('https://wa.me/' + clientCleanPhone + '?text=' + waMsg) : ('https://wa.me/?text=' + waMsg);
+      window.open(waUrl, '_blank');
+    }
+
+    // ================= VISTA DEL ATLETA =================
+    function renderAthleteApp(state) {
+      athleteActiveState = state;
+      document.getElementById('coach_builder_view').style.display = 'none';
+      document.getElementById('athlete_client_view').style.display = 'block';
+
+      var welcomeWord = state.clientGender === 'a' ? 'Bienvenida' : 'Bienvenido';
+      document.getElementById('ath_welcomeWord').innerText = welcomeWord;
+      document.getElementById('ath_clientTitle').innerText = state.clientName;
+      document.getElementById('ath_coachMsgTitle').innerText = state.coachMsgTitle || 'Nota del Coach';
+      document.getElementById('ath_coachMsgBody').innerText = state.coachMsgBody || '';
+
+      var isNutri = state.configFeatures ? (state.configFeatures.nutrition === true) : false;
+      var isDemos = state.configFeatures ? (state.configFeatures.demos === true) : false;
+
+      var dayColors = ['#2f69ff', '#8338ec', '#00b4d8', '#06d6a0', '#ef476f'];
+      var capsuleHtml = '<button class="capsule-btn btn-coach" onclick="openModal(\'ath_modal_coach\')">Nota del Coach</button>';
+      state.routineDays.forEach(function(d, i) {
+        var bgCol = dayColors[i % dayColors.length];
+        capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openModal(\'' + d.id + '\')">Día ' + (i + 1) + '</button>';
+      });
+      capsuleHtml += '<button class="capsule-btn btn-historial" onclick="openHistorialModal()">📋 Historial de Cargas</button>';
+      capsuleHtml += '<button class="capsule-btn btn-medidas" onclick="openModal(\'ath_modal_medidas\')">Ficha Antropométrica</button>';
+      document.getElementById('ath_capsuleGroup').innerHTML = capsuleHtml;
+
+      var m = state.measures || {};
+      var gridHtml = '<div class="metric-card"><div class="metric-title">Objetivo</div><div class="metric-val" style="color:var(--accent); font-size:0.85rem;">' + (m.m_objetivo||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Peso Corporal</div><div class="metric-val">' + (m.m_peso_kg||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Estatura</div><div class="metric-val">' + (m.m_estatura||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">% Grasa</div><div class="metric-val">' + (m.m_grasa||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">% Músculo</div><div class="metric-val">' + (m.m_musculo||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Índice Visceral</div><div class="metric-val">' + (m.m_visceral||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Edad Metabólica</div><div class="metric-val">' + (m.m_edad_meta||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Espalda</div><div class="metric-val">' + (m.m_espalda||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Cintura 1</div><div class="metric-val">' + (m.m_cintura1||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Cintura 2</div><div class="metric-val">' + (m.m_cintura2||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Cadera</div><div class="metric-val">' + (m.m_cadera||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Muslos</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_muslo_der||'-') + ' / ' + (m.m_muslo_izq||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Pantorrillas</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_pant_der||'-') + ' / ' + (m.m_pant_izq||'-') + '</div></div>';
+      document.getElementById('ath_metricsGrid').innerHTML = gridHtml;
+
+      var daysContainer = document.getElementById('ath_daysContainer');
+      daysContainer.innerHTML = '';
+
+      state.routineDays.forEach(function(d, i) {
+        var exercisesHtml = '';
+        (d.items || []).forEach(function(item, itIdx) {
+          var isNormal = item.type === 'normal';
+          var typeBadge = isNormal ? 'SERIE NORMAL' : (item.type === 'biserie' ? 'BISERIE (A + B)' : 'TRISERIE (A + B + C)');
+          var slotNum = item.slot || (itIdx + 1);
+          var vDesde = item.vigenciaDesde || 1;
+          var vHasta = item.vigenciaHasta !== undefined ? item.vigenciaHasta : null;
+          var vHastaAttr = vHasta !== null ? ('data-vig-hasta="' + vHasta + '"') : '';
+
+          var subsDetails = '';
+          var subList = Array.isArray(item.sub) && item.sub.length > 0 ? item.sub : [{ name: item.name || '', series: item.series || '-', reps: item.reps || '-', notes: item.notes || '', video: item.video || '' }];
+
+          subList.forEach(function(sub, subIdx) {
+            var letter = ['A', 'B', 'C'][subIdx];
+            var fieldId = d.id + '_slot' + slotNum + '_v' + vDesde + '_s' + subIdx;
+            var yLink = (sub.video && sub.video.trim()) ? sub.video.trim() : 'https://www.youtube.com';
+
+            var demoButtonHtml = isDemos ? (
+              '<div style="margin: 8px 0;"><a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a></div>'
+            ) : '';
+
+            subsDetails += '<div class="exercise-item-box">' +
+              '<div class="ex-name">' + (!isNormal ? '<span style="color:var(--accent);">' + letter + '</span> ' : '') + (sub.name || 'Ejercicio') + '</div>' +
+              '<div class="ex-target">' + (sub.series || '-') + ' series × ' + (sub.reps || '-') + ' reps</div>' +
+              (sub.notes ? '<div class="ex-notes">📌 ' + sub.notes + '</div>' : '') +
+              demoButtonHtml +
+              '<div class="tracker-inputs-grid">' +
+                '<div class="tracker-cell"><label>Peso (lbs)</label><input type="text" id="load_' + fieldId + '" placeholder="0 lbs" oninput="saveTracker()"></div>' +
+                '<div class="tracker-cell"><label>Series</label><input type="text" id="series_' + fieldId + '" placeholder="0" oninput="saveTracker()"></div>' +
+                '<div class="tracker-cell"><label>Reps</label><input type="text" id="reps_' + fieldId + '" placeholder="0" oninput="saveTracker()"></div>' +
+              '</div>' +
+              '<div class="prev-load-badge-row">' +
+                '<span class="prev-load-badge" id="prev_' + fieldId + '">Marca Anterior: -</span>' +
+                '<button type="button" class="btn-load-prev" id="btn_restore_' + fieldId + '" onclick="restoreSingleLoad(\'' + fieldId + '\')" style="display:none;">⤴️ Montar</button>' +
+              '</div>' +
+            '</div>';
+          });
+
+          exercisesHtml += '<div class="exercise-card ' + (item.type || 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span class="badge-type">' + typeBadge + '</span>' +
+              '<span style="font-size:0.68rem; color:var(--muted);">Semana ' + vDesde + (vHasta ? '-' + vHasta : '+') + '</span>' +
+            '</div>' +
+            subsDetails +
+          '</div>';
+        });
+
+        var toggleHeaderHtml = isNutri ? (
+          '<div class="day-toggle-container">' +
+            '<button id="btn_sub_rutina_' + d.id + '" class="toggle-choice active" onclick="switchDaySection(\'' + d.id + '\', \'rutina\')">Rutina del Día</button>' +
+            '<button id="btn_sub_nutri_' + d.id + '" class="toggle-choice" onclick="switchDaySection(\'' + d.id + '\', \'nutricion\')">Nutrición del Día</button>' +
+          '</div>'
+        ) : '';
+
+        var nutritionSectionHtml = isNutri ? (
+          '<div id="sec_nutri_' + d.id + '" class="day-section">' +
+            '<div class="nutrition-accordion-list">' +
+              '<details class="nutri-accordion" open><summary>🍳 Desayuno</summary><div class="nutri-content">' + (d.diet.desayuno || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🍏 Snacks</summary><div class="nutri-content">' + (d.diet.snack || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🍗 Almuerzo</summary><div class="nutri-content">' + (d.diet.almuerzo || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🐟 Cena</summary><div class="nutri-content">' + (d.diet.cena || '-').replace(/\n/g, '<br>') + '</div></details>' +
+            '</div>' +
+            '<button class="capsule-btn btn-intercambios" onclick="openModal(\'modal_intercambios\')">🔄 Intercambios (10 Opciones por Grupo)</button>' +
+            '<div class="daily-goals-card">' +
+              '<div class="goals-header">Objetivos del Día & Registro</div>' +
+              '<table class="goals-table">' +
+                '<thead><tr><th>Métrica</th><th>Objetivo</th><th>Alcanzado</th></tr></thead>' +
+                '<tbody>' +
+                  '<tr><td>🎯 Calorías</td><td>' + (d.habits.kcal || '-') + '</td><td><input type="text" id="alc_kcal_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>💧 Agua</td><td>' + (d.habits.agua || '-') + '</td><td><input type="text" id="alc_agua_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>😴 Sueño</td><td>' + (d.habits.sueno || '-') + '</td><td><input type="text" id="alc_sueno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>👟 Pasos</td><td>' + (d.habits.pasos || '-') + '</td><td><input type="text" id="alc_pasos_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>🏋️ Entrenamiento</td><td>' + (d.habits.entreno || '-') + '</td><td><input type="text" id="alc_entreno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                '</tbody>' +
+              '</table>' +
+            '</div>' +
+          '</div>'
+        ) : '';
+
+        var dayScreen = document.createElement('div');
+        dayScreen.id = d.id;
+        dayScreen.className = 'view-screen';
+        dayScreen.setAttribute('data-day-title', d.title);
+        dayScreen.innerHTML = '<div class="top-nav-bar">' +
+          '<button class="back-btn" onclick="closeModal(\'' + d.id + '\')">← Volver</button>' +
+          '<div class="view-title">' + d.title + '</div><div style="width:50px;"></div>' +
+        '</div>' +
+        '<div class="progression-banner"><div class="prog-title">📈 Progresión Semanal</div><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></div>' +
+        '<div class="security-card"><div class="sec-title">🛡️ Protocolo de Seguridad</div><div class="sec-items">' + (d.security || 'Técnica estricta | Hidratación activa') + '</div></div>' +
+        toggleHeaderHtml +
+        '<div id="sec_rutina_' + d.id + '" class="day-section active">' +
+          '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
+          exercisesHtml +
+          '<div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">' +
+            '<button class="btn-action-primary" onclick="archiveCurrentDay(\'' + d.id + '\')">💾 Guardar Día y Actualizar Marca Anterior</button>' +
+            '<button class="btn-action-wa" onclick="sendWhatsAppReport(\'' + d.id + '\')">📲 Enviar Reporte a Coach Juan</button>' +
+          '</div>' +
+        '</div>' +
+        nutritionSectionHtml;
+
+        daysContainer.appendChild(dayScreen);
+      });
+
+      calculateWeek(state.startDate, state.durationWeeks);
+      loadTracker();
+    }
+
+    function calculateWeek(sDate, totalWeeks) {
+      var cur = 1;
+      if (sDate && sDate !== 'Fecha no especificada') {
+        var start = new Date(sDate);
+        var now = new Date();
+        var diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+        cur = diffDays < 0 ? 1 : Math.floor(diffDays / 7) + 1;
+      }
+      var effectiveWeek = Math.min(Math.max(cur, 1), totalWeeks || 4);
+      var display = document.getElementById('ath_weekDisplay');
+      if (display) {
+        display.innerText = cur > totalWeeks ? ('Ciclo Finalizado (' + totalWeeks + ' sem)') : ('Semana ' + cur + ' de ' + totalWeeks);
+      }
+
+      var PROGRESSION_RULES = {
+        1: "Semana 1 (Calibración): Busca tus pesos base asegurando técnica estricta (RIR 2-3).",
+        2: "Semana 2 (Volumen): Conserva el peso y suma +1 o +2 repeticiones en cada serie.",
+        3: "Semana 3 (Intensidad): Aumenta +2.5 a +5 lbs en el primer ejercicio buscando máxima tensión (RIR 1).",
+        4: "Semana 4 (Consolidación): Misma carga pero con 1 serie menos para recuperar articulaciones."
+      };
+      var ruleText = PROGRESSION_RULES[effectiveWeek] || ('Semana ' + effectiveWeek + ': Sobrecarga progresiva continua.');
+      document.querySelectorAll('[id^="prog_text_"]').forEach(function(el) { el.innerText = ruleText; });
+
+      document.querySelectorAll('.exercise-variant').forEach(function(el) {
+        var desde = parseInt(el.getAttribute('data-vig-desde')) || 1;
+        var hastaAttr = el.getAttribute('data-vig-hasta');
+        var hasta = (hastaAttr !== null && hastaAttr !== '') ? parseInt(hastaAttr) : null;
+        var isMatch = (effectiveWeek >= desde) && (hasta === null || effectiveWeek <= hasta);
+        el.style.display = isMatch ? '' : 'none';
+      });
+    }
+
+    function openModal(id) { var el = document.getElementById(id); if (el) el.classList.add('active'); }
+    function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('active'); }
+    function switchDaySection(dayId, sec) {
+      var btnR = document.getElementById('btn_sub_rutina_' + dayId);
+      var btnN = document.getElementById('btn_sub_nutri_' + dayId);
+      var secR = document.getElementById('sec_rutina_' + dayId);
+      var secN = document.getElementById('sec_nutri_' + dayId);
+      if (!btnR || !btnN || !secR || !secN) return;
+      if (sec === 'rutina') {
+        btnR.classList.add('active'); btnN.classList.remove('active');
+        secR.classList.add('active'); secN.classList.remove('active');
+      } else {
+        btnN.classList.add('active'); btnR.classList.remove('active');
+        secN.classList.add('active'); secR.classList.remove('active');
+      }
+    }
+
+    function saveTracker() {
+      document.querySelectorAll('input[id^="load_"], input[id^="series_"], input[id^="reps_"], input[id^="alc_"]').forEach(function(inp) {
+        localStorage.setItem(inp.id, inp.value);
+      });
+    }
+
+    function loadTracker() {
+      document.querySelectorAll('input[id^="load_"], input[id^="series_"], input[id^="reps_"], input[id^="alc_"]').forEach(function(inp) {
+        var val = localStorage.getItem(inp.id);
+        if (val) inp.value = val;
+      });
+      document.querySelectorAll('.prev-load-badge').forEach(function(b) {
+        var baseKey = b.id.replace('prev_', '');
+        var prev = localStorage.getItem('hist_' + baseKey);
+        var btnRestore = document.getElementById('btn_restore_' + baseKey);
+        if (prev) {
+          try {
+            var p = JSON.parse(prev);
+            b.innerText = 'Última vez (' + (p.date || 'Previo') + '): ' + (p.load || '-') + ' | ' + (p.reps || '-') + ' reps';
+            if (btnRestore) btnRestore.style.display = 'inline-block';
+          } catch(e){}
+        } else {
+          b.innerText = 'Marca Anterior: -';
+          if (btnRestore) btnRestore.style.display = 'none';
+        }
+      });
+    }
+
+    function restoreSingleLoad(fieldId) {
+      var prev = localStorage.getItem('hist_' + fieldId);
+      if (!prev) return;
+      try {
+        var p = JSON.parse(prev);
+        var l = document.getElementById('load_' + fieldId);
+        var r = document.getElementById('reps_' + fieldId);
+        var s = document.getElementById('series_' + fieldId);
+        if (l && p.load) l.value = p.load;
+        if (r && p.reps) r.value = p.reps;
+        if (s && p.series) s.value = p.series;
+        saveTracker();
+        alert('Carga montada para ' + (p.name || 'el ejercicio') + ': ' + p.load);
+      } catch(e) {}
+    }
+
+    function restoreAllDayLoads(dayId) {
+      var dayEl = document.getElementById(dayId);
+      if (!dayEl) return;
+      var count = 0;
+      dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) input[id^="load_"]').forEach(function(l) {
+        var fieldId = l.id.replace('load_', '');
+        var prev = localStorage.getItem('hist_' + fieldId);
+        if (prev) {
+          try {
+            var p = JSON.parse(prev);
+            var r = dayEl.querySelector('#reps_' + fieldId);
+            var s = dayEl.querySelector('#series_' + fieldId);
+            if (l && p.load) l.value = p.load;
+            if (r && p.reps) r.value = p.reps;
+            if (s && p.series) s.value = p.series;
+            count++;
+          } catch(e) {}
+        }
+      });
+      if (count > 0) { saveTracker(); alert('Se montaron ' + count + ' marcas previas en la rutina.'); }
+      else alert('No hay marcas guardadas para este día.');
+    }
+
+    function archiveCurrentDay(dayId) {
+      var dayEl = document.getElementById(dayId);
+      var loads = dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) input[id^="load_"]');
+      var ok = false;
+      loads.forEach(function(l) { if (l.value.trim()) ok = true; });
+      if (!ok) return alert('Anota al menos un peso o repetición hoy para guardar.');
+
+      var now = new Date();
+      var dateFormatted = now.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' });
+      var timeFormatted = now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+      var fullDateStr = dateFormatted + ' ' + timeFormatted;
+
+      loads.forEach(function(l) {
+        var key = l.id.replace('load_', '');
+        var reps = dayEl.querySelector('#reps_' + key);
+        var series = dayEl.querySelector('#series_' + key);
+        var box = l.closest('.exercise-item-box');
+        var exName = box ? box.querySelector('.ex-name').innerText.trim() : 'Ejercicio';
+
+        if (l.value.trim()) {
+          localStorage.setItem('hist_' + key, JSON.stringify({
+            key: key, name: exName, load: l.value.trim(),
+            reps: reps ? reps.value.trim() : '-', series: series ? series.value.trim() : '-', date: fullDateStr
+          }));
+          localStorage.removeItem('load_' + key);
+          localStorage.removeItem('reps_' + key);
+          localStorage.removeItem('series_' + key);
+          l.value = ''; if (reps) reps.value = ''; if (series) series.value = '';
+        }
+      });
+      loadTracker();
+      lastActiveDayId = dayId;
+      openModal('modal_congrats');
+    }
+
+    function openHistorialModal() {
+      var container = document.getElementById('historialListContainer');
+      container.innerHTML = '';
+      var entries = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('hist_') === 0) {
+          try { entries.push(JSON.parse(localStorage.getItem(k))); } catch (e) {}
+        }
+      }
+      if (entries.length === 0) {
+        container.innerHTML = '<div style="background:var(--card); border:1px dashed #444; border-radius:8px; padding:20px; text-align:center; color:var(--muted); font-size:0.85rem;">Aún no has archivado marcas con el botón <strong>"💾 Guardar Día"</strong>.</div>';
+      } else {
+        entries.forEach(function(entry) {
+          var card = document.createElement('div');
+          card.style.cssText = 'background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center;';
+          card.innerHTML = '<div><div style="font-size:0.9rem; font-weight:800; color:#fff;">' + (entry.name || 'Ejercicio') + '</div>' +
+            '<div style="font-size:0.72rem; color:var(--primary); margin-top:2px;">📅 ' + (entry.date || 'Reciente') + '</div>' +
+            '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">' + (entry.series || '-') + ' series × ' + (entry.reps || '-') + ' reps</div></div>' +
+            '<div style="text-align:right;"><div style="font-size:1.05rem; font-weight:900; color:var(--accent);">' + (entry.load || '-') + '</div>' +
+            '<button type="button" class="btn-mount-item" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div>';
+          var mBtn = card.querySelector('.btn-mount-item');
+          if (mBtn) mBtn.onclick = function() { restoreSingleLoad(entry.key); closeModal('ath_modal_historial'); };
+          container.appendChild(card);
+        });
+      }
+      openModal('ath_modal_historial');
+    }
+
+    function clearHistorialData() {
+      if (confirm('¿Reiniciar todo el historial de cargas?')) {
+        var keysToRemove = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('hist_') === 0) keysToRemove.push(k);
+        }
+        keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
+        openHistorialModal(); loadTracker();
+      }
+    }
+
+    function sendWhatsAppFromCongrats() { closeModal('modal_congrats'); if (lastActiveDayId) sendWhatsAppReport(lastActiveDayId); }
+    function sendWhatsAppReport(dayId) {
+      var dayEl = document.getElementById(dayId);
+      var title = dayEl.getAttribute('data-day-title') || 'Entrenamiento';
+      var cName = athleteActiveState ? athleteActiveState.clientName : 'Atleta';
+      var msg = '*Reporte Benessere Gym - ' + title + '*%0AAtleta: *' + cName + '*%0ACoach: *Coach Juan*%0A%0A';
+      var count = 0;
+      dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .exercise-item-box').forEach(function(box) {
+        var name = box.querySelector('.ex-name');
+        var load = box.querySelector('input[id^="load_"]');
+        var series = box.querySelector('input[id^="series_"]');
+        var reps = box.querySelector('input[id^="reps_"]');
+        var prev = box.querySelector('.prev-load-badge');
+        if (name && (load.value || reps.value || series.value)) {
+          msg += '• *' + name.innerText + '*%0A   Hoy: *' + (load.value||'-') + '* | ' + (series.value||'-') + ' series × ' + (reps.value||'-') + ' reps%0A   _' + (prev ? prev.innerText : '') + '_%0A%0A';
+          count++;
+        }
+      });
+      if (!count) return alert('No hay registros anotados hoy para reportar.');
+      window.open('https://wa.me/' + CONFIG_COACH_PHONE + '?text=' + msg, '_blank');
+    }
+
+    function loadDemoRoutine() {
+      document.getElementById('clientName').value = 'Darshan Vera';
+      document.getElementById('clientGender').value = 'o';
+      document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('durationWeeks').value = '4';
+      document.getElementById('coachMsgTitle').value = '¡Bienvenido a tu nuevo bloque de fuerza!';
+      document.getElementById('coachMsgBody').value = 'Hola Darshan. En este mesociclo nos enfocaremos en la sobrecarga progresiva real. Revisa los ítems de seguridad antes de cada sesión, respeta tus descansos y registra cada serie en tu diario de cargas. ¡Juntos somos más fuertes!';
+
+      document.getElementById('m_objetivo').value = 'Hipertrofia & Definición';
+      document.getElementById('m_estatura').value = '175 cm';
+      document.getElementById('m_peso_kg').value = '76.0 kg';
+      document.getElementById('m_grasa').value = '14.5%';
+      document.getElementById('m_musculo').value = '42%';
+      document.getElementById('m_visceral').value = 'Nivel 3';
+      document.getElementById('m_edad_meta').value = '23 años';
+      document.getElementById('m_espalda').value = '112 cm';
+      document.getElementById('m_cintura1').value = '82 cm';
+      document.getElementById('m_cintura2').value = '79 cm';
+      document.getElementById('m_cadera').value = '98 cm';
+      document.getElementById('m_muslo_der').value = '57 cm';
+      document.getElementById('m_muslo_izq').value = '56.5 cm';
+      document.getElementById('m_pant_der').value = '38 cm';
+      document.getElementById('m_pant_izq').value = '38 cm';
+
+      routineDays = [
+        {
+          id: 'd1',
+          title: 'Día 1: Tren Inferior y Cuádriceps',
+          habits: { kcal: '2400', agua: '3.5L', sueno: '8h', pasos: '10000', entreno: 'Pierna Completa' },
+          security: 'Calentamiento articular 8 min | Calzado plano de suela rígida | Rodillas alineadas con la punta del pie',
+          diet: {
+            desayuno: '1 palma Proteína + 1 puño Carbos + 1 pulgar Grasa',
+            snack: '1 scoop de proteína + 1 manzana',
+            almuerzo: '1.5 palmas de pechuga + 1.5 puños de arroz + 2 puños vegetales',
+            cena: '1.5 palmas de pescado + 2 puños vegetales + 1/3 aguacate'
+          },
+          items: [
+            {
+              type: 'normal', slot: 1, vigenciaDesde: 1, vigenciaHasta: 2,
+              sub: [{ name: 'Sentadilla búlgara', series: '3', reps: '10-12 — EP3', notes: 'Pausa 1s en fondo', video: 'https://youtube.com/watch?v=3iG_8tBw6mU' }]
+            },
+            {
+              type: 'biserie', slot: 1, vigenciaDesde: 3, vigenciaHasta: 4,
+              sub: [
+                { name: 'Sentadilla búlgara', series: '3', reps: '12', notes: 'Fusión de fase intensificación', video: 'https://youtube.com/watch?v=3iG_8tBw6mU' },
+                { name: 'Curl femoral', series: '3', reps: '12', notes: 'Control excéntrico de 2s', video: 'https://youtube.com/watch?v=3iG_8tBw6mU' }
+              ]
+            },
+            {
+              type: 'normal', slot: 2, vigenciaDesde: 1, vigenciaHasta: null,
+              sub: [{ name: 'Peso Muerto Rumano', series: '3', reps: '10', notes: 'Empujar cadera atrás sin flexionar columna', video: 'https://youtube.com/watch?v=3iG_8tBw6mU' }]
+            }
+          ]
+        }
+      ];
+
+      renderDays();
+      switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+      alert('¡Ejemplo cargado con éxito!');
+    }
+
+    function downloadManualHTML() {
+      var state = getBuilderState();
+      var rawJson = JSON.stringify(state);
+      var currentDoc = document.documentElement.outerHTML;
+      var cleanDoc = currentDoc.replace(/<script id="benessere_raw_state"[\s\S]*?<\/script>/gi, '');
+      var stateTag = '<script id="benessere_raw_state" type="application/json">' + rawJson.replace(/<\/script/gi, '<\\/script') + '<\/script>';
+      var finalHtml = cleanDoc.replace('</body>', stateTag + '\n</body>');
+
+      var blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8;' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'rutina_' + state.clientName.replace(/\s+/g, '_') + '.html';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function generateGymPDF() {
+      var state = getBuilderState();
+      var showNutri = state.configFeatures ? (state.configFeatures.nutrition === true) : false;
+
+      var routinesPrintHtml = '';
+      state.routineDays.forEach(function(d) {
+        var itemsRows = '';
+        (d.items || []).forEach(function(it) {
+          var vigLabel = 'Sem ' + (it.vigenciaDesde || 1) + (it.vigenciaHasta ? '-' + it.vigenciaHasta : '+');
+          var subList = Array.isArray(it.sub) && it.sub.length > 0 ? it.sub : [{ name: it.name || 'Ejercicio', series: it.series || '-', reps: it.reps || '-', notes: it.notes || '-' }];
+
+          subList.forEach(function(s, sIdx) {
+            var tag = it.type === 'normal' ? 'Normal' : (it.type === 'biserie' ? (sIdx === 0 ? 'Biserie A' : 'Biserie B') : ('Triserie ' + ['A','B','C'][sIdx]));
+            itemsRows += '<tr>' +
+              '<td style="padding:6px; border:1px solid #ccc; font-weight:bold;">' + (s.name || 'Sin especificar') + '</td>' +
+              '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + tag + ' <small>(' + vigLabel + ')</small></td>' +
+              '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (s.series || '-') + '</td>' +
+              '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (s.reps || '-') + '</td>' +
+              '<td style="padding:6px; border:1px solid #ccc; font-size:11px;">' + (s.notes || '-') + '</td>' +
+            '</tr>';
+          });
+        });
+
+        var printNutriHtml = showNutri ? (
+          '<div style="font-size:10px; color:#444; margin-bottom:8px;">' +
+            '<strong>Nutrición:</strong> Des: ' + (d.diet.desayuno||'-') + ' | Alm: ' + (d.diet.almuerzo||'-') + ' | Cena: ' + (d.diet.cena||'-') +
+          '</div>'
+        ) : '';
+
+        routinesPrintHtml += '<div style="page-break-inside:avoid; margin-top:14px;">' +
+          '<h3 style="margin-bottom:4px; font-size:13px; text-transform:uppercase; color:#000; border-bottom:1px solid #000;">' + d.title + '</h3>' +
+          '<div style="font-size:10px; color:#444; margin-bottom:4px;"><strong>Seguridad:</strong> ' + (d.security || '-') + '</div>' +
+          '<div style="font-size:10px; color:#444; margin-bottom:4px;"><strong>Hábitos:</strong> Kcal: ' + (d.habits.kcal||'-') + ' | Agua: ' + (d.habits.agua||'-') + ' | Sueño: ' + (d.habits.sueno||'-') + ' | Pasos: ' + (d.habits.pasos||'-') + '</div>' +
+          printNutriHtml +
+          '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:10px;">' +
+            '<thead>' +
+              '<tr style="background:#f0f0f0;">' +
+                '<th style="padding:5px; border:1px solid #ccc; text-align:left;">Ejercicio</th>' +
+                '<th style="padding:5px; border:1px solid #ccc; width:110px;">Tipo / Fase</th>' +
+                '<th style="padding:5px; border:1px solid #ccc; width:45px;">Series</th>' +
+                '<th style="padding:5px; border:1px solid #ccc; width:65px;">Reps</th>' +
+                '<th style="padding:5px; border:1px solid #ccc;">Notas</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' + itemsRows + '</tbody>' +
+          '</table>' +
+        '</div>';
+      });
+
+      var printWin = window.open('', '_blank');
+      var html = '<!DOCTYPE html><html><head><title>Ficha Benessere - ' + state.clientName + '</title><style>body { font-family: Arial, sans-serif; color: #000; padding: 20px; } header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff6d00; padding-bottom: 6px; margin-bottom: 10px; } h1 { margin: 0; font-size: 16px; text-transform: uppercase; } .sub { font-size: 10px; color: #555; } .brand { text-align: right; font-weight: bold; font-size: 15px; color:#000; } .slogan { font-size: 9px; color: #ff6d00; font-style: italic; } .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #f9f9f9; border: 1px solid #ddd; padding: 6px; font-size: 10px; margin-bottom: 10px; } @media print { body { padding: 0; } @page { margin: 1cm; } }</style></head><body><header><div><h1>Ficha de Entrenamiento Benessere Gym</h1><div class="sub">Expediente Oficial | Coach: Coach Juan</div></div><div class="brand">BENESSERE GYM<div class="slogan">Juntos somos más fuertes</div></div></header><div class="info-grid"><div><strong>Atleta:</strong> ' + state.clientName + '</div><div><strong>Coach:</strong> Coach Juan</div><div><strong>Fecha Inicio:</strong> ' + state.startDate + '</div><div><strong>Duración:</strong> ' + state.durationWeeks + ' Semanas</div><div><strong>Peso:</strong> ' + (state.measures.m_peso_kg||'-') + '</div><div style="grid-column: span 3;"><strong>Objetivo:</strong> ' + (state.measures.m_objetivo||'-') + '</div></div>' + routinesPrintHtml + '<script>window.onload = function() { window.print(); };<\/script></body></html>';
+      printWin.document.write(html);
+      printWin.document.close();
+    }
+
+    // ================= ENRUTADOR INICIAL =================
+    window.onload = function() {
+      var urlParams = new URLSearchParams(window.location.search);
+      var compressed = urlParams.get('r') || (window.location.hash.startsWith('#r=') ? window.location.hash.substring(3) : null);
+
+      if (compressed) {
+        try {
+          var rawJson = LZString.decompressFromEncodedURIComponent(compressed.replace(/ /g, '+'));
+          if (rawJson) {
+            var rawState = JSON.parse(rawJson);
+            var state = expandUltraCompactState(rawState);
+            renderAthleteApp(state);
+            return;
+          }
+        } catch(e) { console.error(e); }
+      }
+
+      // El enlace base abre siempre el constructor para los entrenadores
+      document.getElementById('athlete_client_view').style.display = 'none';
+      document.getElementById('coach_builder_view').style.display = 'block';
+      renderDays();
+      updateModulesVisibility();
+    };
+  </script>
+</body>
+</html>
