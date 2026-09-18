@@ -3,8 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Benessere">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="theme-color" content="#0d0d0d">
   <title>Benessere Gym | App & Constructor</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+  <!-- lz-string 1.5.0 (MIT) incluido dentro del archivo: no depende de ningún CDN -->
+  <script>var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();"function"==typeof define&&define.amd?define(function(){return LZString}):"undefined"!=typeof module&&null!=module?module.exports=LZString:"undefined"!=typeof angular&&null!=angular&&angular.module("LZString",[]).factory("LZString",function(){return LZString});</script>
+  <!-- fflate (MIT, github.com/101arrowz/fflate): compresión deflate para enlaces más cortos -->
+  <script>var fflate=(()=>{var vr=Object.defineProperty;var Pr=Object.getOwnPropertyDescriptor;var $r=Object.getOwnPropertyNames;var Hr=Object.prototype.hasOwnProperty;var Nr=(r,n)=>{for(var t in n)vr(r,t,{get:n[t],enumerable:!0})},Rr=(r,n,t,e)=>{if(n&&typeof n=="object"||typeof n=="function")for(let i of $r(n))!Hr.call(r,i)&&i!==t&&vr(r,i,{get:()=>n[i],enumerable:!(e=Pr(n,i))||e.enumerable});return r};var Vr=r=>Rr(vr({},"__esModule",{value:!0}),r);var nn={};Nr(nn,{deflateSync:()=>Gr,inflateSync:()=>Or,strFromU8:()=>Lr,strToU8:()=>qr});var A=Uint8Array,H=Uint16Array,Ar=Int32Array,fr=new A([0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,0,0,0]),hr=new A([0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13,0,0]),yr=new A([16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]),Dr=function(r,n){for(var t=new H(31),e=0;e<31;++e)t[e]=n+=1<<r[e-1];for(var i=new Ar(t[30]),e=1;e<30;++e)for(var a=t[e];a<t[e+1];++a)i[a]=a-t[e]<<5|e;return{b:t,r:i}},Cr=Dr(fr,2),Ir=Cr.b,wr=Cr.r;Ir[28]=258,wr[258]=28;var Br=Dr(hr,0),Wr=Br.b,Sr=Br.r,mr=new H(32768);for(c=0;c<32768;++c)K=(c&43690)>>1|(c&21845)<<1,K=(K&52428)>>2|(K&13107)<<2,K=(K&61680)>>4|(K&3855)<<4,mr[c]=((K&65280)>>8|(K&255)<<8)>>1;var K,c,j=(function(r,n,t){for(var e=r.length,i=0,a=new H(n);i<e;++i)r[i]&&++a[r[i]-1];var f=new H(n);for(i=1;i<n;++i)f[i]=f[i-1]+a[i-1]<<1;var u;if(t){u=new H(1<<n);var g=15-n;for(i=0;i<e;++i)if(r[i])for(var l=i<<4|r[i],o=n-r[i],s=f[r[i]-1]++<<o,v=s|(1<<o)-1;s<=v;++s)u[mr[s]>>g]=l}else for(u=new H(e),i=0;i<e;++i)r[i]&&(u[i]=mr[f[r[i]-1]++]>>15-r[i]);return u}),k=new A(288);for(c=0;c<144;++c)k[c]=8;var c;for(c=144;c<256;++c)k[c]=9;var c;for(c=256;c<280;++c)k[c]=7;var c;for(c=280;c<288;++c)k[c]=8;var c,ar=new A(32);for(c=0;c<32;++c)ar[c]=5;var c,Yr=j(k,9,0),jr=j(k,9,1),Jr=j(ar,5,0),Kr=j(ar,5,1),cr=function(r){for(var n=r[0],t=1;t<r.length;++t)r[t]>n&&(n=r[t]);return n},V=function(r,n,t){var e=n/8|0;return(r[e]|r[e+1]<<8)>>(n&7)&t},pr=function(r,n){var t=n/8|0;return(r[t]|r[t+1]<<8|r[t+2]<<16)>>(n&7)},Mr=function(r){return(r+7)/8|0},ur=function(r,n,t){return(n==null||n<0)&&(n=0),(t==null||t>r.length)&&(t=r.length),new A(r.subarray(n,t))};var Qr=["unexpected EOF","invalid block type","invalid length/literal","invalid distance","stream finished","no stream handler",,"no callback","invalid UTF-8 data","extra field too long","date not in range 1980-2099","filename too long","stream finishing","invalid zip data"],Y=function(r,n,t){var e=new Error(n||Qr[r]);if(e.code=r,Error.captureStackTrace&&Error.captureStackTrace(e,Y),!t)throw e;return e},Xr=function(r,n,t,e){var i=r.length,a=e?e.length:0;if(!i||n.f&&!n.l)return t||new A(0);var f=!t,u=f||n.i!=2,g=n.i;f&&(t=new A(i*3));var l=function(nr){var tr=t.length;if(nr>tr){var _=new A(Math.max(tr*2,nr));_.set(t),t=_}},o=n.f||0,s=n.p||0,v=n.b||0,y=n.l,D=n.d,w=n.m,E=n.n,R=i*8;do{if(!y){o=V(r,s,1);var q=V(r,s+1,3);if(s+=3,q)if(q==1)y=jr,D=Kr,w=9,E=5;else if(q==2){var Z=V(r,s,31)+257,S=V(r,s+10,15)+4,p=Z+V(r,s+5,31)+1;s+=14;for(var h=new A(p),U=new A(19),z=0;z<S;++z)U[yr[z]]=V(r,s+z*3,7);s+=S*3;for(var I=cr(U),X=(1<<I)-1,L=j(U,I,1),z=0;z<p;){var G=L[V(r,s,X)];s+=G&15;var M=G>>4;if(M<16)h[z++]=M;else{var F=0,m=0;for(M==16?(m=3+V(r,s,3),s+=2,F=h[z-1]):M==17?(m=3+V(r,s,7),s+=3):M==18&&(m=11+V(r,s,127),s+=7);m--;)h[z++]=F}}var O=h.subarray(0,Z),T=h.subarray(Z);w=cr(O),E=cr(T),y=j(O,w,1),D=j(T,E,1)}else Y(1);else{var M=Mr(s)+4,B=r[M-4]|r[M-3]<<8,C=M+B;if(C>i){g&&Y(0);break}u&&l(v+B),t.set(r.subarray(M,C),v),n.b=v+=B,n.p=s=C*8,n.f=o;continue}if(s>R){g&&Y(0);break}}u&&l(v+131072);for(var rr=(1<<w)-1,N=(1<<E)-1,J=s;;J=s){var F=y[pr(r,s)&rr],P=F>>4;if(s+=F&15,s>R){g&&Y(0);break}if(F||Y(2),P<256)t[v++]=P;else if(P==256){J=s,y=null;break}else{var $=P-254;if(P>264){var z=P-257,x=fr[z];$=V(r,s,(1<<x)-1)+Ir[z],s+=x}var W=D[pr(r,s)&N],d=W>>4;W||Y(3),s+=W&15;var T=Wr[d];if(d>3){var x=hr[d];T+=pr(r,s)&(1<<x)-1,s+=x}if(s>R){g&&Y(0);break}u&&l(v+131072);var b=v+$;if(v<T){var or=a-T,sr=Math.min(T,b);for(or+v<0&&Y(3);v<sr;++v)t[v]=e[or+v]}for(;v<b;++v)t[v]=t[v-T]}}n.l=y,n.p=J,n.b=v,n.f=o,y&&(o=1,n.m=w,n.d=D,n.n=E)}while(!o);return v!=t.length&&f?ur(t,0,v):t.subarray(0,v)},Q=function(r,n,t){t<<=n&7;var e=n/8|0;r[e]|=t,r[e+1]|=t>>8},er=function(r,n,t){t<<=n&7;var e=n/8|0;r[e]|=t,r[e+1]|=t>>8,r[e+2]|=t>>16},gr=function(r,n){for(var t=[],e=0;e<r.length;++e)r[e]&&t.push({s:e,f:r[e]});var i=t.length,a=t.slice();if(!i)return{t:Er,l:0};if(i==1){var f=new A(t[0].s+1);return f[t[0].s]=1,{t:f,l:1}}t.sort(function(C,Z){return C.f-Z.f}),t.push({s:-1,f:25001});var u=t[0],g=t[1],l=0,o=1,s=2;for(t[0]={s:-1,f:u.f+g.f,l:u,r:g};o!=i-1;)u=t[t[l].f<t[s].f?l++:s++],g=t[l!=o&&t[l].f<t[s].f?l++:s++],t[o++]={s:-1,f:u.f+g.f,l:u,r:g};for(var v=a[0].s,e=1;e<i;++e)a[e].s>v&&(v=a[e].s);var y=new H(v+1),D=xr(t[o-1],y,0);if(D>n){var e=0,w=0,E=D-n,R=1<<E;for(a.sort(function(Z,S){return y[S.s]-y[Z.s]||Z.f-S.f});e<i;++e){var q=a[e].s;if(y[q]>n)w+=R-(1<<D-y[q]),y[q]=n;else break}for(w>>=E;w>0;){var M=a[e].s;y[M]<n?w-=1<<n-y[M]++-1:++e}for(;e>=0&&w;--e){var B=a[e].s;y[B]==n&&(--y[B],++w)}D=n}return{t:new A(y),l:D}},xr=function(r,n,t){return r.s==-1?Math.max(xr(r.l,n,t+1),xr(r.r,n,t+1)):n[r.s]=t},Ur=function(r){for(var n=r.length;n&&!r[--n];);for(var t=new H(++n),e=0,i=r[0],a=1,f=function(g){t[e++]=g},u=1;u<=n;++u)if(r[u]==i&&u!=n)++a;else{if(!i&&a>2){for(;a>138;a-=138)f(32754);a>2&&(f(a>10?a-11<<5|28690:a-3<<5|12305),a=0)}else if(a>3){for(f(i),--a;a>6;a-=6)f(8304);a>2&&(f(a-3<<5|8208),a=0)}for(;a--;)f(i);a=1,i=r[u]}return{c:t.subarray(0,e),n}},ir=function(r,n){for(var t=0,e=0;e<n.length;++e)t+=r[e]*n[e];return t},Zr=function(r,n,t){var e=t.length,i=Mr(n+2);r[i]=e&255,r[i+1]=e>>8,r[i+2]=r[i]^255,r[i+3]=r[i+1]^255;for(var a=0;a<e;++a)r[i+a+4]=t[a];return(i+4+e)*8},Fr=function(r,n,t,e,i,a,f,u,g,l,o){Q(n,o++,t),++i[256];for(var s=gr(i,15),v=s.t,y=s.l,D=gr(a,15),w=D.t,E=D.l,R=Ur(v),q=R.c,M=R.n,B=Ur(w),C=B.c,Z=B.n,S=new H(19),p=0;p<q.length;++p)++S[q[p]&31];for(var p=0;p<C.length;++p)++S[C[p]&31];for(var h=gr(S,7),U=h.t,z=h.l,I=19;I>4&&!U[yr[I-1]];--I);var X=l+5<<3,L=ir(i,k)+ir(a,ar)+f,G=ir(i,v)+ir(a,w)+f+14+3*I+ir(S,U)+2*S[16]+3*S[17]+7*S[18];if(g>=0&&X<=L&&X<=G)return Zr(n,o,r.subarray(g,g+l));var F,m,O,T;if(Q(n,o,1+(G<L)),o+=2,G<L){F=j(v,y,0),m=v,O=j(w,E,0),T=w;var rr=j(U,z,0);Q(n,o,M-257),Q(n,o+5,Z-1),Q(n,o+10,I-4),o+=14;for(var p=0;p<I;++p)Q(n,o+3*p,U[yr[p]]);o+=3*I;for(var N=[q,C],J=0;J<2;++J)for(var P=N[J],p=0;p<P.length;++p){var $=P[p]&31;Q(n,o,rr[$]),o+=U[$],$>15&&(Q(n,o,P[p]>>5&127),o+=P[p]>>12)}}else F=Yr,m=k,O=Jr,T=ar;for(var p=0;p<u;++p){var x=e[p];if(x>255){var $=x>>18&31;er(n,o,F[$+257]),o+=m[$+257],$>7&&(Q(n,o,x>>23&31),o+=fr[$]);var W=x&31;er(n,o,O[W]),o+=T[W],W>3&&(er(n,o,x>>5&8191),o+=hr[W])}else er(n,o,F[x]),o+=m[x]}return er(n,o,F[256]),o+m[256]},kr=new Ar([65540,131080,131088,131104,262176,1048704,1048832,2114560,2117632]),Er=new A(0),dr=function(r,n,t,e,i,a){var f=a.z||r.length,u=new A(e+f+5*(1+Math.ceil(f/7e3))+i),g=u.subarray(e,u.length-i),l=a.l,o=(a.r||0)&7;if(n){o&&(g[0]=a.r>>3);for(var s=kr[n-1],v=s>>13,y=s&8191,D=(1<<t)-1,w=a.p||new H(32768),E=a.h||new H(D+1),R=Math.ceil(t/3),q=2*R,M=function(lr){return(r[lr]^r[lr+1]<<R^r[lr+2]<<q)&D},B=new Ar(25e3),C=new H(288),Z=new H(32),S=0,p=0,h=a.i||0,U=0,z=a.w||0,I=0;h+2<f;++h){var X=M(h),L=h&32767,G=E[X];if(w[L]=G,E[X]=L,z<=h){var F=f-h;if((S>7e3||U>24576)&&(F>423||!l)){o=Fr(r,g,0,B,C,Z,p,U,I,h-I,o),U=S=p=0,I=h;for(var m=0;m<286;++m)C[m]=0;for(var m=0;m<30;++m)Z[m]=0}var O=2,T=0,rr=y,N=L-G&32767;if(F>2&&X==M(h-N))for(var J=Math.min(v,F)-1,P=Math.min(32767,h),$=Math.min(258,F);N<=P&&--rr&&L!=G;){if(r[h+O]==r[h+O-N]){for(var x=0;x<$&&r[h+x]==r[h+x-N];++x);if(x>O){if(O=x,T=N,x>J)break;for(var W=Math.min(N,x-2),d=0,m=0;m<W;++m){var b=h-N+m&32767,or=w[b],sr=b-or&32767;sr>d&&(d=sr,G=b)}}}L=G,G=w[L],N+=L-G&32767}if(T){B[U++]=268435456|wr[O]<<18|Sr[T];var nr=wr[O]&31,tr=Sr[T]&31;p+=fr[nr]+hr[tr],++C[257+nr],++Z[tr],z=h+O,++S}else B[U++]=r[h],++C[r[h]]}}for(h=Math.max(h,z);h<f;++h)B[U++]=r[h],++C[r[h]];o=Fr(r,g,l,B,C,Z,p,U,I,h-I,o),l||(a.r=o&7|g[o/8|0]<<3,o-=7,a.h=E,a.p=w,a.i=h,a.w=z)}else{for(var h=a.w||0;h<f+l;h+=65535){var _=h+65535;_>=f&&(g[o/8|0]=l,_=f),o=Zr(g,o+1,r.subarray(h,_))}a.i=f}return ur(u,0,e+Mr(o)+i)};var br=function(r,n,t,e,i){if(!i&&(i={l:1},n.dictionary)){var a=n.dictionary.subarray(-32768),f=new A(a.length+r.length);f.set(a),f.set(r,a.length),r=f,i.w=a.length}return dr(r,n.level==null?6:n.level,n.mem==null?i.l?Math.ceil(Math.max(8,Math.min(13,Math.log(r.length)))*1.5):20:12+n.mem,t,e,i)};function Gr(r,n){return br(r,n||{},0,0)}function Or(r,n){return Xr(r,{i:2},n&&n.out,n&&n.dictionary)}var Tr=typeof TextEncoder!="undefined"&&new TextEncoder,zr=typeof TextDecoder!="undefined"&&new TextDecoder,_r=0;try{zr.decode(Er,{stream:!0}),_r=1}catch(r){}var rn=function(r){for(var n="",t=0;;){var e=r[t++],i=(e>127)+(e>223)+(e>239);if(t+i>r.length)return{s:n,r:ur(r,t-1)};i?i==3?(e=((e&15)<<18|(r[t++]&63)<<12|(r[t++]&63)<<6|r[t++]&63)-65536,n+=String.fromCharCode(55296|e>>10,56320|e&1023)):i&1?n+=String.fromCharCode((e&31)<<6|r[t++]&63):n+=String.fromCharCode((e&15)<<12|(r[t++]&63)<<6|r[t++]&63):n+=String.fromCharCode(e)}};function qr(r,n){if(n){for(var t=new A(r.length),e=0;e<r.length;++e)t[e]=r.charCodeAt(e);return t}if(Tr)return Tr.encode(r);for(var i=r.length,a=new A(r.length+(r.length>>1)),f=0,u=function(o){a[f++]=o},e=0;e<i;++e){if(f+5>a.length){var g=new A(f+8+(i-e<<1));g.set(a),a=g}var l=r.charCodeAt(e);l<128||n?u(l):l<2048?(u(192|l>>6),u(128|l&63)):l>55295&&l<57344?(l=65536+(l&1047552)|r.charCodeAt(++e)&1023,u(240|l>>18),u(128|l>>12&63),u(128|l>>6&63),u(128|l&63)):(u(224|l>>12),u(128|l>>6&63),u(128|l&63))}return ur(a,0,f)}function Lr(r,n){if(n){for(var t="",e=0;e<r.length;e+=16384)t+=String.fromCharCode.apply(null,r.subarray(e,e+16384));return t}else{if(zr)return zr.decode(r);var i=rn(r),a=i.s,t=i.r;return t.length&&Y(8),a}}return Vr(nn);})();</script>
   <style>
     :root {
       --bg: #0d0d0d;
@@ -248,7 +256,7 @@
   <div id="coach_builder_view">
     <header>
       <div class="header-title">
-        <h1>Generador Pro Coach Juan</h1>
+        <h1>Generador Pro Benessere</h1>
         <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp</p>
       </div>
       <div class="header-brand">
@@ -269,9 +277,15 @@
     <div id="tab_builder" class="gen-view active">
       <section class="section-box">
         <div class="section-title">
-          ⚙️ Opciones de Personalización
-          <span class="badge">Módulos</span>
+          🧑‍🏫 Perfil del Coach
+          <span class="badge">Se guarda en este dispositivo</span>
         </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Nombre del Coach *</label><input type="text" id="coachName" placeholder="Ej: Juan, María, Kenneth" autocomplete="off"></div>
+          <div class="form-group"><label>WhatsApp del Coach</label><input type="tel" id="coachPhone" inputmode="tel" placeholder="Ej: 88887777 o 50688887777" autocomplete="off"></div>
+          <div class="form-group full-width"><label>Enlace público de la app (GitHub Pages)</label><input type="text" id="appUrl" inputmode="url" placeholder="https://usuario.github.io/repositorio/" autocomplete="off"></div>
+        </div>
+        <p style="font-size:0.75rem; color:var(--muted); margin:8px 0 12px;">Los reportes de tus atletas llegarán a tu WhatsApp. Si lo dejas vacío, llegan al número principal del gimnasio.</p>
         <div class="toggles-panel">
           <label class="toggle-item">
             <input type="checkbox" id="featureNutrition" onchange="updateModulesVisibility()">
@@ -282,10 +296,14 @@
             <span>🎥 Activar Demostraciones en Video</span>
           </label>
         </div>
+      </section>
 
+      <section class="section-box">
+        <div class="section-title">
+          🏃 Datos del Atleta
+          <span class="badge">Cliente</span>
+        </div>
         <div class="form-grid">
-          <div class="form-group"><label>Coach Asignado</label><input type="text" id="coachName" value="Coach Juan" readonly></div>
-          <div class="form-group"><label>WhatsApp Coach</label><input type="text" id="coachPhone" value="50684949226" readonly></div>
           <div class="form-group">
             <label>Género del Saludo</label>
             <select id="clientGender">
@@ -320,7 +338,7 @@
       <section class="section-box">
         <div class="section-title">📂 Recargar Mesociclo Anterior <span class="badge">Restaurador Universal</span></div>
         <p style="font-size:0.85rem; color:var(--muted); margin-bottom:14px;">
-          Sube el archivo <code>.html</code> generado previamente de tu atleta o pega su contenido aquí. El generador montará automáticamente todos sus días, medidas y ejercicios sin importar la versión anterior[cite: 1].
+          Sube el archivo <code>.html</code> generado previamente de tu atleta o pega su contenido aquí. El generador montará automáticamente todos sus días, medidas y ejercicios sin importar la versión anterior.
         </p>
         <div class="form-group" style="margin-bottom:14px;">
           <label>Opción A: Seleccionar archivo .html de tu dispositivo</label>
@@ -490,9 +508,20 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           💧 Cumple con tu agua y descanso. <em>¡Juntos somos más fuertes!</em>
         </div>
         <button class="btn-action-primary" style="margin-bottom:8px;" onclick="closeModal('modal_congrats')">Aceptar y Continuar</button>
-        <button class="btn-action-wa" onclick="sendWhatsAppFromCongrats()">📲 Enviar Reporte a Coach Juan</button>
+        <button class="btn-action-wa" id="ath_congratsWaBtn" onclick="sendWhatsAppFromCongrats()">📲 Enviar Reporte al Coach</button>
       </div>
     </div>
+  </div>
+
+  <!-- ================= AVISO PARA ATLETAS (sin rutina / enlace incompleto) ================= -->
+  <div id="athlete_message_view" style="display:none; min-height:100vh; padding:40px 22px; text-align:center;">
+    <div class="brand-top">Benessere Gym</div>
+    <div class="brand-slogan">Juntos somos más fuertes</div>
+    <div id="msg_icon" style="font-size:3rem; margin:26px 0 10px;">📲</div>
+    <div id="msg_title" style="font-size:1.2rem; font-weight:800; color:var(--primary); margin-bottom:12px;"></div>
+    <p id="msg_body" style="font-size:0.92rem; color:#ddd; line-height:1.65; max-width:420px; margin:0 auto;"></p>
+    <p id="msg_diag" style="font-size:0.68rem; color:#666; margin-top:22px; word-break:break-word;"></p>
+    <button type="button" onclick="openCoachAccess()" style="margin-top:40px; background:transparent; border:1px solid #3a3a3a; color:#777; font-size:0.72rem; padding:7px 14px; border-radius:6px; cursor:pointer;">Acceso para coaches</button>
   </div>
 
   <!-- ================= LÓGICA JAVASCRIPT ================= -->
@@ -517,7 +546,89 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
     var athleteActiveState = null;
     var lastActiveDayId = '';
+    // Número principal de Benessere Gym: se usa solo si el coach no escribe el suyo
+    // (y para enlaces antiguos, que no traían datos del coach).
     var CONFIG_COACH_PHONE = '50684949226';
+    var COACH_CFG_KEY = 'benessere_coach_cfg';
+    var athleteCoachName = 'Coach Benessere';
+    var athleteCoachPhone = CONFIG_COACH_PHONE;
+
+    function escHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+      });
+    }
+
+    // Deja solo dígitos; un número de 8 dígitos se asume de Costa Rica (+506)
+    function cleanPhone(p) {
+      var d = String(p || '').replace(/[^0-9]/g, '');
+      return d.length === 8 ? '506' + d : d;
+    }
+
+    // "Juan" y "Coach Juan" se muestran igual: "Coach Juan"
+    function displayCoach(name) {
+      var n = String(name || '').trim().replace(/^coach\s+/i, '');
+      return n ? 'Coach ' + n : 'Coach Benessere';
+    }
+
+    function loadCoachConfig() {
+      var cfg = {};
+      try { cfg = JSON.parse(localStorage.getItem(COACH_CFG_KEY) || '{}') || {}; } catch (e) { cfg = {}; }
+      document.getElementById('coachName').value = cfg.name || '';
+      document.getElementById('coachPhone').value = cfg.phone || '';
+      document.getElementById('featureNutrition').checked = cfg.nutrition === true;
+      document.getElementById('featureDemos').checked = cfg.demos === true;
+
+      // Si el constructor está abierto desde su página publicada, esa es la dirección correcta
+      var urlField = document.getElementById('appUrl');
+      if (/^https?:$/.test(window.location.protocol)) {
+        urlField.value = window.location.origin + window.location.pathname.replace(/index\.html$/i, '');
+      } else {
+        urlField.value = cfg.appUrl || '';
+      }
+
+      ['coachName', 'coachPhone', 'appUrl'].forEach(function(id) {
+        document.getElementById(id).addEventListener('input', saveCoachConfig);
+      });
+      ['featureNutrition', 'featureDemos'].forEach(function(id) {
+        document.getElementById(id).addEventListener('change', saveCoachConfig);
+      });
+    }
+
+    function saveCoachConfig() {
+      try {
+        localStorage.setItem(COACH_CFG_KEY, JSON.stringify({
+          name: document.getElementById('coachName').value.trim(),
+          phone: document.getElementById('coachPhone').value.trim(),
+          appUrl: document.getElementById('appUrl').value.trim(),
+          nutrition: document.getElementById('featureNutrition').checked,
+          demos: document.getElementById('featureDemos').checked
+        }));
+      } catch (e) {}
+    }
+
+    // Devuelve la dirección pública de la app, o null (con aviso) si no es válida
+    function getAppBaseUrl() {
+      var urlField = document.getElementById('appUrl');
+      var base = urlField.value.trim();
+      if (!base && /^https?:$/.test(window.location.protocol)) {
+        base = window.location.origin + window.location.pathname;
+      }
+      if (!base) {
+        alert('Falta el enlace público de la app.\n\nPega en "Enlace público de la app" la dirección de GitHub Pages, por ejemplo:\nhttps://usuario.github.io/repositorio/');
+        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        urlField.focus();
+        return null;
+      }
+      if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
+      if (/^https?:\/\/(www\.)?github\.com\//i.test(base) || /raw\.githubusercontent\.com/i.test(base)) {
+        alert('Ese es el enlace del CÓDIGO en GitHub, no el de la página.\n\nUsa el de GitHub Pages, que tiene esta forma:\nhttps://usuario.github.io/repositorio/');
+        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        urlField.focus();
+        return null;
+      }
+      return base.split('#')[0].split('?')[0];
+    }
 
     function switchGenTab(viewId, btn) {
       document.querySelectorAll('.gen-view').forEach(function(v) { v.classList.remove('active'); });
@@ -688,7 +799,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       }
 
       if (!state && raw.indexOf('?r=') !== -1) {
-        var matchQ = raw.match(/\?r=([A-Za-z0-9+/=_-]+)/);
+        var matchQ = raw.match(/\?r=([A-Za-z0-9+/=_$-]+)/);
         if (matchQ && matchQ[1]) {
           try {
             var decomp = LZString.decompressFromEncodedURIComponent(matchQ[1]);
@@ -698,12 +809,20 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       }
 
       if (!state && raw.indexOf('#r=') !== -1) {
-        var matchHash = raw.match(/#r=([A-Za-z0-9+/=_-]+)/);
+        var matchHash = raw.match(/#r=([A-Za-z0-9+/=_$-]+)/);
         if (matchHash && matchHash[1]) {
           try {
             var decomp2 = LZString.decompressFromEncodedURIComponent(matchHash[1]);
             if (decomp2) state = expandUltraCompactState(JSON.parse(decomp2));
           } catch(e) {}
+        }
+      }
+
+      if (!state) {
+        var matchP = raw.match(/[#?&]([pq])=([A-Za-z0-9_-]+)/);
+        if (matchP && matchP[2]) {
+          var stP = decodePayload(matchP[1], matchP[2]);
+          if (stP) state = stP;
         }
       }
 
@@ -1016,6 +1135,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       return {
         clientName: cName, clientGender: cGender, startDate: sDate, durationWeeks: dWeeks,
         coachMsgTitle: msgTitle, coachMsgBody: msgBody,
+        coachName: document.getElementById('coachName').value.trim(),
+        coachPhone: cleanPhone(document.getElementById('coachPhone').value),
         configFeatures: { nutrition: isNutri, demos: isDemos },
         measures: {
           m_objetivo: document.getElementById('m_objetivo').value.trim() || '-',
@@ -1075,7 +1196,9 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             })
           ];
           return dArr;
-        })
+        }),
+        full.coachName || '',
+        full.coachPhone || ''
       ];
     }
 
@@ -1107,6 +1230,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         durationWeeks: c[3] || 4,
         coachMsgTitle: c[4] || 'Nota del Coach',
         coachMsgBody: c[5] || '',
+        coachName: c[9] || '',
+        coachPhone: c[10] || '',
         configFeatures: { nutrition: feats[0] === 1, demos: feats[1] === 1 },
         measures: {
           m_objetivo: m[0]||'-', m_estatura: m[1]||'-', m_peso_kg: m[2]||'-',
@@ -1141,30 +1266,85 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     }
 
     // ================= ENVÍO AUTOMÁTICO POR WHATSAPP =================
+    // ================= CODIFICACIÓN DEL ENLACE =================
+    // Formato actual (#q=): JSON -> deflate -> base64url. Alfabeto: A-Z a-z 0-9 - _
+    // Formatos anteriores (#p= lz-string, ?r= / #r=): se siguen leyendo para no romper enlaces ya enviados.
+    function bytesToB64url(u8) {
+      var bin = '';
+      for (var i = 0; i < u8.length; i += 8192) {
+        bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
+      }
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function b64urlToBytes(str) {
+      var b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      var bin = atob(b64);
+      var u8 = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      return u8;
+    }
+    function encodePayload(ultraCompactArray) {
+      return bytesToB64url(fflate.deflateSync(fflate.strToU8(JSON.stringify(ultraCompactArray)), { level: 9 }));
+    }
+    // Devuelve el estado de la rutina, o null si el texto está incompleto o dañado
+    function decodePayload(kind, str) {
+      try {
+        var json;
+        if (kind === 'q') json = fflate.strFromU8(fflate.inflateSync(b64urlToBytes(str)));
+        else if (kind === 'p') json = LZString.decompressFromUint8Array(b64urlToBytes(str));
+        else json = LZString.decompressFromEncodedURIComponent(String(str).replace(/ /g, '+'));
+        if (!json) return null;
+        var st = expandUltraCompactState(JSON.parse(json));
+        return (st && Array.isArray(st.routineDays)) ? st : null;
+      } catch (e) { return null; }
+    }
+    function readPayloadFromUrl() {
+      var hash = window.location.hash || '';
+      var search = window.location.search || '';
+      var m = hash.match(/[#&]q=([^&]*)/) || search.match(/[?&]q=([^&]*)/);
+      if (m) return { k: 'q', v: m[1] };
+      m = hash.match(/[#&]p=([^&]*)/) || search.match(/[?&]p=([^&]*)/);
+      if (m) return { k: 'p', v: m[1] };
+      m = hash.match(/[#&]r=([^&]*)/);
+      if (m) { var v = m[1]; try { v = decodeURIComponent(v); } catch (e) {} return { k: 'r', v: v }; }
+      var q = new URLSearchParams(search).get('r');
+      if (q !== null) return { k: 'r', v: q };
+      return null;
+    }
+
     function generateDirectWhatsAppLink() {
+      var coachNameField = document.getElementById('coachName');
+      if (!coachNameField.value.trim()) {
+        alert('Escribe primero el nombre del Coach en "Perfil del Coach".');
+        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        window.scrollTo(0, 0);
+        coachNameField.focus();
+        return;
+      }
+      var baseUrl = getAppBaseUrl();
+      if (!baseUrl) return;
+
       var state = getBuilderState();
       var ultraCompact = buildUltraCompactState(state);
-      var jsonStr = JSON.stringify(ultraCompact);
-      var compressed = LZString.compressToEncodedURIComponent(jsonStr);
+      var payloadText = encodePayload(ultraCompact);
 
-      var baseUrl = window.location.origin + window.location.pathname;
-      if (baseUrl.indexOf('file://') === 0 || baseUrl === 'null' || !baseUrl) {
-        baseUrl = 'https://benessere-app.netlify.app';
-      }
-      var clientAppUrl = baseUrl + '?r=' + compressed;
+      // Los datos van después de '#': el servidor (GitHub Pages) nunca los recibe,
+      // así que un enlace largo no puede fallar del lado del servidor.
+      var clientAppUrl = baseUrl + '#q=' + payloadText;
 
       var cName = state.clientName;
-      var cPhoneRaw = document.getElementById('clientPhone').value.trim();
-      var clientCleanPhone = cPhoneRaw.replace(/[^0-9]/g, '');
+      var clientCleanPhone = cleanPhone(document.getElementById('clientPhone').value);
 
       var waMsg = encodeURIComponent(
-        '¡Hola ' + cName + '! 💪 Te saluda Coach Juan de Benessere Gym.\n\n' +
+        '¡Hola ' + cName + '! 💪 Te saluda ' + displayCoach(state.coachName) + ' de Benessere Gym.\n\n' +
         'Aquí tienes tu aplicación personalizada de entrenamiento:\n\n' +
         '🔗 ' + clientAppUrl + '\n\n' +
         '📌 *Pasos para guardarla en tu celular:*\n' +
         '1. Toca el enlace para abrirlo en Safari (iPhone) o Chrome (Android).\n' +
         '2. Toca en Compartir / Menú y selecciona "Agregar a pantalla de inicio".\n' +
-        '3. Te quedará el ícono en tu teléfono para registrar tus cargas en cada sesión.\n\n' +
+        '3. Abre siempre la app desde ese ícono para que tus cargas queden guardadas.\n\n' +
+        '⚠️ Si al abrir el ícono no ves tu rutina, vuelve a tocar este mismo enlace.\n\n' +
         '¡Juntos somos más fuertes! 🔥'
       );
 
@@ -1175,6 +1355,10 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     // ================= VISTA DEL ATLETA =================
     function renderAthleteApp(state) {
       athleteActiveState = state;
+      athleteCoachName = displayCoach(state.coachName);
+      athleteCoachPhone = cleanPhone(state.coachPhone) || CONFIG_COACH_PHONE;
+      var congratsBtn = document.getElementById('ath_congratsWaBtn');
+      if (congratsBtn) congratsBtn.innerText = '📲 Enviar Reporte a ' + athleteCoachName;
       document.getElementById('coach_builder_view').style.display = 'none';
       document.getElementById('athlete_client_view').style.display = 'block';
 
@@ -1312,7 +1496,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           exercisesHtml +
           '<div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">' +
             '<button class="btn-action-primary" onclick="archiveCurrentDay(\'' + d.id + '\')">💾 Guardar Día y Actualizar Marca Anterior</button>' +
-            '<button class="btn-action-wa" onclick="sendWhatsAppReport(\'' + d.id + '\')">📲 Enviar Reporte a Coach Juan</button>' +
+            '<button class="btn-action-wa" onclick="sendWhatsAppReport(\'' + d.id + '\')">📲 Enviar Reporte a ' + escHtml(athleteCoachName) + '</button>' +
           '</div>' +
         '</div>' +
         nutritionSectionHtml;
@@ -1521,7 +1705,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var dayEl = document.getElementById(dayId);
       var title = dayEl.getAttribute('data-day-title') || 'Entrenamiento';
       var cName = athleteActiveState ? athleteActiveState.clientName : 'Atleta';
-      var msg = '*Reporte Benessere Gym - ' + title + '*%0AAtleta: *' + cName + '*%0ACoach: *Coach Juan*%0A%0A';
+      var msg = '*Reporte Benessere Gym - ' + title + '*\nAtleta: *' + cName + '*\nCoach: *' + athleteCoachName + '*\n\n';
       var count = 0;
       dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .exercise-item-box').forEach(function(box) {
         var name = box.querySelector('.ex-name');
@@ -1530,12 +1714,12 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         var reps = box.querySelector('input[id^="reps_"]');
         var prev = box.querySelector('.prev-load-badge');
         if (name && (load.value || reps.value || series.value)) {
-          msg += '• *' + name.innerText + '*%0A   Hoy: *' + (load.value||'-') + '* | ' + (series.value||'-') + ' series × ' + (reps.value||'-') + ' reps%0A   _' + (prev ? prev.innerText : '') + '_%0A%0A';
+          msg += '• *' + name.innerText + '*\n   Hoy: *' + (load.value||'-') + '* | ' + (series.value||'-') + ' series × ' + (reps.value||'-') + ' reps\n   _' + (prev ? prev.innerText : '') + '_\n\n';
           count++;
         }
       });
       if (!count) return alert('No hay registros anotados hoy para reportar.');
-      window.open('https://wa.me/' + CONFIG_COACH_PHONE + '?text=' + msg, '_blank');
+      window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(msg), '_blank');
     }
 
     function loadDemoRoutine() {
@@ -1666,33 +1850,82 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       });
 
       var printWin = window.open('', '_blank');
-      var html = '<!DOCTYPE html><html><head><title>Ficha Benessere - ' + state.clientName + '</title><style>body { font-family: Arial, sans-serif; color: #000; padding: 20px; } header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff6d00; padding-bottom: 6px; margin-bottom: 10px; } h1 { margin: 0; font-size: 16px; text-transform: uppercase; } .sub { font-size: 10px; color: #555; } .brand { text-align: right; font-weight: bold; font-size: 15px; color:#000; } .slogan { font-size: 9px; color: #ff6d00; font-style: italic; } .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #f9f9f9; border: 1px solid #ddd; padding: 6px; font-size: 10px; margin-bottom: 10px; } @media print { body { padding: 0; } @page { margin: 1cm; } }</style></head><body><header><div><h1>Ficha de Entrenamiento Benessere Gym</h1><div class="sub">Expediente Oficial | Coach: Coach Juan</div></div><div class="brand">BENESSERE GYM<div class="slogan">Juntos somos más fuertes</div></div></header><div class="info-grid"><div><strong>Atleta:</strong> ' + state.clientName + '</div><div><strong>Coach:</strong> Coach Juan</div><div><strong>Fecha Inicio:</strong> ' + state.startDate + '</div><div><strong>Duración:</strong> ' + state.durationWeeks + ' Semanas</div><div><strong>Peso:</strong> ' + (state.measures.m_peso_kg||'-') + '</div><div style="grid-column: span 3;"><strong>Objetivo:</strong> ' + (state.measures.m_objetivo||'-') + '</div></div>' + routinesPrintHtml + '<script>window.onload = function() { window.print(); };<\/script></body></html>';
+      var html = '<!DOCTYPE html><html><head><title>Ficha Benessere - ' + state.clientName + '</title><style>body { font-family: Arial, sans-serif; color: #000; padding: 20px; } header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff6d00; padding-bottom: 6px; margin-bottom: 10px; } h1 { margin: 0; font-size: 16px; text-transform: uppercase; } .sub { font-size: 10px; color: #555; } .brand { text-align: right; font-weight: bold; font-size: 15px; color:#000; } .slogan { font-size: 9px; color: #ff6d00; font-style: italic; } .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #f9f9f9; border: 1px solid #ddd; padding: 6px; font-size: 10px; margin-bottom: 10px; } @media print { body { padding: 0; } @page { margin: 1cm; } }</style></head><body><header><div><h1>Ficha de Entrenamiento Benessere Gym</h1><div class="sub">Expediente Oficial | Coach: ' + escHtml(displayCoach(state.coachName)) + '</div></div><div class="brand">BENESSERE GYM<div class="slogan">Juntos somos más fuertes</div></div></header><div class="info-grid"><div><strong>Atleta:</strong> ' + state.clientName + '</div><div><strong>Coach:</strong> ' + escHtml(displayCoach(state.coachName)) + '</div><div><strong>Fecha Inicio:</strong> ' + state.startDate + '</div><div><strong>Duración:</strong> ' + state.durationWeeks + ' Semanas</div><div><strong>Peso:</strong> ' + (state.measures.m_peso_kg||'-') + '</div><div style="grid-column: span 3;"><strong>Objetivo:</strong> ' + (state.measures.m_objetivo||'-') + '</div></div>' + routinesPrintHtml + '<script>window.onload = function() { window.print(); };<\/script></body></html>';
       printWin.document.write(html);
       printWin.document.close();
     }
 
     // ================= ENRUTADOR INICIAL =================
-    window.onload = function() {
-      var urlParams = new URLSearchParams(window.location.search);
-      var compressed = urlParams.get('r') || (window.location.hash.startsWith('#r=') ? window.location.hash.substring(3) : null);
+    var ATHLETE_KEY = 'benessere_athlete_payload';
 
-      if (compressed) {
-        try {
-          var rawJson = LZString.decompressFromEncodedURIComponent(compressed.replace(/ /g, '+'));
-          if (rawJson) {
-            var rawState = JSON.parse(rawJson);
-            var state = expandUltraCompactState(rawState);
-            renderAthleteApp(state);
-            return;
-          }
-        } catch(e) { console.error(e); }
-      }
-
-      // El enlace base abre siempre el constructor para los entrenadores
+    function showBuilder() {
       document.getElementById('athlete_client_view').style.display = 'none';
+      document.getElementById('athlete_message_view').style.display = 'none';
       document.getElementById('coach_builder_view').style.display = 'block';
+      loadCoachConfig();
       renderDays();
       updateModulesVisibility();
+    }
+    function openCoachAccess() { showBuilder(); window.scrollTo(0, 0); }
+
+    function showAthleteMessage(kind, detail) {
+      document.getElementById('athlete_client_view').style.display = 'none';
+      document.getElementById('coach_builder_view').style.display = 'none';
+      document.getElementById('athlete_message_view').style.display = 'block';
+      var t = document.getElementById('msg_title'), b = document.getElementById('msg_body'), i = document.getElementById('msg_icon');
+      if (kind === 'broken') {
+        i.innerText = '⚠️';
+        t.innerText = 'Tu enlace llegó incompleto';
+        b.innerText = 'Parte del enlace se cortó al enviarse, por eso no se puede leer tu rutina. Pídele a tu coach que te lo reenvíe.';
+      } else {
+        i.innerText = '📲';
+        t.innerText = 'Abre el enlace de tu coach';
+        b.innerText = 'Esta app se abre con el enlace personalizado que tu coach te envió por WhatsApp. Vuelve a tocar ese enlace para ver tu rutina.';
+      }
+      document.getElementById('msg_diag').innerText = detail || '';
+    }
+
+    function hasCoachProfile() {
+      try { var c = JSON.parse(localStorage.getItem(COACH_CFG_KEY) || '{}'); return !!(c && c.name); } catch (e) { return false; }
+    }
+    function saveAthletePayload(pl) { try { localStorage.setItem(ATHLETE_KEY, JSON.stringify(pl)); } catch (e) {} }
+    function loadAthletePayload() { try { return JSON.parse(localStorage.getItem(ATHLETE_KEY) || 'null'); } catch (e) { return null; } }
+
+    window.onload = function() {
+      var where = (window.location.hash || '') + (window.location.search || '');
+
+      // 1) Llegó un enlace con rutina
+      var payload = readPayloadFromUrl();
+      if (payload) {
+        var st = decodePayload(payload.k, payload.v);
+        if (!st) {
+          showAthleteMessage('broken', 'Datos recibidos: ' + payload.v.length + ' caracteres (formato ' + payload.k + ')');
+          return;
+        }
+        try {
+          renderAthleteApp(st);
+          saveAthletePayload(payload);   // por si el ícono se abre sin los datos del enlace
+        } catch (e) {
+          console.error(e);
+          showAthleteMessage('broken', 'Error al mostrar la rutina: ' + (e && e.message ? e.message : e));
+        }
+        return;
+      }
+
+      // 2) Acceso explícito de coach, o este dispositivo ya tiene perfil de coach
+      if (/(^|[#&?])coach(\b|=)/.test(where) || hasCoachProfile()) { showBuilder(); return; }
+
+      // 3) Atleta que vuelve a abrir la app sin enlace: recuperar su última rutina
+      var saved = loadAthletePayload();
+      if (saved && saved.v) {
+        var st2 = decodePayload(saved.k, saved.v);
+        if (st2) {
+          try { renderAthleteApp(st2); return; } catch (e) { console.error(e); }
+        }
+      }
+
+      // 4) Sin datos: aviso claro (el constructor solo se abre con "Acceso para coaches")
+      showAthleteMessage('none', '');
     };
   </script>
 </body>
