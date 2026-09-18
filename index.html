@@ -284,6 +284,14 @@
           <div class="form-group"><label>Nombre del Coach *</label><input type="text" id="coachName" placeholder="Ej: Juan, María, Kenneth" autocomplete="off"></div>
           <div class="form-group"><label>WhatsApp del Coach</label><input type="tel" id="coachPhone" inputmode="tel" placeholder="Ej: 88887777 o 50688887777" autocomplete="off"></div>
           <div class="form-group full-width"><label>Enlace público de la app (GitHub Pages)</label><input type="text" id="appUrl" inputmode="url" placeholder="https://usuario.github.io/repositorio/" autocomplete="off"></div>
+          <div class="form-group full-width">
+            <label>Enlaces cortos con hoja de Google (opcional)</label>
+            <input type="text" id="shareConn" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec?k=TU-CLAVE" autocomplete="off">
+            <div style="display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary" onclick="testShareConn()">🔌 Probar conexión</button>
+              <span id="shareStatus" style="font-size:0.78rem; color:var(--muted);"></span>
+            </div>
+          </div>
         </div>
         <p style="font-size:0.75rem; color:var(--muted); margin:8px 0 12px;">Los reportes de tus atletas llegarán a tu WhatsApp. Si lo dejas vacío, llegan al número principal del gimnasio.</p>
         <div class="toggles-panel">
@@ -513,6 +521,18 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     </div>
   </div>
 
+  <!-- ================= VENTANA: ENLACE LISTO PARA ENVIAR ================= -->
+  <div id="modal_share" class="modal-overlay">
+    <div class="modal-inner">
+      <div id="share_title" style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:8px;"></div>
+      <div id="share_note" style="font-size:0.82rem; color:#ddd; line-height:1.55; margin-bottom:10px;"></div>
+      <div id="share_link" style="font-size:0.72rem; color:var(--muted); background:#111; border:1px solid #333; border-radius:8px; padding:8px; word-break:break-all; max-height:76px; overflow:hidden; margin-bottom:12px;"></div>
+      <a id="share_wa" class="btn-action-wa" href="#" target="_blank" rel="noopener" style="display:none; text-align:center; text-decoration:none;">📲 Abrir WhatsApp con el mensaje</a>
+      <button type="button" id="share_copy" class="btn-action-primary" style="display:none; margin-top:8px;" onclick="copyShareMessage()">📋 Copiar mensaje</button>
+      <button type="button" class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="closeModal('modal_share')">Cerrar</button>
+    </div>
+  </div>
+
   <!-- ================= AVISO PARA ATLETAS (sin rutina / enlace incompleto) ================= -->
   <div id="athlete_message_view" style="display:none; min-height:100vh; padding:40px 22px; text-align:center;">
     <div class="brand-top">Benessere Gym</div>
@@ -520,6 +540,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     <div id="msg_icon" style="font-size:3rem; margin:26px 0 10px;">📲</div>
     <div id="msg_title" style="font-size:1.2rem; font-weight:800; color:var(--primary); margin-bottom:12px;"></div>
     <p id="msg_body" style="font-size:0.92rem; color:#ddd; line-height:1.65; max-width:420px; margin:0 auto;"></p>
+    <button type="button" id="msg_retry" onclick="location.reload()" style="display:none; margin-top:18px; background:var(--accent); border:none; color:#fff; font-weight:800; font-size:0.9rem; padding:10px 20px; border-radius:8px; cursor:pointer;">🔄 Reintentar</button>
     <p id="msg_diag" style="font-size:0.68rem; color:#666; margin-top:22px; word-break:break-word;"></p>
     <button type="button" onclick="openCoachAccess()" style="margin-top:40px; background:transparent; border:1px solid #3a3a3a; color:#777; font-size:0.72rem; padding:7px 14px; border-radius:6px; cursor:pointer;">Acceso para coaches</button>
   </div>
@@ -576,6 +597,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       try { cfg = JSON.parse(localStorage.getItem(COACH_CFG_KEY) || '{}') || {}; } catch (e) { cfg = {}; }
       document.getElementById('coachName').value = cfg.name || '';
       document.getElementById('coachPhone').value = cfg.phone || '';
+      document.getElementById('shareConn').value = cfg.share || '';
       document.getElementById('featureNutrition').checked = cfg.nutrition === true;
       document.getElementById('featureDemos').checked = cfg.demos === true;
 
@@ -587,7 +609,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         urlField.value = cfg.appUrl || '';
       }
 
-      ['coachName', 'coachPhone', 'appUrl'].forEach(function(id) {
+      ['coachName', 'coachPhone', 'appUrl', 'shareConn'].forEach(function(id) {
         document.getElementById(id).addEventListener('input', saveCoachConfig);
       });
       ['featureNutrition', 'featureDemos'].forEach(function(id) {
@@ -601,6 +623,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           name: document.getElementById('coachName').value.trim(),
           phone: document.getElementById('coachPhone').value.trim(),
           appUrl: document.getElementById('appUrl').value.trim(),
+          share: document.getElementById('shareConn').value.trim(),
           nutrition: document.getElementById('featureNutrition').checked,
           demos: document.getElementById('featureDemos').checked
         }));
@@ -776,8 +799,24 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       reader.readAsText(file);
     }
 
+    function restoreFromShare(id, deployId) {
+      fetchJson('https://script.google.com/macros/s/' + deployId + '/exec?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
+        .then(function(j) {
+          var st = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
+          if (!st) return alert('No se pudo cargar esa rutina desde el enlace corto (puede haber sido eliminada de la hoja).');
+          applyRestoredState(st);
+          alert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
+          switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        })
+        .catch(function() { alert('No se pudo conectar para cargar ese enlace corto. Revisa tu internet.'); });
+    }
+
     function parseAndRestoreFromHtmlString() {
       var raw = document.getElementById('pasteHtmlCode').value.trim();
+      if (raw && raw.length < 3000) {
+        var mi = raw.match(/#i=([A-Za-z0-9]{6,32})\.([A-Za-z0-9_-]{20,200})/);
+        if (mi) { restoreFromShare(mi[1], mi[2]); return; }
+      }
       if (!raw) return alert('Por favor selecciona un archivo HTML o pega su código primero.');
 
       var state = null;
@@ -1302,7 +1341,9 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     function readPayloadFromUrl() {
       var hash = window.location.hash || '';
       var search = window.location.search || '';
-      var m = hash.match(/[#&]q=([^&]*)/) || search.match(/[?&]q=([^&]*)/);
+      var m = hash.match(/[#&]i=([^&]*)/);
+      if (m) return { k: 'i', v: m[1] };
+      m = hash.match(/[#&]q=([^&]*)/) || search.match(/[?&]q=([^&]*)/);
       if (m) return { k: 'q', v: m[1] };
       m = hash.match(/[#&]p=([^&]*)/) || search.match(/[?&]p=([^&]*)/);
       if (m) return { k: 'p', v: m[1] };
@@ -1338,6 +1379,121 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       legacyCopy(text);
     }
 
+    // ================= ENLACES CORTOS (hoja de Google) =================
+    var lastShare = { text: '', waUrl: '' };
+
+    // fetch que siempre termina: devuelve JSON, o falla con 'timeout' / 'respuesta' / error de red
+    function fetchJson(url, opts, ms) {
+      return new Promise(function(resolve, reject) {
+        var finished = false;
+        var timer = setTimeout(function() { if (!finished) { finished = true; reject(new Error('timeout')); } }, ms || 20000);
+        fetch(url, opts).then(function(r) { return r.text(); }).then(function(txt) {
+          if (finished) return;
+          finished = true; clearTimeout(timer);
+          try { resolve(JSON.parse(txt)); } catch (e) { reject(new Error('respuesta')); }
+        }).catch(function(e) {
+          if (finished) return;
+          finished = true; clearTimeout(timer);
+          reject(e);
+        });
+      });
+    }
+
+    // La conexión es la dirección del script de Google + "?k=" + la clave
+    function parseShareConn(str) {
+      var s = String(str || '').trim();
+      if (!s) return null;
+      var m = s.match(/^https:\/\/script\.google\.com\/macros\/s\/([A-Za-z0-9_-]+)\/exec(?:\?(.*))?$/);
+      if (!m) return { invalid: true };
+      var key = '';
+      try { key = new URLSearchParams(m[2] || '').get('k') || ''; } catch (e) {}
+      return { invalid: false, base: 'https://script.google.com/macros/s/' + m[1] + '/exec', deployId: m[1], key: key };
+    }
+
+    function shareReasonText(code) {
+      var map = {
+        'clave': 'La clave no coincide con la del script de Google.',
+        'clave-sin-cambiar': 'Falta cambiar la clave dentro del script de Google.',
+        'datos': 'El servicio rechazó los datos.',
+        'timeout': 'El servicio tardó demasiado en responder.',
+        'respuesta': 'El servicio no respondió como se esperaba (revisa que esté publicado para "Cualquier persona").',
+        'formato': 'La conexión no tiene el formato correcto (debe empezar con https://script.google.com/macros/s/ y terminar en /exec?k=TU-CLAVE).'
+      };
+      return map[code] || 'No se pudo conectar con el servicio (revisa tu internet).';
+    }
+
+    function testShareConn() {
+      var out = document.getElementById('shareStatus');
+      var conn = parseShareConn(document.getElementById('shareConn').value);
+      function say(color, text) { out.style.color = color; out.innerText = text; }
+      if (!conn) return say('var(--muted)', 'Pega primero la conexión.');
+      if (conn.invalid) return say('var(--danger)', '❌ ' + shareReasonText('formato'));
+      say('var(--muted)', 'Probando…');
+      fetchJson(conn.base + '?ping=1&k=' + encodeURIComponent(conn.key), { redirect: 'follow' }, 20000).then(function(j) {
+        if (j && j.ok && j.sinCambiar) say('var(--accent)', '⚠️ Conecta, pero falta cambiar la clave dentro del script de Google.');
+        else if (j && j.ok && j.clave) say('var(--success)', '✅ Conectado correctamente.');
+        else if (j && j.ok) say('var(--accent)', '⚠️ Conecta, pero la clave no coincide con la del script.');
+        else say('var(--danger)', '❌ ' + shareReasonText('respuesta'));
+      }).catch(function(e) { say('var(--danger)', '❌ ' + shareReasonText(e && e.message)); });
+    }
+
+    function buildWaText(state, link) {
+      return '¡Hola ' + state.clientName + '! 💪 Te saluda ' + displayCoach(state.coachName) + ' de Benessere Gym.\n\n' +
+        'Aquí tienes tu rutina interactiva:\n' +
+        '🔗 ' + link + '\n\n' +
+        '📌 Ábrela en Safari (iPhone) o Chrome (Android). Para tenerla como app: Compartir / Menú → "Agregar a pantalla de inicio", y ábrela siempre desde ese ícono. Si el ícono no muestra tu rutina, vuelve a tocar este enlace.\n\n' +
+        '¡Juntos somos más fuertes! 🔥';
+    }
+
+    function showShareWorking() {
+      document.getElementById('share_title').innerText = 'Creando el enlace…';
+      document.getElementById('share_note').innerText = 'Un momento, se está guardando la rutina.';
+      document.getElementById('share_link').style.display = 'none';
+      document.getElementById('share_wa').style.display = 'none';
+      document.getElementById('share_copy').style.display = 'none';
+      openModal('modal_share');
+    }
+
+    function finishShare(state, link, reason) {
+      var phone = cleanPhone(document.getElementById('clientPhone').value);
+      var text = buildWaText(state, link);
+      var enc = encodeURIComponent(text);
+      var waUrl = phone ? ('https://wa.me/' + phone + '?text=' + enc) : ('https://wa.me/?text=' + enc);
+      lastShare = { text: text, waUrl: waUrl };
+
+      var isShort = link.indexOf('#i=') !== -1;
+      var title, note;
+      if (isShort) {
+        title = '✅ Enlace corto listo';
+        note = 'Toca "Abrir WhatsApp" y envía el mensaje a ' + state.clientName + '.';
+      } else if (reason) {
+        title = 'Enlace largo listo';
+        note = 'No se pudo crear el enlace corto: ' + reason + ' Se usó el enlace largo, que funciona igual pero puede cortarse en WhatsApp. Si pasa, toca "Copiar mensaje" y pégalo en el chat.';
+      } else {
+        title = 'Enlace listo';
+        note = 'Toca "Abrir WhatsApp" y envía el mensaje a ' + state.clientName + '. Si el enlace se ve cortado, toca "Copiar mensaje" y pégalo en el chat.';
+      }
+      document.getElementById('share_title').innerText = title;
+      document.getElementById('share_note').innerText = note;
+      var linkBox = document.getElementById('share_link');
+      linkBox.innerText = link.length > 160 ? (link.substring(0, 110) + '… (' + link.length + ' caracteres)') : link;
+      linkBox.style.display = 'block';
+      var wa = document.getElementById('share_wa');
+      wa.href = waUrl;
+      wa.style.display = 'block';
+      var cp = document.getElementById('share_copy');
+      cp.innerText = '📋 Copiar mensaje';
+      cp.style.display = 'block';
+      openModal('modal_share');
+    }
+
+    function copyShareMessage() {
+      copyTextSilently(lastShare.text);
+      var cp = document.getElementById('share_copy');
+      cp.innerText = '✅ Copiado: pégalo en el chat';
+      setTimeout(function() { cp.innerText = '📋 Copiar mensaje'; }, 3000);
+    }
+
     function generateDirectWhatsAppLink() {
       var coachNameField = document.getElementById('coachName');
       if (!coachNameField.value.trim()) {
@@ -1351,33 +1507,27 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       if (!baseUrl) return;
 
       var state = getBuilderState();
-      var ultraCompact = buildUltraCompactState(state);
-      var payloadText = encodePayload(ultraCompact);
+      var payloadText = encodePayload(buildUltraCompactState(state));
+      // Enlace largo: la rutina completa dentro del enlace (funciona sin servidor)
+      var longLink = baseUrl + '#q=' + payloadText;
 
-      // Los datos van después de '#': el servidor (GitHub Pages) nunca los recibe,
-      // así que un enlace largo no puede fallar del lado del servidor.
-      var clientAppUrl = baseUrl + '#q=' + payloadText;
+      var conn = parseShareConn(document.getElementById('shareConn').value);
+      if (!conn) { finishShare(state, longLink, ''); return; }
+      if (conn.invalid) { finishShare(state, longLink, shareReasonText('formato')); return; }
 
-      var cName = state.clientName;
-      var clientCleanPhone = cleanPhone(document.getElementById('clientPhone').value);
-
-      var waText =
-        '¡Hola ' + cName + '! 💪 Te saluda ' + displayCoach(state.coachName) + ' de Benessere Gym.\n\n' +
-        'Aquí tienes tu aplicación personalizada de entrenamiento:\n\n' +
-        '🔗 ' + clientAppUrl + '\n\n' +
-        '📌 *Pasos para guardarla en tu celular:*\n' +
-        '1. Toca el enlace para abrirlo en Safari (iPhone) o Chrome (Android).\n' +
-        '2. Toca en Compartir / Menú y selecciona "Agregar a pantalla de inicio".\n' +
-        '3. Abre siempre la app desde ese ícono para que tus cargas queden guardadas.\n\n' +
-        '⚠️ Si al abrir el ícono no ves tu rutina, vuelve a tocar este mismo enlace.\n\n' +
-        '¡Juntos somos más fuertes! 🔥';
-      var waMsg = encodeURIComponent(waText);
-
-      // Por si WhatsApp corta el borrador: el mensaje completo queda copiado para pegarlo
-      copyTextSilently(waText);
-
-      var waUrl = clientCleanPhone ? ('https://wa.me/' + clientCleanPhone + '?text=' + waMsg) : ('https://wa.me/?text=' + waMsg);
-      window.open(waUrl, '_blank');
+      // Enlace corto: la rutina se guarda en la hoja de Google y el enlace lleva solo el código
+      showShareWorking();
+      fetchJson(conn.base, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ k: conn.key, p: payloadText, coach: state.coachName, atleta: state.clientName })
+      }, 25000).then(function(j) {
+        if (j && j.ok && j.id) finishShare(state, baseUrl + '#i=' + j.id + '.' + conn.deployId, '');
+        else finishShare(state, longLink, shareReasonText(j && j.error ? j.error : 'respuesta'));
+      }).catch(function(e) {
+        finishShare(state, longLink, shareReasonText(e && e.message));
+      });
     }
 
     // ================= VISTA DEL ATLETA =================
@@ -1901,7 +2051,20 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       document.getElementById('coach_builder_view').style.display = 'none';
       document.getElementById('athlete_message_view').style.display = 'block';
       var t = document.getElementById('msg_title'), b = document.getElementById('msg_body'), i = document.getElementById('msg_icon');
-      if (kind === 'broken') {
+      document.getElementById('msg_retry').style.display = (kind === 'offline') ? 'inline-block' : 'none';
+      if (kind === 'loading') {
+        i.innerText = '⏳';
+        t.innerText = 'Cargando tu rutina…';
+        b.innerText = 'Un momento, por favor.';
+      } else if (kind === 'offline') {
+        i.innerText = '📡';
+        t.innerText = 'No pudimos cargar tu rutina';
+        b.innerText = 'Revisa tu conexión a internet e inténtalo de nuevo.';
+      } else if (kind === 'gone') {
+        i.innerText = '🔒';
+        t.innerText = 'Este enlace ya no está disponible';
+        b.innerText = 'Pídele a tu coach que te envíe uno nuevo.';
+      } else if (kind === 'broken') {
         i.innerText = '⚠️';
         t.innerText = 'Tu enlace llegó incompleto';
         b.innerText = 'Parte del enlace se cortó al enviarse, por eso no se puede leer tu rutina. Pídele a tu coach que te lo reenvíe.';
@@ -1911,6 +2074,39 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         b.innerText = 'Esta app se abre con el enlace personalizado que tu coach te envió por WhatsApp. Vuelve a tocar ese enlace para ver tu rutina.';
       }
       document.getElementById('msg_diag').innerText = detail || '';
+    }
+
+    // Enlace corto: pide la rutina a la hoja de Google usando el código del enlace
+    function loadFromShare(v) {
+      var m = String(v || '').match(/^([A-Za-z0-9]{6,32})\.([A-Za-z0-9_-]{20,200})$/);
+      if (!m) { showAthleteMessage('broken', 'Código de enlace no válido'); return; }
+      var id = m[1], deployId = m[2];
+      showAthleteMessage('loading', '');
+      fetchJson('https://script.google.com/macros/s/' + deployId + '/exec?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
+        .then(function(j) {
+          if (j && j.ok && j.p) {
+            var st = decodePayload('q', j.p);
+            if (!st) { showAthleteMessage('broken', 'Los datos recibidos están dañados'); return; }
+            try {
+              renderAthleteApp(st);
+              saveAthletePayload({ k: 'q', v: j.p, id: id });
+            } catch (e) {
+              console.error(e);
+              showAthleteMessage('broken', 'Error al mostrar la rutina: ' + (e && e.message ? e.message : e));
+            }
+          } else if (j && j.error === 'no-existe') {
+            showAthleteMessage('gone', '');
+          } else {
+            showAthleteMessage('broken', 'El servicio respondió con un error' + (j && j.error ? ' (' + j.error + ')' : ''));
+          }
+        })
+        .catch(function(e) {
+          // Sin internet: si es la misma rutina que ya se abrió antes, se muestra la guardada
+          var saved = loadAthletePayload();
+          var st2 = (saved && saved.id === id && saved.v) ? decodePayload(saved.k, saved.v) : null;
+          if (st2) { try { renderAthleteApp(st2); return; } catch (e2) {} }
+          showAthleteMessage('offline', (e && e.message === 'respuesta') ? 'El servicio no respondió como se esperaba' : '');
+        });
     }
 
     function hasCoachProfile() {
@@ -1924,6 +2120,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
       // 1) Llegó un enlace con rutina
       var payload = readPayloadFromUrl();
+      if (payload && payload.k === 'i') { loadFromShare(payload.v); return; }
       if (payload) {
         var st = decodePayload(payload.k, payload.v);
         if (!st) {
