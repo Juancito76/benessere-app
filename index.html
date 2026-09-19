@@ -257,7 +257,7 @@
     <header>
       <div class="header-title">
         <h1>Generador Pro Benessere</h1>
-        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v7</p>
+        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v8</p>
       </div>
       <div class="header-brand">
         <div class="gym-name">BENESSERE GYM</div>
@@ -282,15 +282,7 @@
         </div>
         <div class="form-grid">
           <div class="form-group"><label>Nombre del Coach *</label><input type="text" id="coachName" placeholder="Ej: Juan, María, Kenneth" autocomplete="off"></div>
-          <div class="form-group full-width"><div style="font-size:0.78rem; color:var(--muted); background:#111; border:1px solid #2a2a2a; border-radius:8px; padding:10px 12px; line-height:1.5;">🔒 Los reportes de los atletas llegan al WhatsApp del gimnasio (8494 9226). Ese número y el enlace de la app están fijos: no se pueden ver ni editar aquí.</div></div>
-          <div class="form-group full-width">
-            <label>Clave de coaches (para enlaces cortos)</label>
-            <input type="password" id="shareKey" autocomplete="off" placeholder="La clave que te dio el administrador">
-            <div style="display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap;">
-              <button type="button" class="btn btn-secondary" onclick="testShareConn()">🔌 Probar conexión</button>
-              <span id="shareStatus" style="font-size:0.78rem; color:var(--muted);"></span>
-            </div>
-          </div>
+          <div class="form-group full-width"><div style="font-size:0.78rem; color:var(--muted); background:#111; border:1px solid #2a2a2a; border-radius:8px; padding:10px 12px; line-height:1.5;">🔒 Los reportes de los atletas llegan al WhatsApp del gimnasio (8494 9226). Ese número, el enlace de la app y los enlaces cortos están fijos: no se pueden ver ni editar aquí.</div></div>
         </div>
         <div class="toggles-panel">
           <label class="toggle-item">
@@ -570,6 +562,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     var CONFIG_COACH_PHONE = '50684949226';   // WhatsApp que recibe TODOS los reportes (8494 9226)
     var APP_BASE_URL = 'https://juancito76.github.io/benessere-app/';   // página publicada en GitHub Pages
     var SHARE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDDBSyJPwxOB6kOp4MACBUfIceWKqE3prPEgvk9qKTEwEV_JE6PAFazavBv71fiJ1f/exec';   // servicio de la hoja de Google
+    var SHARE_KEY = '0205140133';   // clave del servicio (debe ser igual a la de la línea 13 del script de Google)
     var COACH_CFG_KEY = 'benessere_coach_cfg';
     var athleteCoachName = 'Coach Benessere';
     var athleteCoachPhone = CONFIG_COACH_PHONE;
@@ -596,17 +589,10 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var cfg = {};
       try { cfg = JSON.parse(localStorage.getItem(COACH_CFG_KEY) || '{}') || {}; } catch (e) { cfg = {}; }
       document.getElementById('coachName').value = cfg.name || '';
-      // La clave se recupera de lo guardado (o de la conexión completa que se guardaba antes)
-      var savedKey = cfg.key || '';
-      if (!savedKey && cfg.share) {
-        var oldK = String(cfg.share).match(/[?&]k=([^&\s]*)/);
-        if (oldK) { try { savedKey = decodeURIComponent(oldK[1]); } catch (e) { savedKey = oldK[1]; } }
-      }
-      document.getElementById('shareKey').value = savedKey;
       document.getElementById('featureNutrition').checked = cfg.nutrition === true;
       document.getElementById('featureDemos').checked = cfg.demos === true;
 
-      ['coachName', 'shareKey'].forEach(function(id) {
+      ['coachName'].forEach(function(id) {
         document.getElementById(id).addEventListener('input', saveCoachConfig);
       });
       ['featureNutrition', 'featureDemos'].forEach(function(id) {
@@ -618,7 +604,6 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       try {
         localStorage.setItem(COACH_CFG_KEY, JSON.stringify({
           name: document.getElementById('coachName').value.trim(),
-          key: document.getElementById('shareKey').value.trim(),
           nutrition: document.getElementById('featureNutrition').checked,
           demos: document.getElementById('featureDemos').checked
         }));
@@ -1376,37 +1361,21 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       });
     }
 
-    // Conexión con la hoja de Google: la dirección es fija; la clave la escribe cada coach una sola vez
+    // Conexión con la hoja de Google: la dirección y la clave son fijas (constantes de arriba)
     function getShareConn() {
-      var key = document.getElementById('shareKey').value.trim();
-      if (!key) return null;
-      return { base: SHARE_SCRIPT_URL, key: key };
+      return { base: SHARE_SCRIPT_URL, key: SHARE_KEY };
     }
 
     function shareReasonText(code) {
       var map = {
-        'clave': 'La clave no coincide con la del script de Google.',
-        'clave-sin-cambiar': 'Falta cambiar la clave dentro del script de Google.',
+        'clave': 'La clave del constructor no coincide con la del script de Google (avisa al administrador).',
+        'clave-sin-cambiar': 'Falta cambiar la clave dentro del script de Google (avisa al administrador).',
         'datos': 'El servicio rechazó los datos.',
         'timeout': 'El servicio tardó demasiado en responder.',
         'respuesta': 'El servicio no respondió como se esperaba (revisa que esté publicado para "Cualquier persona").',
-        'sin-clave': 'Falta escribir la clave de coaches en "Perfil del Coach".'
+        'sin-clave': 'Falta la clave del servicio.'
       };
       return map[code] || 'No se pudo conectar con el servicio (revisa tu internet).';
-    }
-
-    function testShareConn() {
-      var out = document.getElementById('shareStatus');
-      var conn = getShareConn();
-      function say(color, text) { out.style.color = color; out.innerText = text; }
-      if (!conn) return say('var(--muted)', 'Escribe primero la clave de coaches.');
-      say('var(--muted)', 'Probando…');
-      fetchJson(conn.base + '?ping=1&k=' + encodeURIComponent(conn.key), { redirect: 'follow' }, 20000).then(function(j) {
-        if (j && j.ok && j.sinCambiar) say('var(--accent)', '⚠️ Conecta, pero falta cambiar la clave dentro del script de Google.');
-        else if (j && j.ok && j.clave) say('var(--success)', '✅ Conectado correctamente.');
-        else if (j && j.ok) say('var(--accent)', '⚠️ Conecta, pero la clave no coincide con la del script.');
-        else say('var(--danger)', '❌ ' + shareReasonText('respuesta'));
-      }).catch(function(e) { say('var(--danger)', '❌ ' + shareReasonText(e && e.message)); });
     }
 
     function buildWaText(state, link) {
@@ -1484,7 +1453,6 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var longLink = baseUrl + '#q=' + payloadText;
 
       var conn = getShareConn();
-      if (!conn) { finishShare(state, longLink, shareReasonText('sin-clave')); return; }
 
       // Enlace corto: la rutina se guarda en la hoja de Google y el enlace lleva solo el código
       showShareWorking();
