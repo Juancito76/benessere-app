@@ -248,6 +248,26 @@
     .metric-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
     .metric-title { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
     .metric-val { font-size: 1rem; color: var(--primary); font-weight: 800; margin-top: 2px; }
+
+    /* Mediciones por fecha */
+    .med-h { font-size: 0.8rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin: 18px 0 8px; }
+    .med-chip-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin: 4px 0 8px; }
+    .med-chip { flex: 0 0 auto; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+    .med-chip.active { background: var(--primary); color: #000; border-color: var(--primary); }
+    .med-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    .med-sum { font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-top: 8px; }
+    .med-delta { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+    .med-delta span { opacity: 0.7; }
+    .med-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+    .med-table { border-collapse: collapse; width: 100%; font-size: 0.76rem; }
+    .med-table th, .med-table td { padding: 7px 9px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+    .med-table th { color: var(--muted); font-weight: 700; background: var(--card); line-height: 1.2; }
+    .med-table th small { font-weight: 500; opacity: 0.8; }
+    .med-table th:first-child, .med-table td:first-child { text-align: left; position: sticky; left: 0; background: var(--card); }
+    .med-x { background: transparent; border: none; cursor: pointer; font-size: 0.85rem; padding: 0 2px; }
+    .med-lbl { display: block; font-size: 0.7rem; color: var(--muted); font-weight: 600; margin: 8px 0 3px; }
+    .med-in { width: 100%; padding: 9px 10px; background: var(--card-inner); border: 1px solid var(--border); color: #fff; border-radius: 8px; font-size: 0.9rem; }
+    .med-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
   </style>
 </head>
 <body>
@@ -257,7 +277,7 @@
     <header>
       <div class="header-title">
         <h1>Generador Pro Benessere</h1>
-        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v8</p>
+        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v9</p>
       </div>
       <div class="header-brand">
         <div class="gym-name">BENESSERE GYM</div>
@@ -396,6 +416,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       <section class="section-box">
         <div class="section-title">📏 Ficha Antropométrica <span class="badge">Medidas</span></div>
         <div class="form-grid">
+          <div class="form-group"><label>📅 Fecha de la medición</label><input type="date" id="m_fecha"></div>
           <div class="form-group"><label>Objetivo Principal</label><input type="text" id="m_objetivo" placeholder="Ej: Hipertrofia muscular"></div>
           <div class="form-group"><label>Estatura</label><input type="text" id="m_estatura" placeholder="Ej: 178 cm"></div>
           <div class="form-group"><label>Peso Corporal (KG)</label><input type="text" id="m_peso_kg" placeholder="Ej: 78.5 kg"></div>
@@ -412,6 +433,14 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           <div class="form-group"><label>Pantorrilla Derecha</label><input type="text" id="m_pant_der" placeholder="Ej: 38 cm"></div>
           <div class="form-group"><label>Pantorrilla Izquierda</label><input type="text" id="m_pant_izq" placeholder="Ej: 38 cm"></div>
         </div>
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center;">
+          <button type="button" class="btn btn-secondary" onclick="saveMeasureEntry()">➕ Guardar medición en el historial</button>
+          <span id="med_status" style="font-size:0.78rem; color:var(--success);"></span>
+        </div>
+        <p style="font-size:0.75rem; color:var(--muted); margin:8px 0 0; line-height:1.5;">Elige la fecha, escribe las medidas de ese día y toca "Guardar". En cada control repite con otra fecha (guarda también la primera medición): el atleta verá cómo cambia en un gráfico.</p>
+        <div class="med-h">📈 Historial de mediciones <span id="med_count"></span></div>
+        <div id="measureLogList"></div>
+        <div id="measureChartBox"></div>
       </section>
     </div>
 
@@ -476,6 +505,20 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         <div style="width:50px;"></div>
       </div>
       <div class="metrics-grid" id="ath_metricsGrid"></div>
+      <div id="ath_medBody"></div>
+      <details class="med-panel" id="med_add" style="margin-top:14px;">
+        <summary style="cursor:pointer; font-weight:800; color:var(--accent); font-size:0.9rem;">➕ Agregar una medición</summary>
+        <div style="margin-top:10px;">
+          <label class="med-lbl">Fecha</label>
+          <input type="date" id="med_new_date" class="med-in">
+          <div id="med_new_fields" class="med-form-grid"></div>
+          <p class="med-sum">Llena solo lo que te midas. Se guarda en este teléfono y se suma a tu gráfico.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button type="button" class="btn-action-primary" style="flex:1; min-width:120px;" onclick="saveOwnMeasure(false)">Guardar</button>
+            <button type="button" class="btn-action-wa" style="flex:1; min-width:150px;" onclick="saveOwnMeasure(true)">Guardar y enviar al coach</button>
+          </div>
+        </div>
+      </details>
     </div>
 
     <div id="modal_intercambios" class="modal-overlay">
@@ -557,6 +600,356 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
     var athleteActiveState = null;
     var lastActiveDayId = '';
+    // ================= MEDICIONES POR FECHA (historial + gráfico) =================
+    // El orden de esta lista es parte del formato del enlace: no se debe cambiar ni reordenar.
+    var MEASURE_FIELDS = [
+      { k: 'm_peso_kg',   label: 'Peso corporal',         short: 'Peso',      unit: 'kg' },
+      { k: 'm_grasa',     label: '% Grasa corporal',      short: '% Grasa',   unit: '%' },
+      { k: 'm_musculo',   label: '% Masa muscular',       short: '% Músculo', unit: '%' },
+      { k: 'm_visceral',  label: 'Índice visceral',       short: 'Visceral',  unit: '' },
+      { k: 'm_edad_meta', label: 'Edad metabólica',       short: 'Edad met.', unit: 'años' },
+      { k: 'm_espalda',   label: 'Espalda',               short: 'Espalda',   unit: 'cm' },
+      { k: 'm_cintura1',  label: 'Cintura 1 (ombligo)',   short: 'Cintura 1', unit: 'cm' },
+      { k: 'm_cintura2',  label: 'Cintura 2 (estrecha)',  short: 'Cintura 2', unit: 'cm' },
+      { k: 'm_cadera',    label: 'Cadera',                short: 'Cadera',    unit: 'cm' },
+      { k: 'm_muslo_der', label: 'Muslo derecho',         short: 'Muslo D',   unit: 'cm' },
+      { k: 'm_muslo_izq', label: 'Muslo izquierdo',       short: 'Muslo I',   unit: 'cm' },
+      { k: 'm_pant_der',  label: 'Pantorrilla derecha',   short: 'Pant. D',   unit: 'cm' },
+      { k: 'm_pant_izq',  label: 'Pantorrilla izquierda', short: 'Pant. I',   unit: 'cm' }
+    ];
+    var measureLog = [];     // constructor: mediciones guardadas [{ d: 'AAAA-MM-DD', v: { m_peso_kg: 78.5, ... } }]
+    var coachMedKey = '';    // medida que se grafica en el constructor
+    var athMedKey = '';      // medida que se grafica en la vista del atleta
+
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    // Fecha de hoy según el reloj del teléfono (no en UTC, para que de noche no salga "mañana")
+    function todayIso() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    function isIsoDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(Date.parse(s + 'T00:00:00Z')); }
+    function fmtDate(iso) { var p = String(iso).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+    function fmtDateShort(iso) { var p = String(iso).split('-'); return p[2] + '/' + p[1]; }
+    function fmtDateTable(iso) { var p = String(iso).split('-'); return p[2] + '/' + p[1] + '/' + p[0].slice(2); }
+    function dayNum(iso) { return Date.parse(iso + 'T00:00:00Z') / 86400000; }
+    // Saca el primer número de un texto: "78,5 kg" -> 78.5 ; "Nivel 4" -> 4 ; "15%" -> 15
+    function parseNum(s) {
+      var m = String(s == null ? '' : s).replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+      return m ? parseFloat(m[0]) : null;
+    }
+    function fmtNum(n) { return String(Math.round(n * 10) / 10); }
+    function withUnit(n, unit) { var t = fmtNum(n); return unit === '%' ? t + '%' : (unit ? t + ' ' + unit : t); }
+    function fieldInfo(k) { for (var i = 0; i < MEASURE_FIELDS.length; i++) { if (MEASURE_FIELDS[i].k === k) return MEASURE_FIELDS[i]; } return null; }
+    function byDate(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); }
+    function indexOfDate(arr, d) { for (var i = 0; i < arr.length; i++) { if (arr[i].d === d) return i; } return -1; }
+    function sameValues(a, b) {
+      var ka = Object.keys(a), kb = Object.keys(b);
+      if (ka.length !== kb.length) return false;
+      return ka.every(function(k) { return b[k] === a[k]; });
+    }
+    function deltaText(diff, unit) {
+      var d = Math.round(diff * 10) / 10;
+      if (d === 0) return 'sin cambio';
+      return (d > 0 ? '▲ +' : '▼ −') + fmtNum(Math.abs(d)) + (unit === '%' ? ' pts' : (unit ? ' ' + unit : ''));
+    }
+
+    // Deja solo mediciones válidas, con números, ordenadas por fecha
+    function normalizeMeasureLog(arr) {
+      var out = [];
+      (Array.isArray(arr) ? arr : []).forEach(function(e) {
+        if (!e || !isIsoDate(e.d) || !e.v) return;
+        var v = {};
+        MEASURE_FIELDS.forEach(function(f) { var n = parseNum(e.v[f.k]); if (n !== null && isFinite(n)) v[f.k] = n; });
+        if (Object.keys(v).length) out.push({ d: e.d, v: v });
+      });
+      out.sort(byDate);
+      return out;
+    }
+
+    // Enlaces anteriores traían una sola ficha sin fecha: se toma como la primera medición
+    function legacyBaseline(st) {
+      var m = (st && st.measures) || {};
+      var v = {};
+      MEASURE_FIELDS.forEach(function(f) { var n = parseNum(m[f.k]); if (n !== null) v[f.k] = n; });
+      if (!Object.keys(v).length) return null;
+      return { d: isIsoDate(st.startDate) ? st.startDate : todayIso(), v: v };
+    }
+
+    // Serie de una medida a lo largo del tiempo (si el coach y el atleta miden el mismo día, gana la del coach)
+    function medSeries(entries, key) {
+      var byD = {};
+      entries.forEach(function(e) {
+        var n = e.v[key];
+        if (n == null || isNaN(n)) return;
+        if (!byD[e.d] || e.src !== 'a') byD[e.d] = { d: e.d, n: n, src: e.src };
+      });
+      return Object.keys(byD).sort().map(function(d) { return byD[d]; });
+    }
+    function medKeysWithData(entries) {
+      return MEASURE_FIELDS.filter(function(f) { return entries.some(function(e) { return e.v[f.k] != null; }); });
+    }
+
+    // Elige qué etiquetas dibujar para que no se encimen: siempre la última y, hacia atrás, las que quepan
+    function pickLabelIdx(xs, gap) {
+      var keep = {}, lastX = null;
+      for (var i = xs.length - 1; i >= 0; i--) {
+        if (lastX === null || lastX - xs[i] >= gap) { keep[i] = true; lastX = xs[i]; }
+      }
+      return keep;
+    }
+
+    // Marcas "redondas" para el eje vertical (por ejemplo 74, 76, 78 en vez de 74.9, 77.6, 80.4)
+    function niceTicks(lo, hi) {
+      var range = hi - lo;
+      if (!(range > 0)) return [lo];
+      var rough = range / 4, pow = Math.pow(10, Math.floor(Math.log(rough) / Math.LN10)), f = rough / pow;
+      var step = (f < 1.5 ? 1 : (f < 3 ? 2 : (f < 7 ? 5 : 10))) * pow, ticks = [];
+      for (var v = Math.ceil(lo / step) * step, guard = 0; v <= hi + step * 1e-6 && guard < 12; v += step, guard++) ticks.push(Math.round(v * 100) / 100);
+      return ticks;
+    }
+
+    function medChartSvg(series) {
+      var W = 340, H = 200, pl = 44, pr = 16, pt = 26, pb = 34;
+      var n = series.length;
+      var vals = series.map(function(s) { return s.n; });
+      var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      if (hi === lo) { lo -= 1; hi += 1; }
+      var margin = (hi - lo) * 0.18; lo -= margin; hi += margin;
+      var t0 = dayNum(series[0].d), t1 = dayNum(series[n - 1].d), span = Math.max(t1 - t0, 1);
+      var inset = 12, iw = W - pl - pr - 2 * inset, ih = H - pt - pb;   // los puntos no tocan el eje ni el borde
+      function X(d) { return n === 1 ? pl + inset + iw / 2 : pl + inset + (dayNum(d) - t0) / span * iw; }
+      function Y(v) { return pt + (hi - v) / (hi - lo) * ih; }
+      var xs = series.map(function(s) { return X(s.d); });
+      var valIdx = pickLabelIdx(xs, 36), dateIdx = pickLabelIdx(xs, 50);
+
+      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; max-width:100%; height:auto;" role="img" aria-label="Gráfico de evolución">';
+      niceTicks(lo, hi).forEach(function(gv) {
+        var gy = Y(gv);
+        s += '<line x1="' + pl + '" y1="' + gy.toFixed(1) + '" x2="' + (W - pr) + '" y2="' + gy.toFixed(1) + '" style="stroke:#333333; stroke-width:1;"/>';
+        s += '<text x="' + (pl - 6) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end" style="fill:#a3a3a3; font-size:10px;">' + fmtNum(gv) + '</text>';
+      });
+      if (n > 1) {
+        var path = '';
+        series.forEach(function(p, i) { path += (i ? 'L' : 'M') + xs[i].toFixed(1) + ',' + Y(p.n).toFixed(1) + ' '; });
+        s += '<path d="' + path + '" style="fill:none; stroke:#00e5ff; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round;"/>';
+      }
+      series.forEach(function(p, i) {
+        var x = xs[i], y = Y(p.n);
+        var anchor = x > W - 26 ? 'end' : 'middle';
+        s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" style="fill:' + (p.src === 'a' ? '#0d0d0d' : '#00e5ff') + '; stroke:#00e5ff; stroke-width:2;"/>';
+        var crowded = (i === n - 1 && n > 1 && xs[i] - xs[i - 1] < 36);
+        if (valIdx[i]) s += '<text x="' + x.toFixed(1) + '" y="' + (crowded ? y + 17 : y - 9).toFixed(1) + '" text-anchor="' + anchor + '" style="fill:#ffffff; font-size:10.5px; font-weight:700;">' + fmtNum(p.n) + '</text>';
+        if (dateIdx[i]) s += '<text x="' + x.toFixed(1) + '" y="' + (H - 12) + '" text-anchor="' + anchor + '" style="fill:#a3a3a3; font-size:10px;">' + fmtDateShort(p.d) + '</text>';
+      });
+      return s + '</svg>';
+    }
+
+    // Selector de medida + gráfico + resumen del cambio
+    function medChartBlock(entries, selKey, selectFn) {
+      var keys = medKeysWithData(entries);
+      if (!keys.length) return '';
+      if (!selKey || !keys.some(function(f) { return f.k === selKey; })) selKey = keys[0].k;
+      var f = fieldInfo(selKey), series = medSeries(entries, selKey);
+      var first = series[0], last = series[series.length - 1];
+      var chips = keys.map(function(f2) {
+        return '<button type="button" class="med-chip' + (f2.k === selKey ? ' active' : '') + '" onclick="' + selectFn + '(\'' + f2.k + '\')">' + f2.short + '</button>';
+      }).join('');
+      var summary;
+      if (series.length >= 2) {
+        summary = 'De <b>' + withUnit(first.n, f.unit) + '</b> (' + fmtDate(first.d) + ') a <b>' + withUnit(last.n, f.unit) + '</b> (' + fmtDate(last.d) + '): <b>' + deltaText(last.n - first.n, f.unit) + '</b>';
+      } else {
+        summary = 'Solo hay una medición (' + fmtDate(first.d) + '). Con otra medición en otra fecha se verá cómo cambia.';
+      }
+      var hasOwn = series.some(function(p) { return p.src === 'a'; });
+      return '<div class="med-chip-row">' + chips + '</div>' +
+        '<div class="med-panel"><div style="font-weight:800; font-size:0.9rem; margin-bottom:6px;">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</div>' +
+        medChartSvg(series) +
+        '<div class="med-sum">' + summary + '</div>' +
+        (hasOwn ? '<div class="med-sum">● medición del coach &nbsp;&nbsp; ○ tu medición</div>' : '') + '</div>';
+    }
+
+    // Tabla de mediciones (más reciente primero)
+    function medTableHtml(entries, mode) {
+      var keys = medKeysWithData(entries);
+      if (!keys.length) return '';
+      var head = '<tr><th>Fecha</th>' + keys.map(function(f) {
+        return '<th>' + f.short + (f.unit ? '<br><small>' + f.unit + '</small>' : '') + '</th>';
+      }).join('') + (mode === 'coach' ? '<th></th>' : '') + '</tr>';
+      var rows = entries.slice().sort(function(a, b) { return a.d < b.d ? 1 : (a.d > b.d ? -1 : 0); }).map(function(e) {
+        var mark = e.src === 'a' ? ' 👤' : '';
+        var del = (mode === 'athlete' && e.src === 'a') ? ' <button type="button" class="med-x" title="Borrar" onclick="deleteOwnMeasure(\'' + e.d + '\')">🗑</button>' : '';
+        var cells = keys.map(function(f) { return '<td>' + (e.v[f.k] != null ? fmtNum(e.v[f.k]) : '–') + '</td>'; }).join('');
+        var acts = mode === 'coach'
+          ? '<td><button type="button" class="med-x" title="Editar" onclick="editMeasureEntry(\'' + e.d + '\')">✏️</button><button type="button" class="med-x" title="Borrar" onclick="deleteMeasureEntry(\'' + e.d + '\')">🗑</button></td>'
+          : '';
+        return '<tr><td>' + fmtDateTable(e.d) + mark + del + '</td>' + cells + acts + '</tr>';
+      }).join('');
+      return '<div class="med-table-wrap"><table class="med-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
+    }
+
+    // ----- Constructor (coach) -----
+    function initMeasureForm() {
+      var f = document.getElementById('m_fecha');
+      if (f && !f.value) f.value = todayIso();
+      renderMeasureLog();
+    }
+    function readMeasureForm() {
+      var v = {};
+      MEASURE_FIELDS.forEach(function(f) {
+        var el = document.getElementById(f.k);
+        var n = el ? parseNum(el.value) : null;
+        if (n !== null) v[f.k] = n;
+      });
+      return v;
+    }
+    function saveMeasureEntry() {
+      var d = document.getElementById('m_fecha').value;
+      if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
+      var v = readMeasureForm();
+      if (!Object.keys(v).length) { alert('Escribe al menos una medida (por ejemplo el peso) antes de guardar.'); return; }
+      var i = indexOfDate(measureLog, d);
+      if (i >= 0 && !sameValues(measureLog[i].v, v) && !confirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Reemplazarla con estos valores?')) return;
+      if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
+      measureLog.sort(byDate);
+      renderMeasureLog();
+      var st = document.getElementById('med_status');
+      if (st) st.innerText = '✅ Medición del ' + fmtDate(d) + ' guardada en el historial.';
+    }
+    // Antes de crear un enlace: que las medidas escritas en el formulario no se pierdan por olvidar "Guardar"
+    function ensureMeasureSaved() {
+      var el = document.getElementById('m_fecha');
+      if (!el) return;
+      var d = el.value, v = readMeasureForm();
+      if (!isIsoDate(d) || !Object.keys(v).length) return;
+      var i = indexOfDate(measureLog, d);
+      if (i >= 0 && sameValues(measureLog[i].v, v)) return;
+      if (measureLog.length === 0 || confirm((i >= 0 ? 'La medición del ' + fmtDate(d) + ' tiene cambios sin guardar.' : 'Hay una medición del ' + fmtDate(d) + ' sin guardar en el historial.') + '\n\n¿Guardarla antes de crear el enlace?')) {
+        if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
+        measureLog.sort(byDate);
+        renderMeasureLog();
+      }
+    }
+    function editMeasureEntry(d) {
+      var i = indexOfDate(measureLog, d);
+      if (i < 0) return;
+      document.getElementById('m_fecha').value = d;
+      MEASURE_FIELDS.forEach(function(f) {
+        var n = measureLog[i].v[f.k];
+        document.getElementById(f.k).value = (n == null) ? '' : withUnit(n, f.unit);
+      });
+      var st = document.getElementById('med_status');
+      if (st) st.innerText = '✏️ Editando la medición del ' + fmtDate(d) + '. Cambia lo que necesites y toca "Guardar".';
+      var fld = document.getElementById('m_fecha');
+      if (fld && fld.scrollIntoView) fld.scrollIntoView({ block: 'center' });
+    }
+    function deleteMeasureEntry(d) {
+      if (!confirm('¿Borrar la medición del ' + fmtDate(d) + '?')) return;
+      measureLog = measureLog.filter(function(e) { return e.d !== d; });
+      renderMeasureLog();
+    }
+    function selectCoachMedMetric(k) { coachMedKey = k; renderMeasureLog(); }
+    function renderMeasureLog() {
+      var box = document.getElementById('measureLogList');
+      if (!box) return;
+      var cnt = document.getElementById('med_count');
+      if (cnt) cnt.innerText = measureLog.length ? '(' + measureLog.length + ')' : '';
+      var chartBox = document.getElementById('measureChartBox');
+      if (!measureLog.length) {
+        box.innerHTML = '<div class="med-sum">Aún no hay mediciones guardadas.</div>';
+        if (chartBox) chartBox.innerHTML = '';
+        return;
+      }
+      var entries = measureLog.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
+      box.innerHTML = medTableHtml(entries, 'coach');
+      if (chartBox) chartBox.innerHTML = '<div class="med-h">Evolución</div>' + medChartBlock(entries, coachMedKey, 'selectCoachMedMetric');
+    }
+
+    // ----- Vista del atleta -----
+    function medOwnKey(name) { return 'benessere_med_' + String(name || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+    function loadOwnMeasures(name) {
+      try { return normalizeMeasureLog(JSON.parse(localStorage.getItem(medOwnKey(name)) || '[]')); } catch (e) { return []; }
+    }
+    function saveOwnMeasures(name, arr) { try { localStorage.setItem(medOwnKey(name), JSON.stringify(arr)); } catch (e) {} }
+
+    // Mediciones del coach (o la ficha antigua como primera medición) + las que anotó el propio atleta
+    function athleteEntries(st) {
+      var coach = normalizeMeasureLog(st.measureLog);
+      if (!coach.length) { var base = legacyBaseline(st); if (base) coach = [base]; }
+      var list = coach.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
+      loadOwnMeasures(st.clientName).forEach(function(e) { list.push({ d: e.d, v: e.v, src: 'a' }); });
+      list.sort(byDate);
+      return list;
+    }
+    function ensureAddForm() {
+      var box = document.getElementById('med_new_fields');
+      if (!box || box.children.length) return;
+      box.innerHTML = MEASURE_FIELDS.map(function(f) {
+        return '<div><label class="med-lbl">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</label><input type="text" inputmode="decimal" class="med-in" id="med_new_' + f.k + '" autocomplete="off"></div>';
+      }).join('');
+    }
+    function selectMedMetric(k) {
+      athMedKey = k;
+      var st = athleteActiveState, box = document.getElementById('med_chart_box');
+      if (st && box) box.innerHTML = medChartBlock(athleteEntries(st), athMedKey, 'selectMedMetric');
+    }
+    function renderAthleteMeasures() {
+      var st = athleteActiveState, body = document.getElementById('ath_medBody');
+      if (!st || !body) return;
+      ensureAddForm();
+      var dEl = document.getElementById('med_new_date');
+      if (dEl && !dEl.value) dEl.value = todayIso();
+      var entries = athleteEntries(st);
+      if (!entries.length) {
+        body.innerHTML = '<div class="med-sum" style="margin-top:12px;">Todavía no hay mediciones con fecha. Toca "➕ Agregar una medición" para empezar tu historial y ver tu evolución en un gráfico.</div>';
+        return;
+      }
+      var m = st.measures || {};
+      document.getElementById('ath_metricsGrid').innerHTML =
+        '<div class="metric-card"><div class="metric-title">Objetivo</div><div class="metric-val" style="color:var(--accent); font-size:0.85rem;">' + escHtml(m.m_objetivo || '-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Estatura</div><div class="metric-val">' + escHtml(m.m_estatura || '-') + '</div></div>';
+      var keys = medKeysWithData(entries), lastDate = entries[entries.length - 1].d;
+      var cards = keys.map(function(f) {
+        var s = medSeries(entries, f.k), cur = s[s.length - 1], prev = s.length > 1 ? s[s.length - 2] : null;
+        return '<div class="metric-card"><div class="metric-title">' + f.label + '</div><div class="metric-val">' + withUnit(cur.n, f.unit) + '</div>' +
+          (prev ? '<div class="med-delta">' + deltaText(cur.n - prev.n, f.unit) + ' <span>vs ' + fmtDateShort(prev.d) + '</span></div>' : '') +
+          (cur.d !== lastDate ? '<div class="med-delta"><span>medido el ' + fmtDateShort(cur.d) + '</span></div>' : '') + '</div>';
+      }).join('');
+      body.innerHTML = '<div class="med-h">Última medición · ' + fmtDate(lastDate) + '</div><div class="metrics-grid">' + cards + '</div>' +
+        '<div class="med-h">Evolución</div><div id="med_chart_box">' + medChartBlock(entries, athMedKey, 'selectMedMetric') + '</div>' +
+        '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, 'athlete') +
+        '<div class="med-sum">● = medición del coach &nbsp; 👤 = medición que anotaste tú</div>';
+    }
+    function saveOwnMeasure(sendToCoach) {
+      var st = athleteActiveState;
+      if (!st) return;
+      var d = document.getElementById('med_new_date').value;
+      if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
+      var v = {};
+      MEASURE_FIELDS.forEach(function(f) {
+        var n = parseNum(document.getElementById('med_new_' + f.k).value);
+        if (n !== null) v[f.k] = n;
+      });
+      var keys = Object.keys(v);
+      if (!keys.length) { alert('Escribe al menos una medida (por ejemplo tu peso).'); return; }
+      var own = loadOwnMeasures(st.clientName), i = indexOfDate(own, d);
+      if (i >= 0) { Object.keys(v).forEach(function(k) { own[i].v[k] = v[k]; }); } else { own.push({ d: d, v: v }); }
+      own.sort(byDate);
+      saveOwnMeasures(st.clientName, own);
+      MEASURE_FIELDS.forEach(function(f) { document.getElementById('med_new_' + f.k).value = ''; });
+      document.getElementById('med_add').open = false;
+      athMedKey = keys[0];
+      renderAthleteMeasures();
+      if (sendToCoach) sendMeasureToCoach(st, d, v);
+    }
+    function sendMeasureToCoach(st, d, v) {
+      var lines = ['*Medidas - ' + st.clientName + '*', 'Coach: ' + athleteCoachName, 'Fecha: ' + fmtDate(d), ''];
+      MEASURE_FIELDS.forEach(function(f) { if (v[f.k] != null) lines.push('• ' + f.label + ': ' + withUnit(v[f.k], f.unit)); });
+      window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(lines.join('\n')), '_blank');
+    }
+    function deleteOwnMeasure(d) {
+      var st = athleteActiveState;
+      if (!st || !confirm('¿Borrar tu medición del ' + fmtDate(d) + '?')) return;
+      saveOwnMeasures(st.clientName, loadOwnMeasures(st.clientName).filter(function(e) { return e.d !== d; }));
+      renderAthleteMeasures();
+    }
+
     // ===== DATOS FIJOS DEL GIMNASIO =====
     // Los coaches no pueden cambiarlos desde la pantalla. Para modificarlos hay que editar este archivo.
     var CONFIG_COACH_PHONE = '50684949226';   // WhatsApp que recibe TODOS los reportes (8494 9226)
@@ -667,12 +1060,12 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
               '<div class="form-grid">' +
                 '<div class="form-group" style="grid-column: span 2;">' +
                   '<label>Nombre del Ejercicio</label>' +
-                  '<input type="text" value="' + (sub.name || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].name = this.value" placeholder="Ej: Sentadilla Goblet">' +
+                  '<input type="text" value="' + escHtml(sub.name || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].name = this.value" placeholder="Ej: Sentadilla Goblet">' +
                 '</div>' +
-                '<div class="form-group"><label>Series</label><input type="text" value="' + (sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
-                '<div class="form-group"><label>Reps</label><input type="text" value="' + (sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
-                '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + (sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
-                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';"><label>Video YouTube</label><input type="text" value="' + (sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value"></div>' +
+                '<div class="form-group"><label>Series</label><input type="text" value="' + escHtml(sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
+                '<div class="form-group"><label>Reps</label><input type="text" value="' + escHtml(sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
+                '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + escHtml(sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
+                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';"><label>Video YouTube</label><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value"></div>' +
               '</div>' +
             '</div>';
           });
@@ -691,17 +1084,17 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         });
 
         dayDiv.innerHTML = '<div class="day-header">' +
-          '<input type="text" class="day-title-input" value="' + (day.title || 'Día') + '" oninput="routineDays[' + dayIndex + '].title = this.value">' +
+          '<input type="text" class="day-title-input" value="' + escHtml(day.title || 'Día') + '" oninput="routineDays[' + dayIndex + '].title = this.value">' +
           '<button type="button" class="btn btn-danger" style="font-size:0.75rem; padding:4px 8px;" onclick="removeDay(' + dayIndex + ')">🗑️ Eliminar Día</button>' +
         '</div>' +
         '<div class="habits-bar">' +
-          '<div class="form-group"><label>🎯 Calorías</label><input type="text" value="' + (day.habits ? day.habits.kcal || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.kcal = this.value"></div>' +
-          '<div class="form-group"><label>💧 Hidratación</label><input type="text" value="' + (day.habits ? day.habits.agua || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.agua = this.value"></div>' +
-          '<div class="form-group"><label>😴 Sueño</label><input type="text" value="' + (day.habits ? day.habits.sueno || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.sueno = this.value"></div>' +
-          '<div class="form-group"><label>👟 Meta Pasos</label><input type="text" value="' + (day.habits ? day.habits.pasos || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.pasos = this.value"></div>' +
-          '<div class="form-group"><label>🏋️ Entrenamiento</label><input type="text" value="' + (day.habits ? day.habits.entreno || 'Sesión programada' : 'Sesión programada') + '" oninput="routineDays[' + dayIndex + '].habits.entreno = this.value"></div>' +
+          '<div class="form-group"><label>🎯 Calorías</label><input type="text" value="' + escHtml(day.habits ? day.habits.kcal || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.kcal = this.value"></div>' +
+          '<div class="form-group"><label>💧 Hidratación</label><input type="text" value="' + escHtml(day.habits ? day.habits.agua || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.agua = this.value"></div>' +
+          '<div class="form-group"><label>😴 Sueño</label><input type="text" value="' + escHtml(day.habits ? day.habits.sueno || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.sueno = this.value"></div>' +
+          '<div class="form-group"><label>👟 Meta Pasos</label><input type="text" value="' + escHtml(day.habits ? day.habits.pasos || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.pasos = this.value"></div>' +
+          '<div class="form-group"><label>🏋️ Entrenamiento</label><input type="text" value="' + escHtml(day.habits ? day.habits.entreno || 'Sesión programada' : 'Sesión programada') + '" oninput="routineDays[' + dayIndex + '].habits.entreno = this.value"></div>' +
         '</div>' +
-        '<div class="security-box"><label style="color:var(--primary); font-weight:800; margin-bottom:6px; display:block;">🛡️ Protocolo de Seguridad</label><input type="text" value="' + (day.security || '') + '" oninput="routineDays[' + dayIndex + '].security = this.value"></div>' +
+        '<div class="security-box"><label style="color:var(--primary); font-weight:800; margin-bottom:6px; display:block;">🛡️ Protocolo de Seguridad</label><input type="text" value="' + escHtml(day.security || '') + '" oninput="routineDays[' + dayIndex + '].security = this.value"></div>' +
         '<div class="diet-box" style="display:' + (showNutri ? 'block' : 'none') + ';"><label style="color:var(--accent); font-weight:800; margin-bottom:8px; display:block;">🥗 Nutrición (Método de la Mano)</label>' +
           '<div class="form-grid">' +
             '<div class="form-group"><label>🍳 Desayuno</label><textarea style="min-height:50px;" oninput="routineDays[' + dayIndex + '].diet.desayuno = this.value">' + (day.diet ? day.diet.desayuno || '' : '') + '</textarea></div>' +
@@ -904,6 +1297,12 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           if (el) el.value = state.measures[k] || '';
         });
       }
+      // Historial de mediciones (los enlaces antiguos traían una sola ficha: pasa a ser la primera medición)
+      measureLog = normalizeMeasureLog(state.measureLog);
+      if (!measureLog.length) { var baseM = legacyBaseline(state); if (baseM) measureLog = [baseM]; }
+      var fechaEl = document.getElementById('m_fecha');
+      if (fechaEl) fechaEl.value = measureLog.length ? measureLog[measureLog.length - 1].d : todayIso();
+      renderMeasureLog();
 
       // Compatibilidad universal con cualquier clave de días antigua
       var rawDays = state.routineDays || state.days || state.dias || state.d || [];
@@ -1138,6 +1537,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         coachMsgTitle: msgTitle, coachMsgBody: msgBody,
         coachName: document.getElementById('coachName').value.trim(),
         coachPhone: CONFIG_COACH_PHONE,
+        measureLog: normalizeMeasureLog(measureLog),
         configFeatures: { nutrition: isNutri, demos: isDemos },
         measures: {
           m_objetivo: document.getElementById('m_objetivo').value.trim() || '-',
@@ -1199,7 +1599,10 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           return dArr;
         }),
         full.coachName || '',
-        ''
+        '',
+        (full.measureLog || []).map(function(e) {
+          return [e.d].concat(MEASURE_FIELDS.map(function(f) { return e.v[f.k] == null ? '' : e.v[f.k]; }));
+        })
       ];
     }
 
@@ -1233,6 +1636,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         coachMsgBody: c[5] || '',
         coachName: c[9] || '',
         coachPhone: c[10] || '',
+        measureLog: normalizeMeasureLog((Array.isArray(c[11]) ? c[11] : []).filter(Array.isArray).map(function(r) {
+          var v = {};
+          MEASURE_FIELDS.forEach(function(f, i) { if (r[i + 1] !== '' && r[i + 1] != null) v[f.k] = r[i + 1]; });
+          return { d: r[0], v: v };
+        })),
         configFeatures: { nutrition: feats[0] === 1, demos: feats[1] === 1 },
         measures: {
           m_objetivo: m[0]||'-', m_estatura: m[1]||'-', m_peso_kg: m[2]||'-',
@@ -1447,6 +1855,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var baseUrl = getAppBaseUrl();
       if (!baseUrl) return;
 
+      ensureMeasureSaved();
       var state = getBuilderState();
       var payloadText = encodePayload(buildUltraCompactState(state));
       // Enlace largo: la rutina completa dentro del enlace (funciona sin servidor)
@@ -1474,6 +1883,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       athleteActiveState = state;
       athleteCoachName = displayCoach(state.coachName);
       athleteCoachPhone = CONFIG_COACH_PHONE;   // fijo: se ignora cualquier número que traiga el enlace
+      // Los identificadores del enlace solo pueden tener letras, números, guion y guion bajo
+      (state.routineDays || []).forEach(function(d, i) { d.id = String(d.id == null ? '' : d.id).replace(/[^A-Za-z0-9_-]/g, '') || ('d' + (i + 1)); });
       var congratsBtn = document.getElementById('ath_congratsWaBtn');
       if (congratsBtn) congratsBtn.innerText = '📲 Enviar Reporte a ' + athleteCoachName;
       document.getElementById('coach_builder_view').style.display = 'none';
@@ -1499,7 +1910,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       capsuleHtml += '<button class="capsule-btn btn-medidas" onclick="openModal(\'ath_modal_medidas\')">Ficha Antropométrica</button>';
       document.getElementById('ath_capsuleGroup').innerHTML = capsuleHtml;
 
-      var m = state.measures || {};
+      var m = {};   // valores de la ficha, con el texto protegido (el enlace puede venir de cualquiera)
+      Object.keys(state.measures || {}).forEach(function(k) { m[k] = escHtml(state.measures[k]); });
       var gridHtml = '<div class="metric-card"><div class="metric-title">Objetivo</div><div class="metric-val" style="color:var(--accent); font-size:0.85rem;">' + (m.m_objetivo||'-') + '</div></div>' +
         '<div class="metric-card"><div class="metric-title">Peso Corporal</div><div class="metric-val">' + (m.m_peso_kg||'-') + '</div></div>' +
         '<div class="metric-card"><div class="metric-title">Estatura</div><div class="metric-val">' + (m.m_estatura||'-') + '</div></div>' +
@@ -1514,6 +1926,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         '<div class="metric-card"><div class="metric-title">Muslos</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_muslo_der||'-') + ' / ' + (m.m_muslo_izq||'-') + '</div></div>' +
         '<div class="metric-card"><div class="metric-title">Pantorrillas</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_pant_der||'-') + ' / ' + (m.m_pant_izq||'-') + '</div></div>';
       document.getElementById('ath_metricsGrid').innerHTML = gridHtml;
+      athMedKey = '';
+      renderAthleteMeasures();
 
       var daysContainer = document.getElementById('ath_daysContainer');
       daysContainer.innerHTML = '';
@@ -1523,9 +1937,9 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         (d.items || []).forEach(function(item, itIdx) {
           var isNormal = item.type === 'normal';
           var typeBadge = isNormal ? 'SERIE NORMAL' : (item.type === 'biserie' ? 'BISERIE (A + B)' : 'TRISERIE (A + B + C)');
-          var slotNum = item.slot || (itIdx + 1);
-          var vDesde = item.vigenciaDesde || 1;
-          var vHasta = item.vigenciaHasta !== undefined ? item.vigenciaHasta : null;
+          var slotNum = parseInt(item.slot, 10) || (itIdx + 1);
+          var vDesde = parseInt(item.vigenciaDesde, 10) || 1;
+          var vHasta = (item.vigenciaHasta === undefined || item.vigenciaHasta === null) ? null : (parseInt(item.vigenciaHasta, 10) || null);
           var vHastaAttr = vHasta !== null ? ('data-vig-hasta="' + vHasta + '"') : '';
 
           var subsDetails = '';
@@ -1535,15 +1949,16 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             var letter = ['A', 'B', 'C'][subIdx];
             var fieldId = d.id + '_slot' + slotNum + '_v' + vDesde + '_s' + subIdx;
             var yLink = (sub.video && sub.video.trim()) ? sub.video.trim() : 'https://www.youtube.com';
+            if (!/^https?:\/\/[^\s"'<>]+$/i.test(yLink)) yLink = 'https://www.youtube.com';
 
             var demoButtonHtml = isDemos ? (
               '<div style="margin: 8px 0;"><a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a></div>'
             ) : '';
 
             subsDetails += '<div class="exercise-item-box">' +
-              '<div class="ex-name">' + (!isNormal ? '<span style="color:var(--accent);">' + letter + '</span> ' : '') + (sub.name || 'Ejercicio') + '</div>' +
-              '<div class="ex-target">' + (sub.series || '-') + ' series × ' + (sub.reps || '-') + ' reps</div>' +
-              (sub.notes ? '<div class="ex-notes">📌 ' + sub.notes + '</div>' : '') +
+              '<div class="ex-name">' + (!isNormal ? '<span style="color:var(--accent);">' + letter + '</span> ' : '') + escHtml(sub.name || 'Ejercicio') + '</div>' +
+              '<div class="ex-target">' + escHtml(sub.series || '-') + ' series × ' + escHtml(sub.reps || '-') + ' reps</div>' +
+              (sub.notes ? '<div class="ex-notes">📌 ' + escHtml(sub.notes) + '</div>' : '') +
               demoButtonHtml +
               '<div class="tracker-inputs-grid">' +
                 '<div class="tracker-cell"><label>Peso (lbs)</label><input type="text" id="load_' + fieldId + '" placeholder="0 lbs" oninput="saveTracker()"></div>' +
@@ -1557,7 +1972,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             '</div>';
           });
 
-          exercisesHtml += '<div class="exercise-card ' + (item.type || 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
+          exercisesHtml += '<div class="exercise-card ' + (['normal', 'biserie', 'triserie'].indexOf(item.type) >= 0 ? item.type : 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
               '<span class="badge-type">' + typeBadge + '</span>' +
               '<span style="font-size:0.68rem; color:var(--muted);">Semana ' + vDesde + (vHasta ? '-' + vHasta : '+') + '</span>' +
@@ -1576,10 +1991,10 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         var nutritionSectionHtml = isNutri ? (
           '<div id="sec_nutri_' + d.id + '" class="day-section">' +
             '<div class="nutrition-accordion-list">' +
-              '<details class="nutri-accordion" open><summary>🍳 Desayuno</summary><div class="nutri-content">' + (d.diet.desayuno || '-').replace(/\n/g, '<br>') + '</div></details>' +
-              '<details class="nutri-accordion"><summary>🍏 Snacks</summary><div class="nutri-content">' + (d.diet.snack || '-').replace(/\n/g, '<br>') + '</div></details>' +
-              '<details class="nutri-accordion"><summary>🍗 Almuerzo</summary><div class="nutri-content">' + (d.diet.almuerzo || '-').replace(/\n/g, '<br>') + '</div></details>' +
-              '<details class="nutri-accordion"><summary>🐟 Cena</summary><div class="nutri-content">' + (d.diet.cena || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion" open><summary>🍳 Desayuno</summary><div class="nutri-content">' + escHtml(d.diet.desayuno || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🍏 Snacks</summary><div class="nutri-content">' + escHtml(d.diet.snack || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🍗 Almuerzo</summary><div class="nutri-content">' + escHtml(d.diet.almuerzo || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🐟 Cena</summary><div class="nutri-content">' + escHtml(d.diet.cena || '-').replace(/\n/g, '<br>') + '</div></details>' +
             '</div>' +
             '<button class="capsule-btn btn-intercambios" onclick="openModal(\'modal_intercambios\')">🔄 Intercambios (10 Opciones por Grupo)</button>' +
             '<div class="daily-goals-card">' +
@@ -1587,11 +2002,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
               '<table class="goals-table">' +
                 '<thead><tr><th>Métrica</th><th>Objetivo</th><th>Alcanzado</th></tr></thead>' +
                 '<tbody>' +
-                  '<tr><td>🎯 Calorías</td><td>' + (d.habits.kcal || '-') + '</td><td><input type="text" id="alc_kcal_' + d.id + '" oninput="saveTracker()"></td></tr>' +
-                  '<tr><td>💧 Agua</td><td>' + (d.habits.agua || '-') + '</td><td><input type="text" id="alc_agua_' + d.id + '" oninput="saveTracker()"></td></tr>' +
-                  '<tr><td>😴 Sueño</td><td>' + (d.habits.sueno || '-') + '</td><td><input type="text" id="alc_sueno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
-                  '<tr><td>👟 Pasos</td><td>' + (d.habits.pasos || '-') + '</td><td><input type="text" id="alc_pasos_' + d.id + '" oninput="saveTracker()"></td></tr>' +
-                  '<tr><td>🏋️ Entrenamiento</td><td>' + (d.habits.entreno || '-') + '</td><td><input type="text" id="alc_entreno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>🎯 Calorías</td><td>' + escHtml(d.habits.kcal || '-') + '</td><td><input type="text" id="alc_kcal_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>💧 Agua</td><td>' + escHtml(d.habits.agua || '-') + '</td><td><input type="text" id="alc_agua_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>😴 Sueño</td><td>' + escHtml(d.habits.sueno || '-') + '</td><td><input type="text" id="alc_sueno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>👟 Pasos</td><td>' + escHtml(d.habits.pasos || '-') + '</td><td><input type="text" id="alc_pasos_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>🏋️ Entrenamiento</td><td>' + escHtml(d.habits.entreno || '-') + '</td><td><input type="text" id="alc_entreno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
                 '</tbody>' +
               '</table>' +
             '</div>' +
@@ -1604,10 +2019,10 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         dayScreen.setAttribute('data-day-title', d.title);
         dayScreen.innerHTML = '<div class="top-nav-bar">' +
           '<button class="back-btn" onclick="closeModal(\'' + d.id + '\')">← Volver</button>' +
-          '<div class="view-title">' + d.title + '</div><div style="width:50px;"></div>' +
+          '<div class="view-title">' + escHtml(d.title) + '</div><div style="width:50px;"></div>' +
         '</div>' +
         '<div class="progression-banner"><div class="prog-title">📈 Progresión Semanal</div><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></div>' +
-        '<div class="security-card"><div class="sec-title">🛡️ Protocolo de Seguridad</div><div class="sec-items">' + (d.security || 'Técnica estricta | Hidratación activa') + '</div></div>' +
+        '<div class="security-card"><div class="sec-title">🛡️ Protocolo de Seguridad</div><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></div>' +
         toggleHeaderHtml +
         '<div id="sec_rutina_' + d.id + '" class="day-section active">' +
           '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
@@ -1793,10 +2208,10 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         entries.forEach(function(entry) {
           var card = document.createElement('div');
           card.style.cssText = 'background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center;';
-          card.innerHTML = '<div><div style="font-size:0.9rem; font-weight:800; color:#fff;">' + (entry.name || 'Ejercicio') + '</div>' +
-            '<div style="font-size:0.72rem; color:var(--primary); margin-top:2px;">📅 ' + (entry.date || 'Reciente') + '</div>' +
-            '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">' + (entry.series || '-') + ' series × ' + (entry.reps || '-') + ' reps</div></div>' +
-            '<div style="text-align:right;"><div style="font-size:1.05rem; font-weight:900; color:var(--accent);">' + (entry.load || '-') + '</div>' +
+          card.innerHTML = '<div><div style="font-size:0.9rem; font-weight:800; color:#fff;">' + escHtml(entry.name || 'Ejercicio') + '</div>' +
+            '<div style="font-size:0.72rem; color:var(--primary); margin-top:2px;">📅 ' + escHtml(entry.date || 'Reciente') + '</div>' +
+            '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">' + escHtml(entry.series || '-') + ' series × ' + escHtml(entry.reps || '-') + ' reps</div></div>' +
+            '<div style="text-align:right;"><div style="font-size:1.05rem; font-weight:900; color:var(--accent);">' + escHtml(entry.load || '-') + '</div>' +
             '<button type="button" class="btn-mount-item" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div>';
           var mBtn = card.querySelector('.btn-mount-item');
           if (mBtn) mBtn.onclick = function() { restoreSingleLoad(entry.key); closeModal('ath_modal_historial'); };
@@ -1863,6 +2278,21 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       document.getElementById('m_muslo_izq').value = '56.5 cm';
       document.getElementById('m_pant_der').value = '38 cm';
       document.getElementById('m_pant_izq').value = '38 cm';
+
+      // Historial de ejemplo: un control por mes (el último coincide con los valores de arriba)
+      var demoNow = new Date();
+      function demoDate(monthsAgo) {
+        var dd = new Date(demoNow.getFullYear(), demoNow.getMonth() - monthsAgo, Math.min(demoNow.getDate(), 28));
+        return dd.getFullYear() + '-' + pad2(dd.getMonth() + 1) + '-' + pad2(dd.getDate());
+      }
+      measureLog = [
+        { d: demoDate(3), v: { m_peso_kg: 82.0, m_grasa: 21.0, m_musculo: 39.0, m_visceral: 6, m_edad_meta: 29, m_espalda: 108, m_cintura1: 90, m_cintura2: 86, m_cadera: 102, m_muslo_der: 58.5, m_muslo_izq: 58, m_pant_der: 37, m_pant_izq: 37 } },
+        { d: demoDate(2), v: { m_peso_kg: 79.8, m_grasa: 18.6, m_musculo: 40.2, m_visceral: 5, m_edad_meta: 27, m_espalda: 110, m_cintura1: 87, m_cintura2: 83, m_cadera: 100, m_muslo_der: 58, m_muslo_izq: 57.5, m_pant_der: 37.5, m_pant_izq: 37.5 } },
+        { d: demoDate(1), v: { m_peso_kg: 77.6, m_grasa: 16.4, m_musculo: 41.1, m_visceral: 4, m_edad_meta: 25, m_espalda: 111, m_cintura1: 84.5, m_cintura2: 81, m_cadera: 99, m_muslo_der: 57.5, m_muslo_izq: 57, m_pant_der: 38, m_pant_izq: 38 } },
+        { d: todayIso(), v: { m_peso_kg: 76, m_grasa: 14.5, m_musculo: 42, m_visceral: 3, m_edad_meta: 23, m_espalda: 112, m_cintura1: 82, m_cintura2: 79, m_cadera: 98, m_muslo_der: 57, m_muslo_izq: 56.5, m_pant_der: 38, m_pant_izq: 38 } }
+      ];
+      document.getElementById('m_fecha').value = todayIso();
+      renderMeasureLog();
 
       routineDays = [
         {
@@ -1983,6 +2413,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       loadCoachConfig();
       renderDays();
       updateModulesVisibility();
+      initMeasureForm();
     }
     function openCoachAccess() { showBuilder(); window.scrollTo(0, 0); }
 
