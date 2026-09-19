@@ -257,7 +257,7 @@
     <header>
       <div class="header-title">
         <h1>Generador Pro Benessere</h1>
-        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp</p>
+        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v7</p>
       </div>
       <div class="header-brand">
         <div class="gym-name">BENESSERE GYM</div>
@@ -282,8 +282,7 @@
         </div>
         <div class="form-grid">
           <div class="form-group"><label>Nombre del Coach *</label><input type="text" id="coachName" placeholder="Ej: Juan, María, Kenneth" autocomplete="off"></div>
-          <div class="form-group"><label>WhatsApp del Coach 🔒</label><input type="text" id="coachPhone" value="8494 9226" readonly tabindex="-1" style="opacity:0.75; cursor:not-allowed;"></div>
-          <div class="form-group full-width"><label>Enlace de la app 🔒</label><input type="text" id="appUrl" readonly tabindex="-1" style="opacity:0.75; cursor:not-allowed;"></div>
+          <div class="form-group full-width"><div style="font-size:0.78rem; color:var(--muted); background:#111; border:1px solid #2a2a2a; border-radius:8px; padding:10px 12px; line-height:1.5;">🔒 Los reportes de los atletas llegan al WhatsApp del gimnasio (8494 9226). Ese número y el enlace de la app están fijos: no se pueden ver ni editar aquí.</div></div>
           <div class="form-group full-width">
             <label>Clave de coaches (para enlaces cortos)</label>
             <input type="password" id="shareKey" autocomplete="off" placeholder="La clave que te dio el administrador">
@@ -293,7 +292,6 @@
             </div>
           </div>
         </div>
-        <p style="font-size:0.75rem; color:var(--muted); margin:8px 0 12px;">Los reportes de todos los atletas llegan al WhatsApp principal del gimnasio. El enlace de la app y el número están bloqueados.</p>
         <div class="toggles-panel">
           <label class="toggle-item">
             <input type="checkbox" id="featureNutrition" onchange="updateModulesVisibility()">
@@ -598,7 +596,6 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var cfg = {};
       try { cfg = JSON.parse(localStorage.getItem(COACH_CFG_KEY) || '{}') || {}; } catch (e) { cfg = {}; }
       document.getElementById('coachName').value = cfg.name || '';
-      document.getElementById('coachPhone').value = '8494 9226';
       // La clave se recupera de lo guardado (o de la conexión completa que se guardaba antes)
       var savedKey = cfg.key || '';
       if (!savedKey && cfg.share) {
@@ -608,8 +605,6 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       document.getElementById('shareKey').value = savedKey;
       document.getElementById('featureNutrition').checked = cfg.nutrition === true;
       document.getElementById('featureDemos').checked = cfg.demos === true;
-
-      document.getElementById('appUrl').value = APP_BASE_URL;
 
       ['coachName', 'shareKey'].forEach(function(id) {
         document.getElementById(id).addEventListener('input', saveCoachConfig);
