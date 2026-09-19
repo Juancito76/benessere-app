@@ -282,18 +282,18 @@
         </div>
         <div class="form-grid">
           <div class="form-group"><label>Nombre del Coach *</label><input type="text" id="coachName" placeholder="Ej: Juan, María, Kenneth" autocomplete="off"></div>
-          <div class="form-group"><label>WhatsApp del Coach</label><input type="tel" id="coachPhone" inputmode="tel" placeholder="Ej: 88887777 o 50688887777" autocomplete="off"></div>
-          <div class="form-group full-width"><label>Enlace público de la app (GitHub Pages)</label><input type="text" id="appUrl" inputmode="url" placeholder="https://usuario.github.io/repositorio/" autocomplete="off"></div>
+          <div class="form-group"><label>WhatsApp del Coach 🔒</label><input type="text" id="coachPhone" value="8494 9226" readonly tabindex="-1" style="opacity:0.75; cursor:not-allowed;"></div>
+          <div class="form-group full-width"><label>Enlace de la app 🔒</label><input type="text" id="appUrl" readonly tabindex="-1" style="opacity:0.75; cursor:not-allowed;"></div>
           <div class="form-group full-width">
-            <label>Enlaces cortos con hoja de Google (opcional)</label>
-            <input type="text" id="shareConn" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec?k=TU-CLAVE" autocomplete="off">
+            <label>Clave de coaches (para enlaces cortos)</label>
+            <input type="password" id="shareKey" autocomplete="off" placeholder="La clave que te dio el administrador">
             <div style="display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap;">
               <button type="button" class="btn btn-secondary" onclick="testShareConn()">🔌 Probar conexión</button>
               <span id="shareStatus" style="font-size:0.78rem; color:var(--muted);"></span>
             </div>
           </div>
         </div>
-        <p style="font-size:0.75rem; color:var(--muted); margin:8px 0 12px;">Los reportes de tus atletas llegarán a tu WhatsApp. Si lo dejas vacío, llegan al número principal del gimnasio.</p>
+        <p style="font-size:0.75rem; color:var(--muted); margin:8px 0 12px;">Los reportes de todos los atletas llegan al WhatsApp principal del gimnasio. El enlace de la app y el número están bloqueados.</p>
         <div class="toggles-panel">
           <label class="toggle-item">
             <input type="checkbox" id="featureNutrition" onchange="updateModulesVisibility()">
@@ -542,7 +542,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     <p id="msg_body" style="font-size:0.92rem; color:#ddd; line-height:1.65; max-width:420px; margin:0 auto;"></p>
     <button type="button" id="msg_retry" onclick="location.reload()" style="display:none; margin-top:18px; background:var(--accent); border:none; color:#fff; font-weight:800; font-size:0.9rem; padding:10px 20px; border-radius:8px; cursor:pointer;">🔄 Reintentar</button>
     <p id="msg_diag" style="font-size:0.68rem; color:#666; margin-top:22px; word-break:break-word;"></p>
-    <button type="button" onclick="openCoachAccess()" style="margin-top:40px; background:transparent; border:1px solid #3a3a3a; color:#777; font-size:0.72rem; padding:7px 14px; border-radius:6px; cursor:pointer;">Acceso para coaches</button>
+    <button type="button" id="msg_coach_btn" onclick="openCoachAccess()" style="margin-top:40px; background:transparent; border:1px solid #3a3a3a; color:#777; font-size:0.72rem; padding:7px 14px; border-radius:6px; cursor:pointer;">Acceso para coaches</button>
   </div>
 
   <!-- ================= LÓGICA JAVASCRIPT ================= -->
@@ -567,9 +567,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
     var athleteActiveState = null;
     var lastActiveDayId = '';
-    // Número principal de Benessere Gym: se usa solo si el coach no escribe el suyo
-    // (y para enlaces antiguos, que no traían datos del coach).
-    var CONFIG_COACH_PHONE = '50684949226';
+    // ===== DATOS FIJOS DEL GIMNASIO =====
+    // Los coaches no pueden cambiarlos desde la pantalla. Para modificarlos hay que editar este archivo.
+    var CONFIG_COACH_PHONE = '50684949226';   // WhatsApp que recibe TODOS los reportes (8494 9226)
+    var APP_BASE_URL = 'https://juancito76.github.io/benessere-app/';   // página publicada en GitHub Pages
+    var SHARE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDDBSyJPwxOB6kOp4MACBUfIceWKqE3prPEgvk9qKTEwEV_JE6PAFazavBv71fiJ1f/exec';   // servicio de la hoja de Google
     var COACH_CFG_KEY = 'benessere_coach_cfg';
     var athleteCoachName = 'Coach Benessere';
     var athleteCoachPhone = CONFIG_COACH_PHONE;
@@ -596,20 +598,20 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var cfg = {};
       try { cfg = JSON.parse(localStorage.getItem(COACH_CFG_KEY) || '{}') || {}; } catch (e) { cfg = {}; }
       document.getElementById('coachName').value = cfg.name || '';
-      document.getElementById('coachPhone').value = cfg.phone || '';
-      document.getElementById('shareConn').value = cfg.share || '';
+      document.getElementById('coachPhone').value = '8494 9226';
+      // La clave se recupera de lo guardado (o de la conexión completa que se guardaba antes)
+      var savedKey = cfg.key || '';
+      if (!savedKey && cfg.share) {
+        var oldK = String(cfg.share).match(/[?&]k=([^&\s]*)/);
+        if (oldK) { try { savedKey = decodeURIComponent(oldK[1]); } catch (e) { savedKey = oldK[1]; } }
+      }
+      document.getElementById('shareKey').value = savedKey;
       document.getElementById('featureNutrition').checked = cfg.nutrition === true;
       document.getElementById('featureDemos').checked = cfg.demos === true;
 
-      // Si el constructor está abierto desde su página publicada, esa es la dirección correcta
-      var urlField = document.getElementById('appUrl');
-      if (/^https?:$/.test(window.location.protocol)) {
-        urlField.value = window.location.origin + window.location.pathname.replace(/index\.html$/i, '');
-      } else {
-        urlField.value = cfg.appUrl || '';
-      }
+      document.getElementById('appUrl').value = APP_BASE_URL;
 
-      ['coachName', 'coachPhone', 'appUrl', 'shareConn'].forEach(function(id) {
+      ['coachName', 'shareKey'].forEach(function(id) {
         document.getElementById(id).addEventListener('input', saveCoachConfig);
       });
       ['featureNutrition', 'featureDemos'].forEach(function(id) {
@@ -621,36 +623,16 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       try {
         localStorage.setItem(COACH_CFG_KEY, JSON.stringify({
           name: document.getElementById('coachName').value.trim(),
-          phone: document.getElementById('coachPhone').value.trim(),
-          appUrl: document.getElementById('appUrl').value.trim(),
-          share: document.getElementById('shareConn').value.trim(),
+          key: document.getElementById('shareKey').value.trim(),
           nutrition: document.getElementById('featureNutrition').checked,
           demos: document.getElementById('featureDemos').checked
         }));
       } catch (e) {}
     }
 
-    // Devuelve la dirección pública de la app, o null (con aviso) si no es válida
+    // La dirección de la app es fija: no depende de lo que escriba o cambie un coach
     function getAppBaseUrl() {
-      var urlField = document.getElementById('appUrl');
-      var base = urlField.value.trim();
-      if (!base && /^https?:$/.test(window.location.protocol)) {
-        base = window.location.origin + window.location.pathname;
-      }
-      if (!base) {
-        alert('Falta el enlace público de la app.\n\nPega en "Enlace público de la app" la dirección de GitHub Pages, por ejemplo:\nhttps://usuario.github.io/repositorio/');
-        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-        urlField.focus();
-        return null;
-      }
-      if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
-      if (/^https?:\/\/(www\.)?github\.com\//i.test(base) || /raw\.githubusercontent\.com/i.test(base)) {
-        alert('Ese es el enlace del CÓDIGO en GitHub, no el de la página.\n\nUsa el de GitHub Pages, que tiene esta forma:\nhttps://usuario.github.io/repositorio/');
-        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-        urlField.focus();
-        return null;
-      }
-      return base.split('#')[0].split('?')[0];
+      return APP_BASE_URL;
     }
 
     function switchGenTab(viewId, btn) {
@@ -799,8 +781,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       reader.readAsText(file);
     }
 
-    function restoreFromShare(id, deployId) {
-      fetchJson('https://script.google.com/macros/s/' + deployId + '/exec?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
+    function restoreFromShare(id) {
+      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
         .then(function(j) {
           var st = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
           if (!st) return alert('No se pudo cargar esa rutina desde el enlace corto (puede haber sido eliminada de la hoja).');
@@ -814,8 +796,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     function parseAndRestoreFromHtmlString() {
       var raw = document.getElementById('pasteHtmlCode').value.trim();
       if (raw && raw.length < 3000) {
-        var mi = raw.match(/#i=([A-Za-z0-9]{6,32})\.([A-Za-z0-9_-]{20,200})/);
-        if (mi) { restoreFromShare(mi[1], mi[2]); return; }
+        var mi = raw.match(/#i=([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{20,200})?/);
+        if (mi) { restoreFromShare(mi[1]); return; }
       }
       if (!raw) return alert('Por favor selecciona un archivo HTML o pega su código primero.');
 
@@ -1175,7 +1157,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         clientName: cName, clientGender: cGender, startDate: sDate, durationWeeks: dWeeks,
         coachMsgTitle: msgTitle, coachMsgBody: msgBody,
         coachName: document.getElementById('coachName').value.trim(),
-        coachPhone: cleanPhone(document.getElementById('coachPhone').value),
+        coachPhone: CONFIG_COACH_PHONE,
         configFeatures: { nutrition: isNutri, demos: isDemos },
         measures: {
           m_objetivo: document.getElementById('m_objetivo').value.trim() || '-',
@@ -1237,7 +1219,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           return dArr;
         }),
         full.coachName || '',
-        full.coachPhone || ''
+        ''
       ];
     }
 
@@ -1399,15 +1381,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       });
     }
 
-    // La conexión es la dirección del script de Google + "?k=" + la clave
-    function parseShareConn(str) {
-      var s = String(str || '').trim();
-      if (!s) return null;
-      var m = s.match(/^https:\/\/script\.google\.com\/macros\/s\/([A-Za-z0-9_-]+)\/exec(?:\?(.*))?$/);
-      if (!m) return { invalid: true };
-      var key = '';
-      try { key = new URLSearchParams(m[2] || '').get('k') || ''; } catch (e) {}
-      return { invalid: false, base: 'https://script.google.com/macros/s/' + m[1] + '/exec', deployId: m[1], key: key };
+    // Conexión con la hoja de Google: la dirección es fija; la clave la escribe cada coach una sola vez
+    function getShareConn() {
+      var key = document.getElementById('shareKey').value.trim();
+      if (!key) return null;
+      return { base: SHARE_SCRIPT_URL, key: key };
     }
 
     function shareReasonText(code) {
@@ -1417,17 +1395,16 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         'datos': 'El servicio rechazó los datos.',
         'timeout': 'El servicio tardó demasiado en responder.',
         'respuesta': 'El servicio no respondió como se esperaba (revisa que esté publicado para "Cualquier persona").',
-        'formato': 'La conexión no tiene el formato correcto (debe empezar con https://script.google.com/macros/s/ y terminar en /exec?k=TU-CLAVE).'
+        'sin-clave': 'Falta escribir la clave de coaches en "Perfil del Coach".'
       };
       return map[code] || 'No se pudo conectar con el servicio (revisa tu internet).';
     }
 
     function testShareConn() {
       var out = document.getElementById('shareStatus');
-      var conn = parseShareConn(document.getElementById('shareConn').value);
+      var conn = getShareConn();
       function say(color, text) { out.style.color = color; out.innerText = text; }
-      if (!conn) return say('var(--muted)', 'Pega primero la conexión.');
-      if (conn.invalid) return say('var(--danger)', '❌ ' + shareReasonText('formato'));
+      if (!conn) return say('var(--muted)', 'Escribe primero la clave de coaches.');
       say('var(--muted)', 'Probando…');
       fetchJson(conn.base + '?ping=1&k=' + encodeURIComponent(conn.key), { redirect: 'follow' }, 20000).then(function(j) {
         if (j && j.ok && j.sinCambiar) say('var(--accent)', '⚠️ Conecta, pero falta cambiar la clave dentro del script de Google.');
@@ -1511,9 +1488,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       // Enlace largo: la rutina completa dentro del enlace (funciona sin servidor)
       var longLink = baseUrl + '#q=' + payloadText;
 
-      var conn = parseShareConn(document.getElementById('shareConn').value);
-      if (!conn) { finishShare(state, longLink, ''); return; }
-      if (conn.invalid) { finishShare(state, longLink, shareReasonText('formato')); return; }
+      var conn = getShareConn();
+      if (!conn) { finishShare(state, longLink, shareReasonText('sin-clave')); return; }
 
       // Enlace corto: la rutina se guarda en la hoja de Google y el enlace lleva solo el código
       showShareWorking();
@@ -1523,7 +1499,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ k: conn.key, p: payloadText, coach: state.coachName, atleta: state.clientName })
       }, 25000).then(function(j) {
-        if (j && j.ok && j.id) finishShare(state, baseUrl + '#i=' + j.id + '.' + conn.deployId, '');
+        if (j && j.ok && j.id) finishShare(state, baseUrl + '#i=' + j.id, '');
         else finishShare(state, longLink, shareReasonText(j && j.error ? j.error : 'respuesta'));
       }).catch(function(e) {
         finishShare(state, longLink, shareReasonText(e && e.message));
@@ -1534,10 +1510,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
     function renderAthleteApp(state) {
       athleteActiveState = state;
       athleteCoachName = displayCoach(state.coachName);
-      athleteCoachPhone = cleanPhone(state.coachPhone) || CONFIG_COACH_PHONE;
+      athleteCoachPhone = CONFIG_COACH_PHONE;   // fijo: se ignora cualquier número que traiga el enlace
       var congratsBtn = document.getElementById('ath_congratsWaBtn');
       if (congratsBtn) congratsBtn.innerText = '📲 Enviar Reporte a ' + athleteCoachName;
       document.getElementById('coach_builder_view').style.display = 'none';
+      document.getElementById('athlete_message_view').style.display = 'none';
       document.getElementById('athlete_client_view').style.display = 'block';
 
       var welcomeWord = state.clientGender === 'a' ? 'Bienvenida' : 'Bienvenido';
@@ -2052,6 +2029,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       document.getElementById('athlete_message_view').style.display = 'block';
       var t = document.getElementById('msg_title'), b = document.getElementById('msg_body'), i = document.getElementById('msg_icon');
       document.getElementById('msg_retry').style.display = (kind === 'offline') ? 'inline-block' : 'none';
+      document.getElementById('msg_coach_btn').style.display = (kind === 'none') ? 'inline-block' : 'none';
       if (kind === 'loading') {
         i.innerText = '⏳';
         t.innerText = 'Cargando tu rutina…';
@@ -2078,11 +2056,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
     // Enlace corto: pide la rutina a la hoja de Google usando el código del enlace
     function loadFromShare(v) {
-      var m = String(v || '').match(/^([A-Za-z0-9]{6,32})\.([A-Za-z0-9_-]{20,200})$/);
+      var m = String(v || '').match(/^([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{1,200})?$/);
       if (!m) { showAthleteMessage('broken', 'Código de enlace no válido'); return; }
-      var id = m[1], deployId = m[2];
+      var id = m[1];   // (los enlaces enviados antes traían además la dirección del script: se ignora)
       showAthleteMessage('loading', '');
-      fetchJson('https://script.google.com/macros/s/' + deployId + '/exec?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
+      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
         .then(function(j) {
           if (j && j.ok && j.p) {
             var st = decodePayload('q', j.p);
