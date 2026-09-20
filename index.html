@@ -214,6 +214,12 @@
     .exercise-card.biserie { border-left: 4px solid var(--primary); }
     .exercise-card.triserie { border-left: 4px solid var(--accent); }
     .badge-type { font-size: 0.68rem; font-weight: 800; color: #fff; background: #262626; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .exercise-card.circuito { border-left: 4px solid #ffd60a; }
+    .circ-head { margin-bottom: 10px; }
+    .circ-title { font-size: 1rem; font-weight: 800; color: #ffd60a; }
+    .circ-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+    .circ-pill { font-size: 0.72rem; font-weight: 800; background: rgba(255, 214, 10, 0.15); color: #ffd60a; padding: 2px 8px; border-radius: 999px; }
+    .rest-note { background: var(--card); border: 1px dashed var(--border); border-radius: 12px; padding: 14px; color: var(--muted); font-size: 0.9rem; line-height: 1.4; }
     .exercise-item-box { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #2c2c2c; }
     .exercise-item-box:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
     .ex-name { font-size: 0.95rem; font-weight: 800; color: #fff; }
@@ -277,7 +283,7 @@
     <header>
       <div class="header-title">
         <h1>Generador Pro Benessere</h1>
-        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v9</p>
+        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v10</p>
       </div>
       <div class="header-brand">
         <div class="gym-name">BENESSERE GYM</div>
@@ -348,6 +354,7 @@
         <div class="section-title">📋 Programación de Días <span class="badge" id="daysCounterBadge">1 Día</span></div>
         <div id="daysList"></div>
         <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="addNewDay()">➕ Añadir Nuevo Día</button>
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="addRestDay()">🌙 Añadir Día de Descanso</button>
       </section>
     </div>
 
@@ -401,7 +408,19 @@ Ejercicio: Sentadilla búlgara | Series: 3 | Reps: 10-12 — EP3 | Notas: Pausa 
 Vigencia: semanas 3-4
 Biserie: Sentadilla búlgara + Curl femoral | Series: 3 | Reps: 12 | Notas: Fusión de fase Intensificación | Video: https://youtube.com/watch?v=3iG_8tBw6mU
 --
-Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atrás sin redondear espalda | Video: https://youtube.com/watch?v=3iG_8tBw6mU</div>
+Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atrás sin redondear espalda | Video: https://youtube.com/watch?v=3iG_8tBw6mU
+[DIA 5: Circuito metabólico]
+Kcal: 2200 | Agua: 3L | Sueño: 8h | Pasos: 10000 | Entreno: Circuito
+Circuito: Metabólico A | Rondas: 4 | Trabajo: 30 s | Descanso: 30 s | Notas: Ritmo constante
+Estacion: Burpees | Reps: 30 s | Notas: Pecho al piso | Video: https://www.youtube.com/watch?v=xxxxxxxxxxx
+Estacion: Slams con balón medicinal | Reps: 30 s
+
+[DESCANSO 6: Descanso activo]
+Kcal: 1750 | Agua: 3L | Sueño: 8h | Pasos: 8000 | Entreno: Descanso
+Desayuno: 1 palma Proteína + 1 puño Carbohidratos + 1 pulgar Grasa
+Almuerzo: 1.5 palmas Proteína + 1 puño Carbohidratos + 2 puños Vegetales + 1 pulgar Grasa
+Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
+</div>
 
         <button type="button" class="btn btn-secondary" style="margin-bottom: 12px;" onclick="copyTemplateExample()">📋 Copiar Plantilla de Ejemplo</button>
         <div class="form-group">
@@ -425,8 +444,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           <div class="form-group"><label>Índice Visceral</label><input type="text" id="m_visceral" placeholder="Ej: Nivel 4"></div>
           <div class="form-group"><label>Edad Metabólica</label><input type="text" id="m_edad_meta" placeholder="Ej: 24 años"></div>
           <div class="form-group"><label>Espalda</label><input type="text" id="m_espalda" placeholder="Ej: 110 cm"></div>
-          <div class="form-group"><label>Cintura 1 (Ombligo)</label><input type="text" id="m_cintura1" placeholder="Ej: 84 cm"></div>
-          <div class="form-group"><label>Cintura 2 (Estrecha)</label><input type="text" id="m_cintura2" placeholder="Ej: 81 cm"></div>
+          <div class="form-group"><label>Cintura 1 (Estrecha)</label><input type="text" id="m_cintura1" placeholder="Ej: 84 cm"></div>
+          <div class="form-group"><label>Cintura 2 (Ombligo)</label><input type="text" id="m_cintura2" placeholder="Ej: 81 cm"></div>
           <div class="form-group"><label>Cadera</label><input type="text" id="m_cadera" placeholder="Ej: 100 cm"></div>
           <div class="form-group"><label>Muslo Derecho</label><input type="text" id="m_muslo_der" placeholder="Ej: 58 cm"></div>
           <div class="form-group"><label>Muslo Izquierdo</label><input type="text" id="m_muslo_izq" placeholder="Ej: 57.5 cm"></div>
@@ -609,8 +628,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       { k: 'm_visceral',  label: 'Índice visceral',       short: 'Visceral',  unit: '' },
       { k: 'm_edad_meta', label: 'Edad metabólica',       short: 'Edad met.', unit: 'años' },
       { k: 'm_espalda',   label: 'Espalda',               short: 'Espalda',   unit: 'cm' },
-      { k: 'm_cintura1',  label: 'Cintura 1 (ombligo)',   short: 'Cintura 1', unit: 'cm' },
-      { k: 'm_cintura2',  label: 'Cintura 2 (estrecha)',  short: 'Cintura 2', unit: 'cm' },
+      { k: 'm_cintura1',  label: 'Cintura 1 (estrecha)',   short: 'Cintura 1', unit: 'cm' },
+      { k: 'm_cintura2',  label: 'Cintura 2 (ombligo)',  short: 'Cintura 2', unit: 'cm' },
       { k: 'm_cadera',    label: 'Cadera',                short: 'Cadera',    unit: 'cm' },
       { k: 'm_muslo_der', label: 'Muslo derecho',         short: 'Muslo D',   unit: 'cm' },
       { k: 'm_muslo_izq', label: 'Muslo izquierdo',       short: 'Muslo I',   unit: 'cm' },
@@ -1045,7 +1064,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         var itemsHtml = '';
         (day.items || []).forEach(function(item, itemIndex) {
           var isNormal = item.type === 'normal';
-          var badgeText = isNormal ? 'Serie Normal' : (item.type === 'biserie' ? 'Biserie (A + B)' : 'Triserie (A + B + C)');
+          var badgeText = isNormal ? 'Serie Normal' : (item.type === 'biserie' ? 'Biserie (A + B)' : (item.type === 'circuito' ? 'Circuito' : 'Triserie (A + B + C)'));
           var vigDesde = item.vigenciaDesde || 1;
           var vigHasta = item.vigenciaHasta ? item.vigenciaHasta : 'Fin';
           var slotNum = item.slot || (itemIndex + 1);
@@ -1053,7 +1072,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           var subsHtml = '';
           var subList = Array.isArray(item.sub) && item.sub.length > 0 ? item.sub : [{ name: item.name || '', series: item.series || '', reps: item.reps || '', notes: item.notes || '', video: item.video || '' }];
 
-          subList.forEach(function(sub, subIndex) {
+          (item.type === 'circuito' ? [] : subList).forEach(function(sub, subIndex) {
             var letter = ['A', 'B', 'C'][subIndex];
             subsHtml += '<div class="sub-box">' +
               '<div class="sub-tag">' + (!isNormal ? 'Ejercicio ' + letter + ':' : 'Detalle del Ejercicio:') + '</div>' +
@@ -1065,11 +1084,12 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
                 '<div class="form-group"><label>Series</label><input type="text" value="' + escHtml(sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
                 '<div class="form-group"><label>Reps</label><input type="text" value="' + escHtml(sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
                 '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + escHtml(sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
-                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';"><label>Video YouTube</label><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value"></div>' +
+                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (isFirstOfSlot(day.items, itemIndex) ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value">' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Se usa el video de la primera versión de esta posición.</div>') + '</div>' +
               '</div>' +
             '</div>';
           });
 
+          if (item.type === 'circuito') subsHtml = circuitEditorHtml(dayIndex, itemIndex, item, showDemos);
           itemsHtml += '<div class="exercise-item ' + (item.type || 'normal') + '">' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
               '<div style="display:flex; gap:6px; align-items:center;">' +
@@ -1108,8 +1128,13 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'normal\')">➕ Serie Normal</button>' +
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'biserie\')">➕ Biserie</button>' +
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'triserie\')">➕ Triserie</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'circuito\')">➕ Circuito</button>' +
         '</div>';
 
+        if (day.rest) {
+          var brw = dayDiv.querySelector('.btn-row'); if (brw) brw.style.display = 'none';
+          var ilist = dayDiv.querySelector('.items-list'); if (ilist) ilist.innerHTML = '<div style="padding:10px; border:1px dashed var(--border); border-radius:8px; color:var(--muted); font-size:0.85rem;">🌙 Día de descanso: solo lleva hábitos y nutrición (activa "Nutrición" para ver las comidas).</div>';
+        }
         container.appendChild(dayDiv);
       });
     }
@@ -1128,13 +1153,84 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
     function removeDay(index) { if (confirm('¿Eliminar este día?')) { routineDays.splice(index, 1); renderDays(); } }
     function addItem(dayIndex, type) {
-      var count = type === 'normal' ? 1 : (type === 'biserie' ? 2 : 3);
+      var count = type === 'normal' ? 1 : (type === 'biserie' ? 2 : 3);   // triserie y circuito (3 estaciones por defecto)
       var sub = [];
       for (var i = 0; i < count; i++) sub.push({ name: '', series: '', reps: '', notes: '', video: '' });
-      routineDays[dayIndex].items.push({ type: type, slot: routineDays[dayIndex].items.length + 1, vigenciaDesde: 1, vigenciaHasta: null, sub: sub });
+      var newItem = { type: type, slot: routineDays[dayIndex].items.length + 1, vigenciaDesde: 1, vigenciaHasta: null, sub: sub };
+      if (type === 'circuito') newItem.circ = { nombre: '', rondas: '4', trabajo: '30 s', descanso: '30 s', notas: '' };
+      routineDays[dayIndex].items.push(newItem);
       renderDays();
     }
     function removeItem(dayIndex, itemIndex) { routineDays[dayIndex].items.splice(itemIndex, 1); renderDays(); }
+
+    // ---- v10: video único por ejercicio, circuitos y días de descanso ----
+    function slotNumOf(items, idx) { return parseInt(items[idx] && items[idx].slot, 10) || (idx + 1); }
+    function isFirstOfSlot(items, idx) {
+      var sl = slotNumOf(items, idx);
+      for (var i = 0; i < idx; i++) { if (slotNumOf(items, i) === sl) return false; }
+      return true;
+    }
+    function slotVideo(items, slot, subIdx) {
+      for (var i = 0; i < (items || []).length; i++) {
+        if (slotNumOf(items, i) !== slot) continue;
+        var sb = Array.isArray(items[i].sub) ? items[i].sub[subIdx] : null;
+        if (sb && sb.video && String(sb.video).trim()) return String(sb.video).trim();
+      }
+      return '';
+    }
+    function addRestDay() {
+      var nextNum = routineDays.length + 1;
+      routineDays.push({
+        id: 'd' + nextNum, title: 'Día ' + nextNum + ': Descanso', rest: true,
+        habits: { kcal: '', agua: '3L', sueno: '8h', pasos: '8000', entreno: 'Descanso' },
+        security: 'Movilidad suave | Hidratación | Sueño de calidad',
+        diet: { desayuno: '', snack: '', almuerzo: '', cena: '' },
+        items: []
+      });
+      renderDays();
+    }
+    function addStation(di, ii) { routineDays[di].items[ii].sub.push({ name: '', series: '', reps: '', notes: '', video: '' }); renderDays(); }
+    function removeStation(di, ii, si) { var it = routineDays[di].items[ii]; if (it.sub.length > 1) { it.sub.splice(si, 1); renderDays(); } }
+    function fld(label, path, val, span2) {
+      return '<div class="form-group"' + (span2 ? ' style="grid-column: span 2;"' : '') + '><label>' + label + '</label><input type="text" value="' + escHtml(val || '') + '" oninput="' + path + ' = this.value"></div>';
+    }
+    function circuitEditorHtml(di, ii, item, showDemos) {
+      var c = item.circ || (item.circ = { nombre: '', rondas: '', trabajo: '', descanso: '', notas: '' });
+      var base = 'routineDays[' + di + '].items[' + ii + ']';
+      var first = isFirstOfSlot(routineDays[di].items, ii);
+      var h = '<div class="sub-box"><div class="sub-tag">Circuito:</div><div class="form-grid">' +
+        fld('Nombre del circuito', base + '.circ.nombre', c.nombre, true) +
+        fld('Rondas', base + '.circ.rondas', c.rondas) +
+        fld('Trabajo (por estación)', base + '.circ.trabajo', c.trabajo) +
+        fld('Descanso', base + '.circ.descanso', c.descanso) +
+        fld('Notas del circuito', base + '.circ.notas', c.notas, true) +
+      '</div></div>';
+      (item.sub || []).forEach(function(sb, k) {
+        var sp = base + '.sub[' + k + ']';
+        h += '<div class="sub-box"><div class="sub-tag">Estación ' + (k + 1) + ':</div><div class="form-grid">' +
+          fld('Nombre', sp + '.name', sb.name, true) +
+          fld('Reps o Tiempo', sp + '.reps', sb.reps) +
+          fld('Notas', sp + '.notes', sb.notes) +
+          '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' +
+            (first ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value">'
+                   : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Se usa el video de la primera versión de esta posición.</div>') +
+          '</div>' +
+          '<div class="form-group" style="grid-column: span 2;"><button type="button" class="btn btn-danger" style="padding:2px 8px; font-size:0.72rem;" onclick="removeStation(' + di + ', ' + ii + ', ' + k + ')">Quitar estación</button></div>' +
+        '</div></div>';
+      });
+      h += '<button type="button" class="btn btn-secondary" style="margin-top:6px;" onclick="addStation(' + di + ', ' + ii + ')">➕ Estación</button>';
+      return h;
+    }
+    function circuitHeaderHtml(c) {
+      c = c || {};
+      var pills = '';
+      if (c.rondas) pills += '<span class="circ-pill">' + escHtml(c.rondas) + ' rondas</span>';
+      if (c.trabajo) pills += '<span class="circ-pill">Trabajo ' + escHtml(c.trabajo) + '</span>';
+      if (c.descanso) pills += '<span class="circ-pill">Descanso ' + escHtml(c.descanso) + '</span>';
+      return '<div class="circ-head">' + (c.nombre ? '<div class="circ-title">' + escHtml(c.nombre) + '</div>' : '') +
+        (pills ? '<div class="circ-pills">' + pills + '</div>' : '') +
+        (c.notas ? '<div class="ex-notes">📌 ' + escHtml(c.notas) + '</div>' : '') + '</div>';
+    }
 
     function copyTemplateExample() {
       var text = document.getElementById('importTemplateText').innerText;
@@ -1341,7 +1437,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
               slot: item.slot || item.sl || (itIdx + 1),
               vigenciaDesde: item.vigenciaDesde || item.vd || 1,
               vigenciaHasta: item.vigenciaHasta !== undefined ? item.vigenciaHasta : (item.vh !== undefined ? item.vh : null),
-              sub: subList
+              sub: subList,
+              circ: item.circ
             };
           });
 
@@ -1351,6 +1448,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             habits: d.habits || (Array.isArray(d.h) ? { kcal: d.h[0]||'', agua: d.h[1]||'', sueno: d.h[2]||'', pasos: d.h[3]||'', entreno: d.h[4]||'' } : { kcal: '', agua: '', sueno: '', pasos: '', entreno: '' }),
             security: d.security || d.s || '',
             diet: d.diet || (Array.isArray(d.dt) ? { desayuno: d.dt[0]||'', snack: d.dt[1]||'', almuerzo: d.dt[2]||'', cena: d.dt[3]||'' } : { desayuno: '', snack: '', almuerzo: '', cena: '' }),
+            rest: d.rest === true || d.rest === 1,
             items: normItems
           };
         });
@@ -1366,16 +1464,16 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       if (!raw) return alert('Pega el texto estructurado primero.');
       var lines = raw.split('\n').map(function(l) { return l.trim(); });
       var curSection = null, curDay = null, parsedDays = [];
-      var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1;
+      var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1, lastCircuit = null;
 
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         if (!line) continue;
         if (line.indexOf('[ATLETA]') === 0) { curSection = 'ATLETA'; continue; }
         if (line.indexOf('[MENSAJE') === 0 || line.indexOf('[COACH') === 0) { curSection = 'MENSAJE_COACH'; continue; }
-        if (line.indexOf('[DIA') === 0) {
+        if (line.indexOf('[DIA') === 0 || line.indexOf('[DESCANSO') === 0) {
           curSection = 'DIA';
-          var titleMatch = line.match(/\[DIA\s*(\d*)\s*:?\s*(.*)\]/i);
+          var titleMatch = line.match(/\[(?:DIA|DESCANSO)\s*(\d*)\s*:?\s*(.*)\]/i);
           var title = titleMatch ? (titleMatch[2] ? 'Día ' + (titleMatch[1] || (parsedDays.length + 1)) + ': ' + titleMatch[2] : line.replace('[','').replace(']','')) : ('Día ' + (parsedDays.length + 1));
           curDay = {
             id: 'd' + (parsedDays.length + 1), title: title,
@@ -1383,7 +1481,11 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             security: 'Calentamiento dinámico articular | Uso de seguros | Hidratación entre series',
             diet: { desayuno: '', snack: '', almuerzo: '', cena: '' }, items: []
           };
-          parsedDays.push(curDay);
+          parsedDays.push(curDay); lastCircuit = null;
+          if (line.toUpperCase().indexOf('[DESCANSO') === 0) {
+            curDay.rest = true; curDay.habits.entreno = 'Descanso'; curDay.security = 'Movilidad suave | Hidratación | Sueño de calidad';
+            if (!/día/i.test(curDay.title)) curDay.title = 'Día ' + parsedDays.length + ': Descanso';
+          }
           pendingVigencia = null; currentSlotCounter = 0; lastHandledSlot = 1;
           continue;
         }
@@ -1456,7 +1558,43 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             return { slot: slot, vDesde: vDesde, vHasta: vHasta };
           }
 
+          if (dLower.indexOf('circuito:') === 0) {
+            var metaC = resolveSlotAndVig();
+            var propsC = line.substring(line.indexOf(':') + 1).split('|');
+            var circ = { nombre: propsC[0].trim(), rondas: '', trabajo: '', descanso: '', notas: '' };
+            propsC.slice(1).forEach(function(pr) {
+              var pair = pr.split(':');
+              if (pair.length >= 2) {
+                var pk = pair[0].trim().toLowerCase(), pv = pair.slice(1).join(':').trim();
+                if (pk.indexOf('ronda') !== -1) circ.rondas = pv;
+                if (pk.indexOf('trabajo') !== -1) circ.trabajo = pv;
+                if (pk.indexOf('descanso') !== -1) circ.descanso = pv;
+                if (pk.indexOf('nota') !== -1) circ.notas = pv;
+              }
+            });
+            lastCircuit = { type: 'circuito', slot: metaC.slot, vigenciaDesde: metaC.vDesde, vigenciaHasta: metaC.vHasta, circ: circ, sub: [] };
+            curDay.items.push(lastCircuit);
+            continue;
+          }
+          if (dLower.indexOf('estacion:') === 0 || dLower.indexOf('estación:') === 0) {
+            if (lastCircuit) {
+              var propsE = line.substring(line.indexOf(':') + 1).split('|');
+              var stn = { name: propsE[0].trim(), series: '', reps: '', notes: '', video: '' };
+              propsE.slice(1).forEach(function(pr) {
+                var pair = pr.split(':');
+                if (pair.length >= 2) {
+                  var pk = pair[0].trim().toLowerCase(), pv = pair.slice(1).join(':').trim();
+                  if (pk.indexOf('rep') !== -1 || pk.indexOf('tiempo') !== -1) stn.reps = pv;
+                  if (pk.indexOf('nota') !== -1) stn.notes = pv;
+                  if (pk.indexOf('video') !== -1) stn.video = pv;
+                }
+              });
+              lastCircuit.sub.push(stn);
+            }
+            continue;
+          }
           if (dLower.indexOf('ejercicio:') === 0) {
+            lastCircuit = null;
             var meta = resolveSlotAndVig();
             var props = line.substring(10).split('|');
             var sub = { name: props[0].trim(), series: '', reps: '', notes: '', video: '' };
@@ -1500,6 +1638,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         }
       }
 
+      parsedDays.forEach(function(pd) { if (!pd.items.length && /descanso/i.test(pd.title)) { pd.rest = true; pd.habits.entreno = 'Descanso'; } });
       if (parsedDays.length > 0) {
         routineDays = parsedDays;
         renderDays();
@@ -1586,16 +1725,18 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             full.configFeatures.nutrition ? [d.diet.desayuno||'', d.diet.snack||'', d.diet.almuerzo||'', d.diet.cena||''] : [],
             d.items.map(function(it) {
               return [
-                it.type === 'normal' ? 'n' : (it.type === 'biserie' ? 'b' : 't'),
+                it.type === 'normal' ? 'n' : (it.type === 'biserie' ? 'b' : (it.type === 'circuito' ? 'c' : 't')),
                 it.slot,
                 it.vigenciaDesde,
                 it.vigenciaHasta,
-                it.sub.map(function(s) {
-                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', full.configFeatures.demos ? extractYtId(s.video) : ''];
+                it.sub.map(function(s, sIdx) {
+                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', (full.configFeatures.demos && isFirstOfSlot(d.items, d.items.indexOf(it))) ? extractYtId(slotVideo(d.items, parseInt(it.slot, 10) || (d.items.indexOf(it) + 1), sIdx)) : ''];
                 })
               ];
             })
           ];
+          d.items.forEach(function(it, idx) { if (it.type === 'circuito') { var cc = it.circ || {}; dArr[5][idx].push([cc.rondas||'', cc.trabajo||'', cc.descanso||'', cc.notas||'', cc.nombre||'']); } });
+          dArr.push(d.rest ? 1 : 0);
           return dArr;
         }),
         full.coachName || '',
@@ -1657,13 +1798,15 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             title: d[1],
             habits: { kcal: h[0]||'', agua: h[1]||'', sueno: h[2]||'', pasos: h[3]||'', entreno: h[4]||'' },
             security: d[3] || '',
+            rest: d[6] === 1,
             diet: { desayuno: dt[0]||'', snack: dt[1]||'', almuerzo: dt[2]||'', cena: dt[3]||'' },
             items: (d[5] || []).map(function(it) {
               return {
-                type: it[0] === 'n' ? 'normal' : (it[0] === 'b' ? 'biserie' : 'triserie'),
+                type: it[0] === 'n' ? 'normal' : (it[0] === 'b' ? 'biserie' : (it[0] === 'c' ? 'circuito' : 'triserie')),
                 slot: it[1],
                 vigenciaDesde: it[2],
                 vigenciaHasta: it[3],
+                circ: (it[0] === 'c' && Array.isArray(it[5])) ? { rondas: it[5][0]||'', trabajo: it[5][1]||'', descanso: it[5][2]||'', notas: it[5][3]||'', nombre: it[5][4]||'' } : undefined,
                 sub: (it[4] || []).map(function(s) {
                   return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||'') };
                 })
@@ -1904,7 +2047,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var capsuleHtml = '<button class="capsule-btn btn-coach" onclick="openModal(\'ath_modal_coach\')">Nota del Coach</button>';
       state.routineDays.forEach(function(d, i) {
         var bgCol = dayColors[i % dayColors.length];
-        capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openModal(\'' + d.id + '\')">Día ' + (i + 1) + '</button>';
+        capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openModal(\'' + d.id + '\')">' + (d.rest ? '🌙 Día ' : 'Día ') + (i + 1) + '</button>';
       });
       capsuleHtml += '<button class="capsule-btn btn-historial" onclick="openHistorialModal()">📋 Historial de Cargas</button>';
       capsuleHtml += '<button class="capsule-btn btn-medidas" onclick="openModal(\'ath_modal_medidas\')">Ficha Antropométrica</button>';
@@ -1936,7 +2079,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         var exercisesHtml = '';
         (d.items || []).forEach(function(item, itIdx) {
           var isNormal = item.type === 'normal';
-          var typeBadge = isNormal ? 'SERIE NORMAL' : (item.type === 'biserie' ? 'BISERIE (A + B)' : 'TRISERIE (A + B + C)');
+          var typeBadge = isNormal ? 'SERIE NORMAL' : (item.type === 'biserie' ? 'BISERIE (A + B)' : (item.type === 'circuito' ? 'CIRCUITO' : 'TRISERIE (A + B + C)'));
           var slotNum = parseInt(item.slot, 10) || (itIdx + 1);
           var vDesde = parseInt(item.vigenciaDesde, 10) || 1;
           var vHasta = (item.vigenciaHasta === undefined || item.vigenciaHasta === null) ? null : (parseInt(item.vigenciaHasta, 10) || null);
@@ -1946,9 +2089,10 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           var subList = Array.isArray(item.sub) && item.sub.length > 0 ? item.sub : [{ name: item.name || '', series: item.series || '-', reps: item.reps || '-', notes: item.notes || '', video: item.video || '' }];
 
           subList.forEach(function(sub, subIdx) {
-            var letter = ['A', 'B', 'C'][subIdx];
+            var letter = item.type === 'circuito' ? String(subIdx + 1) : ['A', 'B', 'C'][subIdx];
             var fieldId = d.id + '_slot' + slotNum + '_v' + vDesde + '_s' + subIdx;
-            var yLink = (sub.video && sub.video.trim()) ? sub.video.trim() : 'https://www.youtube.com';
+            var vOwn = (sub.video && String(sub.video).trim()) ? String(sub.video).trim() : slotVideo(d.items, slotNum, subIdx);
+            var yLink = vOwn ? vOwn : 'https://www.youtube.com';
             if (!/^https?:\/\/[^\s"'<>]+$/i.test(yLink)) yLink = 'https://www.youtube.com';
 
             var demoButtonHtml = isDemos ? (
@@ -1957,7 +2101,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
             subsDetails += '<div class="exercise-item-box">' +
               '<div class="ex-name">' + (!isNormal ? '<span style="color:var(--accent);">' + letter + '</span> ' : '') + escHtml(sub.name || 'Ejercicio') + '</div>' +
-              '<div class="ex-target">' + escHtml(sub.series || '-') + ' series × ' + escHtml(sub.reps || '-') + ' reps</div>' +
+              '<div class="ex-target">' + (item.type === 'circuito' ? escHtml(sub.reps || '-') : escHtml(sub.series || '-') + ' series × ' + escHtml(sub.reps || '-') + ' reps') + '</div>' +
               (sub.notes ? '<div class="ex-notes">📌 ' + escHtml(sub.notes) + '</div>' : '') +
               demoButtonHtml +
               '<div class="tracker-inputs-grid">' +
@@ -1972,7 +2116,8 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
             '</div>';
           });
 
-          exercisesHtml += '<div class="exercise-card ' + (['normal', 'biserie', 'triserie'].indexOf(item.type) >= 0 ? item.type : 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
+          if (item.type === 'circuito') subsDetails = circuitHeaderHtml(item.circ) + subsDetails;
+          exercisesHtml += '<div class="exercise-card ' + (['normal', 'biserie', 'triserie', 'circuito'].indexOf(item.type) >= 0 ? item.type : 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
               '<span class="badge-type">' + typeBadge + '</span>' +
               '<span style="font-size:0.68rem; color:var(--muted);">Semana ' + vDesde + (vHasta ? '-' + vHasta : '+') + '</span>' +
@@ -1981,15 +2126,17 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
           '</div>';
         });
 
+        var isRest = d.rest === true;
+        if (isRest) exercisesHtml = '<div class="rest-note">🌙 Día de descanso. La recuperación también es parte del plan: prioriza el sueño, la hidratación y una movilidad suave.</div>';
         var toggleHeaderHtml = isNutri ? (
           '<div class="day-toggle-container">' +
-            '<button id="btn_sub_rutina_' + d.id + '" class="toggle-choice active" onclick="switchDaySection(\'' + d.id + '\', \'rutina\')">Rutina del Día</button>' +
-            '<button id="btn_sub_nutri_' + d.id + '" class="toggle-choice" onclick="switchDaySection(\'' + d.id + '\', \'nutricion\')">Nutrición del Día</button>' +
+            '<button id="btn_sub_rutina_' + d.id + '" class="toggle-choice' + (isRest ? '' : ' active') + '" onclick="switchDaySection(\'' + d.id + '\', \'rutina\')">Rutina del Día</button>' +
+            '<button id="btn_sub_nutri_' + d.id + '" class="toggle-choice' + (isRest ? ' active' : '') + '" onclick="switchDaySection(\'' + d.id + '\', \'nutricion\')">Nutrición del Día</button>' +
           '</div>'
         ) : '';
 
         var nutritionSectionHtml = isNutri ? (
-          '<div id="sec_nutri_' + d.id + '" class="day-section">' +
+          '<div id="sec_nutri_' + d.id + '" class="day-section' + (isRest ? ' active' : '') + '">' +
             '<div class="nutrition-accordion-list">' +
               '<details class="nutri-accordion" open><summary>🍳 Desayuno</summary><div class="nutri-content">' + escHtml(d.diet.desayuno || '-').replace(/\n/g, '<br>') + '</div></details>' +
               '<details class="nutri-accordion"><summary>🍏 Snacks</summary><div class="nutri-content">' + escHtml(d.diet.snack || '-').replace(/\n/g, '<br>') + '</div></details>' +
@@ -2024,7 +2171,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         '<div class="progression-banner"><div class="prog-title">📈 Progresión Semanal</div><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></div>' +
         '<div class="security-card"><div class="sec-title">🛡️ Protocolo de Seguridad</div><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></div>' +
         toggleHeaderHtml +
-        '<div id="sec_rutina_' + d.id + '" class="day-section active">' +
+        '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
           '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
           exercisesHtml +
           '<div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">' +
@@ -2034,6 +2181,9 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         '</div>' +
         nutritionSectionHtml;
 
+        if (isRest) {
+          dayScreen.querySelectorAll('.progression-banner, .btn-restore-all-day, .btn-action-primary, .btn-action-wa').forEach(function(el) { el.style.display = 'none'; });
+        }
         daysContainer.appendChild(dayScreen);
       });
 
@@ -2355,16 +2505,21 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
       var routinesPrintHtml = '';
       state.routineDays.forEach(function(d) {
         var itemsRows = '';
+        if (d.rest) itemsRows = '<tr><td colspan="5" style="padding:8px; border:1px solid #ccc; text-align:center; color:#555;">Día de descanso: recuperación, hidratación y sueño.</td></tr>';
         (d.items || []).forEach(function(it) {
           var vigLabel = 'Sem ' + (it.vigenciaDesde || 1) + (it.vigenciaHasta ? '-' + it.vigenciaHasta : '+');
           var subList = Array.isArray(it.sub) && it.sub.length > 0 ? it.sub : [{ name: it.name || 'Ejercicio', series: it.series || '-', reps: it.reps || '-', notes: it.notes || '-' }];
 
+          if (it.type === 'circuito') {
+            var cc = it.circ || {};
+            itemsRows += '<tr><td colspan="5" style="padding:6px; border:1px solid #ccc; background:#fff3e0; font-size:11px;"><strong>CIRCUITO' + (cc.nombre ? ': ' + escHtml(cc.nombre) : '') + '</strong>' + (cc.rondas ? ' · ' + escHtml(cc.rondas) + ' rondas' : '') + (cc.trabajo ? ' · Trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · Descanso ' + escHtml(cc.descanso) : '') + (cc.notas ? ' · ' + escHtml(cc.notas) : '') + ' <small>(' + vigLabel + ')</small></td></tr>';
+          }
           subList.forEach(function(s, sIdx) {
-            var tag = it.type === 'normal' ? 'Normal' : (it.type === 'biserie' ? (sIdx === 0 ? 'Biserie A' : 'Biserie B') : ('Triserie ' + ['A','B','C'][sIdx]));
+            var tag = it.type === 'circuito' ? ('Circuito · Est. ' + (sIdx + 1)) : it.type === 'normal' ? 'Normal' : (it.type === 'biserie' ? (sIdx === 0 ? 'Biserie A' : 'Biserie B') : ('Triserie ' + ['A','B','C'][sIdx]));
             itemsRows += '<tr>' +
               '<td style="padding:6px; border:1px solid #ccc; font-weight:bold;">' + (s.name || 'Sin especificar') + '</td>' +
               '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + tag + ' <small>(' + vigLabel + ')</small></td>' +
-              '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (s.series || '-') + '</td>' +
+              '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (it.type === 'circuito' ? '' : (s.series || '-')) + '</td>' +
               '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (s.reps || '-') + '</td>' +
               '<td style="padding:6px; border:1px solid #ccc; font-size:11px;">' + (s.notes || '-') + '</td>' +
             '</tr>';
@@ -2373,7 +2528,7 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
 
         var printNutriHtml = showNutri ? (
           '<div style="font-size:10px; color:#444; margin-bottom:8px;">' +
-            '<strong>Nutrición:</strong> Des: ' + (d.diet.desayuno||'-') + ' | Alm: ' + (d.diet.almuerzo||'-') + ' | Cena: ' + (d.diet.cena||'-') +
+            '<strong>Nutrición:</strong> Des: ' + (d.diet.desayuno||'-') + ' | Snack: ' + (d.diet.snack||'-') + ' | Alm: ' + (d.diet.almuerzo||'-') + ' | Cena: ' + (d.diet.cena||'-') +
           '</div>'
         ) : '';
 
@@ -2397,8 +2552,25 @@ Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atr
         '</div>';
       });
 
+      var coachNoteHtml = '<div class="coach-note"><strong>' + escHtml(state.coachMsgTitle || 'Nota del Coach') + '</strong><br>' + escHtml(state.coachMsgBody || '').replace(/\n/g, '<br>') + '</div>';
+      var medPrintHtml = '';
+      var pEntries = normalizeMeasureLog(state.measureLog);
+      if (!pEntries.length) { var pBase = legacyBaseline(state); if (pBase) pEntries = [pBase]; }
+      var pKeys = medKeysWithData(pEntries);
+      if (pKeys.length) {
+        var pHead = '<tr><th>Fecha</th>' + pKeys.map(function(f) { return '<th>' + f.short + (f.unit ? '<br>' + f.unit : '') + '</th>'; }).join('') + '</tr>';
+        var pRows = pEntries.map(function(e) { return '<tr><td>' + fmtDateTable(e.d) + '</td>' + pKeys.map(function(f) { return '<td>' + (e.v[f.k] != null ? fmtNum(e.v[f.k]) : '–') + '</td>'; }).join('') + '</tr>'; }).join('');
+        var chartKeys = pKeys.filter(function(f) { return medSeries(pEntries, f.k).length >= 2; }).slice(0, 6);
+        if (!chartKeys.length) chartKeys = pKeys.slice(0, 1);
+        var pCharts = chartKeys.map(function(f) {
+          var svg = medChartSvg(medSeries(pEntries, f.k)).replace(/#333333/g, '#dddddd').replace(/#a3a3a3/g, '#555555').replace(/#ffffff/g, '#111111').replace(/#0d0d0d/g, '#ffffff').replace(/#00e5ff/g, '#ff6d00');
+          return '<div class="med-cell"><div class="med-cell-title">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</div>' + svg + '</div>';
+        }).join('');
+        medPrintHtml = '<div class="med-print"><h3 style="margin-bottom:4px; font-size:13px; text-transform:uppercase; color:#000; border-bottom:1px solid #000;">Medidas y evolución</h3><table><thead>' + pHead + '</thead><tbody>' + pRows + '</tbody></table><div class="med-grid">' + pCharts + '</div></div>';
+      }
+
       var printWin = window.open('', '_blank');
-      var html = '<!DOCTYPE html><html><head><title>Ficha Benessere - ' + state.clientName + '</title><style>body { font-family: Arial, sans-serif; color: #000; padding: 20px; } header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff6d00; padding-bottom: 6px; margin-bottom: 10px; } h1 { margin: 0; font-size: 16px; text-transform: uppercase; } .sub { font-size: 10px; color: #555; } .brand { text-align: right; font-weight: bold; font-size: 15px; color:#000; } .slogan { font-size: 9px; color: #ff6d00; font-style: italic; } .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #f9f9f9; border: 1px solid #ddd; padding: 6px; font-size: 10px; margin-bottom: 10px; } @media print { body { padding: 0; } @page { margin: 1cm; } }</style></head><body><header><div><h1>Ficha de Entrenamiento Benessere Gym</h1><div class="sub">Expediente Oficial | Coach: ' + escHtml(displayCoach(state.coachName)) + '</div></div><div class="brand">BENESSERE GYM<div class="slogan">Juntos somos más fuertes</div></div></header><div class="info-grid"><div><strong>Atleta:</strong> ' + state.clientName + '</div><div><strong>Coach:</strong> ' + escHtml(displayCoach(state.coachName)) + '</div><div><strong>Fecha Inicio:</strong> ' + state.startDate + '</div><div><strong>Duración:</strong> ' + state.durationWeeks + ' Semanas</div><div><strong>Peso:</strong> ' + (state.measures.m_peso_kg||'-') + '</div><div style="grid-column: span 3;"><strong>Objetivo:</strong> ' + (state.measures.m_objetivo||'-') + '</div></div>' + routinesPrintHtml + '<script>window.onload = function() { window.print(); };<\/script></body></html>';
+      var html = '<!DOCTYPE html><html><head><title>Ficha Benessere - ' + state.clientName + '</title><style>body { font-family: Arial, sans-serif; color: #000; padding: 20px; } header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff6d00; padding-bottom: 6px; margin-bottom: 10px; } h1 { margin: 0; font-size: 16px; text-transform: uppercase; } .sub { font-size: 10px; color: #555; } .brand { text-align: right; font-weight: bold; font-size: 15px; color:#000; } .slogan { font-size: 9px; color: #ff6d00; font-style: italic; } .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #f9f9f9; border: 1px solid #ddd; padding: 6px; font-size: 10px; margin-bottom: 10px; } .coach-note { border: 1px solid #ddd; border-left: 4px solid #ff6d00; background: #fff8f0; padding: 8px; font-size: 11px; margin-bottom: 10px; } .med-print { margin-top: 16px; page-break-inside: avoid; } .med-print table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 8px; } .med-print th, .med-print td { border: 1px solid #ccc; padding: 3px; text-align: center; } .med-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .med-cell { border: 1px solid #ddd; padding: 6px; } .med-cell-title { font-size: 10px; font-weight: bold; margin-bottom: 2px; } @media print { body { padding: 0; } @page { margin: 1cm; } }</style></head><body><header><div><h1>Ficha de Entrenamiento Benessere Gym</h1><div class="sub">Expediente Oficial | Coach: ' + escHtml(displayCoach(state.coachName)) + '</div></div><div class="brand">BENESSERE GYM<div class="slogan">Juntos somos más fuertes</div></div></header><div class="info-grid"><div><strong>Atleta:</strong> ' + state.clientName + '</div><div><strong>Coach:</strong> ' + escHtml(displayCoach(state.coachName)) + '</div><div><strong>Fecha Inicio:</strong> ' + state.startDate + '</div><div><strong>Duración:</strong> ' + state.durationWeeks + ' Semanas</div><div><strong>Peso:</strong> ' + (state.measures.m_peso_kg||'-') + '</div><div style="grid-column: span 3;"><strong>Objetivo:</strong> ' + (state.measures.m_objetivo||'-') + '</div></div>' + coachNoteHtml + routinesPrintHtml + medPrintHtml + '<script>window.onload = function() { window.print(); };<\/script></body></html>';
       printWin.document.write(html);
       printWin.document.close();
     }
