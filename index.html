@@ -310,7 +310,7 @@
 
     <div class="gen-tabs">
       <button type="button" class="gen-tab-btn active" onclick="switchGenTab('tab_builder', this)">🏋️ Planificador de Rutina</button>
-      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">📂 Cargar HTML Anterior</button>
+      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">🔗 Cargar desde Link</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
@@ -378,21 +378,21 @@
     <!-- TAB 2: CARGAR HTML ANTERIOR -->
     <div id="tab_load_html" class="gen-view">
       <section class="section-box">
-        <div class="section-title">📂 Recargar Mesociclo Anterior <span class="badge">Restaurador Universal</span></div>
+        <div class="section-title">🔗 Recargar Mesociclo Anterior <span class="badge">Restaurador Universal</span></div>
         <p style="font-size:0.85rem; color:var(--muted); margin-bottom:14px;">
-          Sube el archivo <code>.html</code> generado previamente de tu atleta o pega su contenido aquí. El generador montará automáticamente todos sus días, medidas y ejercicios sin importar la versión anterior.
+          Pega el enlace corto que te dio el constructor al enviar una rutina anterior (el que empieza con <code>https://juancito76.github.io/benessere-app/#i=...</code>) o el enlace directo a un archivo <code>.html</code> publicado (por ejemplo en GitHub Pages). El generador lo descargará y montará automáticamente todos sus días, medidas y ejercicios.
         </p>
         <div class="form-group" style="margin-bottom:14px;">
-          <label>Opción A: Seleccionar archivo .html de tu dispositivo</label>
-          <input type="file" id="uploadHtmlFile" accept=".html,.htm" onchange="handleHtmlFileUpload(event)">
+          <label>Enlace de la rutina anterior</label>
+          <input type="text" id="loadFromUrlInput" placeholder="https://juancito76.github.io/benessere-app/#i=... o enlace a un .html">
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label>Opción B: Pegar el código HTML directamente</label>
-          <textarea id="pasteHtmlCode" style="min-height:160px; font-family:monospace; font-size:0.8rem;" placeholder="Pega el código HTML completo aquí..."></textarea>
-        </div>
-        <button type="button" class="btn btn-accent" style="width: 100%; padding: 14px; font-size: 0.95rem;" onclick="parseAndRestoreFromHtmlString()">
+        <button type="button" class="btn btn-accent" style="width: 100%; padding: 14px; font-size: 0.95rem;" onclick="loadRoutineFromUrl()">
           🚀 Montar Todos los Días y Datos
         </button>
+        <p id="loadFromUrlStatus" style="font-size:0.78rem; color:var(--muted); margin-top:10px; line-height:1.5;"></p>
+        <p style="font-size:0.72rem; color:var(--muted); margin-top:10px; line-height:1.5;">
+          💡 Si el enlace es de un archivo alojado fuera de GitHub Pages (por ejemplo Google Drive), asegúrate de que sea un enlace de <strong>descarga directa</strong> y no de "ver" — de lo contrario el navegador podría bloquear la lectura.
+        </p>
       </section>
     </div>
 
@@ -1276,15 +1276,44 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     // ================= RESTAURADOR UNIVERSAL (RECUPERA TODOS LOS DÍAS) =================
-    function handleHtmlFileUpload(event) {
-      var file = event.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById('pasteHtmlCode').value = e.target.result;
-        parseAndRestoreFromHtmlString();
-      };
-      reader.readAsText(file);
+    // Carga una rutina anterior a partir de un enlace: enlace corto/largo propio del
+    // constructor (#i= o #q=) se resuelve directo; cualquier otro enlace se descarga
+    // como texto y se procesa con el mismo lector universal que "pegar código HTML".
+    function loadRoutineFromUrl() {
+      var urlInput = document.getElementById('loadFromUrlInput');
+      var status = document.getElementById('loadFromUrlStatus');
+      var url = (urlInput.value || '').trim();
+      if (!url) { alert('Pega primero el enlace de la rutina anterior.'); return; }
+
+      var mi = url.match(/#i=([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{20,200})?/);
+      if (mi) { if (status) status.innerText = ''; restoreFromShare(mi[1]); return; }
+
+      var mq = url.match(/#q=([A-Za-z0-9_-]+)/);
+      if (mq) {
+        var stQ = decodePayload('q', mq[1]);
+        if (!stQ) { alert('El enlace largo parece incompleto o dañado.'); return; }
+        applyRestoredState(stQ);
+        alert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
+        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        return;
+      }
+
+      if (!/^https?:\/\//i.test(url)) { alert('Ese enlace no parece válido. Debe empezar con http:// o https://'); return; }
+
+      if (status) status.innerText = 'Descargando el archivo desde el enlace…';
+      fetch(url, { redirect: 'follow' })
+        .then(function(r) {
+          if (!r.ok) throw new Error('http-' + r.status);
+          return r.text();
+        })
+        .then(function(txt) {
+          if (status) status.innerText = '';
+          parseAndRestoreFromHtmlString(txt);
+        })
+        .catch(function(e) {
+          if (status) status.innerText = '';
+          alert('No se pudo descargar ese enlace. Revisa que sea público y termine en .html, o que sea un enlace corto del constructor (#i=...). Detalle: ' + (e && e.message ? e.message : 'error de red'));
+        });
     }
 
     function restoreFromShare(id) {
@@ -1299,8 +1328,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         .catch(function() { alert('No se pudo conectar para cargar ese enlace corto. Revisa tu internet.'); });
     }
 
-    function parseAndRestoreFromHtmlString() {
-      var raw = document.getElementById('pasteHtmlCode').value.trim();
+    function parseAndRestoreFromHtmlString(rawInput) {
+      var pasteEl = document.getElementById('pasteHtmlCode');
+      var raw = (rawInput != null ? rawInput : (pasteEl ? pasteEl.value : '')).trim();
       if (raw && raw.length < 3000) {
         var mi = raw.match(/#i=([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{20,200})?/);
         if (mi) { restoreFromShare(mi[1]); return; }
