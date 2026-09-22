@@ -320,6 +320,25 @@
     <div id="tab_builder" class="gen-view active">
       <section class="section-box">
         <div class="section-title">
+          💾 Guardado de la Rutina
+          <span class="badge">Borradores</span>
+        </div>
+        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:12px; line-height:1.5;">
+          Guarda tu progreso mientras armas la rutina, así no lo perdés si se cierra la pestaña por accidente. El guardado es manual: nunca se carga solo, vos elegís cuándo abrir un borrador.
+        </p>
+        <div class="form-grid" style="margin-bottom:10px;">
+          <button type="button" class="btn btn-accent" onclick="saveDraftPrompt()">💾 Guardar borrador</button>
+          <button type="button" class="btn btn-secondary" onclick="openDraftList()">📂 Abrir borrador guardado</button>
+          <button type="button" class="btn btn-secondary" onclick="downloadDraftFile()">⬇️ Descargar como archivo</button>
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('draftFileInput').click()">📤 Cargar desde archivo</button>
+        </div>
+        <button type="button" class="btn btn-accent" style="width:100%; padding:12px; margin-bottom:10px;" onclick="saveAndResetBuilder()">💾➡️🧹 Guardar y reiniciar para el próximo cliente</button>
+        <input type="file" id="draftFileInput" accept=".json" style="display:none;" onchange="loadDraftFromFile(this)">
+        <p id="draftStatus" style="font-size:0.75rem; color:var(--muted); margin-top:6px; line-height:1.5;"></p>
+      </section>
+
+      <section class="section-box">
+        <div class="section-title">
           🧑‍🏫 Perfil del Coach
           <span class="badge">Se guarda en este dispositivo</span>
         </div>
@@ -601,6 +620,16 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       <button type="button" class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="closeModal('modal_share')">Cerrar</button>
     </div>
   </div>
+
+  <!-- ================= VENTANA: BORRADORES GUARDADOS ================= -->
+  <div id="modal_drafts" class="modal-overlay">
+    <div class="modal-inner">
+      <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:10px;">📂 Borradores guardados en este dispositivo</div>
+      <div id="draftListBody" style="max-height:340px; overflow-y:auto; margin-bottom:10px;"></div>
+      <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_drafts')">Cerrar</button>
+    </div>
+  </div>
+
 
   <!-- ================= SELECTOR DE EJERCICIOS DEL INVENTARIO ================= -->
   <div id="modal_pick_ex" class="modal-overlay">
@@ -1441,6 +1470,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function applyRestoredState(state) {
       if (state.clientName) document.getElementById('clientName').value = state.clientName;
       if (state.clientGender) document.getElementById('clientGender').value = state.clientGender;
+      if (state.clientPhone !== undefined) document.getElementById('clientPhone').value = state.clientPhone;
       if (state.startDate) document.getElementById('startDate').value = state.startDate;
       if (state.durationWeeks) document.getElementById('durationWeeks').value = state.durationWeeks;
       if (state.coachMsgTitle) document.getElementById('coachMsgTitle').value = state.coachMsgTitle;
@@ -1525,7 +1555,212 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       }
     }
 
-    // ================= IMPORTADOR DE TEXTO =================
+    // ================= GUARDADO DE BORRADORES (localStorage + archivo) =================
+    var DRAFTS_INDEX_KEY = 'benessere_drafts_index';   // lista de {id, label, savedAt}
+    var DRAFTS_PREFIX = 'benessere_draft_';
+    var AUTOSAVE_KEY = 'benessere_autosave';
+
+    function getDraftsIndex() {
+      try { return JSON.parse(localStorage.getItem(DRAFTS_INDEX_KEY) || '[]'); } catch (e) { return []; }
+    }
+    function setDraftsIndex(idx) {
+      try { localStorage.setItem(DRAFTS_INDEX_KEY, JSON.stringify(idx)); } catch (e) {}
+    }
+    function setDraftStatus(msg) {
+      var el = document.getElementById('draftStatus');
+      if (el) el.innerText = msg || '';
+    }
+
+    // Guarda un borrador con nombre elegido por el coach (nunca se carga solo)
+    function saveDraftPrompt() {
+      var suggested = (document.getElementById('clientName').value.trim() || 'Sin nombre') + ' — ' + todayIso();
+      var label = prompt('Nombre para este borrador (por ejemplo, el nombre del cliente):', suggested);
+      if (label === null) return;   // canceló
+      label = label.trim() || suggested;
+      try {
+        var state = getBuilderState();
+        var id = 'd' + Date.now();
+        localStorage.setItem(DRAFTS_PREFIX + id, JSON.stringify(state));
+        var idx = getDraftsIndex();
+        idx.unshift({ id: id, label: label, savedAt: new Date().toISOString() });
+        setDraftsIndex(idx);
+        setDraftStatus('✅ Guardado como "' + label + '".');
+      } catch (e) {
+        setDraftStatus('⚠️ No se pudo guardar: el navegador rechazó el almacenamiento (¿memoria llena?).');
+      }
+    }
+
+    // Auto-guardado silencioso: se sobreescribe solo a sí mismo, nunca se carga automáticamente
+    function autosaveSilently() {
+      try {
+        var state = getBuilderState();
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ state: state, savedAt: new Date().toISOString() }));
+      } catch (e) {}
+    }
+
+    function fmtDraftDate(iso) {
+      try {
+        var d = new Date(iso);
+        return d.toLocaleDateString('es-CR') + ' ' + d.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) { return ''; }
+    }
+
+    function openDraftList() {
+      var idx = getDraftsIndex();
+      var body = document.getElementById('draftListBody');
+      var auto = null;
+      try { auto = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch (e) {}
+
+      var html = '';
+      if (auto && auto.state) {
+        html += '<div style="border:1px solid #333; border-radius:8px; padding:10px; margin-bottom:10px; background:#141414;">' +
+          '<div style="font-weight:700; font-size:0.85rem; margin-bottom:2px;">🕒 Auto-guardado más reciente</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">' + fmtDraftDate(auto.savedAt) + '</div>' +
+          '<button type="button" class="btn btn-accent" style="width:100%; padding:8px;" onclick="loadAutosave()">Abrir este</button>' +
+          '</div>';
+      }
+      if (idx.length === 0 && !auto) {
+        html += '<p style="font-size:0.85rem; color:var(--muted);">Todavía no hay borradores guardados en este dispositivo.</p>';
+      } else if (idx.length === 0) {
+        html += '<p style="font-size:0.85rem; color:var(--muted);">No hay borradores guardados con nombre todavía.</p>';
+      } else {
+        idx.forEach(function(d) {
+          html += '<div style="border:1px solid #2a2a2a; border-radius:8px; padding:10px; margin-bottom:8px;">' +
+            '<div style="font-weight:700; font-size:0.85rem; margin-bottom:2px;">' + escHtml(d.label) + '</div>' +
+            '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">' + fmtDraftDate(d.savedAt) + '</div>' +
+            '<div style="display:flex; gap:8px;">' +
+              '<button type="button" class="btn btn-accent" style="flex:1; padding:8px;" onclick="loadDraft(' + JSON.stringify(d.id) + ')">Abrir</button>' +
+              '<button type="button" class="btn btn-danger" style="padding:8px 12px;" onclick="deleteDraft(' + JSON.stringify(d.id) + ')">🗑️</button>' +
+            '</div>' +
+          '</div>';
+        });
+      }
+      body.innerHTML = html;
+      openModal('modal_drafts');
+    }
+
+    function loadDraft(id) {
+      var raw = localStorage.getItem(DRAFTS_PREFIX + id);
+      if (!raw) { setDraftStatus('⚠️ Ese borrador ya no está disponible.'); closeModal('modal_drafts'); return; }
+      try {
+        var state = JSON.parse(raw);
+        applyRestoredState(state);
+        closeModal('modal_drafts');
+        setDraftStatus('✅ Borrador cargado.');
+      } catch (e) {
+        setDraftStatus('⚠️ El borrador está dañado y no se pudo abrir.');
+      }
+    }
+
+    function loadAutosave() {
+      try {
+        var auto = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null');
+        if (!auto || !auto.state) return;
+        applyRestoredState(auto.state);
+        closeModal('modal_drafts');
+        setDraftStatus('✅ Auto-guardado cargado.');
+      } catch (e) {
+        setDraftStatus('⚠️ El auto-guardado está dañado y no se pudo abrir.');
+      }
+    }
+
+    function deleteDraft(id) {
+      if (!confirm('¿Eliminar este borrador? No se puede deshacer.')) return;
+      localStorage.removeItem(DRAFTS_PREFIX + id);
+      var idx = getDraftsIndex().filter(function(d) { return d.id !== id; });
+      setDraftsIndex(idx);
+      openDraftList();   // refresca la lista abierta
+    }
+
+    // Descargar/cargar como archivo .json (para respaldo fuera del navegador o pasar a otra compu)
+    function downloadDraftFile() {
+      var state = getBuilderState();
+      var clientPart = (document.getElementById('clientName').value.trim() || 'rutina').replace(/[^A-Za-z0-9_-]+/g, '_');
+      var fname = 'borrador_' + clientPart + '_' + todayIso() + '.json';
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+      setDraftStatus('✅ Archivo descargado: ' + fname);
+    }
+
+    function loadDraftFromFile(input) {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var state = JSON.parse(e.target.result);
+          applyRestoredState(state);
+          setDraftStatus('✅ Rutina cargada desde archivo.');
+        } catch (err) {
+          setDraftStatus('⚠️ Ese archivo no se pudo leer (¿es un .json válido de este constructor?).');
+        }
+        input.value = '';   // permite volver a cargar el mismo archivo si hace falta
+      };
+      reader.readAsText(file);
+    }
+
+    // Guarda el trabajo actual como borrador (con nombre) y deja el constructor 100% limpio
+    // para el siguiente cliente — incluye campos que el Importador de Texto no toca
+    // (ficha antropométrica, teléfono, historial de medidas), que es justo lo que se
+    // arrastra por accidente si solo se pega texto nuevo encima de una rutina anterior.
+    function saveAndResetBuilder() {
+      var currentName = document.getElementById('clientName').value.trim();
+      if (currentName || routineDays.length > 1 || (routineDays[0] && routineDays[0].items && routineDays[0].items.length)) {
+        var suggested = (currentName || 'Sin nombre') + ' — ' + todayIso();
+        var label = prompt('Nombre para guardar este borrador antes de reiniciar:', suggested);
+        if (label === null) return;   // canceló: no guarda ni reinicia nada
+        label = label.trim() || suggested;
+        try {
+          var state = getBuilderState();
+          var id = 'd' + Date.now();
+          localStorage.setItem(DRAFTS_PREFIX + id, JSON.stringify(state));
+          var idx = getDraftsIndex();
+          idx.unshift({ id: id, label: label, savedAt: new Date().toISOString() });
+          setDraftsIndex(idx);
+        } catch (e) {
+          if (!confirm('⚠️ No se pudo guardar el borrador (¿memoria del navegador llena?). ¿Reiniciar de todas formas y perder lo que hay ahora?')) return;
+        }
+      } else if (!confirm('¿Reiniciar el constructor? No hay nada que valga la pena guardar todavía.')) {
+        return;
+      }
+
+      // --- Reinicio completo ---
+      document.getElementById('clientName').value = '';
+      document.getElementById('clientPhone').value = '';
+      document.getElementById('clientGender').value = 'o';
+      document.getElementById('startDate').value = '';
+      document.getElementById('durationWeeks').value = '4';
+      document.getElementById('coachMsgTitle').value = '';
+      document.getElementById('coachMsgBody').value = '';
+      document.getElementById('featureNutrition').checked = false;
+      document.getElementById('featureDemos').checked = false;
+
+      document.getElementById('m_objetivo').value = '';
+      document.getElementById('m_estatura').value = '';
+      MEASURE_FIELDS.forEach(function(f) { document.getElementById(f.k).value = ''; });
+      measureLog = [];
+      var fechaEl = document.getElementById('m_fecha');
+      if (fechaEl) fechaEl.value = todayIso();
+      renderMeasureLog();
+
+      routineDays = [{
+        id: 'd1', title: 'Día 1',
+        habits: { kcal: '', agua: '', sueno: '', pasos: '', entreno: 'Sesión programada' },
+        security: 'Calentamiento dinámico articular | Uso de seguros | Hidratación entre series',
+        diet: { desayuno: '', snack: '', almuerzo: '', cena: '' }, items: []
+      }];
+      renderDays();
+      updateModulesVisibility();
+      switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+      window.scrollTo(0, 0);
+      setDraftStatus('✅ Guardado. Constructor reiniciado, listo para el siguiente cliente.');
+    }
+
+
     function parseAndLoadImportData() {
       var raw = document.getElementById('importRawText').value.trim();
       if (!raw) return alert('Pega el texto estructurado primero.');
@@ -1739,7 +1974,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var isDemos = document.getElementById('featureDemos').checked;
 
       return {
-        clientName: cName, clientGender: cGender, startDate: sDate, durationWeeks: dWeeks,
+        clientName: cName, clientGender: cGender, clientPhone: document.getElementById('clientPhone').value.trim(),
+        startDate: sDate, durationWeeks: dWeeks,
         coachMsgTitle: msgTitle, coachMsgBody: msgBody,
         coachName: document.getElementById('coachName').value.trim(),
         coachPhone: CONFIG_COACH_PHONE,
@@ -1797,7 +2033,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 it.vigenciaDesde,
                 it.vigenciaHasta,
                 it.sub.map(function(s, sIdx) {
-                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', (full.configFeatures.demos && isFirstOfSlot(d.items, d.items.indexOf(it))) ? extractYtId(slotVideo(d.items, parseInt(it.slot, 10) || (d.items.indexOf(it) + 1), sIdx)) : ''];
+                  // El video se guarda siempre que exista, sin importar el estado del toggle "Demostraciones en Video":
+                  // ese toggle solo controla si el cliente lo VE en el visor, no si el dato se conserva al generar el enlace.
+                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', isFirstOfSlot(d.items, d.items.indexOf(it)) ? extractYtId(slotVideo(d.items, parseInt(it.slot, 10) || (d.items.indexOf(it) + 1), sIdx)) : ''];
                 })
               ];
             })
@@ -2737,6 +2975,13 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       renderDays();
       updateModulesVisibility();
       initMeasureForm();
+      startAutosaveTimer();
+    }
+    var autosaveTimer = null;
+    function startAutosaveTimer() {
+      if (autosaveTimer) return;   // no duplicar el intervalo si showBuilder se llama más de una vez
+      autosaveTimer = setInterval(autosaveSilently, 20000);   // cada 20s, en silencio, sin avisar ni interrumpir
+      window.addEventListener('beforeunload', autosaveSilently);   // último respaldo justo antes de cerrar/recargar
     }
     function openCoachAccess() { showBuilder(); window.scrollTo(0, 0); }
 
