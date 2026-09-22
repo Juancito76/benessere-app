@@ -2777,31 +2777,38 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (!m) { showAthleteMessage('broken', 'Código de enlace no válido'); return; }
       var id = m[1];   // (los enlaces enviados antes traían además la dirección del script: se ignora)
       showAthleteMessage('loading', '');
-      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
-        .then(function(j) {
-          if (j && j.ok && j.p) {
-            var st = decodePayload('q', j.p);
-            if (!st) { showAthleteMessage('broken', 'Los datos recibidos están dañados'); return; }
-            try {
-              renderAthleteApp(st);
-              saveAthletePayload({ k: 'q', v: j.p, id: id });
-            } catch (e) {
-              console.error(e);
-              showAthleteMessage('broken', 'Error al mostrar la rutina: ' + (e && e.message ? e.message : e));
+
+      function attempt(isRetry) {
+        fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
+          .then(function(j) {
+            if (j && j.ok && j.p) {
+              var st = decodePayload('q', j.p);
+              if (!st) { showAthleteMessage('broken', 'Los datos recibidos están dañados'); return; }
+              try {
+                renderAthleteApp(st);
+                saveAthletePayload({ k: 'q', v: j.p, id: id });
+              } catch (e) {
+                console.error(e);
+                showAthleteMessage('broken', 'Error al mostrar la rutina: ' + (e && e.message ? e.message : e));
+              }
+            } else if (j && j.error === 'no-existe') {
+              showAthleteMessage('gone', '');
+            } else {
+              showAthleteMessage('broken', 'El servicio respondió con un error' + (j && j.error ? ' (' + j.error + ')' : ''));
             }
-          } else if (j && j.error === 'no-existe') {
-            showAthleteMessage('gone', '');
-          } else {
-            showAthleteMessage('broken', 'El servicio respondió con un error' + (j && j.error ? ' (' + j.error + ')' : ''));
-          }
-        })
-        .catch(function(e) {
-          // Sin internet: si es la misma rutina que ya se abrió antes, se muestra la guardada
-          var saved = loadAthletePayload();
-          var st2 = (saved && saved.id === id && saved.v) ? decodePayload(saved.k, saved.v) : null;
-          if (st2) { try { renderAthleteApp(st2); return; } catch (e2) {} }
-          showAthleteMessage('offline', (e && e.message === 'respuesta') ? 'El servicio no respondió como se esperaba' : '');
-        });
+          })
+          .catch(function(e) {
+            // Primer intento fallido por timeout o error de red: reintenta una vez en silencio
+            // (el servicio de Google a veces tarda en "despertar" si llevaba rato sin uso)
+            if (!isRetry) { attempt(true); return; }
+            // Segundo intento también falló: si es la misma rutina que ya se abrió antes, se muestra la guardada
+            var saved = loadAthletePayload();
+            var st2 = (saved && saved.id === id && saved.v) ? decodePayload(saved.k, saved.v) : null;
+            if (st2) { try { renderAthleteApp(st2); return; } catch (e2) {} }
+            showAthleteMessage('offline', (e && e.message === 'respuesta') ? 'El servicio no respondió como se esperaba' : '');
+          });
+      }
+      attempt(false);
     }
 
     function hasCoachProfile() {
