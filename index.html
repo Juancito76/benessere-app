@@ -201,6 +201,7 @@
     .prog-desc { font-size: 0.8rem; color: #e0f7fa; line-height: 1.35; }
     .security-card { background: #241913; border: 1px solid var(--accent); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
     .sec-title { font-size: 0.75rem; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
+    .equipment-banner { background: #0d2318; border: 1px solid var(--success); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #e0ffe8; }
     .sec-items { font-size: 0.78rem; color: #fff; line-height: 1.35; }
     .day-toggle-container { display: flex; gap: 8px; margin-bottom: 16px; background: #191919; padding: 4px; border-radius: 30px; }
     .toggle-choice { flex: 1; padding: 10px; border: none; border-radius: 25px; background: transparent; color: var(--muted); font-weight: 800; font-size: 0.85rem; cursor: pointer; }
@@ -335,6 +336,17 @@
         <button type="button" class="btn btn-accent" style="width:100%; padding:12px; margin-bottom:10px;" onclick="saveAndResetBuilder()">💾➡️🧹 Guardar y reiniciar para el próximo cliente</button>
         <input type="file" id="draftFileInput" accept=".json" style="display:none;" onchange="loadDraftFromFile(this)">
         <p id="draftStatus" style="font-size:0.75rem; color:var(--muted); margin-top:6px; line-height:1.5;"></p>
+      </section>
+
+      <section class="section-box">
+        <div class="section-title">
+          🎥 Biblioteca de Videos
+          <span class="badge">Se arma sola</span>
+        </div>
+        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:12px; line-height:1.5;">
+          Cada vez que ponés un link de YouTube en un ejercicio, queda guardado acá automáticamente con su nombre — sin que tengas que hacer nada extra. Es tu catálogo propio de "qué video va con qué ejercicio", reutilizable entre rutinas.
+        </p>
+        <button type="button" class="btn btn-secondary" style="width:100%;" onclick="openVideoLibrary()">📚 Ver biblioteca de videos</button>
       </section>
 
       <section class="section-box">
@@ -627,6 +639,21 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:10px;">📂 Borradores guardados en este dispositivo</div>
       <div id="draftListBody" style="max-height:340px; overflow-y:auto; margin-bottom:10px;"></div>
       <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_drafts')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- ================= VENTANA: BIBLIOTECA DE VIDEOS ================= -->
+  <div id="modal_video_library" class="modal-overlay">
+    <div class="modal-inner">
+      <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:10px;">🎥 Biblioteca de videos</div>
+      <input type="text" id="videoLibSearch" class="pick-search" placeholder="Buscar ejercicio..." oninput="renderVideoLibrary()" style="margin-bottom:10px;">
+      <div id="videoLibBody" style="max-height:340px; overflow-y:auto; margin-bottom:10px;"></div>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <button type="button" class="btn btn-secondary" style="flex:1;" onclick="downloadVideoLibrary()">⬇️ Exportar</button>
+        <button type="button" class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('videoLibFileInput').click()">📤 Importar</button>
+      </div>
+      <input type="file" id="videoLibFileInput" accept=".json" style="display:none;" onchange="loadVideoLibraryFromFile(this)">
+      <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_video_library')">Cerrar</button>
     </div>
   </div>
 
@@ -1044,6 +1071,15 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       });
     }
 
+    // Envuelve un texto como argumento de string seguro dentro de un onclick="...(ARGUMENTO)"
+    // que ya está entre comillas dobles. Escapa primero para JS (comillas, backslash) y
+    // después para el atributo HTML (& < > " '), así nombres con apóstrofes (p. ej.
+    // "Farmer's Walk") o rutas de código nunca rompen el atributo a mitad de camino.
+    function jsArg(s) {
+      var jsEscaped = String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+      return "'" + escHtml(jsEscaped) + "'";
+    }
+
     // Deja solo dígitos; un número de 8 dígitos se asume de Costa Rica (+506)
     function cleanPhone(p) {
       var d = String(p || '').replace(/[^0-9]/g, '');
@@ -1054,6 +1090,143 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function displayCoach(name) {
       var n = String(name || '').trim().replace(/^coach\s+/i, '');
       return n ? 'Coach ' + n : 'Coach Benessere';
+    }
+
+    // ================= BIBLIOTECA DE VIDEOS (nombre de ejercicio → link) =================
+    // Cada vez que se escribe un link de YouTube junto a un ejercicio, queda guardado acá
+    // automáticamente, sin acción extra del coach — así se arma solo, con el uso normal
+    // del constructor, un catálogo reutilizable de "qué video va con qué ejercicio".
+    var VIDEO_LIBRARY_KEY = 'benessere_video_library';
+
+    function getVideoLibrary() {
+      try { return JSON.parse(localStorage.getItem(VIDEO_LIBRARY_KEY) || '{}') || {}; } catch (e) { return {}; }
+    }
+    function setVideoLibrary(lib) {
+      try { localStorage.setItem(VIDEO_LIBRARY_KEY, JSON.stringify(lib)); } catch (e) {}
+    }
+    // Guarda o actualiza un par nombre→link. Nombres vacíos o links vacíos no se guardan
+    // (evita ensuciar la biblioteca con entradas a medio llenar).
+    function rememberExerciseVideo(name, video) {
+      name = String(name || '').trim();
+      video = String(video || '').trim();
+      if (!name || !video) return;
+      var lib = getVideoLibrary();
+      lib[name] = video;
+      setVideoLibrary(lib);
+    }
+    function forgetExerciseVideo(name) {
+      var lib = getVideoLibrary();
+      delete lib[name];
+      setVideoLibrary(lib);
+    }
+    // Se llama al perder el foco un campo de nombre o de video de ejercicio: toma el par
+    // actual desde el propio formulario (ya reflejado en routineDays por el oninput previo)
+    // y lo guarda si ambos campos tienen contenido.
+    function rememberVideoFromPath(basePath) {
+      try {
+        var pair = new Function('return [' + basePath + '.name, ' + basePath + '.video];')();
+        rememberExerciseVideo(pair[0], pair[1]);
+      } catch (e) {}
+    }
+
+    // Al escribir el nombre de un ejercicio (y salir del campo), si ya hay un video
+    // guardado en la biblioteca para ese nombre exacto y el campo de video sigue vacío,
+    // lo autocompleta — así un ejercicio que ya usaste antes no exige volver a pegar el link.
+    function suggestVideoFromLibrary(basePath) {
+      try {
+        var name = new Function('return ' + basePath + '.name;')();
+        var current = new Function('return ' + basePath + '.video;')();
+        if (current && String(current).trim()) return; // ya tiene video, no lo pisa
+        var lib = getVideoLibrary();
+        var known = lib[String(name || '').trim()];
+        if (!known) return;
+        new Function('val', basePath + '.video = val;')(known);
+        renderDays();
+      } catch (e) {}
+    }
+
+    function openVideoLibrary() {
+      var s = document.getElementById('videoLibSearch');
+      if (s) s.value = '';
+      renderVideoLibrary();
+      openModal('modal_video_library');
+    }
+    function renderVideoLibrary() {
+      var body = document.getElementById('videoLibBody');
+      var searchEl = document.getElementById('videoLibSearch');
+      if (!body) return;
+      var query = (searchEl ? searchEl.value : '').trim().toLowerCase();
+      var lib = getVideoLibrary();
+      var names = Object.keys(lib).sort(function(a, b) { return a.localeCompare(b, 'es'); });
+      if (query) names = names.filter(function(n) { return n.toLowerCase().indexOf(query) !== -1; });
+
+      if (names.length === 0) {
+        body.innerHTML = '<p style="font-size:0.85rem; color:var(--muted); text-align:center; padding:20px 0;">' +
+          (Object.keys(lib).length === 0 ? 'Todavía no hay videos guardados. Se van agregando solos a medida que ponés links de YouTube en los ejercicios.' : 'Sin resultados para "' + escHtml(query) + '".') +
+          '</p>';
+        return;
+      }
+      var html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+      names.forEach(function(n) {
+        html += '<div style="border:1px solid #2a2a2a; border-radius:8px; padding:10px;">' +
+          '<div style="font-weight:700; font-size:0.85rem; margin-bottom:4px;">' + escHtml(n) + '</div>' +
+          '<div style="display:flex; gap:8px; align-items:center;">' +
+            '<a href="' + escHtml(lib[n]) + '" target="_blank" rel="noopener" style="flex:1; font-size:0.72rem; color:var(--primary); word-break:break-all;">' + escHtml(lib[n]) + '</a>' +
+            '<button type="button" style="background:transparent; border:none; color:#aaa; cursor:pointer; font-size:0.9rem; flex-shrink:0;" onclick="forgetExerciseVideo(' + jsArg(n) + '); renderVideoLibrary();" title="Quitar de la biblioteca">🗑️</button>' +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div>';
+      body.innerHTML = html;
+    }
+
+    // Descarga toda la biblioteca como un .json — para pasarla a otro coach/dispositivo,
+    // o como respaldo fuera del navegador.
+    function downloadVideoLibrary() {
+      var lib = getVideoLibrary();
+      var count = Object.keys(lib).length;
+      if (count === 0) { alert('Todavía no hay videos guardados para exportar.'); return; }
+      var blob = new Blob([JSON.stringify(lib, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'biblioteca_videos_benessere_' + todayIso() + '.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+    }
+
+    // Combina un archivo .json de biblioteca con la del dispositivo actual: nunca borra lo
+    // que ya había, y para nombres repetidos el archivo importado gana (se asume que es la
+    // versión más reciente que se está trayendo de otro coach/dispositivo).
+    function loadVideoLibraryFromFile(input) {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var incoming;
+        try {
+          incoming = JSON.parse(e.target.result);
+          if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) throw new Error('formato inválido');
+        } catch (err) {
+          alert('Ese archivo no se pudo leer (¿es un .json de biblioteca de videos válido?).');
+          input.value = '';
+          return;
+        }
+        var lib = getVideoLibrary();
+        var added = 0, updated = 0;
+        Object.keys(incoming).forEach(function(name) {
+          var video = String(incoming[name] || '').trim();
+          var cleanName = String(name || '').trim();
+          if (!cleanName || !video) return;
+          if (lib.hasOwnProperty(cleanName)) { if (lib[cleanName] !== video) updated++; }
+          else added++;
+          lib[cleanName] = video;
+        });
+        setVideoLibrary(lib);
+        renderVideoLibrary();
+        alert('Biblioteca combinada: ' + added + ' ejercicio(s) nuevo(s), ' + updated + ' actualizado(s) con el video del archivo.');
+        input.value = '';
+      };
+      reader.readAsText(file);
     }
 
     function loadCoachConfig() {
@@ -1139,14 +1312,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 '<div class="form-group" style="grid-column: span 2;">' +
                   '<label>Nombre del Ejercicio</label>' +
                   '<div class="pick-name-row">' +
-                    '<input type="text" value="' + escHtml(sub.name || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].name = this.value" placeholder="Ej: Sentadilla Goblet">' +
-                    '<button type="button" class="btn-pick-ex" onclick="openPickExercise(' + JSON.stringify('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].name') + ')">📋 Elegir</button>' +
+                    '<input type="text" value="' + escHtml(sub.name || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].name = this.value" onblur="suggestVideoFromLibrary(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')" placeholder="Ej: Sentadilla Goblet">' +
+                    '<button type="button" class="btn-pick-ex" onclick="openPickExercise(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].name') + ')">📋 Elegir</button>' +
                   '</div>' +
                 '</div>' +
                 '<div class="form-group"><label>Series</label><input type="text" value="' + escHtml(sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
                 '<div class="form-group"><label>Reps</label><input type="text" value="' + escHtml(sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
                 '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + escHtml(sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
-                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (isFirstOfSlot(day.items, itemIndex) ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value">' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Se usa el video de la primera versión de esta posición.</div>') + '</div>' +
+                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (isFirstOfSlot(day.items, itemIndex) ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')">' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Se usa el video de la primera versión de esta posición.</div>') + '</div>' +
               '</div>' +
             '</div>';
           });
@@ -1254,9 +1427,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function addStation(di, ii) { routineDays[di].items[ii].sub.push({ name: '', series: '', reps: '', notes: '', video: '' }); renderDays(); }
     function removeStation(di, ii, si) { var it = routineDays[di].items[ii]; if (it.sub.length > 1) { it.sub.splice(si, 1); renderDays(); } }
     function fld(label, path, val, span2, withPicker) {
-      var inputHtml = '<input type="text" value="' + escHtml(val || '') + '" oninput="' + path + ' = this.value">';
+      var blurAttr = withPicker ? (' onblur="suggestVideoFromLibrary(' + jsArg(path.replace(/\.name$/, '')) + ')"') : '';
+      var inputHtml = '<input type="text" value="' + escHtml(val || '') + '" oninput="' + path + ' = this.value"' + blurAttr + '>';
       if (withPicker) {
-        inputHtml = '<div class="pick-name-row">' + inputHtml + '<button type="button" class="btn-pick-ex" onclick="openPickExercise(' + JSON.stringify(path) + ')">📋 Elegir</button></div>';
+        inputHtml = '<div class="pick-name-row">' + inputHtml + '<button type="button" class="btn-pick-ex" onclick="openPickExercise(' + jsArg(path) + ')">📋 Elegir</button></div>';
       }
       return '<div class="form-group"' + (span2 ? ' style="grid-column: span 2;"' : '') + '><label>' + label + '</label>' + inputHtml + '</div>';
     }
@@ -1278,7 +1452,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           fld('Reps o Tiempo', sp + '.reps', sb.reps) +
           fld('Notas', sp + '.notes', sb.notes) +
           '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' +
-            (first ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value">'
+            (first ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')">'
                    : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Se usa el video de la primera versión de esta posición.</div>') +
           '</div>' +
           '<div class="form-group" style="grid-column: span 2;"><button type="button" class="btn btn-danger" style="padding:2px 8px; font-size:0.72rem;" onclick="removeStation(' + di + ', ' + ii + ', ' + k + ')">Quitar estación</button></div>' +
@@ -1629,8 +1803,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '<div style="font-weight:700; font-size:0.85rem; margin-bottom:2px;">' + escHtml(d.label) + '</div>' +
             '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">' + fmtDraftDate(d.savedAt) + '</div>' +
             '<div style="display:flex; gap:8px;">' +
-              '<button type="button" class="btn btn-accent" style="flex:1; padding:8px;" onclick="loadDraft(' + JSON.stringify(d.id) + ')">Abrir</button>' +
-              '<button type="button" class="btn btn-danger" style="padding:8px 12px;" onclick="deleteDraft(' + JSON.stringify(d.id) + ')">🗑️</button>' +
+              '<button type="button" class="btn btn-accent" style="flex:1; padding:8px;" onclick="loadDraft(' + jsArg(d.id) + ')">Abrir</button>' +
+              '<button type="button" class="btn btn-danger" style="padding:8px 12px;" onclick="deleteDraft(' + jsArg(d.id) + ')">🗑️</button>' +
             '</div>' +
           '</div>';
         });
@@ -2475,6 +2649,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '</div>' +
         '<div class="progression-banner"><div class="prog-title">📈 Progresión Semanal</div><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></div>' +
         '<div class="security-card"><div class="sec-title">🛡️ Protocolo de Seguridad</div><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></div>' +
+        '<div class="equipment-banner">🧰 No olvides regresar el equipo a su lugar después de completar tus repeticiones</div>' +
         toggleHeaderHtml +
         '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
           '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
@@ -2487,7 +2662,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         nutritionSectionHtml;
 
         if (isRest) {
-          dayScreen.querySelectorAll('.progression-banner, .btn-restore-all-day, .btn-action-primary, .btn-action-wa').forEach(function(el) { el.style.display = 'none'; });
+          dayScreen.querySelectorAll('.progression-banner, .equipment-banner, .btn-restore-all-day, .btn-action-primary, .btn-action-wa').forEach(function(el) { el.style.display = 'none'; });
         }
         daysContainer.appendChild(dayScreen);
       });
@@ -2562,6 +2737,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (pickExState.targetPath) {
         try {
           new Function('val', pickExState.targetPath + ' = val;')(name);
+          suggestVideoFromLibrary(pickExState.targetPath.replace(/\.name$/, ''));
         } catch (e) {}
       }
       closeModal('modal_pick_ex');
@@ -2590,7 +2766,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var html = '<div class="pick-cat-list">';
         cats.forEach(function(c) {
           var count = (EXERCISE_CATALOG.catalog[c] || []).length;
-          html += '<button type="button" class="pick-cat-btn" onclick="pickExSelectCategory(' + JSON.stringify(c) + ')">' +
+          html += '<button type="button" class="pick-cat-btn" onclick="pickExSelectCategory(' + jsArg(c) + ')">' +
             '<span>' + escHtml(c) + '</span><span class="pick-cat-count">' + count + '</span></button>';
         });
         html += '</div>';
@@ -2608,7 +2784,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         }
         var html = '<div class="pick-ex-list">';
         list.forEach(function(ex) {
-          html += '<button type="button" class="pick-ex-btn" onclick="pickExChoose(' + JSON.stringify(ex) + ')">' + escHtml(ex) + '</button>';
+          html += '<button type="button" class="pick-ex-btn" onclick="pickExChoose(' + jsArg(ex) + ')">' + escHtml(ex) + '</button>';
         });
         html += '</div>';
         body.innerHTML = html;
@@ -2894,23 +3070,25 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var routinesPrintHtml = '';
       state.routineDays.forEach(function(d) {
         var itemsRows = '';
-        if (d.rest) itemsRows = '<tr><td colspan="5" style="padding:8px; border:1px solid #ccc; text-align:center; color:#555;">Día de descanso: recuperación, hidratación y sueño.</td></tr>';
+        if (d.rest) itemsRows = '<tr><td colspan="6" style="padding:8px; border:1px solid #ccc; text-align:center; color:#555;">Día de descanso: recuperación, hidratación y sueño.</td></tr>';
         (d.items || []).forEach(function(it) {
           var vigLabel = 'Sem ' + (it.vigenciaDesde || 1) + (it.vigenciaHasta ? '-' + it.vigenciaHasta : '+');
           var subList = Array.isArray(it.sub) && it.sub.length > 0 ? it.sub : [{ name: it.name || 'Ejercicio', series: it.series || '-', reps: it.reps || '-', notes: it.notes || '-' }];
 
           if (it.type === 'circuito') {
             var cc = it.circ || {};
-            itemsRows += '<tr><td colspan="5" style="padding:6px; border:1px solid #ccc; background:#fff3e0; font-size:11px;"><strong>CIRCUITO' + (cc.nombre ? ': ' + escHtml(cc.nombre) : '') + '</strong>' + (cc.rondas ? ' · ' + escHtml(cc.rondas) + ' rondas' : '') + (cc.trabajo ? ' · Trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · Descanso ' + escHtml(cc.descanso) : '') + (cc.notas ? ' · ' + escHtml(cc.notas) : '') + ' <small>(' + vigLabel + ')</small></td></tr>';
+            itemsRows += '<tr><td colspan="6" style="padding:6px; border:1px solid #ccc; background:#fff3e0; font-size:11px;"><strong>CIRCUITO' + (cc.nombre ? ': ' + escHtml(cc.nombre) : '') + '</strong>' + (cc.rondas ? ' · ' + escHtml(cc.rondas) + ' rondas' : '') + (cc.trabajo ? ' · Trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · Descanso ' + escHtml(cc.descanso) : '') + (cc.notas ? ' · ' + escHtml(cc.notas) : '') + ' <small>(' + vigLabel + ')</small></td></tr>';
           }
           subList.forEach(function(s, sIdx) {
             var tag = it.type === 'circuito' ? ('Circuito · Est. ' + (sIdx + 1)) : it.type === 'normal' ? 'Normal' : (it.type === 'biserie' ? (sIdx === 0 ? 'Biserie A' : 'Biserie B') : ('Triserie ' + ['A','B','C'][sIdx]));
+            var videoCell = s.video ? ('<a href="' + escHtml(s.video) + '" style="color:#0645AD; font-size:9px; word-break:break-all;">' + escHtml(s.video) + '</a>') : '-';
             itemsRows += '<tr>' +
               '<td style="padding:6px; border:1px solid #ccc; font-weight:bold;">' + (s.name || 'Sin especificar') + '</td>' +
               '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + tag + ' <small>(' + vigLabel + ')</small></td>' +
               '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (it.type === 'circuito' ? '' : (s.series || '-')) + '</td>' +
               '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (s.reps || '-') + '</td>' +
               '<td style="padding:6px; border:1px solid #ccc; font-size:11px;">' + (s.notes || '-') + '</td>' +
+              '<td style="padding:6px; border:1px solid #ccc;">' + videoCell + '</td>' +
             '</tr>';
           });
         });
@@ -2934,6 +3112,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 '<th style="padding:5px; border:1px solid #ccc; width:45px;">Series</th>' +
                 '<th style="padding:5px; border:1px solid #ccc; width:65px;">Reps</th>' +
                 '<th style="padding:5px; border:1px solid #ccc;">Notas</th>' +
+                '<th style="padding:5px; border:1px solid #ccc; width:90px;">Video</th>' +
               '</tr>' +
             '</thead>' +
             '<tbody>' + itemsRows + '</tbody>' +
