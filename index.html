@@ -1349,7 +1349,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 '<div class="form-group"><label>Series</label><input type="text" value="' + escHtml(sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
                 '<div class="form-group"><label>Reps</label><input type="text" value="' + escHtml(sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
                 '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + escHtml(sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
-                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (!sharesVideoWithFirst(day.items, itemIndex, subIndex) ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">🎥 Elegir</button></div>' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') + '</div>' +
+                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (!sharesVideoWithFirst(day.items, itemIndex, subIndex) ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">▶ Probar</button></div>' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') + '</div>' +
               '</div>' +
             '</div>';
           });
@@ -1505,7 +1505,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           fld('Reps o Tiempo', sp + '.reps', sb.reps) +
           fld('Notas', sp + '.notes', sb.notes) +
           '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' +
-            (!shares ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg(sp + '.video') + ')">🎥 Elegir</button></div>'
+            (!shares ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg(sp + '.video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg(sp + '.video') + ')">▶ Probar</button></div>'
                    : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') +
           '</div>' +
           '<div class="form-group" style="grid-column: span 2;"><button type="button" class="btn btn-danger" style="padding:2px 8px; font-size:0.72rem;" onclick="removeStation(' + di + ', ' + ii + ', ' + k + ')">Quitar estación</button></div>' +
@@ -2872,6 +2872,17 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     // ================= SELECTOR DE VIDEO YA GUARDADO (biblioteca) =================
+    // Abre en una pestaña nueva el link que hay ahora mismo en un campo de video,
+    // para poder verificar rápido que es el video correcto antes de guardar/enviar.
+    function testVideoLink(path) {
+      var val = '';
+      try { val = new Function('return ' + path + ';')() || ''; } catch (e) { val = ''; }
+      val = String(val).trim();
+      if (!val) { alert('Ese campo todavía no tiene ningún link de video.'); return; }
+      if (!/^https?:\/\//i.test(val)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      window.open(val, '_blank', 'noopener');
+    }
+
     // Deja elegir cualquier video ya guardado en la biblioteca, no solo el del nombre
     // exacto del ejercicio — útil cuando el patrón de movimiento es casi el mismo
     // (ej: Peso Muerto Rumano con Mancuerna puede usar el mismo video que con Barra).
