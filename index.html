@@ -673,7 +673,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     <div class="modal-inner pick-modal-inner">
       <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:10px;">🎥 Elegir video ya guardado</div>
       <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;">Útil cuando el patrón de movimiento es casi el mismo (ej: Peso Muerto Rumano con Mancuerna ≈ con Barra) y no hace falta un video nuevo.</div>
-      <input type="text" id="pickVideoSearch" class="pick-search" placeholder="Buscar ejercicio..." oninput="renderPickVideo()">
+      <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <input type="text" id="pickVideoSearch" class="pick-search" placeholder="Buscar ejercicio..." oninput="renderPickVideo()" style="margin-bottom:0; flex:1;">
+        <button type="button" class="btn btn-secondary" style="flex-shrink:0;" onclick="document.getElementById('pickVideoSearch').value=''; renderPickVideo();">Ver todos</button>
+      </div>
       <div id="pickVideoBody" style="max-height:340px; overflow-y:auto;"></div>
       <button type="button" class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="closeModal('modal_pick_video')">Cerrar</button>
     </div>
@@ -2877,7 +2880,18 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function openPickVideo(targetPath) {
       pickVideoState.targetPath = targetPath;
       var s = document.getElementById('pickVideoSearch');
-      if (s) s.value = '';
+      if (s) {
+        // Precarga la búsqueda con las primeras palabras del ejercicio que se está
+        // editando, para llegar directo a las opciones del mismo patrón de movimiento
+        // (ej: "Peso Muerto Rumano con Mancuerna" → busca "Peso Muerto").
+        var prefill = '';
+        try {
+          var namePath = targetPath.replace(/\.video$/, '.name');
+          var curName = String(new Function('return ' + namePath + ';')() || '').trim();
+          prefill = curName.split(/\s+/).slice(0, 2).join(' ');
+        } catch (e) {}
+        s.value = prefill;
+      }
       renderPickVideo();
       openModal('modal_pick_video');
     }
