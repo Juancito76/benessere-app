@@ -454,7 +454,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 Vigencia: semanas 1-2
 Ejercicio: Sentadilla búlgara | Series: 3 | Reps: 10-12 — EP3 | Notas: Pausa 1s en fondo | Video: https://youtube.com/watch?v=3iG_8tBw6mU
 Vigencia: semanas 3-4
-Biserie: Sentadilla búlgara + Curl femoral | Series: 3 | Reps: 12 | Notas: Fusión de fase Intensificación | Video: https://youtube.com/watch?v=3iG_8tBw6mU
+Biserie: Sentadilla búlgara + Curl femoral | Series: 3 | Reps: 12 | Notas: Fusión de fase Intensificación | Video: https://youtube.com/watch?v=3iG_8tBw6mU | Video: https://youtube.com/watch?v=aaaaaaaaaaa
 --
 Ejercicio: Peso Muerto Rumano | Series: 3 | Reps: 10 | Notas: Empujar cadera atrás sin redondear espalda | Video: https://youtube.com/watch?v=3iG_8tBw6mU
 [DIA 5: Circuito metabólico]
@@ -2170,7 +2170,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var namesRaw = props2[0].trim();
             if (namesRaw.indexOf('+') !== -1) {
               var names = namesRaw.split('+').map(function(n) { return n.trim(); }).filter(Boolean);
-              var series2 = '', reps2 = '', notes2 = '', video2 = '';
+              var series2 = '', reps2 = '', notes2 = '', videos2 = [];
               props2.slice(1).forEach(function(pr) {
                 var pair = pr.split(':');
                 if (pair.length >= 2) {
@@ -2178,10 +2178,15 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                   if (pk.indexOf('serie') !== -1) series2 = pv;
                   if (pk.indexOf('rep') !== -1) reps2 = pv;
                   if (pk.indexOf('nota') !== -1) notes2 = pv;
-                  if (pk.indexOf('video') !== -1) video2 = pv;
+                  // Se puede repetir "Video:" una vez por cada ejercicio del combo (A, B, C...).
+                  // Si solo viene un "Video:", se usa igual para todos (compatibilidad con planes viejos).
+                  if (pk.indexOf('video') !== -1) videos2.push(pv);
                 }
               });
-              var subList = names.map(function(n) { return { name: n, series: series2, reps: reps2, notes: notes2, video: video2 }; });
+              var subList = names.map(function(n, ni) {
+                var v = videos2.length > 1 ? (videos2[ni] || '') : (videos2[0] || '');
+                return { name: n, series: series2, reps: reps2, notes: notes2, video: v };
+              });
               var meta2 = resolveSlotAndVig(names);
               curDay.items.push({ type: isBi ? 'biserie' : 'triserie', slot: meta2.slot, vigenciaDesde: meta2.vDesde, vigenciaHasta: meta2.vHasta, sub: subList });
             }
