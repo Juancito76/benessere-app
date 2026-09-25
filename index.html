@@ -1098,6 +1098,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     // del constructor, un catálogo reutilizable de "qué video va con qué ejercicio".
     var VIDEO_LIBRARY_KEY = 'benessere_video_library';
 
+    // Normaliza un nombre de ejercicio para comparar sin importar mayúsculas/minúsculas
+    // ni espacios de más (p. ej. "Sentadilla Búlgara" y "sentadilla búlgara " son lo mismo).
+    function normKey(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
     function getVideoLibrary() {
       try { return JSON.parse(localStorage.getItem(VIDEO_LIBRARY_KEY) || '{}') || {}; } catch (e) { return {}; }
     }
@@ -1129,16 +1133,28 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       } catch (e) {}
     }
 
+    // Busca un video en la biblioteca por nombre, sin importar mayúsculas/minúsculas ni
+    // espacios de más (antes exigía coincidencia exacta y por eso muchas veces no sugería
+    // nada aunque el ejercicio ya estuviera guardado).
+    function findVideoInLibrary(name) {
+      var lib = getVideoLibrary();
+      var target = normKey(name);
+      if (!target) return '';
+      if (Object.prototype.hasOwnProperty.call(lib, name)) return lib[name];
+      for (var k in lib) {
+        if (Object.prototype.hasOwnProperty.call(lib, k) && normKey(k) === target) return lib[k];
+      }
+      return '';
+    }
     // Al escribir el nombre de un ejercicio (y salir del campo), si ya hay un video
-    // guardado en la biblioteca para ese nombre exacto y el campo de video sigue vacío,
+    // guardado en la biblioteca para ese nombre y el campo de video sigue vacío,
     // lo autocompleta — así un ejercicio que ya usaste antes no exige volver a pegar el link.
     function suggestVideoFromLibrary(basePath) {
       try {
         var name = new Function('return ' + basePath + '.name;')();
         var current = new Function('return ' + basePath + '.video;')();
         if (current && String(current).trim()) return; // ya tiene video, no lo pisa
-        var lib = getVideoLibrary();
-        var known = lib[String(name || '').trim()];
+        var known = findVideoInLibrary(name);
         if (!known) return;
         new Function('val', basePath + '.video = val;')(known);
         renderDays();
@@ -1319,7 +1335,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 '<div class="form-group"><label>Series</label><input type="text" value="' + escHtml(sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
                 '<div class="form-group"><label>Reps</label><input type="text" value="' + escHtml(sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
                 '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + escHtml(sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
-                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (isFirstOfSlot(day.items, itemIndex) ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')">' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Se usa el video de la primera versión de esta posición.</div>') + '</div>' +
+                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (!sharesVideoWithFirst(day.items, itemIndex, subIndex) ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')">' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') + '</div>' +
               '</div>' +
             '</div>';
           });
@@ -1405,13 +1421,36 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       for (var i = 0; i < idx; i++) { if (slotNumOf(items, i) === sl) return false; }
       return true;
     }
-    function slotVideo(items, slot, subIdx) {
+    // El video solo se hereda de otra versión de la misma posición si es EL MISMO
+    // ejercicio (mismo nombre). Si el nombre cambió entre versiones (vigencia), no
+    // presta el video de un ejercicio distinto — eso es lo que causaba que el video
+    // de una posición apareciera pegado a un ejercicio que ya no era ese.
+    function slotVideo(items, slot, subIdx, name) {
+      var target = normKey(name);
       for (var i = 0; i < (items || []).length; i++) {
         if (slotNumOf(items, i) !== slot) continue;
         var sb = Array.isArray(items[i].sub) ? items[i].sub[subIdx] : null;
-        if (sb && sb.video && String(sb.video).trim()) return String(sb.video).trim();
+        if (sb && sb.video && String(sb.video).trim() && normKey(sb.name) === target) return String(sb.video).trim();
       }
       return '';
+    }
+    // Nombre del ejercicio en la primera versión de esta posición (mismo slot).
+    function firstSubName(items, idx, subIdx) {
+      var sl = slotNumOf(items, idx);
+      for (var i = 0; i < (items || []).length; i++) {
+        if (slotNumOf(items, i) !== sl) continue;
+        var sb = Array.isArray(items[i].sub) ? items[i].sub[subIdx] : null;
+        return sb ? (sb.name || '') : '';
+      }
+      return '';
+    }
+    // ¿Esta versión comparte el video con la primera versión de la posición? Solo si
+    // además de no ser la primera, tiene exactamente el mismo nombre de ejercicio.
+    function sharesVideoWithFirst(items, idx, subIdx) {
+      if (isFirstOfSlot(items, idx)) return false;
+      var sb = Array.isArray(items[idx].sub) ? items[idx].sub[subIdx] : null;
+      var thisName = normKey(sb ? sb.name : '');
+      return thisName !== '' && thisName === normKey(firstSubName(items, idx, subIdx));
     }
     function addRestDay() {
       var nextNum = routineDays.length + 1;
@@ -1437,7 +1476,6 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function circuitEditorHtml(di, ii, item, showDemos) {
       var c = item.circ || (item.circ = { nombre: '', rondas: '', trabajo: '', descanso: '', notas: '' });
       var base = 'routineDays[' + di + '].items[' + ii + ']';
-      var first = isFirstOfSlot(routineDays[di].items, ii);
       var h = '<div class="sub-box"><div class="sub-tag">Circuito:</div><div class="form-grid">' +
         fld('Nombre del circuito', base + '.circ.nombre', c.nombre, true) +
         fld('Rondas', base + '.circ.rondas', c.rondas) +
@@ -1447,13 +1485,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       '</div></div>';
       (item.sub || []).forEach(function(sb, k) {
         var sp = base + '.sub[' + k + ']';
+        var shares = sharesVideoWithFirst(routineDays[di].items, ii, k);
         h += '<div class="sub-box"><div class="sub-tag">Estación ' + (k + 1) + ':</div><div class="form-grid">' +
           fld('Nombre', sp + '.name', sb.name, true, true) +
           fld('Reps o Tiempo', sp + '.reps', sb.reps) +
           fld('Notas', sp + '.notes', sb.notes) +
           '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' +
-            (first ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')">'
-                   : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Se usa el video de la primera versión de esta posición.</div>') +
+            (!shares ? '<label>Video YouTube (1 por ejercicio)</label><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')">'
+                   : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') +
           '</div>' +
           '<div class="form-group" style="grid-column: span 2;"><button type="button" class="btn btn-danger" style="padding:2px 8px; font-size:0.72rem;" onclick="removeStation(' + di + ', ' + ii + ', ' + k + ')">Quitar estación</button></div>' +
         '</div></div>';
@@ -2021,12 +2060,35 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             continue;
           }
 
-          function resolveSlotAndVig() {
+          // Busca, entre lo ya parseado en este día, la posición (slot) cuya primera
+          // versión tiene EXACTAMENTE estos mismos nombres de ejercicio — así una
+          // "Vigencia: semanas N+" tardía solo actualiza SU propio ejercicio, nunca
+          // el de otra posición del día que casualmente fue la última en parsearse
+          // (eso era lo que a veces pegaba el video de un ejercicio con otro distinto).
+          function findSlotForNames(items, names) {
+            var target = names.map(function(n) { return String(n || '').trim().toLowerCase(); }).join('||');
+            for (var i = 0; i < items.length; i++) {
+              var it = items[i];
+              var itNames;
+              if (it.type === 'circuito') { itNames = it.circ && it.circ.nombre ? String(it.circ.nombre).trim().toLowerCase() : ''; }
+              else if (it.sub) { itNames = it.sub.map(function(s) { return String(s.name || '').trim().toLowerCase(); }).join('||'); }
+              else continue;
+              if (itNames === target) return it.slot;
+            }
+            return null;
+          }
+          function resolveSlotAndVig(names) {
             var vDesde = 1, vHasta = null, slot = currentSlotCounter + 1;
             if (pendingVigencia) {
               vDesde = pendingVigencia.desde; vHasta = pendingVigencia.hasta;
-              if (vDesde > 1) slot = lastHandledSlot;
-              else { currentSlotCounter++; slot = currentSlotCounter; lastHandledSlot = slot; }
+              if (vDesde > 1) {
+                var matched = names ? findSlotForNames(curDay.items, names) : null;
+                if (matched != null) { slot = matched; }
+                else { currentSlotCounter++; slot = currentSlotCounter; } // sin ejercicio previo con ese nombre: posición nueva, no se inventa relación
+                lastHandledSlot = slot;
+              } else {
+                currentSlotCounter++; slot = currentSlotCounter; lastHandledSlot = slot;
+              }
             } else {
               currentSlotCounter++; slot = currentSlotCounter; lastHandledSlot = slot;
             }
@@ -2035,7 +2097,6 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           }
 
           if (dLower.indexOf('circuito:') === 0) {
-            var metaC = resolveSlotAndVig();
             var propsC = line.substring(line.indexOf(':') + 1).split('|');
             var circ = { nombre: propsC[0].trim(), rondas: '', trabajo: '', descanso: '', notas: '' };
             propsC.slice(1).forEach(function(pr) {
@@ -2048,6 +2109,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 if (pk.indexOf('nota') !== -1) circ.notas = pv;
               }
             });
+            var metaC = resolveSlotAndVig([circ.nombre]);
             lastCircuit = { type: 'circuito', slot: metaC.slot, vigenciaDesde: metaC.vDesde, vigenciaHasta: metaC.vHasta, circ: circ, sub: [] };
             curDay.items.push(lastCircuit);
             continue;
@@ -2071,7 +2133,6 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           }
           if (dLower.indexOf('ejercicio:') === 0) {
             lastCircuit = null;
-            var meta = resolveSlotAndVig();
             var props = line.substring(10).split('|');
             var sub = { name: props[0].trim(), series: '', reps: '', notes: '', video: '' };
             props.slice(1).forEach(function(pr) {
@@ -2084,12 +2145,12 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 if (pk.indexOf('video') !== -1) sub.video = pv;
               }
             });
+            var meta = resolveSlotAndVig([sub.name]);
             curDay.items.push({ type: 'normal', slot: meta.slot, vigenciaDesde: meta.vDesde, vigenciaHasta: meta.vHasta, sub: [sub] });
             continue;
           }
 
           if (dLower.indexOf('biserie:') === 0 || dLower.indexOf('triserie:') === 0) {
-            var meta2 = resolveSlotAndVig();
             var isBi = dLower.indexOf('biserie:') === 0;
             var props2 = line.substring(line.indexOf(':') + 1).split('|');
             var namesRaw = props2[0].trim();
@@ -2107,6 +2168,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 }
               });
               var subList = names.map(function(n) { return { name: n, series: series2, reps: reps2, notes: notes2, video: video2 }; });
+              var meta2 = resolveSlotAndVig(names);
               curDay.items.push({ type: isBi ? 'biserie' : 'triserie', slot: meta2.slot, vigenciaDesde: meta2.vDesde, vigenciaHasta: meta2.vHasta, sub: subList });
             }
             continue;
@@ -2209,7 +2271,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 it.sub.map(function(s, sIdx) {
                   // El video se guarda siempre que exista, sin importar el estado del toggle "Demostraciones en Video":
                   // ese toggle solo controla si el cliente lo VE en el visor, no si el dato se conserva al generar el enlace.
-                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', isFirstOfSlot(d.items, d.items.indexOf(it)) ? extractYtId(slotVideo(d.items, parseInt(it.slot, 10) || (d.items.indexOf(it) + 1), sIdx)) : ''];
+                  // Cada versión lleva su propio video si lo tiene; si no, solo hereda el de otra
+                  // versión de la misma posición cuando es EL MISMO ejercicio (mismo nombre) —
+                  // así no se pega el video de un ejercicio distinto que ocupó antes esa posición.
+                  var sVideo = (s.video && String(s.video).trim()) ? s.video : slotVideo(d.items, parseInt(it.slot, 10) || (d.items.indexOf(it) + 1), sIdx, s.name);
+                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', extractYtId(sVideo)];
                 })
               ];
             })
@@ -2570,7 +2636,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           subList.forEach(function(sub, subIdx) {
             var letter = item.type === 'circuito' ? String(subIdx + 1) : ['A', 'B', 'C'][subIdx];
             var fieldId = d.id + '_slot' + slotNum + '_v' + vDesde + '_s' + subIdx;
-            var vOwn = (sub.video && String(sub.video).trim()) ? String(sub.video).trim() : slotVideo(d.items, slotNum, subIdx);
+            var vOwn = (sub.video && String(sub.video).trim()) ? String(sub.video).trim() : slotVideo(d.items, slotNum, subIdx, sub.name);
             var yLink = vOwn ? vOwn : 'https://www.youtube.com';
             if (!/^https?:\/\/[^\s"'<>]+$/i.test(yLink)) yLink = 'https://www.youtube.com';
 
