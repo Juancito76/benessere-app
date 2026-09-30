@@ -319,6 +319,7 @@
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">🔗 Cargar desde Link</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
+      <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
     </div>
 
@@ -626,6 +627,37 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       </div>
     </div>
   </div>
+
+  <!-- ================= VENTANA: CLIENTES (MODO COACH) ================= -->
+  <div id="modal_clients" class="view-screen" style="z-index:95;">
+    <div class="top-nav-bar">
+      <button class="back-btn" onclick="closeModal('modal_clients')">← Volver</button>
+      <div class="view-title">👥 Mis clientes</div>
+      <div style="width:50px;"></div>
+    </div>
+    <div id="cl_login" style="max-width:420px; margin:0 auto;">
+      <div style="font-size:0.85rem; color:#ddd; line-height:1.55; margin-bottom:12px;">Escribe tu PIN de coach para ver tus clientes y anotar sus pesos mientras entrenan.</div>
+      <input type="password" id="cl_pin" autocomplete="current-password" placeholder="Tu PIN" onkeydown="if(event.key==='Enter')coachLoginFromForm()" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:#111; color:#fff; font-size:1rem; margin-bottom:10px;">
+      <label style="display:flex; gap:8px; align-items:center; font-size:0.78rem; color:#bbb; margin-bottom:12px;"><input type="checkbox" id="cl_remember" checked> Recordar el PIN en este dispositivo</label>
+      <button type="button" class="btn-action-primary" onclick="coachLoginFromForm()">Entrar</button>
+      <div id="cl_msg" style="font-size:0.8rem; margin-top:10px; color:var(--muted);"></div>
+    </div>
+    <div id="cl_body" style="display:none; max-width:640px; margin:0 auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+        <span id="cl_who" style="font-size:0.78rem; color:var(--primary); font-weight:800;"></span>
+        <span>
+          <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
+          <button type="button" onclick="coachLogout()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Cerrar sesión</button>
+        </span>
+      </div>
+      <input type="search" id="cl_search" oninput="renderClientList()" placeholder="Buscar cliente…" style="width:100%; padding:11px; border-radius:8px; border:1px solid var(--border); background:#111; color:#fff; font-size:0.95rem; margin-bottom:6px;">
+      <div id="cl_status" style="font-size:0.72rem; color:var(--muted); margin-bottom:10px;"></div>
+      <div id="cl_list"></div>
+    </div>
+  </div>
+
+  <!-- Botón para volver a la lista mientras se entrena a un cliente (solo modo coach) -->
+  <button type="button" id="coach_mode_pill" onclick="exitClientRoutine()" style="display:none; position:fixed; top:12px; right:12px; z-index:90; background:var(--primary); color:#fff; border:none; border-radius:999px; padding:7px 12px; font-weight:800; font-size:0.75rem; box-shadow:0 2px 10px rgba(0,0,0,0.6); cursor:pointer;">👥 Clientes</button>
 
   <!-- ================= VENTANA: ENLACE LISTO PARA ENVIAR ================= -->
   <div id="modal_share" class="modal-overlay">
@@ -2606,6 +2638,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     // ================= VISTA DEL ATLETA =================
     function renderAthleteApp(state) {
       athleteActiveState = state;
+      setTimeout(syncHistorial, 600);   // trae/une el historial de la hoja (si hay enlace corto)
       athleteCoachName = displayCoach(state.coachName);
       athleteCoachPhone = CONFIG_COACH_PHONE;   // fijo: se ignora cualquier número que traiga el enlace
       // Los identificadores del enlace solo pueden tener letras, números, guion y guion bajo
@@ -2993,20 +3026,22 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       }
     }
 
+    var TRK_NS = '';   // prefijo de las marcas: vacío para el atleta; en modo coach separa a cada cliente
+    function tk(id) { return TRK_NS + id; }
     function saveTracker() {
       document.querySelectorAll('input[id^="load_"], input[id^="series_"], input[id^="reps_"], input[id^="alc_"]').forEach(function(inp) {
-        localStorage.setItem(inp.id, inp.value);
+        localStorage.setItem(tk(inp.id), inp.value);
       });
     }
 
     function loadTracker() {
       document.querySelectorAll('input[id^="load_"], input[id^="series_"], input[id^="reps_"], input[id^="alc_"]').forEach(function(inp) {
-        var val = localStorage.getItem(inp.id);
+        var val = localStorage.getItem(tk(inp.id));
         if (val) inp.value = val;
       });
       document.querySelectorAll('.prev-load-badge').forEach(function(b) {
         var baseKey = b.id.replace('prev_', '');
-        var prev = localStorage.getItem('hist_' + baseKey);
+        var prev = localStorage.getItem(tk('hist_' + baseKey));
         var btnRestore = document.getElementById('btn_restore_' + baseKey);
         if (prev) {
           try {
@@ -3022,7 +3057,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     function restoreSingleLoad(fieldId) {
-      var prev = localStorage.getItem('hist_' + fieldId);
+      var prev = localStorage.getItem(tk('hist_' + fieldId));
       if (!prev) return;
       try {
         var p = JSON.parse(prev);
@@ -3043,7 +3078,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var count = 0;
       dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) input[id^="load_"]').forEach(function(l) {
         var fieldId = l.id.replace('load_', '');
-        var prev = localStorage.getItem('hist_' + fieldId);
+        var prev = localStorage.getItem(tk('hist_' + fieldId));
         if (prev) {
           try {
             var p = JSON.parse(prev);
@@ -3082,18 +3117,23 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
         if (l.value.trim()) {
           sessEx.push({ k: key, n: exName, l: l.value.trim(), r: reps ? reps.value.trim() : '-', s: series ? series.value.trim() : '-' });
-          localStorage.setItem('hist_' + key, JSON.stringify({
+          localStorage.setItem(tk('hist_' + key), JSON.stringify({
             key: key, name: exName, load: l.value.trim(),
             reps: reps ? reps.value.trim() : '-', series: series ? series.value.trim() : '-', date: fullDateStr
           }));
-          localStorage.removeItem('load_' + key);
-          localStorage.removeItem('reps_' + key);
-          localStorage.removeItem('series_' + key);
+          localStorage.removeItem(tk('load_' + key));
+          localStorage.removeItem(tk('reps_' + key));
+          localStorage.removeItem(tk('series_' + key));
           l.value = ''; if (reps) reps.value = ''; if (series) series.value = '';
         }
       });
       // Además de la última marca por ejercicio, se guarda la sesión completa con su fecha (cada guardado suma una nueva)
-      if (sessEx.length) addSession({ d: todayIso(), t: now.toISOString(), hd: fullDateStr, day: dayEl.getAttribute('data-day-title') || '', ex: sessEx });
+      if (sessEx.length) {
+        var newSess = { d: todayIso(), t: now.toISOString(), hd: fullDateStr, day: dayEl.getAttribute('data-day-title') || '', ex: sessEx };
+        if (COACH) newSess.o = COACH.name;
+        addSession(newSess);
+        pushSession(newSess);   // se sube a la hoja para que el cliente (y su coach) lo vean en cualquier celular
+      }
       loadTracker();
       lastActiveDayId = dayId;
       openModal('modal_congrats');
@@ -3142,7 +3182,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var legacy = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf('hist_') === 0) {
+        if (k && k.indexOf(TRK_NS + 'hist_') === 0) {
           try { var en = JSON.parse(localStorage.getItem(k)); if (en && !seenHd[en.date]) legacy.push(en); } catch (e) {}
         }
       }
@@ -3167,7 +3207,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         }).join('');
         html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
-          '<div style="font-size:0.72rem; color:var(--primary); font-weight:800; margin-bottom:6px;">📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + '</div>' + rows + '</div>';
+          '<div style="font-size:0.72rem; color:var(--primary); font-weight:800; margin-bottom:6px;">📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + '</div>' + rows + '</div>';
       });
       if (legacy.length) {
         html += '<div class="med-h">Marcas anteriores (una por ejercicio)</div>';
@@ -3232,7 +3272,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var keysToRemove = [];
         for (var i = 0; i < localStorage.length; i++) {
           var k = localStorage.key(i);
-          if (k && k.indexOf('hist_') === 0) keysToRemove.push(k);
+          if (k && k.indexOf(TRK_NS + 'hist_') === 0) keysToRemove.push(k);
         }
         keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
         try { localStorage.removeItem(sessKey()); } catch (e) {}
@@ -3660,6 +3700,214 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (!RT.active) tmrWakeOff();
     }
 
+
+    // ----- Sincronización del historial con la hoja de Google + modo coach -----
+    var athleteRoutineId = '';    // código de la rutina abierta (solo con enlace corto)
+    var COACH = null;             // { pin, name, todos } mientras hay una sesión de coach abierta
+    var COACH_PIN_KEY = 'benessere_coach_pin';
+    var PENDING_KEY = 'benessere_pending_sess';
+
+    function postJson(body, ms) {
+      return fetchJson(SHARE_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      }, ms || 25000);
+    }
+    function loadPending() { try { var a = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+    function savePending(a) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(a.slice(-100))); } catch (e) {} }
+
+    // Sube una sesión; si no hay internet queda en cola y se reintenta la próxima vez
+    function pushSession(sess) {
+      if (!athleteRoutineId) return;
+      var q = loadPending();
+      q.push({ id: athleteRoutineId, s: JSON.stringify(sess), c: COACH ? 1 : 0 });
+      savePending(q);
+      flushPending();
+    }
+    var flushing = false;
+    function flushPending() {
+      if (flushing) return Promise.resolve();
+      flushing = true;
+      function next() {
+        var q = loadPending();
+        var idx = -1;
+        for (var i = 0; i < q.length; i++) { if (!q[i].c || COACH) { idx = i; break; } }
+        if (idx < 0) { flushing = false; return Promise.resolve(); }
+        var it = q[idx];
+        var body = { a: 'sesion', id: it.id, s: it.s };
+        if (it.c && COACH) body.pin = COACH.pin;
+        return postJson(body).then(function(j) {
+          // ok, ya estaba, o el servidor la rechazó por datos/rutina inexistente: en todos esos casos se saca de la cola
+          if (j && (j.ok || j.error === 'datos' || j.error === 'no-existe' || j.error === 'id')) {
+            var q2 = loadPending(); q2.splice(findPending(q2, it), 1); savePending(q2);
+            return next();
+          }
+          flushing = false;   // pin/bloqueado/servidor: se deja en cola
+        }).catch(function() { flushing = false; });
+      }
+      return next();
+    }
+    function findPending(q, it) { for (var i = 0; i < q.length; i++) { if (q[i].id === it.id && q[i].s === it.s) return i; } return 0; }
+
+    // Trae el historial del atleta desde la hoja y lo une con el del celular (sin duplicar por id de sesión)
+    function syncHistorial() {
+      var id = athleteRoutineId;
+      if (!id || !athleteActiveState) return;
+      var name = athleteActiveState.clientName;
+      flushPending().then(function() {
+        return fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000);
+      }).then(function(j) {
+        if (!j || !j.ok || !Array.isArray(j.sesiones)) return;
+        if (!athleteActiveState || athleteActiveState.clientName !== name) return;   // ya cambió de cliente
+        var local = loadSessions(), have = {}, remote = {};
+        local.forEach(function(x) { have[x.t] = true; });
+        j.sesiones.forEach(function(x) { remote[x.t] = true; });
+        var added = 0;
+        j.sesiones.forEach(function(x) { if (x && x.t && !have[x.t]) { local.push(x); have[x.t] = true; added++; } });
+        // Sesiones que solo estaban en este celular (anteriores al servicio): se suben una vez
+        var q = loadPending(), queued = {};
+        q.forEach(function(it) { try { queued[JSON.parse(it.s).t] = true; } catch (e) {} });
+        var up = 0;
+        local.forEach(function(x) { if (x && x.t && !remote[x.t] && !queued[x.t] && up < 40 && x.ex && x.ex.length) { q.push({ id: id, s: JSON.stringify(x), c: 0 }); up++; } });
+        if (up) savePending(q);
+        local.sort(function(a, b) { return a.t < b.t ? -1 : (a.t > b.t ? 1 : 0); });
+        if (local.length > 300) local = local.slice(local.length - 300);
+        try { localStorage.setItem(sessKey(), JSON.stringify(local)); } catch (e) {}
+        var hm = document.getElementById('ath_modal_historial');
+        if (added && hm && hm.classList.contains('active')) renderHistorial();
+        if (up) flushPending();
+      }).catch(function() { /* sin internet: se queda lo que hay en el celular */ });
+    }
+
+    // ----- Modo coach: lista de clientes con PIN -----
+    function normName(t) { return String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+    var clientRows = [];   // rutinas devueltas por el servidor
+
+    function openCoachClients() {
+      openModal('modal_clients');
+      if (COACH) { renderClientList(); refreshClientList(); return; }
+      var saved = ''; try { saved = localStorage.getItem(COACH_PIN_KEY) || ''; } catch (e) {}
+      if (saved) { coachLogin(saved, true); return; }
+      showClientLogin('');
+    }
+    function showClientLogin(msg) {
+      document.getElementById('cl_login').style.display = 'block';
+      document.getElementById('cl_body').style.display = 'none';
+      document.getElementById('cl_msg').innerText = msg || '';
+      document.getElementById('cl_msg').style.color = msg ? '#ff6b6b' : '';
+      var inp = document.getElementById('cl_pin'); if (inp) { inp.value = ''; }
+    }
+    function clientsErrorText(code) {
+      if (code === 'pin') return 'PIN incorrecto.';
+      if (code === 'bloqueado') return 'Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.';
+      if (code === 'timeout' || code === 'respuesta') return 'El servicio tardó en responder. Inténtalo de nuevo.';
+      return 'No se pudo conectar. Revisa tu internet.';
+    }
+    function coachLoginFromForm() {
+      var pin = document.getElementById('cl_pin').value.trim();
+      if (pin.length < 6) { showClientLogin('El PIN tiene mínimo 6 caracteres.'); return; }
+      coachLogin(pin, false);
+    }
+    function coachLogin(pin, silent) {
+      var msg = document.getElementById('cl_msg');
+      document.getElementById('cl_login').style.display = 'block';
+      document.getElementById('cl_body').style.display = 'none';
+      msg.style.color = ''; msg.innerText = 'Entrando…';
+      postJson({ a: 'listar', pin: pin }).then(function(j) {
+        if (j && j.ok) {
+          COACH = { pin: pin, name: j.coach, todos: !!j.todos };
+          try {
+            if (document.getElementById('cl_remember').checked) localStorage.setItem(COACH_PIN_KEY, pin);
+            else localStorage.removeItem(COACH_PIN_KEY);
+          } catch (e) {}
+          clientRows = j.rutinas || [];
+          renderClientList();
+        } else {
+          if (j && j.error === 'pin') { try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          showClientLogin(clientsErrorText(j && j.error));
+        }
+      }).catch(function(e) { showClientLogin(clientsErrorText(e && e.message)); });
+    }
+    function refreshClientList() {
+      if (!COACH) return;
+      var st = document.getElementById('cl_status'); if (st) st.innerText = 'Actualizando…';
+      var pinAtStart = COACH.pin;
+      postJson({ a: 'listar', pin: pinAtStart }).then(function(j) {
+        if (!COACH || COACH.pin !== pinAtStart) return;   // cerró sesión o cambió de coach mientras tanto
+        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); }
+        else { var s2 = document.getElementById('cl_status'); if (s2) s2.innerText = clientsErrorText(j && j.error); }
+      }).catch(function(e) { if (!COACH || COACH.pin !== pinAtStart) return; var s3 = document.getElementById('cl_status'); if (s3) s3.innerText = clientsErrorText(e && e.message); });
+    }
+    function coachLogout() {
+      COACH = null; clientRows = [];
+      try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {}
+      showClientLogin('');
+    }
+    function renderClientList() {
+      document.getElementById('cl_login').style.display = 'none';
+      document.getElementById('cl_body').style.display = 'block';
+      var q = normName(document.getElementById('cl_search').value);
+      var groups = {}, order = [];
+      clientRows.forEach(function(r) {   // el servidor las entrega de la más nueva a la más vieja
+        var k = normName(r.atleta); if (!k) return;
+        if (!groups[k]) { groups[k] = { name: r.atleta, list: [] }; order.push(k); }
+        groups[k].list.push(r);
+      });
+      order.sort(function(a, b) { return groups[a].name.toLowerCase() < groups[b].name.toLowerCase() ? -1 : 1; });
+      var shown = order.filter(function(k) { return !q || k.indexOf(q) !== -1; });
+      document.getElementById('cl_who').innerText = (COACH.todos ? 'Todos los clientes' : 'Tus clientes') + ' · ' + COACH.name;
+      document.getElementById('cl_status').innerText = shown.length + ' de ' + order.length + ' clientes';
+      var html = '';
+      shown.forEach(function(k) {
+        var g = groups[k], last = g.list[0];
+        html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:10px; padding:12px; margin-bottom:8px;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
+          '<div><div style="font-weight:800; color:#fff; font-size:0.95rem;">' + escHtml(g.name) + '</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.list.length > 1 ? ' · ' + g.list.length + ' rutinas' : '') + '</div></div>' +
+          '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div>';
+        if (g.list.length > 1) {
+          html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">';
+          g.list.slice(1, 6).forEach(function(r) {
+            html += '<button type="button" onclick="openClientRoutine(\'' + escHtml(r.id) + '\')" style="background:transparent; border:1px solid #444; color:#aaa; border-radius:6px; padding:3px 8px; font-size:0.68rem; cursor:pointer;">' + escHtml(String(r.f || '').slice(0, 10)) + '</button>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      if (!shown.length) html = '<div style="text-align:center; color:var(--muted); font-size:0.85rem; padding:24px 8px;">' + (order.length ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay rutinas enviadas' + (COACH.todos ? '.' : ' a tu nombre.')) + '</div>';
+      document.getElementById('cl_list').innerHTML = html;
+    }
+
+    // Abre la rutina de un cliente en modo entrenamiento (con las marcas separadas y el PIN del coach)
+    function openClientRoutine(id) {
+      if (!COACH) return;
+      var st = document.getElementById('cl_status'); if (st) st.innerText = 'Abriendo rutina…';
+      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(j) {
+        if (!j || !j.ok || !j.p) { st.innerText = 'No se pudo abrir esa rutina.'; return; }
+        var state = decodePayload('q', j.p);
+        if (!state) { st.innerText = 'Los datos de esa rutina están dañados.'; return; }
+        TRK_NS = 'c:' + normName(state.clientName) + '|';
+        athleteRoutineId = id;
+        try {
+          renderAthleteApp(state);   // no se guarda como "rutina de este celular"
+        } catch (e) { console.error(e); TRK_NS = ''; athleteRoutineId = ''; st.innerText = 'Error al mostrar la rutina.'; return; }
+        closeModal('modal_clients');
+        var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'block';
+        var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = 'none';
+        window.scrollTo(0, 0);
+      }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
+    }
+    function exitClientRoutine() {
+      document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { el.classList.remove('active'); });
+      try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function') ctClose(); } catch (e) {}
+      TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null;
+      var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'none';
+      var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
+      showBuilder();
+      openCoachClients();
+    }
+
     // ================= ENRUTADOR INICIAL =================
     var ATHLETE_KEY = 'benessere_athlete_payload';
 
@@ -3753,6 +4001,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var m = String(v || '').match(/^([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{1,200})?$/);
       if (!m) { showAthleteMessage('broken', 'Código de enlace no válido'); return; }
       var id = m[1];   // (los enlaces enviados antes traían además la dirección del script: se ignora)
+      athleteRoutineId = id;
 
       // Copia local: si este celular ya abrió esta misma rutina, se muestra al instante
       // y la hoja de Google se consulta en segundo plano para ver si hay una versión más nueva.
@@ -3835,7 +4084,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (saved && saved.v) {
         var st2 = decodePayload(saved.k, saved.v);
         if (st2) {
-          try { renderAthleteApp(st2); if (saved.id && saved.k === 'q') refreshInBackground(saved.id, saved.v); return; } catch (e) { console.error(e); }
+          try { if (saved.id && saved.k === 'q') athleteRoutineId = saved.id; renderAthleteApp(st2); if (saved.id && saved.k === 'q') refreshInBackground(saved.id, saved.v); return; } catch (e) { console.error(e); }
         }
       }
 
