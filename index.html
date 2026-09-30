@@ -559,9 +559,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         <div style="width:50px;"></div>
       </div>
       <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:0.75rem; color:var(--muted);">Marcas con fecha y ejercicio</span>
+        <span style="font-size:0.75rem; color:var(--muted);">Tus marcas por fecha y por ejercicio</span>
         <button onclick="clearHistorialData()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Borrar Historial</button>
       </div>
+      <div class="med-chip-row" id="historialTabs"></div>
       <div id="historialListContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
 
@@ -988,6 +989,18 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function athleteEntries(st) {
       var coach = normalizeMeasureLog(st.measureLog);
       if (!coach.length) { var base = legacyBaseline(st); if (base) coach = [base]; }
+      // La ficha completa del enlace (st.measures) también cuenta: si la última medición del historial
+      // no trae alguna medida que sí está en la ficha, se completa con ese valor para que no se pierda.
+      if (coach.length) {
+        var lastE = coach[coach.length - 1], fm = st.measures || {}, merged = {}, added = false;
+        Object.keys(lastE.v).forEach(function(k) { merged[k] = lastE.v[k]; });
+        MEASURE_FIELDS.forEach(function(f) {
+          if (merged[f.k] != null) return;
+          var n = parseNum(fm[f.k]);
+          if (n !== null && isFinite(n)) { merged[f.k] = n; added = true; }
+        });
+        if (added) coach[coach.length - 1] = { d: lastE.d, v: merged };
+      }
       var list = coach.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
       loadOwnMeasures(st.clientName).forEach(function(e) { list.push({ d: e.d, v: e.v, src: 'a' }); });
       list.sort(byDate);
@@ -3041,6 +3054,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var dateFormatted = now.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' });
       var timeFormatted = now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
       var fullDateStr = dateFormatted + ' ' + timeFormatted;
+      var sessEx = [];
 
       loads.forEach(function(l) {
         var key = l.id.replace('load_', '');
@@ -3050,6 +3064,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var exName = box ? box.querySelector('.ex-name').innerText.trim() : 'Ejercicio';
 
         if (l.value.trim()) {
+          sessEx.push({ k: key, n: exName, l: l.value.trim(), r: reps ? reps.value.trim() : '-', s: series ? series.value.trim() : '-' });
           localStorage.setItem('hist_' + key, JSON.stringify({
             key: key, name: exName, load: l.value.trim(),
             reps: reps ? reps.value.trim() : '-', series: series ? series.value.trim() : '-', date: fullDateStr
@@ -3060,49 +3075,151 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           l.value = ''; if (reps) reps.value = ''; if (series) series.value = '';
         }
       });
+      // Además de la última marca por ejercicio, se guarda la sesión completa con su fecha (cada guardado suma una nueva)
+      if (sessEx.length) addSession({ d: todayIso(), t: now.toISOString(), hd: fullDateStr, day: dayEl.getAttribute('data-day-title') || '', ex: sessEx });
       loadTracker();
       lastActiveDayId = dayId;
       openModal('modal_congrats');
     }
 
-    function openHistorialModal() {
-      var container = document.getElementById('historialListContainer');
-      container.innerHTML = '';
-      var entries = [];
+    // ----- Historial por fecha y por ejercicio -----
+    function sessKey() { return 'benessere_sess_' + String(athleteActiveState ? athleteActiveState.clientName : '').trim().toLowerCase().replace(/\s+/g, ' '); }
+    function loadSessions() {
+      try { var a = JSON.parse(localStorage.getItem(sessKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    }
+    function addSession(sess) {
+      var a = loadSessions();
+      a.push(sess);
+      if (a.length > 300) a = a.slice(a.length - 300);
+      try { localStorage.setItem(sessKey(), JSON.stringify(a)); } catch (e) {}
+    }
+    var histView = 'date', histExSel = 0;
+    function setHistView(v) { histView = v; renderHistorial(); }
+    function selectHistEx(i) { histExSel = i; renderHistorial(); }
+    function normExName(n) { return String(n || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+    function mountFromSession(t, idx) {
+      var s = null;
+      loadSessions().forEach(function(x) { if (x.t === t) s = x; });
+      var ex = s && s.ex ? s.ex[idx] : null;
+      if (!ex) return;
+      var l = document.getElementById('load_' + ex.k);
+      if (!l) { alert('Ese ejercicio ya no está en tu rutina actual.'); return; }
+      var r = document.getElementById('reps_' + ex.k), sr = document.getElementById('series_' + ex.k);
+      l.value = ex.l || '';
+      if (r && ex.r && ex.r !== '-') r.value = ex.r;
+      if (sr && ex.s && ex.s !== '-') sr.value = ex.s;
+      saveTracker();
+      closeModal('ath_modal_historial');
+      alert('Carga montada para ' + (ex.n || 'el ejercicio') + ': ' + ex.l);
+    }
+
+    function openHistorialModal() { renderHistorial(); openModal('ath_modal_historial'); }
+
+    function renderHistorial() {
+      var container = document.getElementById('historialListContainer'), tabs = document.getElementById('historialTabs');
+      if (!container || !tabs) return;
+      var sessions = loadSessions().slice().sort(function(a, b) { return a.t < b.t ? 1 : (a.t > b.t ? -1 : 0); });   // más reciente primero
+      var seenHd = {};
+      sessions.forEach(function(s) { seenHd[s.hd] = true; });
+      var legacy = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
         if (k && k.indexOf('hist_') === 0) {
-          try { entries.push(JSON.parse(localStorage.getItem(k))); } catch (e) {}
+          try { var en = JSON.parse(localStorage.getItem(k)); if (en && !seenHd[en.date]) legacy.push(en); } catch (e) {}
         }
       }
-      if (entries.length === 0) {
+      tabs.innerHTML = '<button type="button" class="med-chip' + (histView === 'date' ? ' active' : '') + '" onclick="setHistView(\'date\')">📅 Por fecha</button>' +
+        '<button type="button" class="med-chip' + (histView === 'ex' ? ' active' : '') + '" onclick="setHistView(\'ex\')">📈 Por ejercicio</button>';
+      if (!sessions.length && !legacy.length) {
         container.innerHTML = '<div style="background:var(--card); border:1px dashed #444; border-radius:8px; padding:20px; text-align:center; color:var(--muted); font-size:0.85rem;">Aún no has archivado marcas con el botón <strong>"💾 Guardar Día"</strong>.</div>';
-      } else {
-        entries.forEach(function(entry) {
-          var card = document.createElement('div');
-          card.style.cssText = 'background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center;';
-          card.innerHTML = '<div><div style="font-size:0.9rem; font-weight:800; color:#fff;">' + escHtml(entry.name || 'Ejercicio') + '</div>' +
+        return;
+      }
+      if (histView === 'ex') renderHistByExercise(container, sessions);
+      else renderHistByDate(container, sessions, legacy);
+    }
+
+    function renderHistByDate(container, sessions, legacy) {
+      var html = '';
+      sessions.forEach(function(s) {
+        var rows = (s.ex || []).map(function(ex, idx) {
+          return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--border);">' +
+            '<div><div style="font-size:0.85rem; font-weight:800; color:#fff;">' + escHtml(ex.n || 'Ejercicio') + '</div>' +
+            '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">' + escHtml(ex.s || '-') + ' series × ' + escHtml(ex.r || '-') + ' reps</div></div>' +
+            '<div style="text-align:right;"><div style="font-size:1rem; font-weight:900; color:var(--accent);">' + escHtml(ex.l || '-') + '</div>' +
+            '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
+        }).join('');
+        html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
+          '<div style="font-size:0.72rem; color:var(--primary); font-weight:800; margin-bottom:6px;">📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + '</div>' + rows + '</div>';
+      });
+      if (legacy.length) {
+        html += '<div class="med-h">Marcas anteriores (una por ejercicio)</div>';
+        legacy.forEach(function(entry) {
+          html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid #555; border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center;">' +
+            '<div><div style="font-size:0.9rem; font-weight:800; color:#fff;">' + escHtml(entry.name || 'Ejercicio') + '</div>' +
             '<div style="font-size:0.72rem; color:var(--primary); margin-top:2px;">📅 ' + escHtml(entry.date || 'Reciente') + '</div>' +
             '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">' + escHtml(entry.series || '-') + ' series × ' + escHtml(entry.reps || '-') + ' reps</div></div>' +
             '<div style="text-align:right;"><div style="font-size:1.05rem; font-weight:900; color:var(--accent);">' + escHtml(entry.load || '-') + '</div>' +
-            '<button type="button" class="btn-mount-item" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div>';
-          var mBtn = card.querySelector('.btn-mount-item');
-          if (mBtn) mBtn.onclick = function() { restoreSingleLoad(entry.key); closeModal('ath_modal_historial'); };
-          container.appendChild(card);
+            '<button type="button" onclick="restoreSingleLoad(\'' + escHtml(entry.key || '') + '\'); closeModal(\'ath_modal_historial\');" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         });
       }
-      openModal('ath_modal_historial');
+      container.innerHTML = html;
+    }
+
+    function renderHistByExercise(container, sessions) {
+      if (!sessions.length) {
+        container.innerHTML = '<div class="med-sum">El progreso por ejercicio se arma con las sesiones que guardes desde ahora con "💾 Guardar Día". Tus marcas anteriores están en la pestaña "Por fecha".</div>';
+        return;
+      }
+      var asc = sessions.slice().reverse();   // de la más antigua a la más reciente
+      var map = {}, names = [];
+      asc.forEach(function(s) {
+        (s.ex || []).forEach(function(ex) {
+          var nk = normExName(ex.n);
+          if (!nk) return;
+          if (!map[nk]) { map[nk] = { name: ex.n, pts: [] }; names.push(nk); }
+          map[nk].name = ex.n;
+          map[nk].pts.push({ d: s.d, l: ex.l, r: ex.r, s: ex.s });
+        });
+      });
+      names.sort(function(a, b) { return map[a].name.toLowerCase() < map[b].name.toLowerCase() ? -1 : 1; });
+      if (histExSel >= names.length || histExSel < 0) histExSel = 0;
+      var chips = names.map(function(nk, i) {
+        return '<button type="button" class="med-chip' + (i === histExSel ? ' active' : '') + '" onclick="selectHistEx(' + i + ')">' + escHtml(map[nk].name) + '</button>';
+      }).join('');
+      var cur = map[names[histExSel]], pts = cur.pts;
+      var byD = {};   // una marca por fecha para el gráfico (la última guardada ese día)
+      pts.forEach(function(p) { var n = parseNum(p.l); if (n !== null && isFinite(n)) byD[p.d] = { d: p.d, n: n, src: 'c' }; });
+      var series = Object.keys(byD).sort().map(function(d) { return byD[d]; });
+      var um = /(kg|lbs?|libras?)/i.exec(String(pts[pts.length - 1].l || ''));
+      var unit = um ? um[1].toLowerCase() : '';
+      var panel;
+      if (series.length) {
+        var first = series[0], last = series[series.length - 1];
+        var summary = series.length >= 2
+          ? 'De <b>' + withUnit(first.n, unit) + '</b> (' + fmtDate(first.d) + ') a <b>' + withUnit(last.n, unit) + '</b> (' + fmtDate(last.d) + '): <b>' + deltaText(last.n - first.n, unit) + '</b>'
+          : 'Solo hay una fecha (' + fmtDate(first.d) + '). Con otra sesión en otra fecha se verá el progreso.';
+        panel = '<div class="med-panel"><div style="font-weight:800; font-size:0.9rem; margin-bottom:6px;">' + escHtml(cur.name) + '</div>' + medChartSvg(series) + '<div class="med-sum">' + summary + '</div></div>';
+      } else {
+        panel = '<div class="med-panel"><div style="font-weight:800; font-size:0.9rem;">' + escHtml(cur.name) + '</div><div class="med-sum">Este ejercicio se anotó sin números, así que no hay gráfico. Abajo ves todas las fechas.</div></div>';
+      }
+      var rows = pts.slice().reverse().map(function(p) {
+        return '<tr><td>' + fmtDateTable(p.d) + '</td><td>' + escHtml(p.l || '-') + '</td><td>' + escHtml(p.s || '-') + ' × ' + escHtml(p.r || '-') + '</td></tr>';
+      }).join('');
+      container.innerHTML = '<div class="med-chip-row" style="flex-wrap:wrap; overflow-x:visible;">' + chips + '</div>' + panel +
+        '<div class="med-table-wrap"><table class="med-table"><thead><tr><th>Fecha</th><th>Carga</th><th>Series × reps</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }
 
     function clearHistorialData() {
-      if (confirm('¿Reiniciar todo el historial de cargas?')) {
+      if (confirm('¿Reiniciar todo el historial de cargas (por fecha y por ejercicio)?')) {
         var keysToRemove = [];
         for (var i = 0; i < localStorage.length; i++) {
           var k = localStorage.key(i);
           if (k && k.indexOf('hist_') === 0) keysToRemove.push(k);
         }
         keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
-        openHistorialModal(); loadTracker();
+        try { localStorage.removeItem(sessKey()); } catch (e) {}
+        renderHistorial(); loadTracker();
       }
     }
 
@@ -3353,11 +3470,58 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       document.getElementById('msg_diag').innerText = detail || '';
     }
 
+    // Aviso breve "Rutina actualizada" (arriba de la pantalla, se quita solo)
+    function showUpdatedNotice() {
+      var old = document.getElementById('ath_updated_notice');
+      if (old) old.remove();
+      var n = document.createElement('div');
+      n.id = 'ath_updated_notice';
+      n.innerText = '✅ Rutina actualizada';
+      n.style.cssText = 'position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:99999; background:#06d6a0; color:#000; font-weight:700; font-size:0.9rem; padding:10px 18px; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,0.5); transition:opacity 0.4s;';
+      document.body.appendChild(n);
+      setTimeout(function() { n.style.opacity = '0'; }, 3200);
+      setTimeout(function() { if (n.parentNode) n.parentNode.removeChild(n); }, 3700);
+    }
+
+    // Consulta la hoja en silencio; si la rutina cambió, la vuelve a mostrar y avisa.
+    // Si falla la red o el servicio, no pasa nada: el cliente sigue viendo su copia guardada.
+    function refreshInBackground(id, currentPayload) {
+      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
+        .then(function(j) {
+          if (!j || !j.ok || !j.p || j.p === currentPayload) return;
+          var st = decodePayload('q', j.p);
+          if (!st) return;
+          // Recordar qué pantallas estaban abiertas para reabrirlas tras actualizar
+          var openIds = [];
+          document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
+          var scrollY = window.scrollY || 0;
+          try {
+            renderAthleteApp(st);
+            saveAthletePayload({ k: 'q', v: j.p, id: id });
+            openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
+            window.scrollTo(0, scrollY);
+            showUpdatedNotice();
+          } catch (e) { console.error(e); }
+        })
+        .catch(function() { /* en silencio: se queda la copia guardada */ });
+    }
+
     // Enlace corto: pide la rutina a la hoja de Google usando el código del enlace
     function loadFromShare(v) {
       var m = String(v || '').match(/^([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{1,200})?$/);
       if (!m) { showAthleteMessage('broken', 'Código de enlace no válido'); return; }
       var id = m[1];   // (los enlaces enviados antes traían además la dirección del script: se ignora)
+
+      // Copia local: si este celular ya abrió esta misma rutina, se muestra al instante
+      // y la hoja de Google se consulta en segundo plano para ver si hay una versión más nueva.
+      var cached = loadAthletePayload();
+      var cachedState = (cached && cached.id === id && cached.v) ? decodePayload(cached.k, cached.v) : null;
+      if (cachedState) {
+        var shown = false;
+        try { renderAthleteApp(cachedState); shown = true; } catch (eC) { console.error(eC); }
+        if (shown) { refreshInBackground(id, cached.v); return; }
+      }
+
       showAthleteMessage('loading', '');
 
       function attempt(isRetry) {
@@ -3429,7 +3593,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (saved && saved.v) {
         var st2 = decodePayload(saved.k, saved.v);
         if (st2) {
-          try { renderAthleteApp(st2); return; } catch (e) { console.error(e); }
+          try { renderAthleteApp(st2); if (saved.id && saved.k === 'q') refreshInBackground(saved.id, saved.v); return; } catch (e) { console.error(e); }
         }
       }
 
