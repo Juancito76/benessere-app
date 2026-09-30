@@ -3788,6 +3788,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       }).catch(function() { /* sin internet: se queda lo que hay en el celular */ });
     }
 
+    // Pide una rutina a la hoja; si el primer intento falla o se cuelga, reintenta una vez en silencio
+    function fetchRoutine(id) {
+      var url = SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id);
+      return fetchJson(url, { redirect: 'follow' }, 15000).catch(function() {
+        return fetchJson(url, { redirect: 'follow' }, 25000);
+      });
+    }
+
     // ----- Modo coach: lista de clientes con PIN -----
     function normName(t) { return String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
     var clientRows = [];   // rutinas devueltas por el servidor
@@ -3891,8 +3899,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     // Abre la rutina de un cliente en modo entrenamiento (con las marcas separadas y el PIN del coach)
     function openClientRoutine(id) {
       if (!COACH) return;
-      var st = document.getElementById('cl_status'); if (st) st.innerText = 'Abriendo rutina…';
-      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(j) {
+      var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Abriendo rutina… puede tardar unos segundos';
+      fetchRoutine(id).then(function(j) {
         if (!j || !j.ok || !j.p) { st.innerText = 'No se pudo abrir esa rutina.'; return; }
         var state = decodePayload('q', j.p);
         if (!state) { st.innerText = 'Los datos de esa rutina están dañados.'; return; }
@@ -3928,8 +3936,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     function editClientRoutine(id) {
       if (!COACH) return;
-      var st = document.getElementById('cl_status'); if (st) st.innerText = 'Abriendo rutina para editar…';
-      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(j) {
+      var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Abriendo rutina para editar… puede tardar unos segundos';
+      fetchRoutine(id).then(function(j) {
         var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
         if (!state) { if (st) st.innerText = 'No se pudo abrir esa rutina.'; return; }
         applyRestoredState(state);
