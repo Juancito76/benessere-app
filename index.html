@@ -2819,6 +2819,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           var subsDetails = '';
           var subList = Array.isArray(item.sub) && item.sub.length > 0 ? item.sub : [{ name: item.name || '', series: item.series || '-', reps: item.reps || '-', notes: item.notes || '', video: item.video || '' }];
 
+          var subVideos = [];   // videos de demo de cada ejercicio, para el botón dentro del temporizador
           subList.forEach(function(sub, subIdx) {
             var letter = item.type === 'circuito' ? String(subIdx + 1) : ['A', 'B', 'C'][subIdx];
             var fieldId = d.id + '_slot' + slotNum + '_v' + vDesde + '_s' + subIdx;
@@ -2826,6 +2827,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var yLink = vOwn ? vOwn : 'https://www.youtube.com';
             if (!/^https?:\/\/[^\s"'<>]+$/i.test(yLink)) yLink = 'https://www.youtube.com';
 
+            subVideos[subIdx] = (isDemos && vOwn && /^https?:\/\/[^\s"'<>]+$/i.test(vOwn)) ? vOwn : '';
             var demoButtonHtml = isDemos ? (
               '<div style="margin: 8px 0;"><a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a></div>'
             ) : '';
@@ -2854,7 +2856,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var cStations = subList.map(function(s2) { return s2.name || ''; });
             subsDetails = circuitHeaderHtml(item.circ) + '@@RUN@@' + subsDetails;
             if (isTimeText(cInfo.trabajo)) {
-              athCircuits.push({ nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations });
+              athCircuits.push({ nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations, videos: subVideos });
               // el circuito por tiempo también lleva la cuenta de rondas (para "1 ronda más" y el campo Series)
               subsDetails = subsDetails.replace('@@RUN@@', setRunnerHtml(parseInt(cInfo.rondas, 10) || 1, parseSecs(cInfo.descanso) || 0, 'Ronda', athCircuits.length - 1, true));
             } else {
@@ -2866,7 +2868,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var allTimed = timedWorks.length > 0 && timedWorks.every(function(w) { return w > 0; });
             var nSets = parseInt(subList[0].series, 10) || 1;
             if (allTimed) {
-              athCircuits.push({ nombre: (isNormal ? (subList[0].name || 'Serie') : typeBadge), rondas: String(nSets), trabajo: '', works: timedWorks, restMode: 'round', descanso: '@REST@', stations: subList.map(function(s4) { return s4.name || ''; }), sr: athSetSeq + 1 });
+              athCircuits.push({ nombre: (isNormal ? (subList[0].name || 'Serie') : typeBadge), rondas: String(nSets), trabajo: '', works: timedWorks, restMode: 'round', descanso: '@REST@', stations: subList.map(function(s4) { return s4.name || ''; }), videos: subVideos });
               subsDetails += setRunnerHtml(nSets, 0, 'Serie', athCircuits.length - 1);
             } else {
               subsDetails += setRunnerHtml(nSets, 0, 'Serie');
@@ -3941,14 +3943,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var rounds = parseInt(c.rondas, 10) || 1;
       var names = (c.stations || []).map(function(n, i) { return (n && String(n).trim()) || ('Estación ' + (i + 1)); });
       if (!names.length) names = ['Estación 1'];
-      var phases = [{ t: 'ready', d: 5, st: names[0], r: 1 }];
+      var phases = [{ t: 'ready', d: 5, st: names[0], r: 1, si: 0 }];
       for (var r = 1; r <= rounds; r++) {
         for (var s = 0; s < names.length; s++) {
-          phases.push({ t: 'work', d: hasWorks ? (c.works[s] || work) : work, st: names[s], r: r });
+          phases.push({ t: 'work', d: hasWorks ? (c.works[s] || work) : work, st: names[s], r: r, si: s });
           var isLast = (r === rounds && s === names.length - 1);
           // Biserie/Triserie: los ejercicios van seguidos y el descanso llega al cerrar cada vuelta
           var restHere = (c.restMode === 'round') ? (s === names.length - 1) : true;
-          if (rest > 0 && !isLast && restHere) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r });
+          if (rest > 0 && !isLast && restHere) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r, si: -1 });
         }
       }
       return { phases: phases, rounds: rounds, label: c.restMode === 'round' ? 'Serie' : 'Ronda' };
@@ -3964,7 +3966,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (built.err) { alert(built.err); return; }
       tmrAudio();
       rtClose();
-      CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? SR[srId].cur : 0;
+      CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? SR[srId].cur : 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = c.nombre || 'Circuito';
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
       CT.end = Date.now() + CT.phases[0].d * 1000;
@@ -3983,6 +3985,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       o.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary);"></div><div id="tm_round" style="font-size:0.85rem; color:#ccc; font-weight:700;"></div></div>' +
         '<div id="tm_phase" style="margin-top:18px; font-size:1.3rem; font-weight:900; letter-spacing:2px;"></div>' +
         '<div id="tm_station" style="margin-top:6px; font-size:1.6rem; font-weight:800; min-height:2.2em;"></div>' +
+        '<button type="button" class="tm-btn" id="tm_demo" style="display:none; flex:none; margin:2px auto 0; padding:9px 18px; font-size:0.85rem;">🎥 Ver demo</button>' +
         '<div id="tm_time" style="font-size:min(26vw, 160px); font-weight:900; line-height:1; margin:10px 0; font-variant-numeric:tabular-nums;"></div>' +
         '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
         '<div id="tm_next" style="margin-top:14px; font-size:1rem; color:#ccc;"></div>' +
@@ -3993,6 +3996,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       document.getElementById('tm_pause').onclick = ctTogglePause;
       document.getElementById('tm_skip').onclick = ctSkip;
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
+      document.getElementById('tm_demo').onclick = ctOpenDemo;
       document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId; startCircuitTimer(ci, sid, true); };
     }
 
@@ -4028,10 +4032,22 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       el('tm_station').innerText = ph.t === 'rest' ? 'Toma aire y prepárate' : ph.st;
       el('tm_time').innerText = tmrFmt(remain); el('tm_time').style.color = col;
       el('tm_bar').style.width = Math.max(0, Math.min(100, (1 - remain / ph.d) * 100)) + '%'; el('tm_bar').style.background = col;
+      var demoBtn = el('tm_demo');
+      if (demoBtn) {   // demo del ejercicio actual (en el descanso, el del que sigue); el temporizador no se pausa
+        var di = ph.si;
+        if (ph.t === 'rest') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
+        CT.demoUrl = (CT.videos && di >= 0 && CT.videos[di]) ? CT.videos[di] : '';
+        demoBtn.style.display = CT.demoUrl ? 'block' : 'none';
+      }
       var nx = CT.phases[CT.i + 1];
       el('tm_next').innerText = nx ? ('Sigue: ' + (nx.t === 'rest' ? 'Descanso ' + tmrFmt(nx.d) + (nx.d < 60 ? ' s' : '') : nx.st)) : 'Última estación';
     }
 
+    // Abre el video del ejercicio en otra pestaña/pantalla flotante SIN detener el temporizador (sigue avanzando por reloj)
+    function ctOpenDemo() {
+      if (!CT.demoUrl) return;
+      try { window.open(CT.demoUrl, '_blank', 'noopener'); } catch (e) {}
+    }
     function ctTogglePause() {
       if (!CT.active || CT.done) return;
       var b = document.getElementById('tm_pause');
