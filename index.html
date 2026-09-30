@@ -314,6 +314,13 @@
       </div>
     </header>
 
+    <div id="edit_banner" style="display:none; background:#1b282c; border:1px solid var(--primary); border-radius:10px; padding:12px; margin-bottom:12px;">
+      <div style="font-weight:800; color:var(--primary); font-size:0.9rem;">✏️ Editando la rutina de <span id="edit_banner_name"></span></div>
+      <div style="font-size:0.78rem; color:#ddd; line-height:1.5; margin-top:4px;">Haz tus cambios y toca <strong>Actualizar rutina</strong> abajo: el cliente la recibe en su mismo enlace, sin enviarle otro. "Enviar por WhatsApp" seguiría creando un enlace nuevo.</div>
+      <div id="edit_banner_done" style="font-size:0.8rem; color:var(--success); margin-top:6px;"></div>
+      <button type="button" onclick="cancelEditRoutine()" style="margin-top:8px; background:transparent; border:1px solid #555; color:#aaa; font-size:0.72rem; padding:4px 10px; border-radius:6px; cursor:pointer;">Terminar edición</button>
+    </div>
+
     <div class="gen-tabs">
       <button type="button" class="gen-tab-btn active" onclick="switchGenTab('tab_builder', this)">🏋️ Planificador de Rutina</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">🔗 Cargar desde Link</button>
@@ -524,6 +531,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         <div style="font-size: 0.75rem; color: var(--muted);">Enlace Ultra-Corto sin Servidores Externos</div>
       </div>
       <div style="display: flex; gap: 8px;">
+        <button type="button" id="btn_update_routine" class="btn btn-accent" style="display:none;" onclick="updateEditingRoutine()">🔄 Actualizar rutina</button>
         <button type="button" class="btn btn-export-pdf" onclick="generateGymPDF()">📄 PDF Ficha</button>
         <button type="button" class="btn btn-export-download" onclick="downloadManualHTML()">💾 Guardar HTML</button>
         <button type="button" class="btn btn-export-wa" onclick="generateDirectWhatsAppLink()">📲 Enviar por WhatsApp</button>
@@ -3865,7 +3873,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
           '<div><div style="font-weight:800; color:#fff; font-size:0.95rem;">' + escHtml(g.name) + '</div>' +
           '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.list.length > 1 ? ' · ' + g.list.length + ' rutinas' : '') + '</div></div>' +
-          '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div>';
+          '<div style="display:flex; gap:6px;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
+          '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
         if (g.list.length > 1) {
           html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">';
           g.list.slice(1, 6).forEach(function(r) {
@@ -3906,6 +3915,62 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
       showBuilder();
       openCoachClients();
+    }
+
+
+    // ----- Editar una rutina ya enviada y actualizarla con el mismo enlace -----
+    var editingRoutine = null;   // { id, name, coach }
+    function updateErrorText(code) {
+      if (code === 'no-permiso') return 'Esa rutina es de otro coach. Solo su coach o Juancito pueden cambiarla.';
+      if (code === 'no-existe') return 'Esa rutina ya no existe en la hoja.';
+      if (code === 'datos') return 'El servicio rechazó los datos de la rutina.';
+      return clientsErrorText(code);
+    }
+    function editClientRoutine(id) {
+      if (!COACH) return;
+      var st = document.getElementById('cl_status'); if (st) st.innerText = 'Abriendo rutina para editar…';
+      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(j) {
+        var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
+        if (!state) { if (st) st.innerText = 'No se pudo abrir esa rutina.'; return; }
+        applyRestoredState(state);
+        editingRoutine = { id: id, name: state.clientName || '', coach: state.coachName || '' };
+        closeModal('modal_clients');
+        showEditBanner('');
+        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        window.scrollTo(0, 0);
+      }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
+    }
+    function showEditBanner(done) {
+      var b = document.getElementById('edit_banner'), u = document.getElementById('btn_update_routine');
+      if (!editingRoutine) { if (b) b.style.display = 'none'; if (u) u.style.display = 'none'; return; }
+      document.getElementById('edit_banner_name').innerText = editingRoutine.name || 'este cliente';
+      document.getElementById('edit_banner_done').innerText = done || '';
+      b.style.display = 'block';
+      u.innerText = '🔄 Actualizar rutina de ' + (editingRoutine.name || 'cliente');
+      u.style.display = 'inline-block';
+    }
+    function cancelEditRoutine() { editingRoutine = null; showEditBanner(''); }
+    function updateEditingRoutine() {
+      if (!editingRoutine) return;
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      if (!confirm('¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
+      ensureMeasureSaved();
+      var state = getBuilderState();
+      if (editingRoutine.coach) state.coachName = editingRoutine.coach;   // se conserva el coach original de la rutina
+      var payloadText = encodePayload(buildUltraCompactState(state));
+      var btn = document.getElementById('btn_update_routine');
+      btn.disabled = true; btn.innerText = 'Actualizando…';
+      postJson({ a: 'actualizar', id: editingRoutine.id, p: payloadText, pin: COACH.pin }).then(function(j) {
+        btn.disabled = false;
+        if (j && j.ok) {
+          var t = new Date();
+          showEditBanner('✅ Actualizada a las ' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + '. ' + (editingRoutine.name || 'El cliente') + ' la verá al abrir su enlace.');
+        } else {
+          showEditBanner('');
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          alert('No se pudo actualizar: ' + updateErrorText(j && j.error));
+        }
+      }).catch(function(e) { btn.disabled = false; showEditBanner(''); alert('No se pudo actualizar: ' + updateErrorText(e && e.message)); });
     }
 
     // ================= ENRUTADOR INICIAL =================
