@@ -451,6 +451,18 @@ Fecha: 2026-09-18
 Semanas: 4
 Objetivo: Hipertrofia y Definición
 Peso: 78.5 kg
+Estatura: 172 cm
+Grasa: 18%
+Musculo: 41%
+Visceral: 6
+Edad metabolica: 27
+Espalda: 110 cm
+Cintura 1: 84 cm
+Cintura 2: 81 cm
+Cadera: 100 cm
+Muslo D/I: 58/57
+Pantorrilla D/I: 38/38
+Fecha medicion: 2026-09-18
 
 [MENSAJE COACH]
 Titulo: ¡Bienvenido a tu nuevo bloque de fuerza y sobrecarga!
@@ -2046,12 +2058,66 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
 
+    // Medidas escritas en el bloque [ATLETA] del texto importado.
+    // Acepta "Grasa: 39", "% Grasa: 39%", "Cintura 1: 84 cm", y también pares como "Muslo D/I: 58/57" o "Cintura 1/2: 84/81".
+    function importNorm(t) { return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/%/g, ' ').replace(/[._]/g, ' ').replace(/\s+/g, ' ').trim(); }
+    function parseImportMeasureLine(line, out) {
+      var idx = line.indexOf(':');
+      if (idx < 1) return false;
+      var key = importNorm(line.substring(0, idx)), val = line.substring(idx + 1).trim();
+      if (!val) return false;
+      var nums = String(val).replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g) || [];
+      function one(f) { if (nums.length) { out[f] = parseFloat(nums[0]); return true; } return false; }
+      function pair(fa, fb) {
+        if (nums.length >= 2 && val.indexOf('/') !== -1) { out[fa] = parseFloat(nums[0]); out[fb] = parseFloat(nums[1]); return true; }
+        return false;
+      }
+      if (/^estatura|^altura/.test(key)) { if (nums.length) { out.__estatura = val; return true; } return false; }
+      if (/^(peso)/.test(key)) return one('m_peso_kg');
+      if (/^(grasa|porcentaje de grasa|masa grasa)$/.test(key) || key === 'grasa corporal') return one('m_grasa');
+      if (/^(musculo|masa muscular|masa m|porcentaje de musculo)$/.test(key) || key === 'masa muscular') return one('m_musculo');
+      if (/^(visceral|indice visceral|ind visc|grasa visceral)$/.test(key)) return one('m_visceral');
+      if (/^edad met/.test(key)) return one('m_edad_meta');
+      if (/^espalda/.test(key)) return one('m_espalda');
+      if (/^cintura ?1 ?\/ ?2$|^cintura 1 2$/.test(key)) return pair('m_cintura1', 'm_cintura2');
+      if (/^cintura ?1|^cintura estrecha|^cintura sup/.test(key)) return one('m_cintura1');
+      if (/^cintura ?2|^cintura ombligo|^ombligo|^cintura inf/.test(key)) return one('m_cintura2');
+      if (/^cadera/.test(key)) return one('m_cadera');
+      if (/^muslo d ?\/ ?i$|^muslo d i$|^muslos$/.test(key)) return pair('m_muslo_der', 'm_muslo_izq');
+      if (/^muslo (der|d)/.test(key)) return one('m_muslo_der');
+      if (/^muslo (izq|i)/.test(key)) return one('m_muslo_izq');
+      if (/^pant\w* d ?\/ ?i$|^pant\w* d i$/.test(key)) return pair('m_pant_der', 'm_pant_izq');
+      if (/^pant\w* (der|d)/.test(key)) return one('m_pant_der');
+      if (/^pant\w* (izq|i)/.test(key)) return one('m_pant_izq');
+      return false;
+    }
+    // Guarda las medidas importadas como una medición con fecha (en el historial) y las deja en el formulario
+    function applyImportedMeasures(meas, dateIso) {
+      var keys = Object.keys(meas).filter(function(k) { return k !== '__estatura'; });
+      if (meas.__estatura) { var eh = document.getElementById('m_estatura'); if (eh) eh.value = meas.__estatura; }
+      if (!keys.length) return 0;
+      var d = isIsoDate(dateIso) ? dateIso : todayIso();
+      var v = {};
+      keys.forEach(function(k) { if (isFinite(meas[k])) v[k] = meas[k]; });
+      MEASURE_FIELDS.forEach(function(f) {
+        var el = document.getElementById(f.k);
+        if (el) el.value = (v[f.k] == null) ? '' : withUnit(v[f.k], f.unit);
+      });
+      var fe = document.getElementById('m_fecha'); if (fe) fe.value = d;
+      var i = indexOfDate(measureLog, d);
+      if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
+      measureLog.sort(byDate);
+      renderMeasureLog();
+      return keys.length;
+    }
+
     function parseAndLoadImportData() {
       var raw = document.getElementById('importRawText').value.trim();
       if (!raw) return alert('Pega el texto estructurado primero.');
       var lines = raw.split('\n').map(function(l) { return l.trim(); });
       var curSection = null, curDay = null, parsedDays = [];
       var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1, lastCircuit = null;
+      var importMeas = {}, importMeasDate = '';
 
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
@@ -2086,7 +2152,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           if (lineLower.indexOf('fecha:') === 0) document.getElementById('startDate').value = line.split(':')[1].trim();
           if (lineLower.indexOf('semanas:') === 0) document.getElementById('durationWeeks').value = line.split(':')[1].trim();
           if (lineLower.indexOf('objetivo:') === 0) document.getElementById('m_objetivo').value = line.split(':')[1].trim();
-          if (lineLower.indexOf('peso:') === 0) document.getElementById('m_peso_kg').value = line.split(':')[1].trim();
+          if (/^fecha (de la )?medici[oó]n:/.test(lineLower)) { importMeasDate = line.substring(line.indexOf(':') + 1).trim(); continue; }
+          parseImportMeasureLine(line, importMeas);   // peso, grasa, cintura, cadera, etc.
           continue;
         }
         if (curSection === 'MENSAJE_COACH') {
@@ -2257,8 +2324,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (parsedDays.length > 0) {
         routineDays = parsedDays;
         renderDays();
+        var nMeas = applyImportedMeasures(importMeas, importMeasDate || document.getElementById('startDate').value);
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-        alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días.');
+        alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días' + (nMeas ? ' y ' + nMeas + ' medidas (revísalas en "👤 Datos Atleta & Medidas").' : '.'));
       } else {
         alert('No se detectaron días válidos.');
       }
