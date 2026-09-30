@@ -223,6 +223,11 @@
     .rest-note { background: var(--card); border: 1px dashed var(--border); border-radius: 12px; padding: 14px; color: var(--muted); font-size: 0.9rem; line-height: 1.4; }
     .exercise-item-box { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #2c2c2c; }
     .exercise-item-box:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .rest-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .rest-row span { font-size: 0.7rem; color: var(--muted); font-weight: 700; }
+    .rest-btn { background: #1b282c; border: 1px solid var(--primary); color: var(--primary); font-size: 0.72rem; font-weight: 800; padding: 5px 10px; border-radius: 14px; cursor: pointer; }
+    .btn-timer { width: 100%; margin: 8px 0 4px; padding: 12px; border: none; border-radius: 10px; background: #ffd60a; color: #000; font-size: 0.95rem; font-weight: 900; cursor: pointer; }
+    .tm-btn { flex: 1; padding: 14px 6px; border-radius: 12px; border: 1px solid #444; background: #1c1c1c; color: #fff; font-size: 0.95rem; font-weight: 800; cursor: pointer; }
     .ex-name { font-size: 0.95rem; font-weight: 800; color: #fff; }
     .ex-target { font-size: 0.85rem; color: var(--primary); margin-top: 2px; }
     .ex-notes { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
@@ -2652,6 +2657,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var daysContainer = document.getElementById('ath_daysContainer');
       daysContainer.innerHTML = '';
 
+      athCircuits = [];   // circuitos de esta rutina, para el temporizador
       state.routineDays.forEach(function(d, i) {
         var exercisesHtml = '';
         (d.items || []).forEach(function(item, itIdx) {
@@ -2690,10 +2696,21 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 '<span class="prev-load-badge" id="prev_' + fieldId + '">Marca Anterior: -</span>' +
                 '<button type="button" class="btn-load-prev" id="btn_restore_' + fieldId + '" onclick="restoreSingleLoad(\'' + fieldId + '\')" style="display:none;">⤴️ Montar</button>' +
               '</div>' +
+              (item.type === 'circuito' ? '' :
+                '<div class="rest-row"><span>⏱ Descanso</span>' +
+                  '<button type="button" class="rest-btn" onclick="startRestTimer(30)">30 s</button>' +
+                  '<button type="button" class="rest-btn" onclick="startRestTimer(60)">60 s</button>' +
+                  '<button type="button" class="rest-btn" onclick="startRestTimer(90)">90 s</button>' +
+                '</div>') +
             '</div>';
           });
 
-          if (item.type === 'circuito') subsDetails = circuitHeaderHtml(item.circ) + subsDetails;
+          if (item.type === 'circuito') {
+            var cInfo = item.circ || {};
+            athCircuits.push({ nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: subList.map(function(s2) { return s2.name || ''; }) });
+            subsDetails = circuitHeaderHtml(item.circ) +
+              '<button type="button" class="btn-timer" onclick="startCircuitTimer(' + (athCircuits.length - 1) + ')">⏱ Iniciar temporizador</button>' + subsDetails;
+          }
           exercisesHtml += '<div class="exercise-card ' + (['normal', 'biserie', 'triserie', 'circuito'].indexOf(item.type) >= 0 ? item.type : 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
               '<span class="badge-type">' + typeBadge + '</span>' +
@@ -3416,6 +3433,231 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var html = '<!DOCTYPE html><html><head><title>Ficha Benessere - ' + state.clientName + '</title><style>body { font-family: Arial, sans-serif; color: #000; padding: 20px; } header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff6d00; padding-bottom: 6px; margin-bottom: 10px; } h1 { margin: 0; font-size: 16px; text-transform: uppercase; } .sub { font-size: 10px; color: #555; } .brand { text-align: right; font-weight: bold; font-size: 15px; color:#000; } .slogan { font-size: 9px; color: #ff6d00; font-style: italic; } .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #f9f9f9; border: 1px solid #ddd; padding: 6px; font-size: 10px; margin-bottom: 10px; } .coach-note { border: 1px solid #ddd; border-left: 4px solid #ff6d00; background: #fff8f0; padding: 8px; font-size: 11px; margin-bottom: 10px; } .med-print { margin-top: 16px; page-break-inside: avoid; } .med-print table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 8px; } .med-print th, .med-print td { border: 1px solid #ccc; padding: 3px; text-align: center; } .med-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .med-cell { border: 1px solid #ddd; padding: 6px; } .med-cell-title { font-size: 10px; font-weight: bold; margin-bottom: 2px; } @media print { body { padding: 0; } @page { margin: 1cm; } }</style></head><body><header><div><h1>Ficha de Entrenamiento Benessere Gym</h1><div class="sub">Expediente Oficial | Coach: ' + escHtml(displayCoach(state.coachName)) + '</div></div><div class="brand">BENESSERE GYM<div class="slogan">Juntos somos más fuertes</div></div></header><div class="info-grid"><div><strong>Atleta:</strong> ' + state.clientName + '</div><div><strong>Coach:</strong> ' + escHtml(displayCoach(state.coachName)) + '</div><div><strong>Fecha Inicio:</strong> ' + state.startDate + '</div><div><strong>Duración:</strong> ' + state.durationWeeks + ' Semanas</div><div><strong>Peso:</strong> ' + (state.measures.m_peso_kg||'-') + '</div><div style="grid-column: span 3;"><strong>Objetivo:</strong> ' + (state.measures.m_objetivo||'-') + '</div></div>' + coachNoteHtml + routinesPrintHtml + medPrintHtml + '<script>window.onload = function() { window.print(); };<\/script></body></html>';
       printWin.document.write(html);
       printWin.document.close();
+    }
+
+    // ================= TEMPORIZADORES (circuitos y descanso entre series) =================
+    var athCircuits = [];
+    var TMR = { ctx: null, wake: null };
+    var CT = { active: false, paused: false, phases: [], i: 0, end: 0, remain: 0, lastBeep: '', title: '', rounds: 1, tick: null, done: false };
+    var RT = { active: false, end: 0, total: 0, lastBeep: '', tick: null, hideTimer: null };
+
+    // Convierte "30 s", "45", "1 min", "1:30", "1m30s", "90 seg" en segundos (null si no se entiende)
+    function parseSecs(txt) {
+      var t = String(txt == null ? '' : txt).trim().toLowerCase().replace(',', '.');
+      if (!t) return null;
+      var m = t.match(/^(\d+):(\d{1,2})$/);
+      if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+      if (/^\d+(\.\d+)?$/.test(t)) return Math.round(parseFloat(t));
+      var total = 0, found = false;
+      var mm = t.match(/(\d+(?:\.\d+)?)\s*(?:min|minutos?|mins|m(?![a-z]))/);
+      if (mm) { total += parseFloat(mm[1]) * 60; found = true; }
+      var ss = t.match(/(\d+(?:\.\d+)?)\s*(?:seg|segundos?|secs?|s(?![a-z]))/);
+      if (ss) { total += parseFloat(ss[1]); found = true; }
+      return found ? Math.round(total) : null;
+    }
+    function tmrFmt(sec) { sec = Math.max(0, sec); return sec >= 60 ? Math.floor(sec / 60) + ':' + pad2(sec % 60) : String(sec); }
+
+    function tmrAudio() {
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';   // iPhone: que suene aunque el interruptor esté en silencio (iOS 17+)
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!TMR.ctx) TMR.ctx = new AC();
+        if (TMR.ctx.state === 'suspended') TMR.ctx.resume();
+      } catch (e) {}
+    }
+    function tmrBeep(freq, ms, delayMs) {
+      var c = TMR.ctx;
+      if (!c) return;
+      try {
+        var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + (delayMs || 0) / 1000;
+        o.type = 'sine'; o.frequency.value = freq;
+        o.connect(g); g.connect(c.destination);
+        g.gain.setValueAtTime(0.5, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + ms / 1000);
+        o.start(t); o.stop(t + ms / 1000 + 0.02);
+      } catch (e) {}
+    }
+    function tmrVibrate(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+    function tmrWakeOn() {
+      try { if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(function(l) { TMR.wake = l; }).catch(function() {}); } catch (e) {}
+    }
+    function tmrWakeOff() { try { if (TMR.wake) { TMR.wake.release(); TMR.wake = null; } } catch (e) {} }
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible' && (CT.active || RT.active)) { tmrWakeOn(); ctTick(); rtTick(); }
+    });
+
+    // ----- Descanso entre series (barra inferior) -----
+    function startRestTimer(sec) {
+      tmrAudio();
+      if (RT.hideTimer) { clearTimeout(RT.hideTimer); RT.hideTimer = null; }
+      var bar = document.getElementById('rt_bar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'rt_bar';
+        bar.style.cssText = 'position:fixed; left:0; right:0; bottom:0; z-index:99998; background:#111; border-top:2px solid var(--primary); padding:10px 14px calc(10px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:10px; color:#fff;';
+        bar.innerHTML = '<div style="flex:1;"><div style="font-size:0.7rem; color:#aaa; font-weight:700;">⏱ DESCANSO</div><div id="rt_time" style="font-size:1.8rem; font-weight:900; font-variant-numeric:tabular-nums;"></div></div>' +
+          '<button type="button" id="rt_plus" class="rest-btn" style="padding:10px 14px;">+15 s</button>' +
+          '<button type="button" id="rt_close" class="rest-btn" style="padding:10px 14px;">✖</button>';
+        document.body.appendChild(bar);
+        document.getElementById('rt_plus').onclick = function() { if (RT.active) { RT.end += 15000; RT.total += 15; rtTick(); } };
+        document.getElementById('rt_close').onclick = rtClose;
+      }
+      RT.active = true; RT.total = sec; RT.end = Date.now() + sec * 1000; RT.lastBeep = '';
+      document.getElementById('rt_plus').style.display = '';
+      if (RT.tick) clearInterval(RT.tick);
+      RT.tick = setInterval(rtTick, 250);
+      tmrWakeOn();
+      rtTick();
+    }
+    function rtTick() {
+      if (!RT.active) return;
+      var remain = Math.ceil((RT.end - Date.now()) / 1000), el = document.getElementById('rt_time');
+      if (remain <= 0) {
+        RT.active = false; clearInterval(RT.tick); RT.tick = null;
+        if (el) { el.innerText = '¡Listo! 💪'; el.style.color = '#06d6a0'; }
+        var plus = document.getElementById('rt_plus'); if (plus) plus.style.display = 'none';
+        tmrBeep(880, 350, 0); tmrBeep(880, 350, 450); tmrBeep(1175, 600, 900);
+        tmrVibrate([300, 100, 300]);
+        if (!CT.active) tmrWakeOff();
+        RT.hideTimer = setTimeout(rtClose, 6000);
+        return;
+      }
+      if (el) { el.innerText = tmrFmt(remain); el.style.color = '#fff'; }
+      if (remain <= 3 && RT.lastBeep !== String(remain)) { RT.lastBeep = String(remain); tmrBeep(660, 150, 0); }
+    }
+    function rtClose() {
+      RT.active = false;
+      if (RT.tick) { clearInterval(RT.tick); RT.tick = null; }
+      if (RT.hideTimer) { clearTimeout(RT.hideTimer); RT.hideTimer = null; }
+      var bar = document.getElementById('rt_bar'); if (bar) bar.remove();
+      if (!CT.active) tmrWakeOff();
+    }
+
+    // ----- Temporizador de circuitos (pantalla completa) -----
+    function buildCircuitPhases(c) {
+      var work = parseSecs(c.trabajo);
+      if (!work || work < 1) return { err: 'No pude leer el tiempo de trabajo de este circuito ("' + (c.trabajo || 'vacío') + '"). Pídele a tu coach que lo escriba así: 30 s.' };
+      var rest = parseSecs(c.descanso) || 0;
+      var rounds = parseInt(c.rondas, 10) || 1;
+      var names = (c.stations || []).map(function(n, i) { return (n && String(n).trim()) || ('Estación ' + (i + 1)); });
+      if (!names.length) names = ['Estación 1'];
+      var phases = [{ t: 'ready', d: 5, st: names[0], r: 1 }];
+      for (var r = 1; r <= rounds; r++) {
+        for (var s = 0; s < names.length; s++) {
+          phases.push({ t: 'work', d: work, st: names[s], r: r });
+          var isLast = (r === rounds && s === names.length - 1);
+          if (rest > 0 && !isLast) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r });
+        }
+      }
+      return { phases: phases, rounds: rounds };
+    }
+
+    function startCircuitTimer(ci) {
+      var c = athCircuits[ci];
+      if (!c) return;
+      var built = buildCircuitPhases(c);
+      if (built.err) { alert(built.err); return; }
+      tmrAudio();
+      rtClose();
+      CT.phases = built.phases; CT.rounds = built.rounds; CT.title = c.nombre || 'Circuito';
+      CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
+      CT.end = Date.now() + CT.phases[0].d * 1000;
+      ctOpen();
+      if (CT.tick) clearInterval(CT.tick);
+      CT.tick = setInterval(ctTick, 200);
+      tmrWakeOn();
+      ctTick();
+    }
+
+    function ctOpen() {
+      var old = document.getElementById('tm_overlay'); if (old) old.remove();
+      var o = document.createElement('div');
+      o.id = 'tm_overlay';
+      o.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; z-index:100000; background:#111; display:flex; flex-direction:column; padding:18px 16px calc(18px + env(safe-area-inset-bottom)); color:#fff; text-align:center; overflow:auto;';
+      o.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary);"></div><div id="tm_round" style="font-size:0.85rem; color:#ccc; font-weight:700;"></div></div>' +
+        '<div id="tm_phase" style="margin-top:18px; font-size:1.3rem; font-weight:900; letter-spacing:2px;"></div>' +
+        '<div id="tm_station" style="margin-top:6px; font-size:1.6rem; font-weight:800; min-height:2.2em;"></div>' +
+        '<div id="tm_time" style="font-size:min(26vw, 160px); font-weight:900; line-height:1; margin:10px 0; font-variant-numeric:tabular-nums;"></div>' +
+        '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
+        '<div id="tm_next" style="margin-top:14px; font-size:1rem; color:#ccc;"></div>' +
+        '<div style="flex:1; min-height:16px;"></div>' +
+        '<div style="display:flex; gap:10px;"><button type="button" class="tm-btn" id="tm_pause">⏸ Pausar</button><button type="button" class="tm-btn" id="tm_skip">⏭ Saltar</button><button type="button" class="tm-btn" id="tm_exit">✖ Salir</button></div>';
+      document.body.appendChild(o);
+      document.getElementById('tm_pause').onclick = ctTogglePause;
+      document.getElementById('tm_skip').onclick = ctSkip;
+      document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
+    }
+
+    function ctPhaseSound(ph) {
+      if (ph.t === 'work') { tmrBeep(1000, 600, 0); tmrVibrate(250); }
+      else if (ph.t === 'rest') { tmrBeep(520, 450, 0); tmrVibrate([100, 60, 100]); }
+    }
+
+    function ctTick() {
+      if (!CT.active || CT.paused || CT.done) return;
+      var now = Date.now(), changed = false;
+      while (now >= CT.end) {
+        CT.i++;
+        if (CT.i >= CT.phases.length) { ctFinish(); return; }
+        CT.end += CT.phases[CT.i].d * 1000;
+        changed = true;
+      }
+      if (changed) { CT.lastBeep = ''; ctPhaseSound(CT.phases[CT.i]); }
+      var remain = Math.ceil((CT.end - now) / 1000);
+      if (remain <= 3 && remain >= 1 && CT.lastBeep !== CT.i + '-' + remain) { CT.lastBeep = CT.i + '-' + remain; tmrBeep(700, 140, 0); }
+      ctRender(remain);
+    }
+
+    function ctRender(remain) {
+      var ph = CT.phases[CT.i], colors = { work: '#06d6a0', rest: '#4d8bff', ready: '#ffd60a' };
+      var col = colors[ph.t] || '#fff';
+      var labels = { work: 'TRABAJO', rest: 'DESCANSO', ready: 'PREPÁRATE' };
+      var el = function(id) { return document.getElementById(id); };
+      if (!el('tm_time')) return;
+      el('tm_title').innerText = CT.title;
+      el('tm_round').innerText = ph.t === 'ready' ? '' : ('Ronda ' + ph.r + ' de ' + CT.rounds);
+      el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
+      el('tm_station').innerText = ph.t === 'rest' ? 'Toma aire y prepárate' : ph.st;
+      el('tm_time').innerText = tmrFmt(remain); el('tm_time').style.color = col;
+      el('tm_bar').style.width = Math.max(0, Math.min(100, (1 - remain / ph.d) * 100)) + '%'; el('tm_bar').style.background = col;
+      var nx = CT.phases[CT.i + 1];
+      el('tm_next').innerText = nx ? ('Sigue: ' + (nx.t === 'rest' ? 'Descanso ' + tmrFmt(nx.d) + (nx.d < 60 ? ' s' : '') : nx.st)) : 'Última estación';
+    }
+
+    function ctTogglePause() {
+      if (!CT.active || CT.done) return;
+      var b = document.getElementById('tm_pause');
+      if (!CT.paused) { CT.paused = true; CT.remain = CT.end - Date.now(); if (b) b.innerText = '▶ Continuar'; }
+      else { CT.paused = false; CT.end = Date.now() + CT.remain; tmrAudio(); if (b) b.innerText = '⏸ Pausar'; ctTick(); }
+    }
+    function ctSkip() {
+      if (!CT.active || CT.done) return;
+      CT.i++;
+      if (CT.i >= CT.phases.length) { ctFinish(); return; }
+      CT.end = Date.now() + CT.phases[CT.i].d * 1000; CT.paused = false; CT.lastBeep = '';
+      var b = document.getElementById('tm_pause'); if (b) b.innerText = '⏸ Pausar';
+      ctPhaseSound(CT.phases[CT.i]); ctTick();
+    }
+    function ctFinish() {
+      CT.done = true;
+      if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
+      tmrBeep(880, 300, 0); tmrBeep(880, 300, 400); tmrBeep(1175, 700, 800);
+      tmrVibrate([300, 100, 300, 100, 500]);
+      var el = function(id) { return document.getElementById(id); };
+      if (el('tm_time')) {
+        el('tm_round').innerText = ''; el('tm_phase').innerText = '¡TERMINADO!'; el('tm_phase').style.color = '#06d6a0';
+        el('tm_station').innerText = CT.title + ' completado 💪'; el('tm_time').innerText = '✔'; el('tm_time').style.color = '#06d6a0';
+        el('tm_bar').style.width = '100%'; el('tm_bar').style.background = '#06d6a0'; el('tm_next').innerText = '';
+        el('tm_pause').style.display = 'none'; el('tm_skip').style.display = 'none'; el('tm_exit').innerText = 'Cerrar';
+      }
+      tmrWakeOff();
+    }
+    function ctClose() {
+      CT.active = false; CT.done = false;
+      if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
+      var o = document.getElementById('tm_overlay'); if (o) o.remove();
+      if (!RT.active) tmrWakeOff();
     }
 
     // ================= ENRUTADOR INICIAL =================
