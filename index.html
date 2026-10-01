@@ -3272,9 +3272,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '<button type="button" class="pick-item" style="text-align:center; color:#aaa;" onclick="document.getElementById(\'pick_overlay\').remove()">Cancelar</button></div>';
       document.body.appendChild(o);
     }
-    function mountSession(i) {
-      var s = PICK.list[i], dayEl = document.getElementById(PICK.dayId);
-      if (!s || !dayEl) return;
+    // Llena las marcas (peso/reps/series) de un día con las de un entreno guardado; devuelve cuántos ejercicios montó
+    function applySessionToDay(s, dayEl) {
       var count = 0;
       dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) input[id^="load_"]').forEach(function(l) {
         var key = l.id.replace('load_', ''), box = l.closest('.exercise-item-box'), nmEl = box && box.querySelector('.ex-name'), nm = nmEl ? normName(nmEl.innerText) : '';
@@ -3285,9 +3284,34 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         [[l, cleanMark(e.l)], [dayEl.querySelector('#reps_' + key), cleanMark(e.r)], [dayEl.querySelector('#series_' + key), cleanMark(e.s)]].forEach(function(x) { if (x[0] && x[1]) { x[0].value = x[1]; x[0].classList.remove('prefilled'); } });
         count++;
       });
+      return count;
+    }
+    function mountSession(i) {
+      var s = PICK.list[i], dayEl = document.getElementById(PICK.dayId);
+      if (!s || !dayEl) return;
+      var count = applySessionToDay(s, dayEl);
       var ov = document.getElementById('pick_overlay'); if (ov) ov.remove();
       saveTracker();
       alert(count ? ('Listo: se montaron ' + count + ' ejercicios del ' + (s.hd || 'entreno') + '.') : 'Ese entreno no coincide con los ejercicios actuales.');
+    }
+    // Desde el Historial: monta todo el entreno guardado de un solo toque (sin ir ejercicio por ejercicio)
+    function mountWholeSession(t) {
+      var s = null;
+      loadSessions().forEach(function(x) { if (x.t === t) s = x; });
+      if (!s) return;
+      var days = Array.prototype.slice.call(document.querySelectorAll('#ath_daysContainer .view-screen[data-day-title]'));
+      var dt = normName(s.day), count = 0, shown = null;
+      days.forEach(function(el) {
+        if (!shown && dt && normName(el.getAttribute('data-day-title')) === dt) { count = applySessionToDay(s, el); if (count) shown = el; }
+      });
+      if (!count) {   // el día se llama distinto ahora: se busca por ejercicios en toda la rutina
+        days.forEach(function(el) { var c = applySessionToDay(s, el); if (c) { count += c; if (!shown) shown = el; } });
+      }
+      if (!count) { alert('Ese entreno no coincide con los ejercicios actuales de tu rutina.'); return; }
+      saveTracker();
+      closeModal('ath_modal_historial');
+      if (shown) openModal(shown.id);   // se abre el día para ver las marcas ya montadas
+      alert('Listo: se montó todo el día (' + count + ' ejercicio' + (count === 1 ? '' : 's') + ') del ' + (s.hd || 'entreno') + '.');
     }
 
     function archiveCurrentDay(dayId) {
@@ -3408,7 +3432,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         }).join('');
         html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
-          '<div style="font-size:0.72rem; color:var(--primary); font-weight:800; margin-bottom:6px;">📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + '</div>' + rows + '</div>';
+          '<div style="font-size:0.72rem; color:var(--primary); font-weight:800; margin-bottom:6px;">📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + '</div>' +
+          ((s.ex || []).length ? '<button type="button" onclick="mountWholeSession(\'' + escHtml(s.t) + '\')" style="width:100%; background:var(--primary); border:none; color:#000; font-size:0.8rem; font-weight:900; padding:10px; border-radius:8px; cursor:pointer; margin-bottom:4px;">⚡ Montar todo el día en las marcas</button>' : '') +
+          rows + '</div>';
       });
       if (legacy.length) {
         html += '<div class="med-h">Marcas anteriores (una por ejercicio)</div>';
