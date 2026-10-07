@@ -238,6 +238,23 @@
     .sr-btn.sr-rest { background: #4d8bff; color: #fff; }
     .sr-btn.sr-done { background: #2a2a2a; color: #06d6a0; }
     .rest-btn.sel { background: var(--primary); color: #000; }
+    /* ===== Etapa 2 (07/10/2026): burbuja de entreno, editar ejercicio, avisos ===== */
+    .wk-bubble { position: fixed; right: 12px; bottom: 96px; z-index: 100002; display: none; background: #0d2318; border: 2px solid #06d6a0; color: #fff; border-radius: 24px; padding: 8px 14px; font-size: 0.85rem; font-weight: 800; box-shadow: 0 4px 16px rgba(0,0,0,0.6); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; max-width: 240px; }
+    .wk-bubble .wb-main { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .wk-bubble .wb-sub { display: none; margin-top: 6px; font-size: 0.68rem; font-weight: 600; color: #9fd8bd; line-height: 1.4; }
+    .wk-bubble.open .wb-sub { display: block; }
+    .wk-bubble .wb-hide { background: none; border: 1px solid #2f6f55; color: #9fd8bd; border-radius: 8px; padding: 3px 8px; font-size: 0.66rem; margin-top: 6px; cursor: pointer; }
+    .btn-edit-ex { background: transparent; color: var(--primary); border: 1px solid var(--primary); border-radius: 8px; padding: 3px 9px; font-size: 0.68rem; font-weight: 800; cursor: pointer; margin-left: 8px; }
+    .ex-edit-modal .modal-inner { max-width: 540px; max-height: 90vh; }
+    .ex-edit-modal label { display: block; font-size: 0.66rem; color: var(--muted); font-weight: 700; margin: 6px 0 2px; text-transform: uppercase; }
+    .ex-edit-modal input[type=text], .ex-edit-modal input[type=date], .ex-edit-modal textarea { width: 100%; box-sizing: border-box; background: #0f0f0f; color: #fff; border: 1px solid #333; border-radius: 8px; padding: 8px; font-size: 0.85rem; }
+    .ex-edit-modal .edx-sub { border: 1px solid #2c2c2c; border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+    .ex-edit-modal .edx-row { display: flex; gap: 8px; }
+    .ex-edit-modal .edx-row > div { flex: 1; }
+    .ex-edit-modal details { border: 1px solid #2c2c2c; border-radius: 10px; padding: 8px; margin: 10px 0; }
+    .ex-edit-modal summary { cursor: pointer; font-weight: 800; font-size: 0.8rem; color: var(--accent); }
+    .upd-pill { position: fixed; top: 10px; left: 12px; right: 12px; max-width: 520px; margin: 0 auto; z-index: 100003; background: #12203a; border: 2px solid #2f69ff; color: #fff; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 18px rgba(0,0,0,0.6); font-size: 0.82rem; font-weight: 700; }
+    .upd-pill button { border-radius: 8px; padding: 7px 10px; font-weight: 800; font-size: 0.78rem; cursor: pointer; }
     .wk-bar { margin: 4px 0 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid #2c2c2c; background: #141414; display: flex; align-items: center; gap: 10px; }
     .wk-bar .wk-time { font-size: 1.5rem; font-weight: 900; font-variant-numeric: tabular-nums; min-width: 78px; }
     .wk-bar .wk-lbl { flex: 1; font-size: 0.72rem; font-weight: 800; color: var(--muted); }
@@ -273,6 +290,26 @@
     .prev-load-badge-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
     .prev-load-badge { font-size: 0.7rem; color: var(--primary); font-weight: 600; }
     .btn-load-prev { background: #1b282c; border: 1px solid var(--primary); color: var(--primary); font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+
+    /* ===== Registro por serie (etapa 1, 07/10/2026) ===== */
+    .set-box { margin-top: 8px; background: #141414; border-radius: 8px; padding: 8px; }
+    details.set-box > summary { cursor: pointer; font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; padding: 2px 0 6px; }
+    .set-head, .set-row { display: grid; align-items: center; gap: 6px; grid-template-columns: 34px 1fr 1fr; }
+    .set-rows.no-w .set-head, .set-rows.no-w .set-row { grid-template-columns: 34px 1fr; }
+    .set-head span { font-size: 0.62rem; color: var(--muted); font-weight: 700; text-transform: uppercase; text-align: center; }
+    .set-row { margin-top: 4px; padding: 2px 0; }
+    .set-n { font-size: 0.75rem; font-weight: 900; color: var(--muted); text-align: center; }
+    .set-row input { width: 100%; background: #202020; border: 1px solid #333; color: #fff; padding: 7px 6px; font-size: 0.85rem; border-radius: 6px; text-align: center; outline: none; }
+    .set-row.cur { background: rgba(6, 214, 160, 0.12); border-radius: 8px; }
+    .set-row.cur .set-n { color: #06d6a0; }
+    .set-row.done .set-n { color: var(--primary); }
+    .btn-add-set { margin-top: 6px; background: transparent; border: 1px dashed #444; color: var(--muted); font-size: 0.72rem; font-weight: 800; padding: 5px 10px; border-radius: 8px; cursor: pointer; }
+    .uni-badge { display: inline-block; margin-left: 6px; font-size: 0.65rem; font-weight: 900; padding: 1px 7px; border-radius: 999px; background: rgba(255, 109, 0, 0.18); color: var(--accent); vertical-align: middle; }
+    .sr-clock { font-size: 1.7rem; font-weight: 900; font-variant-numeric: tabular-nums; text-align: center; color: #06d6a0; margin-top: 2px; }
+    .tread-warn { background: rgba(255, 69, 58, 0.12); border: 1px solid #ff453a; color: #ffb3ad; border-radius: 8px; padding: 8px 10px; font-size: 0.75rem; margin-bottom: 8px; display: none; line-height: 1.35; }
+    .flag-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .flag-row label { display: inline-flex; align-items: center; gap: 6px; text-transform: none; font-size: 0.8rem; color: #ddd; cursor: pointer; font-weight: 700; }
+    .flag-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
 
     .nutri-accordion { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; padding: 10px; }
     .nutri-accordion summary { font-weight: 800; color: var(--primary); cursor: pointer; font-size: 0.88rem; }
@@ -344,6 +381,7 @@
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
+      <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
     </div>
 
@@ -494,7 +532,7 @@ Almuerzo: 1.5 palmas Proteína + 1.5 puños Carbohidratos + 2 puños Vegetales +
 Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 --
 Vigencia: semanas 1-2
-Ejercicio: Sentadilla búlgara | Series: 3 | Reps: 10-12 — EP3 | Notas: Pausa 1s en fondo | Video: https://youtube.com/watch?v=3iG_8tBw6mU
+Ejercicio: Sentadilla búlgara | Series: 3 | Reps: 10-12 — EP3 | Notas: Pausa 1s en fondo | Unilateral: si | Video: https://youtube.com/watch?v=3iG_8tBw6mU
 Vigencia: semanas 3-4
 Biserie: Sentadilla búlgara + Curl femoral | Series: 3 | Reps: 12 | Notas: Fusión de fase Intensificación | Video: https://youtube.com/watch?v=3iG_8tBw6mU | Video: https://youtube.com/watch?v=aaaaaaaaaaa
 --
@@ -532,6 +570,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           <div class="form-group"><label>% Grasa Corporal</label><input type="text" id="m_grasa" placeholder="Ej: 15%"></div>
           <div class="form-group"><label>% Masa Muscular</label><input type="text" id="m_musculo" placeholder="Ej: 41%"></div>
           <div class="form-group"><label>Índice Visceral</label><input type="text" id="m_visceral" placeholder="Ej: Nivel 4"></div>
+          <div class="form-group"><label>Edad (años cumplidos)</label><input type="text" id="m_edad" placeholder="Ej: 32 años"></div>
           <div class="form-group"><label>Edad Metabólica</label><input type="text" id="m_edad_meta" placeholder="Ej: 24 años"></div>
           <div class="form-group"><label>Espalda</label><input type="text" id="m_espalda" placeholder="Ej: 110 cm"></div>
           <div class="form-group"><label>Cintura 1 (Estrecha)</label><input type="text" id="m_cintura1" placeholder="Ej: 84 cm"></div>
@@ -1161,6 +1200,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     var CONFIG_COACH_PHONE = '50684949226';   // WhatsApp que recibe TODOS los reportes (8494 9226)
     var APP_BASE_URL = 'https://juancito76.github.io/benessere-app/';   // página publicada en GitHub Pages
     var SHARE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDDBSyJPwxOB6kOp4MACBUfIceWKqE3prPEgvk9qKTEwEV_JE6PAFazavBv71fiJ1f/exec';   // servicio de la hoja de Google
+    // Código del espacio de anuncios en la hoja (se crea la primera vez desde "📢 Anuncios" en el constructor).
+    var ANNOUNCE_ID = '';
     var SHARE_KEY = '0205140133';   // clave del servicio (debe ser igual a la de la línea 13 del script de Google)
     var COACH_CFG_KEY = 'benessere_coach_cfg';
     var athleteCoachName = 'Coach Benessere';
@@ -1437,6 +1478,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 '<div class="form-group"><label>Reps</label><input type="text" value="' + escHtml(sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
                 '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + escHtml(sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
                 '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (!sharesVideoWithFirst(day.items, itemIndex, subIndex) ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">▶ Probar</button></div>' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') + '</div>' +
+              flagsHtml('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']', sub) +
               '</div>' +
             '</div>';
           });
@@ -1451,6 +1493,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
               '</div>' +
               '<button type="button" class="btn btn-danger" style="padding:2px 8px; font-size:0.72rem;" onclick="removeItem(' + dayIndex + ', ' + itemIndex + ')">Eliminar</button>' +
             '</div>' +
+            (item.type !== 'normal' ? '<div class="tread-warn" id="tw_' + dayIndex + '_' + itemIndex + '"></div>' : '') +
             subsHtml +
           '</div>';
         });
@@ -1489,7 +1532,50 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         }
         container.appendChild(dayDiv);
       });
+      scanTreadmill();
     }
+
+    // ---- Etapa 1 (07/10/2026): Unilateral, Usa peso y aviso de caminadora ----
+    function subIsUni(sb) { return !!(sb && sb.uni); }
+    function subUsesWeight(sb) { return !(sb && sb.peso === false); }
+    function flagsHtml(path, sub) {
+      return '<div class="form-group" style="grid-column: span 2;"><div class="flag-row">' +
+        '<label><input type="checkbox"' + (sub.uni ? ' checked' : '') + ' onchange="' + path + '.uni = this.checked">↔ Unilateral (cuenta ambos lados)</label>' +
+        '<label><input type="checkbox"' + (sub.peso !== false ? ' checked' : '') + ' onchange="' + path + '.peso = this.checked">🏋️ Usa peso</label>' +
+      '</div></div>';
+    }
+    var TREAD_RE = /caminadora|treadmill|cinta\s+(?:de\s+)?(?:correr|caminar)/i;
+    function itemHasTread(it) { return !!(it && it.type !== 'normal' && (it.sub || []).some(function(sb) { return TREAD_RE.test((sb && sb.name) || ''); })); }
+    function comboLabel(t) { return t === 'circuito' ? 'circuito' : (t === 'biserie' ? 'biserie' : 'triserie'); }
+    function scanTreadmill() {
+      routineDays.forEach(function(d, di) {
+        (d.items || []).forEach(function(it, ii) {
+          var el = document.getElementById('tw_' + di + '_' + ii); if (!el) return;
+          var bad = itemHasTread(it);
+          el.style.display = bad ? 'block' : 'none';
+          if (bad) el.innerText = '⚠️ Caminadora dentro de ' + (it.type === 'circuito' ? 'un ' : 'una ') + comboLabel(it.type) + ': a veces está ocupada o la pierden al bajarse. Cámbiala por skipping alto, saltos de tijera o cuerda. La caminadora va sola, como cardio aparte.';
+        });
+      });
+    }
+    document.addEventListener('input', function(e) { var t = e.target; if (t && t.closest && t.closest('#daysList')) scanTreadmill(); });
+    function treadmillGuard() {
+      var bad = [];
+      routineDays.forEach(function(d) {
+        (d.items || []).forEach(function(it) {
+          if (itemHasTread(it)) bad.push((d.title || 'Día') + ' · ' + comboLabel(it.type) + ': ' + it.sub.map(function(sb) { return sb.name; }).filter(Boolean).join(' + '));
+        });
+      });
+      if (!bad.length) return true;
+      return confirm('⚠️ Hay caminadora dentro de una biserie, triserie o circuito:\n\n• ' + bad.join('\n• ') + '\n\nA veces está ocupada o la pierden al bajarse. Lo recomendado es cambiarla por skipping alto, saltos de tijera o cuerda, y dejar la caminadora sola como cardio.\n\n¿Enviar la rutina de todos modos?');
+    }
+    // Banderas del texto de importación: "Unilateral: si" / "Unilateral: A,B" (letras del combo) y "Peso: no"
+    function importFlagApplies(raw, idx) {
+      var v = String(raw == null ? '' : raw).trim().toLowerCase();
+      if (!v) return false;
+      if (/^(si|sí|s|1|true|yes|x|todos|todas)$/.test(v)) return true;
+      return v.split(/[\s,+y]+/).filter(Boolean).indexOf('abc'.charAt(idx)) !== -1;
+    }
+    function importNoWeight(raw) { return /^(no|n|0|false|sin|ninguno|corporal)$/i.test(String(raw == null ? '' : raw).trim()); }
 
     function addNewDay() {
       var nextNum = routineDays.length + 1;
@@ -1595,6 +1681,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             (!shares ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg(sp + '.video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg(sp + '.video') + ')">▶ Probar</button></div>'
                    : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') +
           '</div>' +
+          flagsHtml(sp, sb) +
           '<div class="form-group" style="grid-column: span 2;"><button type="button" class="btn btn-danger" style="padding:2px 8px; font-size:0.72rem;" onclick="removeStation(' + di + ', ' + ii + ', ' + k + ')">Quitar estación</button></div>' +
         '</div></div>';
       });
@@ -1830,9 +1917,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             if (Array.isArray(rawSubs) && rawSubs.length > 0) {
               subList = rawSubs.map(function(s) {
                 if (Array.isArray(s)) {
-                  return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||'') };
+                  return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||''), uni: ((s[5] | 0) & 1) === 1, peso: ((s[5] | 0) & 2) ? false : true };
                 }
-                return { name: s.name||s.nombre||'', series: s.series||'', reps: s.reps||s.repeticiones||'', notes: s.notes||s.notas||'', video: expandYtUrl(s.video||'') };
+                return { name: s.name||s.nombre||'', series: s.series||'', reps: s.reps||s.repeticiones||'', notes: s.notes||s.notas||'', video: expandYtUrl(s.video||''), uni: !!s.uni, peso: s.peso === false ? false : true };
               });
             } else {
               subList = [{
@@ -2055,6 +2142,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
       document.getElementById('m_objetivo').value = '';
       document.getElementById('m_estatura').value = '';
+      document.getElementById('m_edad').value = '';
       MEASURE_FIELDS.forEach(function(f) { document.getElementById(f.k).value = ''; });
       measureLog = [];
       var fechaEl = document.getElementById('m_fecha');
@@ -2095,6 +2183,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (/^(musculo|masa muscular|masa m|porcentaje de musculo)$/.test(key) || key === 'masa muscular') return one('m_musculo');
       if (/^(visceral|indice visceral|ind visc|grasa visceral)$/.test(key)) return one('m_visceral');
       if (/^edad met/.test(key)) return one('m_edad_meta');
+      if (/^edad( natural| real| cronologica| actual| en anos)?$/.test(key)) { if (nums.length) { out.__edad = val; return true; } return false; }
       if (/^espalda/.test(key)) return one('m_espalda');
       if (/^cintura ?1 ?\/ ?2$|^cintura 1 2$/.test(key)) return pair('m_cintura1', 'm_cintura2');
       if (/^cintura ?1|^cintura estrecha|^cintura sup/.test(key)) return one('m_cintura1');
@@ -2110,8 +2199,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     // Guarda las medidas importadas como una medición con fecha (en el historial) y las deja en el formulario
     function applyImportedMeasures(meas, dateIso) {
-      var keys = Object.keys(meas).filter(function(k) { return k !== '__estatura'; });
+      var keys = Object.keys(meas).filter(function(k) { return k !== '__estatura' && k !== '__edad'; });
       if (meas.__estatura) { var eh = document.getElementById('m_estatura'); if (eh) eh.value = meas.__estatura; }
+      if (meas.__edad) { var eg = document.getElementById('m_edad'); if (eg) eg.value = meas.__edad; }
       if (!keys.length) return 0;
       var d = isIsoDate(dateIso) ? dateIso : todayIso();
       var v = {};
@@ -2281,6 +2371,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                   if (pk.indexOf('rep') !== -1 || pk.indexOf('tiempo') !== -1) stn.reps = pv;
                   if (pk.indexOf('nota') !== -1) stn.notes = pv;
                   if (pk.indexOf('video') !== -1) stn.video = pv;
+                  if (pk.indexOf('unilat') !== -1) stn.uni = importFlagApplies(pv, 0);
+                  if (pk === 'peso' || pk === 'usa peso') stn.peso = importNoWeight(pv) ? false : true;
                 }
               });
               lastCircuit.sub.push(stn);
@@ -2299,6 +2391,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 if (pk.indexOf('rep') !== -1) sub.reps = pv;
                 if (pk.indexOf('nota') !== -1) sub.notes = pv;
                 if (pk.indexOf('video') !== -1) sub.video = pv;
+                if (pk.indexOf('unilat') !== -1) sub.uni = importFlagApplies(pv, 0);
+                if (pk === 'peso' || pk === 'usa peso') sub.peso = importNoWeight(pv) ? false : true;
               }
             });
             var meta = resolveSlotAndVig([sub.name]);
@@ -2312,7 +2406,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var namesRaw = props2[0].trim();
             if (namesRaw.indexOf('+') !== -1) {
               var names = namesRaw.split('+').map(function(n) { return n.trim(); }).filter(Boolean);
-              var series2 = '', reps2 = '', notes2 = '', videos2 = [];
+              var series2 = '', reps2 = '', notes2 = '', videos2 = [], uniRaw = '', pesoRaw = '';
               props2.slice(1).forEach(function(pr) {
                 var pair = pr.split(':');
                 if (pair.length >= 2) {
@@ -2323,11 +2417,13 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                   // Se puede repetir "Video:" una vez por cada ejercicio del combo (A, B, C...).
                   // Si solo viene un "Video:", se usa igual para todos (compatibilidad con planes viejos).
                   if (pk.indexOf('video') !== -1) videos2.push(pv);
+                  if (pk.indexOf('unilat') !== -1) uniRaw = pv;
+                  if (pk === 'peso' || pk === 'usa peso') pesoRaw = pv;
                 }
               });
               var subList = names.map(function(n, ni) {
                 var v = videos2.length > 1 ? (videos2[ni] || '') : (videos2[0] || '');
-                return { name: n, series: series2, reps: reps2, notes: notes2, video: v };
+                return { name: n, series: series2, reps: reps2, notes: notes2, video: v, uni: importFlagApplies(uniRaw, ni), peso: importNoWeight(pesoRaw) ? false : true };
               });
               var meta2 = resolveSlotAndVig(names);
               curDay.items.push({ type: isBi ? 'biserie' : 'triserie', slot: meta2.slot, vigenciaDesde: meta2.vDesde, vigenciaHasta: meta2.vHasta, sub: subList });
@@ -2382,6 +2478,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         measures: {
           m_objetivo: document.getElementById('m_objetivo').value.trim() || '-',
           m_estatura: document.getElementById('m_estatura').value.trim() || '-',
+          m_edad: document.getElementById('m_edad').value.trim() || '-',
           m_peso_kg: document.getElementById('m_peso_kg').value.trim() || '-',
           m_grasa: document.getElementById('m_grasa').value.trim() || '-',
           m_musculo: document.getElementById('m_musculo').value.trim() || '-',
@@ -2410,13 +2507,18 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         full.coachMsgTitle,
         full.coachMsgBody,
         [full.configFeatures.nutrition ? 1 : 0, full.configFeatures.demos ? 1 : 0],
-        [
-          full.measures.m_objetivo, full.measures.m_estatura, full.measures.m_peso_kg,
-          full.measures.m_grasa, full.measures.m_musculo, full.measures.m_visceral,
-          full.measures.m_edad_meta, full.measures.m_espalda, full.measures.m_cintura1,
-          full.measures.m_cintura2, full.measures.m_cadera, full.measures.m_muslo_der,
-          full.measures.m_muslo_izq, full.measures.m_pant_der, full.measures.m_pant_izq
-        ],
+        (function() {
+          var ma = [
+            full.measures.m_objetivo, full.measures.m_estatura, full.measures.m_peso_kg,
+            full.measures.m_grasa, full.measures.m_musculo, full.measures.m_visceral,
+            full.measures.m_edad_meta, full.measures.m_espalda, full.measures.m_cintura1,
+            full.measures.m_cintura2, full.measures.m_cadera, full.measures.m_muslo_der,
+            full.measures.m_muslo_izq, full.measures.m_pant_der, full.measures.m_pant_izq
+          ];
+          // la edad va al final y solo si existe: los enlaces sin edad quedan idénticos a antes
+          if (full.measures.m_edad && full.measures.m_edad !== '-') ma.push(full.measures.m_edad);
+          return ma;
+        })(),
         full.routineDays.map(function(d) {
           var dArr = [
             d.id,
@@ -2437,7 +2539,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                   // versión de la misma posición cuando es EL MISMO ejercicio (mismo nombre) —
                   // así no se pega el video de un ejercicio distinto que ocupó antes esa posición.
                   var sVideo = (s.video && String(s.video).trim()) ? s.video : slotVideo(d.items, parseInt(it.slot, 10) || (d.items.indexOf(it) + 1), sIdx, s.name);
-                  return [s.name||'', s.series||'', s.reps||'', s.notes||'', extractYtId(sVideo)];
+                  var sArr = [s.name||'', s.series||'', s.reps||'', s.notes||'', extractYtId(sVideo)];
+                  var sFl = (s.uni ? 1 : 0) | (s.peso === false ? 2 : 0);   // sin banderas, el enlace queda igual que antes
+                  if (sFl) sArr.push(sFl);
+                  return sArr;
                 })
               ];
             })
@@ -2495,7 +2600,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           m_grasa: m[3]||'-', m_musculo: m[4]||'-', m_visceral: m[5]||'-',
           m_edad_meta: m[6]||'-', m_espalda: m[7]||'-', m_cintura1: m[8]||'-',
           m_cintura2: m[9]||'-', m_cadera: m[10]||'-', m_muslo_der: m[11]||'-',
-          m_muslo_izq: m[12]||'-', m_pant_der: m[13]||'-', m_pant_izq: m[14]||'-'
+          m_muslo_izq: m[12]||'-', m_pant_der: m[13]||'-', m_pant_izq: m[14]||'-',
+          m_edad: m[15]||'-'
         },
         routineDays: (c[8] || []).map(function(d) {
           var h = d[2] || [];
@@ -2515,7 +2621,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 vigenciaHasta: it[3],
                 circ: (it[0] === 'c' && Array.isArray(it[5])) ? { rondas: it[5][0]||'', trabajo: it[5][1]||'', descanso: it[5][2]||'', notas: it[5][3]||'', nombre: it[5][4]||'' } : undefined,
                 sub: (it[4] || []).map(function(s) {
-                  return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||'') };
+                  return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||''), uni: ((s[5] | 0) & 1) === 1, peso: ((s[5] | 0) & 2) ? false : true };
                 })
               };
             })
@@ -2726,6 +2832,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var baseUrl = getAppBaseUrl();
       if (!baseUrl) return;
 
+      if (!treadmillGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
       var payloadText = encodePayload(buildUltraCompactState(state));
@@ -2753,6 +2860,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function renderAthleteApp(state) {
       athleteActiveState = state;
       setTimeout(syncHistorial, 600);   // trae/une el historial de la hoja (si hay enlace corto)
+      setTimeout(checkAnnouncements, 1200);   // anuncios vigentes para todos los clientes
+      setTimeout(wkBubbleUpdate, 0);
       athleteCoachName = displayCoach(state.coachName);
       athleteCoachPhone = CONFIG_COACH_PHONE;   // fijo: se ignora cualquier número que traiga el enlace
       // Los identificadores del enlace solo pueden tener letras, números, guion y guion bajo
@@ -2805,7 +2914,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       daysContainer.innerHTML = '';
 
       athCircuits = [];   // circuitos de esta rutina, para el temporizador
-      athSetSeq = 0; SR = {};   // controles "Iniciar serie / Descanso" de esta rutina
+      athSetSeq = 0; SR = {}; SETMETA = {};   // controles "Iniciar serie / Descanso" y filas de registro por serie de esta rutina
       state.routineDays.forEach(function(d, i) {
         var exercisesHtml = '';
         (d.items || []).forEach(function(item, itIdx) {
@@ -2820,6 +2929,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           var subList = Array.isArray(item.sub) && item.sub.length > 0 ? item.sub : [{ name: item.name || '', series: item.series || '-', reps: item.reps || '-', notes: item.notes || '', video: item.video || '' }];
 
           var subVideos = [];   // videos de demo de cada ejercicio, para el botón dentro del temporizador
+          var subKeys = [], subUnis = [];   // identificador de cada ejercicio (filas de registro) y si es unilateral
           subList.forEach(function(sub, subIdx) {
             var letter = item.type === 'circuito' ? String(subIdx + 1) : ['A', 'B', 'C'][subIdx];
             var fieldId = d.id + '_slot' + slotNum + '_v' + vDesde + '_s' + subIdx;
@@ -2832,16 +2942,22 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
               '<div style="margin: 8px 0;"><a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a></div>'
             ) : '';
 
+            var sUni = subIsUni(sub), sW = subUsesWeight(sub), cI = item.circ || {};
+            var circTimed = item.type === 'circuito' && isTimeText(cI.trabajo);
+            var sTimed = circTimed || isTimeText(sub.reps);
+            var sSets = item.type === 'circuito' ? (parseInt(cI.rondas, 10) || 1) : (parseInt(sub.series, 10) || 1);
+            sSets = Math.max(1, Math.min(12, sSets));
+            subKeys[subIdx] = fieldId; subUnis[subIdx] = sUni;
+            var targetTxt = item.type === 'circuito'
+              ? escHtml(sub.reps || (circTimed ? (cI.trabajo || '-') : '-'))
+              : (escHtml(sub.series || '-') + ' series × ' + escHtml(sub.reps || '-') + (isTimeText(sub.reps) ? '' : ' reps'));
+
             subsDetails += '<div class="exercise-item-box">' +
               '<div class="ex-name">' + (!isNormal ? '<span style="color:var(--accent);">' + letter + '</span> ' : '') + escHtml(sub.name || 'Ejercicio') + '</div>' +
-              '<div class="ex-target">' + (item.type === 'circuito' ? escHtml(sub.reps || '-') : escHtml(sub.series || '-') + ' series × ' + escHtml(sub.reps || '-') + ' reps') + '</div>' +
+              '<div class="ex-target">' + targetTxt + (sUni ? escHtml(uniNote(sub.reps || (circTimed ? cI.trabajo : ''))) + '<span class="uni-badge">↔ UNILATERAL</span>' : '') + '</div>' +
               (sub.notes ? '<div class="ex-notes">📌 ' + escHtml(sub.notes) + '</div>' : '') +
               demoButtonHtml +
-              '<div class="tracker-inputs-grid">' +
-                '<div class="tracker-cell"><label>Peso (lbs)</label><input type="text" id="load_' + fieldId + '" placeholder="0 lbs" oninput="saveTracker()"></div>' +
-                '<div class="tracker-cell"><label>Series</label><input type="text" id="series_' + fieldId + '" placeholder="0" oninput="saveTracker()"></div>' +
-                '<div class="tracker-cell"><label>Reps</label><input type="text" id="reps_' + fieldId + '" placeholder="0" oninput="saveTracker()"></div>' +
-              '</div>' +
+              setRowsHtml(fieldId, sSets, sW, sTimed, item.type === 'circuito') +
               '<div class="prev-load-badge-row">' +
                 '<span class="prev-load-badge" id="prev_' + fieldId + '">Marca Anterior: -</span>' +
                 '<button type="button" class="btn-load-prev" id="btn_restore_' + fieldId + '" onclick="restoreSingleLoad(\'' + fieldId + '\')" style="display:none;">⤴️ Montar</button>' +
@@ -2856,19 +2972,19 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var cStations = subList.map(function(s2) { return s2.name || ''; });
             subsDetails = circuitHeaderHtml(item.circ) + '@@RUN@@' + subsDetails;
             if (isTimeText(cInfo.trabajo)) {
-              athCircuits.push({ nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations, videos: subVideos });
+              athCircuits.push({ nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations, videos: subVideos, keys: subKeys, unis: subUnis });
               // el circuito por tiempo también lleva la cuenta de rondas (para "1 ronda más" y el campo Series)
-              subsDetails = subsDetails.replace('@@RUN@@', setRunnerHtml(parseInt(cInfo.rondas, 10) || 1, parseSecs(cInfo.descanso) || 0, 'Ronda', athCircuits.length - 1, true));
+              subsDetails = subsDetails.replace('@@RUN@@', setRunnerHtml(parseInt(cInfo.rondas, 10) || 1, 0, 'Ronda', athCircuits.length - 1, false, parseSecs(cInfo.descanso) || 0));   // el descanso entre rondas lo elige el cliente (30/60/90); lo del coach es el valor inicial
             } else {
               var cRest = isTimeText(cInfo.descanso) ? parseSecs(cInfo.descanso) : 0;
-              subsDetails = subsDetails.replace('@@RUN@@', setRunnerHtml(parseInt(cInfo.rondas, 10) || 1, cRest, 'Ronda'));
+              subsDetails = subsDetails.replace('@@RUN@@', setRunnerHtml(parseInt(cInfo.rondas, 10) || 1, 0, 'Ronda', undefined, false, cRest));
             }
           } else {
             var timedWorks = subList.map(function(s3) { return isTimeText(s3.reps) ? parseSecs(s3.reps) : 0; });
             var allTimed = timedWorks.length > 0 && timedWorks.every(function(w) { return w > 0; });
             var nSets = parseInt(subList[0].series, 10) || 1;
             if (allTimed) {
-              athCircuits.push({ nombre: (isNormal ? (subList[0].name || 'Serie') : typeBadge), rondas: String(nSets), trabajo: '', works: timedWorks, restMode: 'round', descanso: '@REST@', stations: subList.map(function(s4) { return s4.name || ''; }), videos: subVideos });
+              athCircuits.push({ nombre: (isNormal ? (subList[0].name || 'Serie') : typeBadge), rondas: String(nSets), trabajo: '', works: timedWorks, restMode: 'round', descanso: '@REST@', stations: subList.map(function(s4) { return s4.name || ''; }), videos: subVideos, keys: subKeys, unis: subUnis });
               subsDetails += setRunnerHtml(nSets, 0, 'Serie', athCircuits.length - 1);
             } else {
               subsDetails += setRunnerHtml(nSets, 0, 'Serie');
@@ -2877,7 +2993,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           exercisesHtml += '<div class="exercise-card ' + (['normal', 'biserie', 'triserie', 'circuito'].indexOf(item.type) >= 0 ? item.type : 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
               '<span class="badge-type">' + typeBadge + '</span>' +
-              '<span style="font-size:0.68rem; color:var(--muted);">Semana ' + vDesde + (vHasta ? '-' + vHasta : '+') + '</span>' +
+              '<span style="font-size:0.68rem; color:var(--muted);">Semana ' + vDesde + (vHasta ? '-' + vHasta : '+') + (isCoachView() ? '<button type="button" class="btn-edit-ex" onclick="openEditEx(' + i + ',' + itIdx + ')">✏️ Editar</button>' : '') + '</span>' +
             '</div>' +
             subsDetails +
           '</div>';
@@ -2962,6 +3078,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         cur = diffDays < 0 ? 1 : Math.floor(diffDays / 7) + 1;
       }
       var effectiveWeek = Math.min(Math.max(cur, 1), totalWeeks || 4);
+      ATH_WEEK = effectiveWeek;
       var display = document.getElementById('ath_weekDisplay');
       if (display) {
         display.innerText = cur > totalWeeks ? ('Ciclo Finalizado (' + totalWeeks + ' sem)') : ('Semana ' + cur + ' de ' + totalWeeks);
@@ -3163,18 +3280,125 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     var TRK_NS = '';   // prefijo de las marcas: vacío para el atleta; en modo coach separa a cada cliente
     function tk(id) { return TRK_NS + id; }
     function saveTracker() {
-      document.querySelectorAll('input[id^="load_"], input[id^="series_"], input[id^="reps_"], input[id^="alc_"]').forEach(function(inp) {
+      document.querySelectorAll('input[id^="pw_"], input[id^="pr_"], input[id^="alc_"]').forEach(function(inp) {
         if (inp.classList.contains('prefilled')) localStorage.removeItem(tk(inp.id));   // lo precargado no cuenta como anotado
         else localStorage.setItem(tk(inp.id), inp.value);
       });
     }
+
+    // ----- Registro por serie: una fila (peso + reps o segundos) por cada serie -----
+    var SETMETA = {};   // identificador del ejercicio -> { w: usa peso, t: por tiempo, base: filas iniciales }
+    function setRowHtml(key, i) {
+      var m = SETMETA[key] || { w: true, t: false };
+      return '<div class="set-row" data-i="' + i + '"><span class="set-n">S' + (i + 1) + '</span>' +
+        (m.w ? '<input type="text" id="pw_' + key + '_' + i + '" placeholder="lbs" oninput="saveTracker()">' : '') +
+        '<input type="text" id="pr_' + key + '_' + i + '" placeholder="' + (m.t ? 'seg' : 'reps') + '" oninput="saveTracker()"></div>';
+    }
+    function setRowsHtml(key, n, usesW, timed, fold) {
+      SETMETA[key] = { w: usesW, t: timed, base: n };
+      var head = '<div class="set-head"><span></span>' + (usesW ? '<span>Peso (lbs)</span>' : '') + '<span>' + (timed ? 'Segundos' : 'Reps') + '</span></div>';
+      var rows = '';
+      for (var i = 0; i < n; i++) rows += setRowHtml(key, i);
+      var body = '<div class="set-rows' + (usesW ? '' : ' no-w') + '" id="sets_' + key + '" data-key="' + key + '" data-timed="' + (timed ? 1 : 0) + '" data-base="' + n + '">' + head +
+        '<div class="set-rows-list">' + rows + '</div>' +
+        '<button type="button" class="btn-add-set" onclick="addSetRow(\'' + key + '\')">＋ Serie</button></div>';
+      return fold ? ('<details class="set-box"><summary>📝 Registro por ronda</summary>' + body + '</details>') : ('<div class="set-box">' + body + '</div>');
+    }
+    // Garantiza que existan al menos n filas (máx. 20). Las filas extra se recuerdan hasta que se guarde el día.
+    function ensureSetRows(key, n, silent) {
+      var h = document.getElementById('sets_' + key); if (!h) return;
+      var list = h.querySelector('.set-rows-list'); if (!list) return;
+      n = Math.min(n, 20);
+      var added = false;
+      while (list.children.length < n) { list.insertAdjacentHTML('beforeend', setRowHtml(key, list.children.length)); added = true; }
+      if (added && !silent) {
+        var base = parseInt(h.getAttribute('data-base'), 10) || 1;
+        if (list.children.length > base) { try { localStorage.setItem(tk('nsets_' + key), String(list.children.length)); } catch (e) {} }
+      }
+    }
+    function trimSetRows(key) {
+      var h = document.getElementById('sets_' + key); if (!h) return;
+      var list = h.querySelector('.set-rows-list'), base = parseInt(h.getAttribute('data-base'), 10) || 1;
+      while (list && list.children.length > base) list.removeChild(list.lastChild);
+    }
+    function addSetRow(key) {
+      var h = document.getElementById('sets_' + key); if (!h) return;
+      var list = h.querySelector('.set-rows-list');
+      ensureSetRows(key, list.children.length + 1);
+    }
+    // Lo que el cliente anotó de verdad en un ejercicio (lo precargado en gris no cuenta)
+    function readBoxSets(box) {
+      var out = { list: [], counted: 0, timed: false };
+      var holder = box && box.querySelector('.set-rows'); if (!holder) return out;
+      out.timed = holder.getAttribute('data-timed') === '1';
+      var last = -1;
+      holder.querySelectorAll('.set-rows-list .set-row').forEach(function(row, i) {
+        var w = row.querySelector('input[id^="pw_"]'), r = row.querySelector('input[id^="pr_"]');
+        var wv = (w && !w.classList.contains('prefilled')) ? w.value.trim() : '';
+        var rv = (r && !r.classList.contains('prefilled')) ? r.value.trim() : '';
+        out.list.push({ w: wv, r: rv });
+        if (wv || rv) { out.counted++; last = i; }
+      });
+      out.list = out.list.slice(0, last + 1);
+      return out;
+    }
+    // Resumen compatible con el formato anterior (carga / series / reps) para la hoja y para versiones viejas de la app
+    function summarizeSets(list) {
+      var n = 0, reps = [], best = '', bestN = -Infinity, firstW = '';
+      list.forEach(function(st) {
+        var w = cleanMark(st && st.w), r = cleanMark(st && st.r);
+        if (w || r) n++;
+        if (r) reps.push(r);
+        if (w) {
+          if (!firstW) firstW = w;
+          var num = parseNum(w);
+          if (num !== null && isFinite(num) && num > bestN) { bestN = num; best = w; }
+        }
+      });
+      return { s: String(n), r: reps.join('/'), l: best || firstW };
+    }
+    // Texto de un ejercicio guardado: por serie si lo hay; si es un registro viejo, "N series × R reps"
+    function exDetailText(ex) {
+      if (ex && Array.isArray(ex.sets) && ex.sets.length) {
+        var parts = ex.sets.map(function(st, i) {
+          var w = cleanMark(st && st.w), r = cleanMark(st && st.r);
+          if (!w && !r) return '';
+          if (r && ex.tm && /^\d+$/.test(r)) r = r + ' s';
+          return 'S' + (i + 1) + ' ' + (w && r ? w + ' × ' + r : (w || r));
+        }).filter(Boolean);
+        if (parts.length) return parts.join(' · ');
+      }
+      return (ex && ex.s ? ex.s : '-') + ' series × ' + (ex && ex.r ? ex.r : '-') + ' reps';
+    }
+    function uniNote(reps) {
+      var t = String(reps == null ? '' : reps).trim();
+      if (/^\d+$/.test(t)) return ' · ' + t + ' por lado (' + (parseInt(t, 10) * 2) + ' en total)';
+      return ' · por lado';
+    }
+
     document.addEventListener('input', function(e) { if (e.target && e.target.classList) e.target.classList.remove('prefilled'); });
 
     function normName(s) { return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
     function cleanMark(v) { v = String(v == null ? '' : v).trim(); return v === '-' ? '' : v; }
+    // Convierte una entrada de sesión (o de "hist_") en una marca con sus series
+    function mkMark(e, date) {
+      var load = cleanMark(e.l != null ? e.l : e.load), reps = cleanMark(e.r != null ? e.r : e.reps), series = cleanMark(e.s != null ? e.s : e.series);
+      var hasSets = Array.isArray(e.sets) && e.sets.length;
+      var sets;
+      if (hasSets) sets = e.sets.map(function(x) { return { w: cleanMark(x && x.w), r: cleanMark(x && x.r) }; });
+      else {   // registro anterior a las series por separado: se repite en cada serie
+        var nn = Math.max(1, Math.min(12, parseInt(series, 10) || 1));
+        sets = []; for (var q = 0; q < nn; q++) sets.push({ w: load, r: reps });
+      }
+      return { load: load, reps: reps, series: series, sets: sets, legacy: !hasSets, tm: !!e.tm, date: date || '', name: e.n || e.name };
+    }
+    function markSummary(p) {
+      if (p.legacy) return (p.load || '-') + ' | ' + (p.reps || '-') + ' reps';
+      return exDetailText({ sets: p.sets, tm: p.tm });
+    }
     // Última marca de un ejercicio: primero por su lugar exacto en la rutina, si no por nombre (sirve cuando la vigencia cambia la posición)
     function lastMarkFor(fieldId) {
-      var lo = document.getElementById('load_' + fieldId), box = lo && lo.closest('.exercise-item-box');
+      var holder = document.getElementById('sets_' + fieldId), box = holder && holder.closest('.exercise-item-box');
       var nmEl = box && box.querySelector('.ex-name'), nm = nmEl ? normName(nmEl.innerText) : '';
       var dayEl = box && box.closest('.view-screen'), dt = dayEl ? normName(dayEl.getAttribute('data-day-title')) : '';
       var arr = loadSessions().slice().sort(function(a, b) { return String(b.t || b.d || '').localeCompare(String(a.t || a.d || '')); });
@@ -3183,33 +3407,45 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var exs = arr[i].ex || [];
         for (var j = 0; j < exs.length; j++) {
           var e = exs[j];
-          if (e.k === fieldId || (nm && normName(e.n) === nm && normName(arr[i].day) === dt)) return { load: cleanMark(e.l), reps: cleanMark(e.r), series: cleanMark(e.s), date: arr[i].hd || '', name: e.n };
-          if (!nameOnly && nm && normName(e.n) === nm) nameOnly = { load: cleanMark(e.l), reps: cleanMark(e.r), series: cleanMark(e.s), date: arr[i].hd || '', name: e.n };
+          if (e.k === fieldId || (nm && normName(e.n) === nm && normName(arr[i].day) === dt)) return mkMark(e, arr[i].hd || '');
+          if (!nameOnly && nm && normName(e.n) === nm) nameOnly = mkMark(e, arr[i].hd || '');
         }
       }
       if (nameOnly) return nameOnly;
-      try { var hp = JSON.parse(localStorage.getItem(tk('hist_' + fieldId)) || 'null'); if (hp) return { load: cleanMark(hp.load), reps: cleanMark(hp.reps), series: cleanMark(hp.series), date: hp.date || '', name: hp.name }; } catch (e2) {}
+      try { var hp = JSON.parse(localStorage.getItem(tk('hist_' + fieldId)) || 'null'); if (hp) return mkMark(hp, hp.date || ''); } catch (e2) {}
       return null;
     }
-    function boxTouched(el) {   // ¿el cliente escribió algo en este ejercicio (no solo lo precargado)?
-      var box = el.closest('.exercise-item-box'); if (!box) return true;
-      return Array.prototype.some.call(box.querySelectorAll('input[id^="load_"], input[id^="series_"], input[id^="reps_"]'), function(inp) { return inp.value.trim() && !inp.classList.contains('prefilled'); });
+    // Llena las filas de un ejercicio con las series de una marca. overwrite=false: solo en gris y donde no hay nada escrito.
+    function fillSetsFrom(key, sets, overwrite) {
+      var h = document.getElementById('sets_' + key); if (!h || !sets) return 0;
+      var list = h.querySelector('.set-rows-list'), n = 0;
+      sets.forEach(function(st, i) {
+        if (i >= list.children.length) { if (!overwrite) return; ensureSetRows(key, i + 1); }
+        var w = document.getElementById('pw_' + key + '_' + i), r = document.getElementById('pr_' + key + '_' + i);
+        [[w, st.w], [r, st.r]].forEach(function(x) {
+          if (!x[0] || !x[1]) return;
+          if (overwrite) { x[0].value = x[1]; x[0].classList.remove('prefilled'); n++; }
+          else if (!x[0].value.trim()) { x[0].value = x[1]; x[0].classList.add('prefilled'); n++; }
+        });
+      });
+      return n;
     }
-    // Deja cada ejercicio con lo último que se guardó de él (en gris); los que no se llenaron la vez pasada quedan como estaban
+    // Deja cada ejercicio con lo último que se guardó de él, serie por serie (en gris); los que no se llenaron la vez pasada quedan como estaban
     function autoPrefillDay(dayId) {
       var dayEl = document.getElementById(dayId); if (!dayEl) return;
-      dayEl.querySelectorAll('input[id^="load_"]').forEach(function(l) {
-        var key = l.id.replace('load_', ''), m = lastMarkFor(key); if (!m) return;
-        [['load_', 'load'], ['reps_', 'reps'], ['series_', 'series']].forEach(function(pair) {
-          var inp = document.getElementById(pair[0] + key);
-          if (inp && !inp.value.trim() && m[pair[1]]) { inp.value = m[pair[1]]; inp.classList.add('prefilled'); }
-        });
+      dayEl.querySelectorAll('.set-rows').forEach(function(h) {
+        var key = h.getAttribute('data-key'), m = lastMarkFor(key); if (!m) return;
+        fillSetsFrom(key, m.sets, false);
       });
     }
     function autoPrefillAll() { ((athleteActiveState && athleteActiveState.routineDays) || []).forEach(function(d) { if (!d.rest) autoPrefillDay(d.id); }); }
 
     function loadTracker() {
-      document.querySelectorAll('input[id^="load_"], input[id^="series_"], input[id^="reps_"], input[id^="alc_"]').forEach(function(inp) {
+      document.querySelectorAll('.set-rows').forEach(function(h) {   // filas extra que se agregaron antes de cerrar la app
+        var key = h.getAttribute('data-key'), st = parseInt(localStorage.getItem(tk('nsets_' + key)) || '0', 10);
+        if (st > 0) ensureSetRows(key, st, true);
+      });
+      document.querySelectorAll('input[id^="pw_"], input[id^="pr_"], input[id^="alc_"]').forEach(function(inp) {
         var val = localStorage.getItem(tk(inp.id));
         if (val) inp.value = val;
       });
@@ -3218,7 +3454,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var p = lastMarkFor(baseKey);
         var btnRestore = document.getElementById('btn_restore_' + baseKey);
         if (p) {
-          b.innerText = 'Última vez (' + (p.date || 'Previo') + '): ' + (p.load || '-') + ' | ' + (p.reps || '-') + ' reps';
+          b.innerText = 'Última vez (' + (p.date || 'Previo') + '): ' + markSummary(p);
           if (btnRestore) btnRestore.style.display = 'inline-block';
         } else {
           b.innerText = 'Marca Anterior: -';
@@ -3230,23 +3466,18 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function restoreSingleLoad(fieldId) {
       var p = lastMarkFor(fieldId);
       if (!p) return;
-      var l = document.getElementById('load_' + fieldId);
-      var r = document.getElementById('reps_' + fieldId);
-      var s = document.getElementById('series_' + fieldId);
-      [[l, p.load], [r, p.reps], [s, p.series]].forEach(function(x) { if (x[0] && x[1]) { x[0].value = x[1]; x[0].classList.remove('prefilled'); } });
+      fillSetsFrom(fieldId, p.sets, true);
       saveTracker();
-      alert('Carga montada para ' + (p.name || 'el ejercicio') + ': ' + p.load);
+      alert('Marca montada para ' + (p.name || 'el ejercicio') + ': ' + markSummary(p));
     }
 
     function restoreAllDayLoads(dayId) {
       var dayEl = document.getElementById(dayId);
       if (!dayEl) return;
       var count = 0;
-      dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) input[id^="load_"]').forEach(function(l) {
-        var fieldId = l.id.replace('load_', ''), p = lastMarkFor(fieldId);
-        if (!p) return;
-        [[l, p.load], [dayEl.querySelector('#reps_' + fieldId), p.reps], [dayEl.querySelector('#series_' + fieldId), p.series]].forEach(function(x) { if (x[0] && x[1]) { x[0].value = x[1]; x[0].classList.remove('prefilled'); } });
-        count++;
+      dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .set-rows').forEach(function(h) {
+        var key = h.getAttribute('data-key'), p = lastMarkFor(key);
+        if (p && fillSetsFrom(key, p.sets, true) > 0) count++;
       });
       if (count > 0) { saveTracker(); alert('Se montaron ' + count + ' marcas previas en la rutina.'); }
       else alert('No hay marcas guardadas para este día.');
@@ -3272,16 +3503,16 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '<button type="button" class="pick-item" style="text-align:center; color:#aaa;" onclick="document.getElementById(\'pick_overlay\').remove()">Cancelar</button></div>';
       document.body.appendChild(o);
     }
-    // Llena las marcas (peso/reps/series) de un día con las de un entreno guardado; devuelve cuántos ejercicios montó
+    // Llena las marcas (peso/reps por serie) de un día con las de un entreno guardado; devuelve cuántos ejercicios montó
     function applySessionToDay(s, dayEl) {
       var count = 0;
-      dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) input[id^="load_"]').forEach(function(l) {
-        var key = l.id.replace('load_', ''), box = l.closest('.exercise-item-box'), nmEl = box && box.querySelector('.ex-name'), nm = nmEl ? normName(nmEl.innerText) : '';
+      dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .set-rows').forEach(function(h) {
+        var key = h.getAttribute('data-key'), box = h.closest('.exercise-item-box'), nmEl = box && box.querySelector('.ex-name'), nm = nmEl ? normName(nmEl.innerText) : '';
         var e = null;
         (s.ex || []).forEach(function(x) { if (!e && x.k === key) e = x; });
         if (!e) (s.ex || []).forEach(function(x) { if (!e && nm && normName(x.n) === nm) e = x; });
         if (!e) return;
-        [[l, cleanMark(e.l)], [dayEl.querySelector('#reps_' + key), cleanMark(e.r)], [dayEl.querySelector('#series_' + key), cleanMark(e.s)]].forEach(function(x) { if (x[0] && x[1]) { x[0].value = x[1]; x[0].classList.remove('prefilled'); } });
+        fillSetsFrom(key, mkMark(e, '').sets, true);
         count++;
       });
       return count;
@@ -3316,9 +3547,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
     function archiveCurrentDay(dayId) {
       var dayEl = document.getElementById(dayId);
-      var loads = dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) input[id^="load_"]');
+      var boxes = dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .exercise-item-box');
       var ok = false;
-      loads.forEach(function(l) { if (l.value.trim() && boxTouched(l)) ok = true; });
+      boxes.forEach(function(b) { if (readBoxSets(b).counted) ok = true; });
       if (!ok) return alert('Anota al menos un peso o repetición hoy para guardar.');
 
       var now = new Date();
@@ -3327,24 +3558,20 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var fullDateStr = dateFormatted + ' ' + timeFormatted;
       var sessEx = [];
 
-      loads.forEach(function(l) {
-        var key = l.id.replace('load_', '');
-        var reps = dayEl.querySelector('#reps_' + key);
-        var series = dayEl.querySelector('#series_' + key);
-        var box = l.closest('.exercise-item-box');
-        var exName = box ? box.querySelector('.ex-name').innerText.trim() : 'Ejercicio';
-
-        if (l.value.trim() && boxTouched(l)) {   // el ejercicio que no se tocó no se actualiza
-          sessEx.push({ k: key, n: exName, l: l.value.trim(), r: reps ? reps.value.trim() : '-', s: series ? series.value.trim() : '-' });
-          localStorage.setItem(tk('hist_' + key), JSON.stringify({
-            key: key, name: exName, load: l.value.trim(),
-            reps: reps ? reps.value.trim() : '-', series: series ? series.value.trim() : '-', date: fullDateStr
-          }));
-          localStorage.removeItem(tk('load_' + key));
-          localStorage.removeItem(tk('reps_' + key));
-          localStorage.removeItem(tk('series_' + key));
-          l.value = ''; if (reps) reps.value = ''; if (series) series.value = '';
-        }
+      boxes.forEach(function(box) {
+        var holder = box.querySelector('.set-rows'); if (!holder) return;
+        var key = holder.getAttribute('data-key');
+        var rd = readBoxSets(box);
+        if (!rd.counted) return;   // el ejercicio que no se tocó no se actualiza
+        var nmEl = box.querySelector('.ex-name'), exName = nmEl ? nmEl.innerText.trim() : 'Ejercicio';
+        var sm = summarizeSets(rd.list);
+        var entry = { k: key, n: exName, l: sm.l, r: sm.r, s: sm.s, sets: rd.list };
+        if (rd.timed) entry.tm = 1;
+        sessEx.push(entry);
+        localStorage.setItem(tk('hist_' + key), JSON.stringify({ key: key, name: exName, load: sm.l, reps: sm.r, series: sm.s, sets: rd.list, tm: rd.timed ? 1 : 0, date: fullDateStr }));
+        holder.querySelectorAll('input').forEach(function(inp) { localStorage.removeItem(tk(inp.id)); inp.value = ''; inp.classList.remove('prefilled'); });
+        try { localStorage.removeItem(tk('nsets_' + key)); } catch (e) {}
+        trimSetRows(key);
       });
       // Además de la última marca por ejercicio, se guarda la sesión completa con su fecha (cada guardado suma una nueva)
       var newSess = null;
@@ -3352,7 +3579,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         if (WK.start && WK.dayId === dayId) wkEnd(dayId, true);   // si olvidó tocar "Final del entrenamiento", se cierra al guardar
         newSess = { d: todayIso(), t: now.toISOString(), hd: fullDateStr, day: dayEl.getAttribute('data-day-title') || '', ex: sessEx };
         var wkSecs = wkTakeDuration(dayId);
-        if (wkSecs > 0) newSess.dur = wkSecs;
+        if (wkSecs > 0) { newSess.dur = wkSecs; newSess.kc = kcalEstimate(wkSecs); }
+        var wkw = wkTakeWatch(dayId);
+        if (wkw) { if (wkw.c) newSess.wc = wkw.c; if (wkw.h) newSess.hr = wkw.h; }
         if (COACH) newSess.o = COACH.name;
         addSession(newSess);
         pushSession(newSess);   // se sube a la hoja para que el cliente (y su coach) lo vean en cualquier celular
@@ -3385,15 +3614,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       loadSessions().forEach(function(x) { if (x.t === t) s = x; });
       var ex = s && s.ex ? s.ex[idx] : null;
       if (!ex) return;
-      var l = document.getElementById('load_' + ex.k);
-      if (!l) { alert('Ese ejercicio ya no está en tu rutina actual.'); return; }
-      var r = document.getElementById('reps_' + ex.k), sr = document.getElementById('series_' + ex.k);
-      l.value = ex.l || '';
-      if (r && ex.r && ex.r !== '-') r.value = ex.r;
-      if (sr && ex.s && ex.s !== '-') sr.value = ex.s;
+      if (!document.getElementById('sets_' + ex.k)) { alert('Ese ejercicio ya no está en tu rutina actual.'); return; }
+      fillSetsFrom(ex.k, mkMark(ex, '').sets, true);
       saveTracker();
       closeModal('ath_modal_historial');
-      alert('Carga montada para ' + (ex.n || 'el ejercicio') + ': ' + ex.l);
+      alert('Marca montada para ' + (ex.n || 'el ejercicio') + ': ' + exDetailText(ex));
     }
 
     function openHistorialModal() { renderHistorial(); openModal('ath_modal_historial'); }
@@ -3427,7 +3652,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var rows = (s.ex || []).map(function(ex, idx) {
           return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--border);">' +
             '<div><div style="font-size:0.85rem; font-weight:800; color:#fff;">' + escHtml(ex.n || 'Ejercicio') + '</div>' +
-            '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">' + escHtml(ex.s || '-') + ' series × ' + escHtml(ex.r || '-') + ' reps</div></div>' +
+            '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">' + escHtml(exDetailText(ex)) + '</div></div>' +
             '<div style="text-align:right;"><div style="font-size:1rem; font-weight:900; color:var(--accent);">' + escHtml(ex.l || '-') + '</div>' +
             '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         }).join('');
@@ -3463,7 +3688,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           if (!nk) return;
           if (!map[nk]) { map[nk] = { name: ex.n, pts: [] }; names.push(nk); }
           map[nk].name = ex.n;
-          map[nk].pts.push({ d: s.d, l: ex.l, r: ex.r, s: ex.s });
+          map[nk].pts.push({ d: s.d, l: ex.l, r: ex.r, s: ex.s, sets: ex.sets, tm: ex.tm });
         });
       });
       names.sort(function(a, b) { return map[a].name.toLowerCase() < map[b].name.toLowerCase() ? -1 : 1; });
@@ -3488,10 +3713,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         panel = '<div class="med-panel"><div style="font-weight:800; font-size:0.9rem;">' + escHtml(cur.name) + '</div><div class="med-sum">Este ejercicio se anotó sin números, así que no hay gráfico. Abajo ves todas las fechas.</div></div>';
       }
       var rows = pts.slice().reverse().map(function(p) {
-        return '<tr><td>' + fmtDateTable(p.d) + '</td><td>' + escHtml(p.l || '-') + '</td><td>' + escHtml(p.s || '-') + ' × ' + escHtml(p.r || '-') + '</td></tr>';
+        return '<tr><td>' + fmtDateTable(p.d) + '</td><td>' + escHtml(p.l || '-') + '</td><td>' + escHtml(exDetailText(p)) + '</td></tr>';
       }).join('');
       container.innerHTML = '<div class="med-chip-row" style="flex-wrap:wrap; overflow-x:visible;">' + chips + '</div>' + panel +
-        '<div class="med-table-wrap"><table class="med-table"><thead><tr><th>Fecha</th><th>Carga</th><th>Series × reps</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+        '<div class="med-table-wrap"><table class="med-table"><thead><tr><th>Fecha</th><th>Carga</th><th>Series</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }
 
     function clearHistorialData() {
@@ -3512,8 +3737,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (lastSavedSess) {   // los campos ya se limpiaron al guardar: el reporte sale de lo que se acaba de guardar
         var s = lastSavedSess, cName = athleteActiveState ? athleteActiveState.clientName : 'Atleta';
         var msg = '*Reporte Benessere Gym - ' + (s.day || 'Entrenamiento') + '*\nAtleta: *' + cName + '*\nCoach: *' + athleteCoachName + '*\n\n';
-        s.ex.forEach(function(e) { msg += '• *' + e.n + '*\n   Hoy: *' + (e.l || '-') + '* | ' + (e.s || '-') + ' series × ' + (e.r || '-') + ' reps\n\n'; });
+        s.ex.forEach(function(e) { msg += '• *' + e.n + '*\n   Hoy: ' + exDetailText(e) + '\n\n'; });
         if (s.dur) msg += '⏱ *Tiempo total de entreno: ' + wkFmt(s.dur) + '*\n';
+        if (s.kc) msg += '🔥 *Calorías estimadas: ~' + s.kc + ' kcal*' + (s.wc ? ' (reloj: ' + s.wc + ' kcal)' : '') + (s.hr ? ' · pulso promedio ' + s.hr : '') + '\n';
+        else if (s.wc || s.hr) msg += '⌚ *Reloj:* ' + (s.wc ? s.wc + ' kcal ' : '') + (s.hr ? '· pulso promedio ' + s.hr : '') + '\n';
         window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(msg), '_blank');
       } else if (lastActiveDayId) sendWhatsAppReport(lastActiveDayId);
     }
@@ -3525,12 +3752,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var count = 0;
       dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .exercise-item-box').forEach(function(box) {
         var name = box.querySelector('.ex-name');
-        var load = box.querySelector('input[id^="load_"]');
-        var series = box.querySelector('input[id^="series_"]');
-        var reps = box.querySelector('input[id^="reps_"]');
+        var rd = readBoxSets(box);
         var prev = box.querySelector('.prev-load-badge');
-        if (name && (load.value || reps.value || series.value) && boxTouched(load)) {
-          msg += '• *' + name.innerText + '*\n   Hoy: *' + (load.value||'-') + '* | ' + (series.value||'-') + ' series × ' + (reps.value||'-') + ' reps\n   _' + (prev ? prev.innerText : '') + '_\n\n';
+        if (name && rd.counted) {
+          msg += '• *' + name.innerText + '*\n   Hoy: ' + exDetailText({ sets: rd.list, tm: rd.timed }) + '\n   _' + (prev ? prev.innerText : '') + '_\n\n';
           count++;
         }
       });
@@ -3822,21 +4047,28 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var s = String(t == null ? '' : t).toLowerCase();
       return /\d\s*(?:s|seg|segs|segundos?|min|mins|minutos?|")(?![a-záéíóú])/.test(s) || /\b\d{1,2}:\d{2}\b/.test(s);
     }
-    function setRunnerHtml(sets, fixedRest, label, timerIdx, noPicker) {
+    function snapRest(sec) {   // el descanso del coach es solo el valor inicial: se acerca al botón 30/60/90 más cercano
+      sec = parseInt(sec, 10); if (!sec) return 0;
+      var best = 30; [30, 60, 90].forEach(function(x) { if (Math.abs(x - sec) < Math.abs(best - sec)) best = x; });
+      return best;
+    }
+    function setRunnerHtml(sets, fixedRest, label, timerIdx, noPicker, defRest) {
       var id = ++athSetSeq;
-      SR[id] = { sets: sets, base: sets, fixedRest: fixedRest || 0, label: label, cur: 0, state: 'idle', rest: fixedRest || 60, noPick: !!noPicker };
+      var startRest = fixedRest || snapRest(defRest) || 60;
+      SR[id] = { sets: sets, base: sets, fixedRest: fixedRest || 0, label: label, cur: 0, state: 'idle', rest: startRest, noPick: !!noPicker, t0: 0 };
       var isTimed = (timerIdx !== undefined && timerIdx !== null);
       var html = '<div class="set-runner" id="sr_' + id + '">';
       if (isTimed) {
         html += '<button type="button" class="btn-timer sr-btn" onclick="startCircuitTimer(' + timerIdx + ',' + id + ')">⏱ Iniciar temporizador</button>';
       } else {
         html += '<div class="sr-info" id="sr_info_' + id + '">' + label + ' 0 de ' + sets + '</div>' +
+          '<div class="sr-clock" id="sr_clock_' + id + '" style="display:none;">0:00</div>' +
           '<button type="button" class="btn-timer sr-btn" id="sr_btn_' + id + '" onclick="srTap(' + id + ')">▶ Iniciar ' + label.toLowerCase() + '</button>' +
           '<div id="sr_end_' + id + '" style="display:none; gap:8px; margin:6px 0 4px;"><button type="button" class="tm-btn" onclick="srMore(' + id + ')">➕ 1 ' + label.toLowerCase() + ' más</button><button type="button" class="tm-btn" onclick="srFinish(' + id + ')">✔ Terminar ya</button></div>';
       }
       if (!fixedRest && !noPicker) {
         html += '<div class="rest-row"><span>⏱ Descanso entre ' + (label === 'Ronda' ? 'rondas' : 'series') + '</span>' +
-          [30, 60, 90].map(function(sec) { return '<button type="button" class="rest-btn' + (sec === 60 ? ' sel' : '') + '" data-sr="' + id + '" onclick="srSetRest(' + id + ',' + sec + ')">' + sec + ' s</button>'; }).join('') +
+          [30, 60, 90].map(function(sec) { return '<button type="button" class="rest-btn' + (sec === startRest ? ' sel' : '') + '" data-sr="' + id + '" onclick="srSetRest(' + id + ',' + sec + ')">' + sec + ' s</button>'; }).join('') +
           '</div>';
       }
       return html + '</div>';
@@ -3846,6 +4078,34 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       SR[id].rest = sec;
       document.querySelectorAll('.rest-btn[data-sr="' + id + '"]').forEach(function(b) { b.classList.toggle('sel', b.innerText.trim() === sec + ' s'); });
     }
+    function srCard(id) { var box = document.getElementById('sr_' + id); return box && box.closest('.exercise-card'); }
+    function srEnsureRows(id, n) {
+      var card = srCard(id); if (!card) return;
+      card.querySelectorAll('.set-rows').forEach(function(h) { ensureSetRows(h.getAttribute('data-key'), n); });
+    }
+    // Resalta la serie en curso y marca las ya hechas en las filas de registro
+    function srMarkRows(id) {
+      var r = SR[id], card = srCard(id); if (!r || !card) return;
+      var doneCount = r.state === 'idle' ? 0 : (r.state === 'work' ? r.cur - 1 : r.cur);
+      card.querySelectorAll('.set-rows-list').forEach(function(list) {
+        Array.prototype.forEach.call(list.children, function(row, i) {
+          row.classList.toggle('cur', r.state === 'work' && i === r.cur - 1);
+          row.classList.toggle('done', i < doneCount);
+        });
+      });
+    }
+    // Cronómetro que sube mientras la serie está en curso (también confirma que la app está contando)
+    var SRT = null;
+    function srClockTick() {
+      var any = false;
+      Object.keys(SR).forEach(function(k) {
+        var r = SR[k]; if (!r || r.state !== 'work' || !r.t0) return;
+        any = true;
+        var el = document.getElementById('sr_clock_' + k); if (el) el.innerText = wkFmt((Date.now() - r.t0) / 1000);
+      });
+      if (!any && SRT) { clearInterval(SRT); SRT = null; }
+    }
+    function srClockEnsure() { if (!SRT) SRT = setInterval(srClockTick, 500); srClockTick(); }
     function srRender(id) {
       var r = SR[id], btn = document.getElementById('sr_btn_' + id), info = document.getElementById('sr_info_' + id);
       if (!r || !btn) return;
@@ -3857,15 +4117,17 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       else if (r.state === 'rest') { info.innerText = r.label + ' ' + r.cur + ' de ' + r.sets + ' hecha · descansando'; btn.innerText = '⏭ Saltar descanso'; btn.classList.add('sr-rest'); }
       else if (r.state === 'choose') { info.innerText = '¡Completaste las ' + r.sets + ' ' + low + 's! ¿Otra más o terminas?'; }
       else { info.innerText = '¡' + r.label + 's completas! 💪 (' + r.cur + ')'; btn.innerText = '↺ Reiniciar'; btn.classList.add('sr-done'); }
+      var clk = document.getElementById('sr_clock_' + id); if (clk) clk.style.display = (r.state === 'work') ? '' : 'none';
+      srMarkRows(id);
     }
     function srTap(id) {
       var r = SR[id]; if (!r) return;
       tmrAudio();
       if (r.state === 'idle') {
-        r.cur = 1; r.state = 'work'; srRender(id);
+        r.cur = 1; r.state = 'work'; r.t0 = Date.now(); srRender(id); srClockEnsure();
       } else if (r.state === 'work') {
-        srFill(id, r.cur);   // el campo "Series" del registro se llena solo
-        if (r.cur >= r.sets) { r.state = 'choose'; tmrBeep(880, 300, 0); tmrBeep(1175, 500, 350); tmrVibrate([200, 80, 200]); srRender(id); return; }
+        srFill(id, r.cur);   // confirma la serie recién terminada; las filas de registro se crean solas si hacen falta
+        if (r.cur >= r.sets) { r.state = 'choose'; tmrBeep(880, 300, 0); tmrBeep(1175, 500, 350); tmrVibrate([200, 80, 200]); srRender(id); equipReminder(); return; }
         r.state = 'rest'; srRender(id);
         startRestTimer(r.rest, function() { srNext(id); });   // al terminar el descanso, la serie siguiente arranca sola
       } else if (r.state === 'rest') {
@@ -3874,16 +4136,22 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         r.cur = 0; r.sets = r.base; r.state = 'idle'; srRender(id);
       }
     }
+    // Al terminar la serie n: se aseguran las filas y lo precargado (gris) de esa serie pasa a contar como hecho
     function srFill(id, n) {
-      var box = document.getElementById('sr_' + id), card = box && box.closest('.exercise-card');
+      var card = srCard(id);
       if (!card) return;
-      card.querySelectorAll('input[id^="series_"]').forEach(function(inp) { inp.value = String(n); inp.classList.remove('prefilled'); });
+      card.querySelectorAll('.set-rows').forEach(function(h) {
+        var key = h.getAttribute('data-key');
+        ensureSetRows(key, n);
+        var row = h.querySelector('.set-rows-list').children[n - 1];
+        if (row) row.querySelectorAll('input').forEach(function(inp) { if (inp.classList.contains('prefilled') && inp.value.trim()) inp.classList.remove('prefilled'); });
+      });
       saveTracker();
     }
     function srMore(id) {   // "1 serie más": descansa y arranca una serie extra
       var r = SR[id]; if (!r || r.state !== 'choose') return;
       tmrAudio();
-      r.sets = r.cur + 1; r.state = 'rest'; srRender(id);
+      r.sets = r.cur + 1; r.state = 'rest'; srEnsureRows(id, r.sets); srRender(id);
       startRestTimer(r.rest, function() { srNext(id); });
     }
     function srFinish(id) {   // "Terminar ya"
@@ -3893,7 +4161,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     function srNext(id) {
       var r = SR[id]; if (!r || r.state !== 'rest') return;
-      r.cur++; r.state = 'work'; srRender(id);
+      r.cur++; r.state = 'work'; r.t0 = Date.now(); srRender(id); srClockEnsure();
       tmrBeep(1000, 500, 0); tmrVibrate(250);
     }
 
@@ -3920,8 +4188,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (WK.tick) clearInterval(WK.tick);
       WK.tick = setInterval(wkTick, 1000);
       tmrWakeOn();
+      WKB.hidden = false; wkBubbleUpdate();
     }
-    function wkTick() { if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); } }
+    function wkTick() { if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); } wkBubbleUpdate(); }
     function wkPaint(dayId) {
       var t = document.getElementById('wk_time_' + dayId), b = document.getElementById('wk_btn_' + dayId), l = document.getElementById('wk_lbl_' + dayId);
       if (!t || !b) return;
@@ -3936,11 +4205,12 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var secs = Math.round((Date.now() - WK.start) / 1000);
       WK.start = 0; WK.dayId = '';
       if (WK.tick) { clearInterval(WK.tick); WK.tick = null; }
-      try { localStorage.removeItem(tk(WK_KEY)); localStorage.setItem(tk('wkdur_' + dayId), String(secs)); localStorage.setItem(tk('wklast_' + dayId), String(secs)); } catch (e) {}
+      try { localStorage.removeItem(tk(WK_KEY)); localStorage.setItem(tk('wkdur_' + dayId), String(secs)); localStorage.setItem(tk('wklast_' + dayId), String(secs)); localStorage.removeItem(tk('wkwatch_' + dayId)); } catch (e) {}
       wkPaint(dayId);
+      wkBubbleUpdate();
       if (!CT.active && !RT.active) tmrWakeOff();
       tmrBeep(880, 300, 0); tmrBeep(1175, 600, 400); tmrVibrate([200, 80, 200]);
-      if (!silent) alert('¡Entreno terminado! 💪\nTiempo total: ' + wkFmt(secs) + '\n\nAhora anota tus pesos y toca "Guardar Día".');
+      if (!silent) showWkEnd(dayId, secs);
     }
     // Si el cliente cierra o recarga la página con el entreno en marcha, el cronómetro sigue donde iba
     function wkRestore() {
@@ -3950,10 +4220,114 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           WK.dayId = a.d; WK.start = a.s;
           if (WK.tick) clearInterval(WK.tick);
           WK.tick = setInterval(wkTick, 1000);
+          wkBubbleUpdate();
         }
       } catch (e) {}
       ((athleteActiveState && athleteActiveState.routineDays) || []).forEach(function(d) { wkPaint(d.id); });
     }
+    // ----- Calorías estimadas y burbuja flotante (etapa 2) -----
+    var WKB = { hidden: false, drag: null };
+    var WK_MET = 5;   // equivalente metabólico medio de un entreno de fuerza/funcional (3.5 suave – 8 muy intenso)
+    var WKB_POS = 'benessere_wk_bubble_pos';
+    // Datos del cliente tomados de la ficha antropométrica (y de la última medición del historial para el peso)
+    function bodyData() {
+      var st = athleteActiveState || {}, m = st.measures || {}, est = false;
+      var w = null, log = st.measureLog || [];
+      for (var i = log.length - 1; i >= 0 && w === null; i--) { if (log[i] && log[i].v && log[i].v.m_peso_kg != null) w = parseNum(log[i].v.m_peso_kg); }
+      if (w === null) w = parseNum(m.m_peso_kg);
+      var h = parseNum(m.m_estatura);
+      if (h !== null && h < 3) h = h * 100;   // "1.72 m"
+      var a = parseNum(m.m_edad); if (a === null) a = parseNum(m.m_edad_meta);
+      if (!(w > 25 && w < 300)) { w = 70; est = true; }
+      if (!(h > 100 && h < 250)) { h = 170; est = true; }
+      if (!(a > 10 && a < 100)) { a = 30; est = true; }
+      var female = st.clientGender === 'a';
+      var bmr = 10 * w + 6.25 * h - 5 * a + (female ? -161 : 5);   // Mifflin-St Jeor, kcal/día en reposo
+      return { w: w, h: h, a: a, female: female, bmr: bmr, est: est };
+    }
+    function kcalEstimate(secs) {
+      var b = bodyData();
+      return Math.max(0, Math.round(WK_MET * (b.bmr / 24) * (secs / 3600)));
+    }
+    function wkBubbleEl() {
+      var el = document.getElementById('wk_bubble');
+      if (el) return el;
+      el = document.createElement('div');
+      el.id = 'wk_bubble'; el.className = 'wk-bubble';
+      el.innerHTML = '<div class="wb-main" id="wb_main"></div><div class="wb-sub" id="wb_sub"></div>';
+      document.body.appendChild(el);
+      try { var p = JSON.parse(localStorage.getItem(WKB_POS) || 'null'); if (p && isFinite(p.x) && isFinite(p.y)) { el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto'; } } catch (e) {}
+      el.addEventListener('pointerdown', function(ev) {
+        if (ev.target && ev.target.className === 'wb-hide') return;
+        var r = el.getBoundingClientRect();
+        WKB.drag = { sx: ev.clientX, sy: ev.clientY, ox: r.left, oy: r.top, moved: false };
+        try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+      });
+      el.addEventListener('pointermove', function(ev) {
+        var d = WKB.drag; if (!d) return;
+        var dx = ev.clientX - d.sx, dy = ev.clientY - d.sy;
+        if (!d.moved && Math.abs(dx) + Math.abs(dy) < 8) return;
+        d.moved = true;
+        var x = Math.max(4, Math.min(window.innerWidth - el.offsetWidth - 4, d.ox + dx));
+        var y = Math.max(4, Math.min(window.innerHeight - el.offsetHeight - 4, d.oy + dy));
+        el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto';
+      });
+      function endDrag() {
+        var d = WKB.drag; WKB.drag = null; if (!d) return;
+        if (!d.moved) el.classList.toggle('open');
+        else { try { localStorage.setItem(WKB_POS, JSON.stringify({ x: parseInt(el.style.left, 10), y: parseInt(el.style.top, 10) })); } catch (e) {} }
+      }
+      el.addEventListener('pointerup', endDrag);
+      el.addEventListener('pointercancel', function() { WKB.drag = null; });
+      return el;
+    }
+    function wkBubbleHide() { WKB.hidden = true; wkBubbleUpdate(); }
+    function wkBubbleUpdate() {
+      var vis = WK.start && !WKB.hidden;
+      var av = document.getElementById('athlete_client_view');
+      if (av && av.style.display === 'none') vis = false;
+      var el = document.getElementById('wk_bubble');
+      if (!vis) { if (el) el.style.display = 'none'; return; }
+      el = wkBubbleEl();
+      var secs = Math.floor((Date.now() - WK.start) / 1000);
+      var kc = kcalEstimate(secs), b = bodyData();
+      el.style.display = 'block';
+      document.getElementById('wb_main').innerText = '⏱ ' + wkFmt(secs) + '  ·  🔥 ~' + kc + ' kcal';
+      document.getElementById('wb_sub').innerHTML = 'Calorías estimadas con tus datos (' + Math.round(b.w) + ' kg, ' + Math.round(b.a) + ' años)' + (b.est ? ', completando con valores promedio lo que falta' : '') + '. Es una estimación: tu reloj puede marcar otro número.<br><button type="button" class="wb-hide" onclick="wkBubbleHide()">Ocultar</button>';
+    }
+    // Al terminar el entreno: tiempo, calorías estimadas y, si el cliente quiere, lo que marcó su reloj
+    function showWkEnd(dayId, secs) {
+      var kc = kcalEstimate(secs);
+      var m = document.getElementById('wk_end_modal');
+      if (!m) {
+        m = document.createElement('div');
+        m.id = 'wk_end_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100004';
+        document.body.appendChild(m);
+      }
+      m.innerHTML = '<div class="modal-inner" style="text-align:center;">' +
+        '<div style="font-size:2.2rem;">💪</div>' +
+        '<div style="font-size:1.1rem; font-weight:900; color:var(--primary); margin-bottom:6px;">¡Entreno terminado!</div>' +
+        '<div style="font-size:0.9rem; margin-bottom:4px;">Tiempo total: <b>' + wkFmt(secs) + '</b></div>' +
+        '<div style="font-size:0.9rem; margin-bottom:12px;">Calorías estimadas: <b>~' + kc + ' kcal</b></div>' +
+        '<div style="text-align:left; font-size:0.72rem; color:var(--muted); margin-bottom:4px;">¿Usas reloj? Anota lo que marcó (opcional):</div>' +
+        '<div style="display:flex; gap:8px; margin-bottom:12px;">' +
+          '<input type="number" inputmode="numeric" id="wke_cal" placeholder="Calorías" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
+          '<input type="number" inputmode="numeric" id="wke_hr" placeholder="Pulso promedio" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
+        '</div>' +
+        '<div style="font-size:0.8rem; color:#ddd; margin-bottom:12px;">Ahora anota tus pesos y toca "Guardar Día".</div>' +
+        '<button type="button" class="btn-action-primary" onclick="wkEndSave(\'' + dayId + '\')">Listo</button></div>';
+      m.classList.add('active');
+    }
+    function wkEndSave(dayId) {
+      var c = parseInt((document.getElementById('wke_cal') || {}).value, 10), h = parseInt((document.getElementById('wke_hr') || {}).value, 10);
+      var o = {}; if (c > 0 && c < 5000) o.c = c; if (h > 30 && h < 250) o.h = h;
+      try { if (o.c || o.h) localStorage.setItem(tk('wkwatch_' + dayId), JSON.stringify(o)); } catch (e) {}
+      closeModal('wk_end_modal');
+    }
+    function wkTakeWatch(dayId) {
+      try { var o = JSON.parse(localStorage.getItem(tk('wkwatch_' + dayId)) || 'null'); localStorage.removeItem(tk('wkwatch_' + dayId)); return o; } catch (e) { return null; }
+    }
+
     function wkTakeDuration(dayId) {   // duración terminada del día (para guardarla con la sesión); la limpia al usarla
       var v = parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10);
       if (v > 0) { try { localStorage.removeItem(tk('wkdur_' + dayId)); } catch (e) {} wkPaint(dayId); return v; }
@@ -3961,22 +4335,31 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     // ----- Temporizador de circuitos (pantalla completa) -----
+    var TRANS_SECS = 15;   // transición para preparar el siguiente ejercicio
+    var SIDE_SECS = 10;    // pausa para cambiar de lado en unilaterales por tiempo
     function buildCircuitPhases(c) {
       var hasWorks = Array.isArray(c.works) && c.works.length > 0;
       var work = hasWorks ? c.works[0] : parseSecs(c.trabajo);
       if (!work || work < 1) return { err: 'No pude leer el tiempo de trabajo de este circuito ("' + (c.trabajo || 'vacío') + '"). Pídele a tu coach que lo escriba así: 30 s.' };
-      var rest = parseSecs(c.descanso) || 0;
+      var rest = parseSecs(c.descanso) || 0;   // descanso entre rondas/series: el que eligió el cliente
       var rounds = parseInt(c.rondas, 10) || 1;
       var names = (c.stations || []).map(function(n, i) { return (n && String(n).trim()) || ('Estación ' + (i + 1)); });
       if (!names.length) names = ['Estación 1'];
+      var unis = c.unis || [];
       var phases = [{ t: 'ready', d: 5, st: names[0], r: 1, si: 0 }];
       for (var r = 1; r <= rounds; r++) {
         for (var s = 0; s < names.length; s++) {
-          phases.push({ t: 'work', d: hasWorks ? (c.works[s] || work) : work, st: names[s], r: r, si: s });
-          var isLast = (r === rounds && s === names.length - 1);
-          // Biserie/Triserie: los ejercicios van seguidos y el descanso llega al cerrar cada vuelta
-          var restHere = (c.restMode === 'round') ? (s === names.length - 1) : true;
-          if (rest > 0 && !isLast && restHere) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r, si: -1 });
+          var w = hasWorks ? (c.works[s] || work) : work;
+          if (unis[s]) {   // unilateral: lado 1, cambio de lado (15 s) y lado 2, cada lado con el tiempo completo
+            phases.push({ t: 'work', d: w, st: names[s], r: r, si: s, side: 1 });
+            phases.push({ t: 'trans', d: SIDE_SECS, st: names[s], r: r, si: s, kind: 'side' });
+            phases.push({ t: 'work', d: w, st: names[s], r: r, si: s, side: 2 });
+          } else {
+            phases.push({ t: 'work', d: w, st: names[s], r: r, si: s, side: 0 });
+          }
+          var lastStation = (s === names.length - 1), lastRound = (r === rounds);
+          if (!lastStation) phases.push({ t: 'trans', d: TRANS_SECS, st: names[s + 1], r: r, si: s + 1, kind: 'next' });
+          else if (!lastRound && rest > 0) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r, si: -1 });
         }
       }
       return { phases: phases, rounds: rounds, label: c.restMode === 'round' ? 'Serie' : 'Ronda' };
@@ -3992,6 +4375,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (built.err) { alert(built.err); return; }
       tmrAudio();
       rtClose();
+      CT.keys = c.keys || []; CT.acc = {};   // para anotar los segundos logrados en cada serie
       CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? SR[srId].cur : 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = c.nombre || 'Circuito';
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
@@ -4016,11 +4400,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
         '<div id="tm_next" style="margin-top:14px; font-size:1rem; color:#ccc;"></div>' +
         '<div style="flex:1; min-height:16px;"></div>' +
-        '<div style="display:flex; gap:10px;"><button type="button" class="tm-btn" id="tm_pause">⏸ Pausar</button><button type="button" class="tm-btn" id="tm_skip">⏭ Saltar</button><button type="button" class="tm-btn" id="tm_exit">✖ Salir</button></div>' +
+        '<div style="display:flex; gap:10px;"><button type="button" class="tm-btn" id="tm_pause">⏸ Pausar</button><button type="button" class="tm-btn" id="tm_plus" style="display:none;">+5 s</button><button type="button" class="tm-btn" id="tm_stop" style="display:none; border-color:#ff453a; color:#ff9a93;">⏹ Parar</button><button type="button" class="tm-btn" id="tm_skip">⏭ Saltar</button></div>' +
+        '<div style="display:flex; gap:10px; margin-top:10px;"><button type="button" class="tm-btn" id="tm_exit">✖ Salir</button></div>' +
         '<button type="button" class="tm-btn" id="tm_more" style="display:none; margin-top:10px; background:#06d6a0; color:#000; width:100%; flex:none;">➕ 1 serie más</button>';
       document.body.appendChild(o);
       document.getElementById('tm_pause').onclick = ctTogglePause;
       document.getElementById('tm_skip').onclick = ctSkip;
+      document.getElementById('tm_plus').onclick = ctPlus5;
+      document.getElementById('tm_stop').onclick = ctStop;
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
       document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId; startCircuitTimer(ci, sid, true); };
@@ -4029,12 +4416,24 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function ctPhaseSound(ph) {
       if (ph.t === 'work') { tmrBeep(1000, 600, 0); tmrVibrate(250); }
       else if (ph.t === 'rest') { tmrBeep(520, 450, 0); tmrVibrate([100, 60, 100]); }
+      else if (ph.t === 'trans') {
+        tmrBeep(780, 160, 0); tmrBeep(780, 160, 220); tmrVibrate([120, 60, 120]);
+        if (ph.kind === 'side') tmrSpeak('Cambia de lado');
+      }
+    }
+    function tmrSpeak(txt) {   // voz opcional: si el celular no la tiene, quedan el sonido y el texto en pantalla
+      try {
+        if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+        var u = new SpeechSynthesisUtterance(txt); u.lang = 'es-419'; u.rate = 1;
+        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      } catch (e) {}
     }
 
     function ctTick() {
       if (!CT.active || CT.paused || CT.done) return;
       var now = Date.now(), changed = false;
       while (now >= CT.end) {
+        ctPhaseDone(CT.i);   // si terminó un tiempo de trabajo completo, se anota en su serie
         CT.i++;
         if (CT.i >= CT.phases.length) { ctFinish(); return; }
         CT.end += CT.phases[CT.i].d * 1000;
@@ -4047,26 +4446,39 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     function ctRender(remain) {
-      var ph = CT.phases[CT.i], colors = { work: '#06d6a0', rest: '#4d8bff', ready: '#ffd60a' };
+      var ph = CT.phases[CT.i], colors = { work: '#06d6a0', rest: '#4d8bff', ready: '#ffd60a', trans: '#ff9f1c' };
       var col = colors[ph.t] || '#fff';
-      var labels = { work: 'TRABAJO', rest: 'DESCANSO', ready: 'PREPÁRATE' };
+      var labels = { work: 'TRABAJO', rest: 'DESCANSO', ready: 'PREPÁRATE', trans: (ph.kind === 'side' ? 'CAMBIA DE LADO' : 'TRANSICIÓN') };
       var el = function(id) { return document.getElementById(id); };
       if (!el('tm_time')) return;
       el('tm_title').innerText = CT.title;
       el('tm_round').innerText = ph.t === 'ready' ? '' : ((CT.roundLabel || 'Ronda') + ' ' + ph.r + ' de ' + CT.rounds);
       el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
-      el('tm_station').innerText = ph.t === 'rest' ? 'Toma aire y prepárate' : ph.st;
+      var stationTxt = ph.st;
+      if (ph.t === 'rest') stationTxt = 'Toma aire y prepárate';
+      else if (ph.t === 'trans') stationTxt = (ph.kind === 'side' ? 'Cambia de lado ↔' : 'Prepara: ' + ph.st);
+      else if (ph.side) stationTxt = ph.st + ' · Lado ' + ph.side + ' de 2';
+      el('tm_station').innerText = stationTxt;
       el('tm_time').innerText = tmrFmt(remain); el('tm_time').style.color = col;
       el('tm_bar').style.width = Math.max(0, Math.min(100, (1 - remain / ph.d) * 100)) + '%'; el('tm_bar').style.background = col;
+      var isWork = ph.t === 'work';   // en trabajo: Pausar, +5 s y Parar; en descanso/transición: Pausar y Saltar
+      el('tm_plus').style.display = isWork ? '' : 'none';
+      el('tm_stop').style.display = isWork ? '' : 'none';
+      el('tm_skip').style.display = isWork ? 'none' : '';
       var demoBtn = el('tm_demo');
-      if (demoBtn) {   // demo del ejercicio actual (en el descanso, el del que sigue); el temporizador no se pausa
+      if (demoBtn) {   // demo del ejercicio actual (en descanso o transición, el del que sigue); el temporizador no se pausa
         var di = ph.si;
-        if (ph.t === 'rest') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
+        if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
         CT.demoUrl = (CT.videos && di >= 0 && CT.videos[di]) ? CT.videos[di] : '';
         demoBtn.style.display = CT.demoUrl ? 'block' : 'none';
       }
-      var nx = CT.phases[CT.i + 1];
-      el('tm_next').innerText = nx ? ('Sigue: ' + (nx.t === 'rest' ? 'Descanso ' + tmrFmt(nx.d) + (nx.d < 60 ? ' s' : '') : nx.st)) : 'Última estación';
+      var nx = CT.phases[CT.i + 1], nxTxt = 'Última estación';
+      if (nx) {
+        if (nx.t === 'rest') nxTxt = 'Sigue: Descanso ' + tmrFmt(nx.d) + (nx.d < 60 ? ' s' : '');
+        else if (nx.t === 'trans') nxTxt = 'Sigue: ' + (nx.kind === 'side' ? 'Cambio de lado' : 'Transición ' + nx.d + ' s');
+        else nxTxt = 'Sigue: ' + nx.st + (nx.side ? ' · lado ' + nx.side : '');
+      }
+      el('tm_next').innerText = nxTxt;
     }
 
     // Abre el video del ejercicio en otra pestaña/pantalla flotante SIN detener el temporizador (sigue avanzando por reloj)
@@ -4098,14 +4510,73 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         el('tm_round').innerText = ''; el('tm_phase').innerText = '¡TERMINADO!'; el('tm_phase').style.color = '#06d6a0';
         el('tm_station').innerText = CT.title + ' completado 💪'; el('tm_time').innerText = '✔'; el('tm_time').style.color = '#06d6a0';
         el('tm_bar').style.width = '100%'; el('tm_bar').style.background = '#06d6a0'; el('tm_next').innerText = '';
-        el('tm_pause').style.display = 'none'; el('tm_skip').style.display = 'none'; el('tm_exit').innerText = CT.srId ? 'Terminar ya' : 'Cerrar';
+        el('tm_pause').style.display = 'none'; el('tm_skip').style.display = 'none'; el('tm_plus').style.display = 'none'; el('tm_stop').style.display = 'none'; el('tm_exit').innerText = CT.srId ? 'Terminar ya' : 'Cerrar';
         if (CT.srId && SR[CT.srId]) {
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
           el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = 'block';
         }
       }
       tmrWakeOff();
+      setTimeout(equipReminder, 1300);   // última ronda lista: recordatorio de regresar el equipo
     }
+
+    // ----- Segundos logrados por serie, +5 s y Parar -----
+    var EQ_TIMER = null;
+    function ctPhaseDone(i) {
+      var ph = CT.phases[i];
+      if (ph && ph.t === 'work') ctRecord(ph, ph.d);
+    }
+    // Anota los segundos de ese tiempo de trabajo en la fila de la serie (unilateral: "lado 1/lado 2")
+    function ctRecord(ph, secs) {
+      var key = (CT.keys || [])[ph.si]; if (!key) return;
+      var idx = (CT.doneBefore || 0) + ph.r - 1;
+      ensureSetRows(key, idx + 1);
+      var inp = document.getElementById('pr_' + key + '_' + idx); if (!inp) return;
+      var val = String(Math.max(0, Math.round(secs)));
+      var ak = key + '|' + idx;
+      if (ph.side === 1) CT.acc[ak] = val;
+      else if (ph.side === 2 && CT.acc[ak] != null) val = CT.acc[ak] + '/' + val;
+      inp.value = val; inp.classList.remove('prefilled');
+      saveTracker();
+    }
+    function ctPlus5() {   // +5 s al tiempo de trabajo en curso (queda sumado a esa serie)
+      if (!CT.active || CT.done) return;
+      var ph = CT.phases[CT.i]; if (!ph || ph.t !== 'work') return;
+      ph.d += 5;
+      if (CT.paused) CT.remain += 5000; else CT.end += 5000;
+      tmrBeep(900, 120, 0); ctTick();
+    }
+    function ctStop() {   // "Parar": ya no pude más en esta serie; se anota lo que alcanzó y sigue lo que viene
+      if (!CT.active || CT.done) return;
+      var ph = CT.phases[CT.i]; if (!ph || ph.t !== 'work') return;
+      var remMs = CT.paused ? CT.remain : (CT.end - Date.now());
+      ctRecord(ph, Math.max(0, ph.d - Math.max(0, remMs) / 1000));
+      CT.i++;
+      if (CT.i >= CT.phases.length) { ctFinish(); return; }
+      CT.end = Date.now() + CT.phases[CT.i].d * 1000; CT.paused = false; CT.lastBeep = '';
+      var b = document.getElementById('tm_pause'); if (b) b.innerText = '⏸ Pausar';
+      ctPhaseSound(CT.phases[CT.i]); ctTick();
+    }
+
+    // ----- Recordatorio de 5 s al terminar la última ronda de un ejercicio -----
+    function closeEquip() {
+      var t = document.getElementById('equip_toast'); if (t) t.remove();
+      if (EQ_TIMER) { clearTimeout(EQ_TIMER); EQ_TIMER = null; }
+    }
+    function equipReminder() {
+      closeEquip();
+      var t = document.createElement('div');
+      t.id = 'equip_toast';
+      t.style.cssText = 'position:fixed; top:14px; left:12px; right:12px; max-width:520px; margin:0 auto; z-index:100005; background:#0d2318; border:2px solid #06d6a0; color:#fff; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 4px 18px rgba(0,0,0,0.6);';
+      t.innerHTML = '<div style="font-size:1.5rem;">🧰</div>' +
+        '<div style="flex:1;"><div style="font-size:0.9rem; font-weight:800;">¡Última ronda lista! Regresa el equipo a su lugar.</div></div>' +
+        '<button type="button" id="equip_close" style="background:#1c1c1c; border:1px solid #444; color:#fff; border-radius:8px; padding:8px 12px; font-weight:800; cursor:pointer;">✖</button>';
+      document.body.appendChild(t);
+      document.getElementById('equip_close').onclick = closeEquip;
+      tmrAudio(); tmrBeep(660, 180, 0); tmrBeep(880, 260, 240); tmrVibrate([150, 80, 150]);
+      EQ_TIMER = setTimeout(closeEquip, 5000);
+    }
+
     function ctClose() {
       CT.active = false; CT.done = false;
       if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
@@ -4271,7 +4742,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var q = normName(document.getElementById('cl_search').value);
       var groups = {}, order = [];
       clientRows.forEach(function(r) {   // el servidor las entrega de la más nueva a la más vieja
-        var k = normName(r.atleta); if (!k) return;
+        var k = normName(r.atleta); if (!k || k === '__anuncios__') return;
         if (!groups[k]) { groups[k] = { name: r.atleta, list: [] }; order.push(k); }
         groups[k].list.push(r);
       });
@@ -4331,6 +4802,143 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
 
+    // ----- Editar un ejercicio desde el modo entrenamiento (etapa 2) -----
+    var ATH_WEEK = 1;
+    var EDX = null;   // { di, ii, w }
+    function isCoachView() { return !!COACH && typeof TRK_NS === 'string' && TRK_NS.indexOf('c:') === 0; }
+    function edxAttr(t) { return escHtml(String(t == null ? '' : t)).replace(/"/g, '&quot;'); }
+    function edxSubHtml(p, item, sIdx, sub) {
+      var isCirc = item.type === 'circuito';
+      var letter = isCirc ? String(sIdx + 1) : ['A', 'B', 'C'][sIdx];
+      var h = '<div class="edx-sub"><div style="font-size:0.72rem; font-weight:800; color:var(--accent);">' + (item.type === 'normal' ? 'Ejercicio' : 'Ejercicio ' + letter) + '</div>' +
+        '<label>Nombre</label><input type="text" id="edx_' + p + '_' + sIdx + '_name" value="' + edxAttr(sub.name) + '">';
+      h += '<div class="edx-row">' +
+        (isCirc ? '' : '<div><label>Series</label><input type="text" id="edx_' + p + '_' + sIdx + '_series" value="' + edxAttr(sub.series) + '"></div>') +
+        '<div><label>' + (isCirc ? 'Reps / tiempo' : 'Reps o tiempo') + '</label><input type="text" id="edx_' + p + '_' + sIdx + '_reps" value="' + edxAttr(sub.reps) + '"></div></div>';
+      h += '<label>Notas</label><input type="text" id="edx_' + p + '_' + sIdx + '_notes" value="' + edxAttr(sub.notes) + '">';
+      h += '<label>Video (enlace de YouTube, opcional)</label><input type="text" id="edx_' + p + '_' + sIdx + '_video" value="' + edxAttr(sub.video) + '">';
+      h += '<div style="display:flex; gap:14px; margin-top:8px; font-size:0.78rem;">' +
+        '<label style="margin:0; text-transform:none; font-size:0.78rem; color:#ddd;"><input type="checkbox" id="edx_' + p + '_' + sIdx + '_uni"' + (subIsUni(sub) ? ' checked' : '') + '> Unilateral</label>' +
+        '<label style="margin:0; text-transform:none; font-size:0.78rem; color:#ddd;"><input type="checkbox" id="edx_' + p + '_' + sIdx + '_peso"' + (subUsesWeight(sub) ? ' checked' : '') + '> Usa peso</label></div></div>';
+      return h;
+    }
+    function edxCircHtml(p, item) {
+      var c = item.circ || {};
+      return '<div class="edx-sub"><div style="font-size:0.72rem; font-weight:800; color:var(--accent);">Circuito</div>' +
+        '<label>Nombre</label><input type="text" id="edx_' + p + '_c_nombre" value="' + edxAttr(c.nombre) + '">' +
+        '<div class="edx-row"><div><label>Rondas</label><input type="text" id="edx_' + p + '_c_rondas" value="' + edxAttr(c.rondas) + '"></div>' +
+        '<div><label>Trabajo</label><input type="text" id="edx_' + p + '_c_trabajo" value="' + edxAttr(c.trabajo) + '"></div>' +
+        '<div><label>Descanso</label><input type="text" id="edx_' + p + '_c_descanso" value="' + edxAttr(c.descanso) + '"></div></div></div>';
+    }
+    function edxVal(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+    function edxChk(id) { var el = document.getElementById(id); return !!(el && el.checked); }
+    // Aplica lo escrito en el formulario (prefijo p) sobre un ejercicio
+    function edxReadInto(p, item) {
+      (item.sub || []).forEach(function(sub, k) {
+        var nm = edxVal('edx_' + p + '_' + k + '_name');
+        if (nm) sub.name = nm;
+        if (item.type !== 'circuito') sub.series = edxVal('edx_' + p + '_' + k + '_series');
+        sub.reps = edxVal('edx_' + p + '_' + k + '_reps');
+        sub.notes = edxVal('edx_' + p + '_' + k + '_notes');
+        sub.video = edxVal('edx_' + p + '_' + k + '_video');
+        sub.uni = edxChk('edx_' + p + '_' + k + '_uni');
+        sub.peso = edxChk('edx_' + p + '_' + k + '_peso');
+      });
+      if (item.type === 'circuito') {
+        item.circ = item.circ || {};
+        item.circ.nombre = edxVal('edx_' + p + '_c_nombre');
+        item.circ.rondas = edxVal('edx_' + p + '_c_rondas');
+        item.circ.trabajo = edxVal('edx_' + p + '_c_trabajo');
+        item.circ.descanso = edxVal('edx_' + p + '_c_descanso');
+      }
+    }
+    function openEditEx(di, ii) {
+      var st = athleteActiveState; if (!st || !isCoachView()) return;
+      var d = st.routineDays[di], it = d && d.items[ii]; if (!it) return;
+      var W = ATH_WEEK, vd = parseInt(it.vigenciaDesde, 10) || 1, slot = parseInt(it.slot, 10) || (ii + 1);
+      EDX = { di: di, ii: ii, w: W, fut: [] };
+      var h = '<div class="modal-inner"><div style="font-size:1rem; font-weight:900; color:var(--primary); margin-bottom:2px;">✏️ Editar ejercicio</div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">' + escHtml(d.title || '') + ' · ' + (vd < W ? 'los cambios aplican desde la semana ' + W + ' en adelante; las semanas anteriores quedan como estaban' : 'cambia esta versión del ejercicio (semana ' + vd + (it.vigenciaHasta ? '-' + it.vigenciaHasta : '+') + ')') + '</div>';
+      if (it.type === 'circuito') h += edxCircHtml('cur', it);
+      (it.sub || []).forEach(function(sub, k) { h += edxSubHtml('cur', it, k, sub); });
+      // progresiones restantes: versiones posteriores del mismo ejercicio en este día
+      d.items.forEach(function(o, oi) {
+        if (oi === ii) return;
+        if ((parseInt(o.slot, 10) || (oi + 1)) !== slot) return;
+        if ((parseInt(o.vigenciaDesde, 10) || 1) <= W) return;
+        EDX.fut.push(oi);
+      });
+      EDX.fut.sort(function(a, b) { return (parseInt(d.items[a].vigenciaDesde, 10) || 1) - (parseInt(d.items[b].vigenciaDesde, 10) || 1); });
+      if (EDX.fut.length) {
+        h += '<details><summary>📈 Progresiones restantes (' + EDX.fut.length + ')</summary>';
+        EDX.fut.forEach(function(oi, n) {
+          var o = d.items[oi];
+          h += '<div style="margin-top:8px; font-size:0.75rem; font-weight:800; color:#fff;">Semana ' + o.vigenciaDesde + (o.vigenciaHasta ? '-' + o.vigenciaHasta : '+') + '</div>';
+          if (o.type === 'circuito') h += edxCircHtml('f' + n, o);
+          (o.sub || []).forEach(function(sub, k) { h += edxSubHtml('f' + n, o, k, sub); });
+        });
+        h += '</details>';
+      }
+      h += '<div id="edx_msg" style="font-size:0.78rem; color:var(--muted); min-height:18px; margin:6px 0;"></div>' +
+        '<div style="display:flex; gap:8px;"><button type="button" class="btn-action-primary" id="edx_save" style="flex:1;" onclick="saveEditEx()">Guardar cambios</button>' +
+        '<button type="button" onclick="closeModal(\'edx_modal\')" style="flex:0 0 auto; background:#1c1c1c; color:#fff; border:1px solid #444; border-radius:10px; padding:0 16px; font-weight:800; cursor:pointer;">Cancelar</button></div></div>';
+      var m = document.getElementById('edx_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'edx_modal'; m.className = 'modal-overlay ex-edit-modal'; m.style.zIndex = '100004'; document.body.appendChild(m); }
+      m.innerHTML = h;
+      openModal('edx_modal');
+    }
+    function saveEditEx() {
+      var st = athleteActiveState; if (!st || !EDX || !isCoachView()) return;
+      if (!athleteRoutineId) { alert('Esta rutina no tiene enlace corto, no se puede actualizar desde aquí.'); return; }
+      var d = st.routineDays[EDX.di], cur = d.items[EDX.ii]; if (!cur) return;
+      var snap = JSON.stringify(st.routineDays);
+      var W = EDX.w, vd = parseInt(cur.vigenciaDesde, 10) || 1;
+      var fut = EDX.fut.map(function(oi) { return d.items[oi]; });   // se toman antes de mover posiciones
+      if (vd < W) {
+        var past = JSON.parse(JSON.stringify(cur)); past.vigenciaHasta = W - 1;
+        var now = JSON.parse(JSON.stringify(cur)); now.vigenciaDesde = W;
+        edxReadInto('cur', now);
+        d.items.splice(EDX.ii, 1, past, now);
+      } else {
+        edxReadInto('cur', cur);
+      }
+      fut.forEach(function(o, n) { edxReadInto('f' + n, o); });
+      var btn = document.getElementById('edx_save'), msg = document.getElementById('edx_msg');
+      if (btn) { btn.disabled = true; btn.innerText = 'Guardando…'; }
+      var payloadText;
+      try { payloadText = encodePayload(buildUltraCompactState(st)); } catch (e) { st.routineDays = JSON.parse(snap); if (btn) { btn.disabled = false; btn.innerText = 'Guardar cambios'; } if (msg) msg.innerText = 'No se pudo preparar el cambio.'; return; }
+      postJson({ a: 'actualizar', id: athleteRoutineId, p: payloadText, pin: COACH.pin }).then(function(j) {
+        if (j && j.ok) {
+          var openIds = [];
+          document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
+          var scrollY = window.scrollY || 0;
+          closeModal('edx_modal');
+          renderAthleteApp(st);
+          openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
+          window.scrollTo(0, scrollY);
+          showToastTop('✅ Ejercicio actualizado desde la semana ' + W + '. ' + (st.clientName || 'El cliente') + ' recibirá el cambio al abrir su rutina.');
+        } else {
+          st.routineDays = JSON.parse(snap);
+          if (btn) { btn.disabled = false; btn.innerText = 'Guardar cambios'; }
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(j && j.error); }
+        }
+      }).catch(function(e) {
+        st.routineDays = JSON.parse(snap);
+        if (btn) { btn.disabled = false; btn.innerText = 'Guardar cambios'; }
+        if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(e && e.message); }
+      });
+    }
+    function showToastTop(text) {
+      var old = document.getElementById('top_toast'); if (old) old.remove();
+      var n = document.createElement('div');
+      n.id = 'top_toast'; n.innerText = text;
+      n.style.cssText = 'position:fixed; top:14px; left:12px; right:12px; max-width:520px; margin:0 auto; z-index:100006; background:#06d6a0; color:#000; font-weight:700; font-size:0.85rem; padding:10px 14px; border-radius:12px; text-align:center; transition:opacity .5s;';
+      document.body.appendChild(n);
+      setTimeout(function() { n.style.opacity = '0'; }, 4500);
+      setTimeout(function() { if (n.parentNode) n.parentNode.removeChild(n); }, 5100);
+    }
+
     // ----- Editar una rutina ya enviada y actualizarla con el mismo enlace -----
     var editingRoutine = null;   // { id, name, coach }
     function updateErrorText(code) {
@@ -4367,6 +4975,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (!editingRoutine) return;
       if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
       if (!confirm('¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
+      if (!treadmillGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
       if (editingRoutine.coach) state.coachName = editingRoutine.coach;   // se conserva el coach original de la rutina
@@ -4384,6 +4993,135 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           alert('No se pudo actualizar: ' + updateErrorText(j && j.error));
         }
       }).catch(function(e) { btn.disabled = false; showEditBanner(''); alert('No se pudo actualizar: ' + updateErrorText(e && e.message)); });
+    }
+
+    // ================= ANUNCIOS PARA TODOS LOS CLIENTES (etapa 2) =================
+    // Se guardan en la hoja como una rutina especial (atleta "__ANUNCIOS__"): el texto va en el mensaje del coach, en JSON.
+    var ANN_KEY = 'benessere_ann_id', ANN_SEEN = 'benessere_ann_seen', ANN_LIST = [], ANN_CHECKED = false, ANN_ACTIVE = [];
+    function annId() { var v = ANNOUNCE_ID; if (!v) { try { v = localStorage.getItem(ANN_KEY) || ''; } catch (e) {} } return v; }
+    function annEncode(list) {
+      return encodePayload(buildUltraCompactState({
+        clientName: 'ANUNCIOS', clientGender: 'o', startDate: '', durationWeeks: 1,
+        coachMsgTitle: 'Anuncios', coachMsgBody: JSON.stringify(list), coachName: COACH ? COACH.name : '',
+        configFeatures: { nutrition: false, demos: false }, measures: {}, measureLog: [], routineDays: []
+      }));
+    }
+    function annDecode(p) {
+      var st = decodePayload('q', p); if (!st) return null;
+      try { var a = JSON.parse(st.coachMsgBody || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    }
+    function annIsActive(a, today) { return a && a.m && (!a.d || a.d <= today) && (!a.h || a.h >= today); }
+    function annSeenList() { try { var a = JSON.parse(localStorage.getItem(ANN_SEEN) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+
+    // Cliente: al abrir su rutina consulta los anuncios vigentes y muestra los que no ha visto
+    function checkAnnouncements() {
+      if (ANN_CHECKED || isCoachView()) return;
+      var id = ANNOUNCE_ID; if (!id) return;
+      ANN_CHECKED = true;
+      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 20000).then(function(j) {
+        var list = (j && j.ok && j.p) ? annDecode(j.p) : null;
+        if (!list) return;
+        var today = todayIso();
+        ANN_ACTIVE = list.filter(function(a) { return annIsActive(a, today); });
+        var seen = annSeenList();
+        var fresh = ANN_ACTIVE.filter(function(a) { return seen.indexOf(a.i) < 0; });
+        if (fresh.length) showAnnouncements(fresh);
+        addAnnCapsule();
+      }).catch(function() { /* sin internet: sin anuncios */ });
+    }
+    function addAnnCapsule() {
+      var g = document.getElementById('ath_capsuleGroup');
+      if (!g || !ANN_ACTIVE.length || document.getElementById('ann_capsule')) return;
+      var b = document.createElement('button');
+      b.id = 'ann_capsule'; b.className = 'capsule-btn'; b.style.background = '#8338ec'; b.innerText = '📢 Avisos';
+      b.onclick = function() { showAnnouncements(ANN_ACTIVE); };
+      g.insertBefore(b, g.firstChild);
+    }
+    function showAnnouncements(list) {
+      var m = document.getElementById('ann_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'ann_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100004'; document.body.appendChild(m); }
+      var h = '<div class="modal-inner"><div style="font-size:1.1rem; font-weight:900; color:var(--primary); margin-bottom:10px;">📢 Avisos de Benessere Gym</div>';
+      list.forEach(function(a) {
+        h += '<div style="background:#101010; border:1px solid #2c2c2c; border-left:4px solid var(--accent); border-radius:10px; padding:10px; margin-bottom:8px;">' +
+          (a.t ? '<div style="font-weight:800; margin-bottom:4px;">' + escHtml(a.t) + '</div>' : '') +
+          '<div style="font-size:0.88rem; line-height:1.45; color:#ddd;">' + escHtml(a.m).replace(/\n/g, '<br>') + '</div></div>';
+      });
+      h += '<button type="button" class="btn-action-primary" id="ann_ok">Entendido</button></div>';
+      m.innerHTML = h;
+      m.classList.add('active');
+      document.getElementById('ann_ok').onclick = function() {
+        var seen = annSeenList();
+        list.forEach(function(a) { if (a.i && seen.indexOf(a.i) < 0) seen.push(a.i); });
+        try { localStorage.setItem(ANN_SEEN, JSON.stringify(seen.slice(-60))); } catch (e) {}
+        closeModal('ann_modal');
+      };
+    }
+
+    // Constructor: editor de anuncios
+    function openAnnounceEditor() {
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      var m = document.getElementById('ann_edit_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'ann_edit_modal'; m.className = 'modal-overlay ex-edit-modal'; m.style.zIndex = '100004'; document.body.appendChild(m); }
+      ANN_LIST = [];
+      renderAnnEditor('Cargando…');
+      openModal('ann_edit_modal');
+      var id = annId();
+      if (!id) { renderAnnEditor('Todavía no hay anuncios publicados.'); return; }
+      fetchRoutine(id).then(function(j) {
+        var list = (j && j.ok && j.p) ? annDecode(j.p) : null;
+        ANN_LIST = list || [];
+        renderAnnEditor(list ? '' : 'No se pudieron leer los anuncios actuales.');
+      }).catch(function() { renderAnnEditor('Sin conexión: no se pudieron leer los anuncios actuales.'); });
+    }
+    function annReadForm() {
+      ANN_LIST = ANN_LIST.map(function(a, k) {
+        var t = document.getElementById('ann_t_' + k), mm = document.getElementById('ann_m_' + k), d = document.getElementById('ann_d_' + k), h = document.getElementById('ann_h_' + k);
+        return t ? { i: a.i, t: t.value.trim(), m: mm.value.trim(), d: d.value, h: h.value } : a;
+      });
+    }
+    function renderAnnEditor(status) {
+      var m = document.getElementById('ann_edit_modal'); if (!m) return;
+      var h = '<div class="modal-inner"><div style="font-size:1rem; font-weight:900; color:var(--primary); margin-bottom:2px;">📢 Anuncios para todos los clientes</div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">Feriados, horarios especiales, avisos. Cada cliente lo ve una vez al abrir su rutina, solo dentro de las fechas que pongas.</div>';
+      ANN_LIST.forEach(function(a, k) {
+        h += '<div class="edx-sub"><label>Título</label><input type="text" id="ann_t_' + k + '" value="' + edxAttr(a.t) + '" placeholder="Ej: Feriado 15 de septiembre">' +
+          '<label>Mensaje</label><textarea id="ann_m_' + k + '" rows="3" placeholder="Ej: Ese día abrimos de 7am a 12md.">' + escHtml(a.m || '') + '</textarea>' +
+          '<div class="edx-row"><div><label>Desde</label><input type="date" id="ann_d_' + k + '" value="' + edxAttr(a.d) + '"></div><div><label>Hasta</label><input type="date" id="ann_h_' + k + '" value="' + edxAttr(a.h) + '"></div></div>' +
+          '<button type="button" onclick="annDelete(' + k + ')" style="margin-top:8px; background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; border-radius:8px; padding:5px 10px; font-size:0.72rem; cursor:pointer;">🗑 Quitar</button></div>';
+      });
+      h += '<button type="button" onclick="annAdd()" style="width:100%; background:transparent; color:var(--primary); border:1px dashed var(--primary); border-radius:10px; padding:9px; font-weight:800; cursor:pointer; margin-bottom:8px;">➕ Nuevo anuncio</button>' +
+        '<div id="ann_msg" style="font-size:0.78rem; color:var(--muted); min-height:18px; margin-bottom:6px;">' + escHtml(status || '') + '</div>' +
+        '<div style="display:flex; gap:8px;"><button type="button" class="btn-action-primary" id="ann_pub" style="flex:1;" onclick="annPublish()">📤 Publicar</button>' +
+        '<button type="button" onclick="closeModal(\'ann_edit_modal\')" style="background:#1c1c1c; color:#fff; border:1px solid #444; border-radius:10px; padding:0 16px; font-weight:800; cursor:pointer;">Cerrar</button></div></div>';
+      m.innerHTML = h;
+    }
+    function annAdd() { annReadForm(); ANN_LIST.push({ i: 'a' + Date.now().toString(36), t: '', m: '', d: todayIso(), h: '' }); renderAnnEditor(''); }
+    function annDelete(k) { annReadForm(); ANN_LIST.splice(k, 1); renderAnnEditor(''); }
+    function annPublish() {
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
+      annReadForm();
+      ANN_LIST = ANN_LIST.filter(function(a) { return a.m || a.t; }).map(function(a) { if (!a.m) { a.m = a.t; a.t = ''; } return a; });
+      var bad = ANN_LIST.filter(function(a) { return a.d && a.h && a.h < a.d; });
+      var msg = document.getElementById('ann_msg'), btn = document.getElementById('ann_pub');
+      if (bad.length) { msg.style.color = '#ff6b6b'; msg.innerText = 'Revisa las fechas: "Hasta" no puede ser antes de "Desde".'; return; }
+      var payloadText = annEncode(ANN_LIST), id = annId();
+      btn.disabled = true; btn.innerText = 'Publicando…'; msg.style.color = ''; msg.innerText = '';
+      var p;
+      if (id) p = postJson({ a: 'actualizar', id: id, p: payloadText, pin: COACH.pin });
+      else p = fetchJson(SHARE_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: SHARE_KEY, p: payloadText, coach: COACH.name, atleta: '__ANUNCIOS__' }) }, 25000);
+      p.then(function(j) {
+        btn.disabled = false; btn.innerText = '📤 Publicar';
+        if (j && j.ok) {
+          var newId = id || j.id;
+          if (!id && newId) { try { localStorage.setItem(ANN_KEY, newId); } catch (e) {} }
+          renderAnnEditor('');
+          var mm = document.getElementById('ann_msg'); mm.style.color = '#06d6a0';
+          mm.innerHTML = '✅ Publicado (' + ANN_LIST.length + ' anuncio' + (ANN_LIST.length === 1 ? '' : 's') + ').' + (!ANNOUNCE_ID ? '<br><span style="color:#ffd166;">Primera vez: para que lo vean TODOS los clientes hay que pegar este código en la app (ANNOUNCE_ID): <b>' + escHtml(newId) + '</b></span>' : '');
+        } else {
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo publicar: ' + updateErrorText(j && j.error);
+        }
+      }).catch(function(e) { btn.disabled = false; btn.innerText = '📤 Publicar'; msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo publicar: ' + updateErrorText(e && e.message); });
     }
 
     // ================= ENRUTADOR INICIAL =================
@@ -4451,28 +5189,122 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       setTimeout(function() { if (n.parentNode) n.parentNode.removeChild(n); }, 3700);
     }
 
-    // Consulta la hoja en silencio; si la rutina cambió, la vuelve a mostrar y avisa.
+    // Consulta la hoja en silencio. Si la rutina cambió NO se cambia sola: aparece un botón
+    // "¿Aplicar ahora?". Si dice que no, queda guardada y se aplica la próxima vez que abra la app.
     // Si falla la red o el servicio, no pasa nada: el cliente sigue viendo su copia guardada.
-    function refreshInBackground(id, currentPayload) {
+    var PENDING_UPD_KEY = 'benessere_pending_update';
+    var UPD_DISMISSED = '';
+    function takePending(id) {   // devuelve el texto pendiente de esa rutina (y lo borra)
+      try {
+        var o = JSON.parse(localStorage.getItem(PENDING_UPD_KEY) || 'null');
+        localStorage.removeItem(PENDING_UPD_KEY);
+        return (o && o.id === id && o.p) ? o.p : '';
+      } catch (e) { return ''; }
+    }
+    function hideUpdateButton() { var el = document.getElementById('upd_pill'); if (el) el.remove(); }
+    function showUpdateButton() {
+      if (document.getElementById('upd_pill')) return;
+      var el = document.createElement('div');
+      el.id = 'upd_pill'; el.className = 'upd-pill';
+      el.innerHTML = '<div style="flex:1;">🔄 Tu coach actualizó tu rutina. ¿Aplicar ahora?</div>' +
+        '<button type="button" onclick="applyPendingUpdate()" style="background:#2f69ff; color:#fff; border:none;">Aplicar</button>' +
+        '<button type="button" onclick="dismissPendingUpdate()" style="background:#1c1c1c; color:#fff; border:1px solid #444;">Después</button>';
+      document.body.appendChild(el);
+    }
+    function dismissPendingUpdate() {
+      try { var o = JSON.parse(localStorage.getItem(PENDING_UPD_KEY) || 'null'); if (o) UPD_DISMISSED = o.p; } catch (e) {}
+      hideUpdateButton();   // queda guardada: se aplica la próxima vez que abra la app
+    }
+    // Cambia la pantalla a la versión nueva sin perder las pantallas abiertas ni el scroll
+    function applyPayloadNow(id, p) {
+      var st = decodePayload('q', p);
+      if (!st) return false;
+      var openIds = [];
+      document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
+      var scrollY = window.scrollY || 0;
+      try {
+        renderAthleteApp(st);
+        saveAthletePayload({ k: 'q', v: p, id: id });
+        try { localStorage.removeItem(PENDING_UPD_KEY); } catch (e) {}
+        openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
+        window.scrollTo(0, scrollY);
+        showUpdatedNotice();
+        return true;
+      } catch (e) { console.error(e); return false; }
+    }
+    function applyPendingUpdate() {
+      var o = null;
+      try { o = JSON.parse(localStorage.getItem(PENDING_UPD_KEY) || 'null'); } catch (e) {}
+      hideUpdateButton();
+      if (o && o.p) applyPayloadNow(o.id, o.p);
+    }
+    // auto = true: justo al abrir la app, el cambio se carga solo (con el aviso "Rutina actualizada").
+    // auto = false: la app ya llevaba rato abierta; sale el botón "¿Aplicar ahora?" para no cambiarle la pantalla de golpe.
+    function refreshInBackground(id, currentPayload, later) {
       fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
         .then(function(j) {
           if (!j || !j.ok || !j.p || j.p === currentPayload) return;
-          var st = decodePayload('q', j.p);
-          if (!st) return;
-          // Recordar qué pantallas estaban abiertas para reabrirlas tras actualizar
-          var openIds = [];
-          document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
-          var scrollY = window.scrollY || 0;
-          try {
-            renderAthleteApp(st);
-            saveAthletePayload({ k: 'q', v: j.p, id: id });
-            openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
-            window.scrollTo(0, scrollY);
-            showUpdatedNotice();
-          } catch (e) { console.error(e); }
+          if (!decodePayload('q', j.p)) return;
+          if (!later) { applyPayloadNow(id, j.p); return; }
+          try { localStorage.setItem(PENDING_UPD_KEY, JSON.stringify({ id: id, p: j.p })); } catch (e) {}
+          if (j.p !== UPD_DISMISSED) showUpdateButton();
         })
         .catch(function() { /* en silencio: se queda la copia guardada */ });
     }
+    // Con la app abierta: revisa cada 5 minutos y cada vez que el cliente vuelve a ella
+    function checkUpdatesWhileOpen() {
+      var av = document.getElementById('athlete_client_view');
+      if (!athleteRoutineId || isCoachView() || !av || av.style.display === 'none') return;
+      var cur = loadAthletePayload();
+      if (!cur || cur.id !== athleteRoutineId || !cur.v) return;
+      refreshInBackground(athleteRoutineId, cur.v, true);
+    }
+    setInterval(checkUpdatesWhileOpen, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
+
+    // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
+    var APP_VERSION = '2026-10-07-b';   // se cambia en cada entrega
+    var APP_PENDING_KEY = 'benessere_pending_app';
+    var APP_DISMISSED = '';
+    function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
+    function hideAppButton() { var el = document.getElementById('app_pill'); if (el) el.remove(); }
+    function showAppButton(ver) {
+      if (document.getElementById('app_pill')) return;
+      var el = document.createElement('div');
+      el.id = 'app_pill'; el.className = 'upd-pill'; el.style.top = '64px';
+      el.innerHTML = '<div style="flex:1;">⬇️ Hay una versión nueva de la app. ¿Actualizar ahora?</div>' +
+        '<button type="button" id="app_pill_ok" style="background:#2f69ff; color:#fff; border:none;">Actualizar</button>' +
+        '<button type="button" id="app_pill_later" style="background:#1c1c1c; color:#fff; border:1px solid #444;">Después</button>';
+      document.body.appendChild(el);
+      document.getElementById('app_pill_ok').onclick = function() { try { localStorage.removeItem(APP_PENDING_KEY); } catch (e) {} appReloadTo(ver); };
+      document.getElementById('app_pill_later').onclick = function() {
+        APP_DISMISSED = ver; hideAppButton();
+        try { localStorage.setItem(APP_PENDING_KEY, ver); } catch (e) {}   // se actualiza la próxima vez que abra la app
+      };
+    }
+    function checkAppVersion() {
+      if (!/^https?:$/.test(window.location.protocol)) return;
+      fetch(window.location.pathname + '?_chk=' + Date.now(), { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.text() : ''; })
+        .then(function(t) {
+          var m = String(t).match(/var APP_VERSION = '([^']+)'/);
+          if (m && m[1] !== APP_VERSION && m[1] !== APP_DISMISSED) showAppButton(m[1]);
+        })
+        .catch(function() { /* sin internet: se sigue con la versión que hay */ });
+    }
+    // Si la dejó "para después", al abrir la app se actualiza sola (una sola vez, sin ciclos)
+    (function() {
+      try {
+        var pv = localStorage.getItem(APP_PENDING_KEY);
+        if (pv) {
+          localStorage.removeItem(APP_PENDING_KEY);
+          if (pv !== APP_VERSION && /^https?:$/.test(window.location.protocol) && window.location.search.indexOf('_v=' + encodeURIComponent(pv)) < 0) appReloadTo(pv);
+        }
+      } catch (e) {}
+    })();
+    setInterval(checkAppVersion, 5 * 60 * 1000);
+    setTimeout(checkAppVersion, 4000);
+    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkAppVersion(); });
 
     // Enlace corto: pide la rutina a la hoja de Google usando el código del enlace
     function loadFromShare(v) {
@@ -4484,11 +5316,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       // Copia local: si este celular ya abrió esta misma rutina, se muestra al instante
       // y la hoja de Google se consulta en segundo plano para ver si hay una versión más nueva.
       var cached = loadAthletePayload();
+      var pendNote = false;
+      var pendP = takePending(id);   // actualización que el cliente dejó "para después"
+      if (pendP && decodePayload('q', pendP)) { cached = { k: 'q', v: pendP, id: id }; saveAthletePayload(cached); pendNote = true; }
       var cachedState = (cached && cached.id === id && cached.v) ? decodePayload(cached.k, cached.v) : null;
       if (cachedState) {
         var shown = false;
         try { renderAthleteApp(cachedState); shown = true; } catch (eC) { console.error(eC); }
-        if (shown) { refreshInBackground(id, cached.v); return; }
+        if (shown) { if (pendNote) setTimeout(showUpdatedNotice, 400); refreshInBackground(id, cached.v); return; }
       }
 
       showAthleteMessage('loading', '');
@@ -4559,10 +5394,15 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
       // 3) Atleta que vuelve a abrir la app sin enlace: recuperar su última rutina
       var saved = loadAthletePayload();
+      var pendNote2 = false;
+      if (saved && saved.id && saved.k === 'q') {
+        var pendP2 = takePending(saved.id);   // actualización que el cliente dejó "para después"
+        if (pendP2 && decodePayload('q', pendP2)) { saved = { k: 'q', v: pendP2, id: saved.id }; saveAthletePayload(saved); pendNote2 = true; }
+      }
       if (saved && saved.v) {
         var st2 = decodePayload(saved.k, saved.v);
         if (st2) {
-          try { if (saved.id && saved.k === 'q') athleteRoutineId = saved.id; renderAthleteApp(st2); if (saved.id && saved.k === 'q') refreshInBackground(saved.id, saved.v); return; } catch (e) { console.error(e); }
+          try { if (saved.id && saved.k === 'q') athleteRoutineId = saved.id; renderAthleteApp(st2); if (pendNote2) setTimeout(showUpdatedNotice, 400); if (saved.id && saved.k === 'q') refreshInBackground(saved.id, saved.v); return; } catch (e) { console.error(e); }
         }
       }
 
