@@ -5107,10 +5107,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
     // Pide una rutina a la hoja; si el primer intento falla o se cuelga, reintenta una vez en silencio
     function fetchRoutine(id) {
-      var url = SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id);
-      return fetchJson(url, { redirect: 'follow' }, 15000).catch(function() {
-        return fetchJson(url, { redirect: 'follow' }, 25000);
-      });
+      return fetchJsonHedged(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), 25000);   // si la hoja tarda en despertar, a los 6 s se lanza un segundo intento en paralelo
     }
 
     // ----- Modo coach: lista de clientes con PIN -----
@@ -5214,22 +5211,63 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     // Abre la rutina de un cliente en modo entrenamiento (con las marcas separadas y el PIN del coach)
+    // Copia de las rutinas que el coach ya abrió en este celular: se muestran al instante y la hoja se consulta en segundo plano
+    var COACH_RT_IDX = 'benessere_coach_rt_idx';
+    function coachCacheGet(id) { try { var o = JSON.parse(localStorage.getItem('benessere_coach_rt_' + id) || 'null'); return (o && o.p) ? o.p : null; } catch (e) { return null; } }
+    function coachCacheSet(id, p) {
+      try {
+        localStorage.setItem('benessere_coach_rt_' + id, JSON.stringify({ p: p, t: Date.now() }));
+        var idx = JSON.parse(localStorage.getItem(COACH_RT_IDX) || '[]').filter(function(x) { return x !== id; });
+        idx.push(id);
+        while (idx.length > 40) { localStorage.removeItem('benessere_coach_rt_' + idx.shift()); }
+        localStorage.setItem(COACH_RT_IDX, JSON.stringify(idx));
+      } catch (e) {}
+    }
+    // Muestra la rutina de un cliente en modo entrenamiento. Devuelve 'ok', 'bad' (datos dañados) o 'err'.
+    function coachShowRoutine(id, p) {
+      var state = decodePayload('q', p);
+      if (!state) return 'bad';
+      TRK_NS = 'c:' + normName(state.clientName) + '|';
+      athleteRoutineId = id;
+      try {
+        renderAthleteApp(state);   // no se guarda como "rutina de este celular"
+      } catch (e) { console.error(e); TRK_NS = ''; athleteRoutineId = ''; return 'err'; }
+      closeModal('modal_clients');
+      var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'block';
+      var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = 'none';
+      window.scrollTo(0, 0);
+      return 'ok';
+    }
+    // Cambia la rutina en pantalla por una versión más nueva sin perder las pantallas abiertas ni el scroll
+    function coachApplyPayload(id, p) {
+      var state = decodePayload('q', p); if (!state) return;
+      var openIds = [];
+      document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
+      var scrollY = window.scrollY || 0;
+      try { renderAthleteApp(state); } catch (e) { console.error(e); return; }
+      openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
+      window.scrollTo(0, scrollY);
+      showToastTop('🔄 La rutina se actualizó con los últimos cambios.');
+    }
     function openClientRoutine(id) {
       if (!COACH) return;
-      var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Abriendo rutina… puede tardar unos segundos';
+      var st = document.getElementById('cl_status');
+      var cached = coachCacheGet(id);
+      if (cached && coachShowRoutine(id, cached) === 'ok') {
+        fetchRoutine(id).then(function(j) {
+          if (!j || !j.ok || !j.p) return;
+          coachCacheSet(id, j.p);
+          if (j.p !== cached && athleteRoutineId === id && isCoachView()) coachApplyPayload(id, j.p);
+        }).catch(function() { /* en silencio: se queda la copia guardada */ });
+        return;
+      }
+      if (st) st.innerText = '⏳ Abriendo rutina… puede tardar unos segundos';
       fetchRoutine(id).then(function(j) {
-        if (!j || !j.ok || !j.p) { st.innerText = 'No se pudo abrir esa rutina.'; return; }
-        var state = decodePayload('q', j.p);
-        if (!state) { st.innerText = 'Los datos de esa rutina están dañados.'; return; }
-        TRK_NS = 'c:' + normName(state.clientName) + '|';
-        athleteRoutineId = id;
-        try {
-          renderAthleteApp(state);   // no se guarda como "rutina de este celular"
-        } catch (e) { console.error(e); TRK_NS = ''; athleteRoutineId = ''; st.innerText = 'Error al mostrar la rutina.'; return; }
-        closeModal('modal_clients');
-        var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'block';
-        var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = 'none';
-        window.scrollTo(0, 0);
+        if (!j || !j.ok || !j.p) { if (st) st.innerText = 'No se pudo abrir esa rutina.'; return; }
+        var r = coachShowRoutine(id, j.p);
+        if (r === 'bad') { if (st) st.innerText = 'Los datos de esa rutina están dañados.'; return; }
+        if (r === 'err') { if (st) st.innerText = 'Error al mostrar la rutina.'; return; }
+        coachCacheSet(id, j.p);
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
     function exitClientRoutine() {
@@ -5354,6 +5392,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
           var scrollY = window.scrollY || 0;
           closeModal('edx_modal');
+          coachCacheSet(athleteRoutineId, payloadText);
           renderAthleteApp(st);
           openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
           window.scrollTo(0, scrollY);
@@ -5704,7 +5743,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-g';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-h';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
