@@ -336,6 +336,9 @@
     .med-h { font-size: 0.8rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin: 18px 0 8px; }
     .med-chip-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin: 4px 0 8px; }
     .med-chip { flex: 0 0 auto; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+    .hist-sess > summary::-webkit-details-marker { display: none; }
+    .hist-sess .hist-arrow { color: var(--primary); font-size: 1rem; transition: transform .2s; transform: rotate(-90deg); }
+    .hist-sess[open] .hist-arrow { transform: rotate(0deg); }
     .med-chip.active { background: var(--primary); color: #000; border-color: var(--primary); }
     .med-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
     .med-sum { font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-top: 8px; }
@@ -3660,10 +3663,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '<div style="text-align:right;"><div style="font-size:1rem; font-weight:900; color:var(--accent);">' + escHtml(ex.l || '-') + '</div>' +
             '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         }).join('');
-        html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
-          '<div style="font-size:0.72rem; color:var(--primary); font-weight:800; margin-bottom:6px;">📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + '</div>' +
+        html += '<details class="hist-sess" style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
+          '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + '</span><span class="hist-arrow">▾</span></summary>' +
+          '<div style="margin-top:8px;">' +
           ((s.ex || []).length ? '<button type="button" onclick="mountWholeSession(\'' + escHtml(s.t) + '\')" style="width:100%; background:var(--primary); border:none; color:#000; font-size:0.8rem; font-weight:900; padding:10px; border-radius:8px; cursor:pointer; margin-bottom:4px;">⚡ Montar todo el día en las marcas</button>' : '') +
-          rows + '</div>';
+          rows + '</div></details>';
       });
       if (legacy.length) {
         html += '<div class="med-h">Marcas anteriores (una por ejercicio)</div>';
@@ -5393,7 +5397,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-a';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-b';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
