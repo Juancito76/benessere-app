@@ -702,7 +702,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           💧 Cumple con tu agua y descanso. <em>¡Juntos somos más fuertes!</em>
         </div>
         <div id="congrats_week"></div>
-        <button class="btn-action-primary" style="margin-bottom:8px;" onclick="closeModal('modal_congrats')">Aceptar y Continuar</button>
+        <div id="congrats_watch" style="display:none; text-align:left; margin-bottom:14px;">
+          <div style="font-size:0.72rem; color:var(--muted); margin-bottom:4px;">⌚ ¿Usas reloj? Anota lo que marcó (opcional):</div>
+          <div style="display:flex; gap:8px;">
+            <input type="number" inputmode="numeric" id="cg_cal" placeholder="Calorías del reloj" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">
+            <input type="number" inputmode="numeric" id="cg_hr" placeholder="Pulso promedio" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">
+          </div>
+        </div>
+        <button class="btn-action-primary" style="margin-bottom:8px;" onclick="congratsAccept()">Aceptar y Continuar</button>
         <button class="btn-action-wa" id="ath_congratsWaBtn" onclick="sendWhatsAppFromCongrats()">📲 Enviar Reporte al Coach</button>
       </div>
     </div>
@@ -3557,6 +3564,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       boxes.forEach(function(b) { if (readBoxSets(b).counted) ok = true; });
       if (!ok) return alert('Anota al menos un peso o repetición hoy para guardar.');
 
+      congratsCommit();   // si quedó una sesión anterior sin enviar, se envía primero
       var now = new Date();
       var dateFormatted = now.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' });
       var timeFormatted = now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
@@ -3589,7 +3597,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         if (wkw) { if (wkw.c) newSess.wc = wkw.c; if (wkw.h) newSess.hr = wkw.h; }
         if (COACH) newSess.o = COACH.name;
         addSession(newSess);
-        pushSession(newSess);   // se sube a la hoja para que el cliente (y su coach) lo vean en cualquier celular
+        CONGRATS_PENDING = newSess;   // se sube a la hoja al cerrar la ventana final, con lo que anote del reloj (si no, la sincronización lo sube después)
       }
       loadTracker();
       autoPrefillDay(dayId);   // el día queda cargado con lo último de cada ejercicio, listo para la próxima vez
@@ -3597,6 +3605,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       lastSavedSess = sessEx.length ? newSess : null;
       var cw = document.getElementById('congrats_week');
       if (cw) { try { cw.innerHTML = newSess ? wkWeekSummaryHtml(newSess.dur || 0, sessKcal(newSess)) : ''; } catch (e) { cw.innerHTML = ''; } }
+      var cgBox = document.getElementById('congrats_watch'), cgC = document.getElementById('cg_cal'), cgH = document.getElementById('cg_hr');
+      if (cgBox) cgBox.style.display = newSess ? 'block' : 'none';
+      if (cgC) cgC.value = (newSess && newSess.wc) ? newSess.wc : '';
+      if (cgH) cgH.value = (newSess && newSess.hr) ? newSess.hr : '';
       openModal('modal_congrats');
     }
 
@@ -3740,7 +3752,24 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       }
     }
 
+    // Ventana final: toma lo que el cliente anotó de su reloj, lo agrega a la sesión guardada y la sube a la hoja
+    var CONGRATS_PENDING = null;
+    function congratsCommit() {
+      var s = CONGRATS_PENDING; if (!s) return;
+      CONGRATS_PENDING = null;
+      var c = parseInt((document.getElementById('cg_cal') || {}).value, 10), h = parseInt((document.getElementById('cg_hr') || {}).value, 10);
+      if (c > 0 && c < 5000) s.wc = c; else delete s.wc;
+      if (h > 30 && h < 250) s.hr = h; else delete s.hr;
+      try {
+        var all = loadSessions();
+        for (var i = 0; i < all.length; i++) { if (all[i].t === s.t) { if (s.wc) all[i].wc = s.wc; else delete all[i].wc; if (s.hr) all[i].hr = s.hr; else delete all[i].hr; } }
+        localStorage.setItem(sessKey(), JSON.stringify(all));
+      } catch (e) {}
+      pushSession(s);   // se sube a la hoja para que el cliente (y su coach) lo vean en cualquier celular
+    }
+    function congratsAccept() { congratsCommit(); closeModal('modal_congrats'); }
     function sendWhatsAppFromCongrats() {
+      congratsCommit();
       closeModal('modal_congrats');
       if (lastSavedSess) {   // los campos ya se limpiaron al guardar: el reporte sale de lo que se acaba de guardar
         var s = lastSavedSess, cName = athleteActiveState ? athleteActiveState.clientName : 'Atleta';
@@ -5397,7 +5426,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
