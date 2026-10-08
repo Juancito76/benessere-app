@@ -3600,6 +3600,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var nmT = localStorage.getItem(tk('wknm_' + dayId));
         if (nmT) {   // este entreno ya estaba registrado "sin marcas": ahora lo reemplaza esta sesión con marcas
           newSess.sup = nmT;
+          if (!newSess.dur) { var nmS = loadSessions().filter(function(x) { return x.t === nmT; })[0]; if (nmS && nmS.dur) { newSess.dur = nmS.dur; newSess.kc = nmS.kc; } }   // si el tiempo ya se había contestado
+          if (localStorage.getItem(tk('wksc_pend')) === nmT) { try { localStorage.removeItem(tk('wksc_pend')); } catch (e) {} closeModal('wk_sc_modal'); }
           if (NM_PENDING && NM_PENDING.t === nmT) NM_PENDING = null;   // aún no se había enviado: ya no hace falta
           try { localStorage.removeItem(tk('wknm_' + dayId)); } catch (e) {}
         }
@@ -3690,7 +3692,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         }).join('');
         html += '<details class="hist-sess" style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
-          '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + ((s.ex || []).length ? '' : ' · sin marcas') + '</span><span class="hist-arrow">▾</span></summary>' +
+          '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + ((s.ex || []).length ? '' : ' · sin marcas') + ((s.sc && !s.dur) ? ' · sin cerrar' : '') + '</span><span class="hist-arrow">▾</span></summary>' +
           '<div style="margin-top:8px;">' +
           ((s.ex || []).length ? '' : '<div style="font-size:0.8rem; color:var(--muted); padding:4px 0;">Entreno registrado con el cronómetro, sin marcas anotadas.</div>') +
           ((s.ex || []).length ? '<button type="button" onclick="mountWholeSession(\'' + escHtml(s.t) + '\')" style="width:100%; background:var(--primary); border:none; color:#000; font-size:0.8rem; font-weight:900; padding:10px; border-radius:8px; cursor:pointer; margin-bottom:4px;">⚡ Montar todo el día en las marcas</button>' : '') +
@@ -4243,7 +4245,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       tmrWakeOn();
       WKB.hidden = false; wkBubbleUpdate();
     }
-    function wkTick() { if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); } wkBubbleUpdate(); }
+    function wkTick() { if (WK.start && Date.now() - WK.start > WK_MAX) { wkAutoClose(WK.dayId, WK.start); return; } if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); } wkBubbleUpdate(); }
     function wkPaint(dayId) {
       var t = document.getElementById('wk_time_' + dayId), b = document.getElementById('wk_btn_' + dayId), l = document.getElementById('wk_lbl_' + dayId);
       if (!t || !b) return;
@@ -4276,6 +4278,52 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       } catch (e) {}
     }
     function wkNagStart(dayId) { closeModal('wk_nag_modal'); wkStart(dayId); }
+
+    // Entreno que el cliente dejó sin cerrar: a las 3 h se cierra solo. El día cuenta como entrenado ("sin cerrar"), sin tiempo ni calorías inventados;
+    // se le pregunta cuánto duró y, si contesta, se guarda con ese tiempo.
+    var WK_MAX = 3 * 3600 * 1000;
+    function wkAutoClose(dayId, startTs) {
+      if (WK.tick) { clearInterval(WK.tick); WK.tick = null; }
+      WK.start = 0; WK.dayId = '';
+      try { localStorage.removeItem(tk(WK_KEY)); } catch (e) {}
+      try { wkPaint(dayId); wkBubbleUpdate(); if (!CT.active && !RT.active) tmrWakeOff(); } catch (e) {}
+      var st = athleteActiveState; if (!st) return;
+      var d0 = new Date(startTs), title = '';
+      (st.routineDays || []).forEach(function(x) { if (x.id === dayId) title = x.title || ''; });
+      var hd = d0.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + d0.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+      var sess = { d: isoOfDate(d0), t: new Date().toISOString(), hd: hd, day: title, ex: [], nm: 1, sc: 1 };
+      if (COACH) sess.o = COACH.name;
+      addSession(sess);
+      try { localStorage.setItem(tk('wknm_' + dayId), sess.t); localStorage.setItem(tk('wksc_pend'), sess.t); } catch (e) {}
+      wkScAsk(sess.t);
+    }
+    function wkScAsk(t) {
+      var sess = loadSessions().filter(function(x) { return x.t === t; })[0];
+      if (!sess || sess.dur) { wkScFinish(t, 0); return; }
+      var m = document.getElementById('wk_sc_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'wk_sc_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100006'; document.body.appendChild(m); }
+      m.innerHTML = '<div class="modal-inner congrats-box">' +
+        '<div style="font-size:2.2rem; margin-bottom:6px;">⏱</div>' +
+        '<div style="font-size:1.05rem; color:var(--primary); font-weight:900; margin-bottom:8px;">Tu entreno quedó sin cerrar</div>' +
+        '<div style="font-size:0.85rem; color:#f0f0f0; line-height:1.45; margin-bottom:12px;">Tu entreno del ' + escHtml(fmtDate(sess.d)) + (sess.day ? ' (' + escHtml(sess.day) + ')' : '') + ' ya quedó registrado. ¿Cuántos minutos duró? Así guardamos tu tiempo y tus calorías estimadas.</div>' +
+        '<input type="number" inputmode="numeric" id="wksc_min" placeholder="Minutos (ej. 60)" style="width:100%; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:12px; font-size:1rem; margin-bottom:12px; box-sizing:border-box;">' +
+        '<button type="button" class="btn-action-primary" onclick="wkScSave(\'' + t + '\')">Guardar</button>' +
+        '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.78rem; margin-top:12px; cursor:pointer; text-decoration:underline;" onclick="wkScFinish(\'' + t + '\', 0)">No lo sé</button></div>';
+      m.classList.add('active');
+    }
+    function wkScSave(t) {
+      var inp = document.getElementById('wksc_min'), mins = parseInt(inp && inp.value, 10);
+      if (!(mins >= 5 && mins <= 240)) { if (inp) inp.style.borderColor = '#ff453a'; return; }
+      wkScFinish(t, mins * 60);
+    }
+    function wkScFinish(t, secs) {
+      var all = loadSessions(), sess = null;
+      all.forEach(function(x) { if (x.t === t) { if (secs > 0) { x.dur = secs; x.kc = kcalEstimate(secs); } sess = x; } });
+      try { localStorage.setItem(sessKey(), JSON.stringify(all)); localStorage.removeItem(tk('wksc_pend')); } catch (e) {}
+      closeModal('wk_sc_modal');
+      if (sess) pushSession(sess);
+      wkWelcomeShow();
+    }
 
     // Si el cliente entrena con el cronómetro pero no anota marcas, el día igual queda registrado (mínimo 10 min).
     // Si después guarda las marcas, esa sesión reemplaza a esta (sup) para no contar el entreno dos veces.
@@ -4319,14 +4367,19 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     // Si el cliente cierra o recarga la página con el entreno en marcha, el cronómetro sigue donde iba
     function wkRestore() {
+      var closedStale = false;
       try {
         var a = JSON.parse(localStorage.getItem(tk(WK_KEY)) || 'null');
-        if (a && a.d && a.s && document.getElementById('wk_time_' + a.d) && (Date.now() - a.s) < 6 * 3600 * 1000) {
-          WK.dayId = a.d; WK.start = a.s;
-          if (WK.tick) clearInterval(WK.tick);
-          WK.tick = setInterval(wkTick, 1000);
-          wkBubbleUpdate();
+        if (a && a.d && a.s && document.getElementById('wk_time_' + a.d)) {
+          if (Date.now() - a.s >= WK_MAX) { closedStale = true; wkAutoClose(a.d, a.s); }   // se le quedó abierto: el día cuenta, sin inventar el tiempo
+          else {
+            WK.dayId = a.d; WK.start = a.s;
+            if (WK.tick) clearInterval(WK.tick);
+            WK.tick = setInterval(wkTick, 1000);
+            wkBubbleUpdate();
+          }
         }
+        if (!closedStale) { var pend = localStorage.getItem(tk('wksc_pend')); if (pend) wkScAsk(pend); }   // quedó una pregunta de duración sin contestar
       } catch (e) {}
       ((athleteActiveState && athleteActiveState.routineDays) || []).forEach(function(d) { wkPaint(d.id); });
     }
@@ -4619,6 +4672,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     function wkWelcomeShow() {
       if (WKW.shown || !athleteActiveState || isCoachView() || WK.start) return;
+      var scm = document.getElementById('wk_sc_modal'); if (scm && scm.classList.contains('active')) return;   // primero contesta cuánto duró su entreno anterior
       var av = document.getElementById('athlete_client_view');
       if (!av || av.style.display === 'none') return;
       var idx = wkNextDayIndex();
@@ -4702,7 +4756,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var n = (x.ex || []).length, kc = sessKcal(x);
         h += '<div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); font-size:0.8rem;">' +
           '<span>' + fmtDate(sessDateIso(x)) + (x.day ? ' · ' + escHtml(x.day) : '') + '</span>' +
-          '<span style="text-align:right;">' + (x.dur ? '⏱ ' + wkHM(x.dur) : '') + (kc ? ' · ~' + kc + ' kcal' : '') + ' · ' + (n ? '<span style="color:var(--primary);">' + n + ' ejerc.</span>' : '<span style="color:#ffb703;">sin marcas</span>') + '</span></div>';
+          '<span style="text-align:right;">' + (x.dur ? '⏱ ' + wkHM(x.dur) : '') + (kc ? ' · ~' + kc + ' kcal' : '') + ' · ' + (n ? '<span style="color:var(--primary);">' + n + ' ejerc.</span>' : '<span style="color:#ffb703;">sin marcas' + ((x.sc && !x.dur) ? ' · sin cerrar' : '') + '</span>') + '</span></div>';
       });
       // metas diarias (últimos 7 días)
       var gl = '', dt = new Date(today + 'T12:00:00');
@@ -5650,7 +5704,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-f';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-g';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
