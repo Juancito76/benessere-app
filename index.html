@@ -3035,9 +3035,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 '<thead><tr><th>Métrica</th><th>Objetivo</th><th>Alcanzado</th></tr></thead>' +
                 '<tbody>' +
                   '<tr><td>🎯 Calorías</td><td>' + escHtml(d.habits.kcal || '-') + '</td><td><input type="text" id="alc_kcal_' + d.id + '" oninput="saveTracker()"></td></tr>' +
-                  '<tr><td>💧 Agua</td><td>' + escHtml(d.habits.agua || '-') + '</td><td><input type="text" id="alc_agua_' + d.id + '" oninput="saveTracker()"></td></tr>' +
-                  '<tr><td>😴 Sueño</td><td>' + escHtml(d.habits.sueno || '-') + '</td><td><input type="text" id="alc_sueno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
-                  '<tr><td>👟 Pasos</td><td>' + escHtml(d.habits.pasos || '-') + '</td><td><input type="text" id="alc_pasos_' + d.id + '" oninput="saveTracker()"></td></tr>' +
+                  '<tr><td>💧 Agua</td><td>' + escHtml(d.habits.agua || '-') + '</td><td><input type="text" id="alc_agua_' + d.id + '" oninput="saveTracker(); alcTouch(this)" onchange="alcDone(this)"></td></tr>' +
+                  '<tr><td>😴 Sueño</td><td>' + escHtml(d.habits.sueno || '-') + '</td><td><input type="text" id="alc_sueno_' + d.id + '" oninput="saveTracker(); alcTouch(this)" onchange="alcDone(this)"></td></tr>' +
+                  '<tr><td>👟 Pasos</td><td>' + escHtml(d.habits.pasos || '-') + '</td><td><input type="text" id="alc_pasos_' + d.id + '" oninput="saveTracker(); alcTouch(this)" onchange="alcDone(this)"></td></tr>' +
                   '<tr><td>🏋️ Entrenamiento</td><td>' + escHtml(d.habits.entreno || '-') + '</td><td><input type="text" id="alc_entreno_' + d.id + '" oninput="saveTracker()"></td></tr>' +
                 '</tbody>' +
               '</table>' +
@@ -4388,12 +4388,70 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       return { from: isoOfDate(a), to: isoOfDate(b) };
     }
     function weekStats(off) {
-      var r = weekRange(off), days = {}, secs = 0, kc = 0;
+      var r = weekRange(off), days = {}, secs = 0, kc = 0, sk = 0;
       loadSessions().forEach(function(s) {
         var d = sessDateIso(s); if (!d || d < r.from || d > r.to) return;
         days[d] = true; secs += parseInt(s.dur, 10) || 0; kc += sessKcal(s);
       });
-      return { days: Object.keys(days).length, secs: secs, kc: kc };
+      var dt = new Date(r.from + 'T12:00:00');
+      for (var i = 0; i < 7; i++) { sk += dailyStepsKcal(dailyFor(isoOfDate(dt))); dt.setDate(dt.getDate() + 1); }
+      return { days: Object.keys(days).length, secs: secs, kc: kc, sk: sk, tk: kc + sk };   // kc = entrenos, sk = pasos, tk = total
+    }
+
+    // ----- Metas diarias (pasos, agua, sueño): se felicita solo si las cumple y los pasos suman calorías extra -----
+    // Lo que el cliente anota en "Objetivos del Día" se guarda por fecha (solo lo que escribió ese día), para no contar valores viejos.
+    function parseSteps(t) {
+      var x = String(t == null ? '' : t).trim().toLowerCase();
+      if (/^\d+(?:[.,]\d+)?\s*k$/.test(x)) return Math.round(parseFloat(x.replace(',', '.')) * 1000);
+      if (/^\d{1,3}(?:[.,\s]\d{3})+$/.test(x)) return parseInt(x.replace(/[.,\s]/g, ''), 10);
+      var n = parseNum(x); return n === null ? null : Math.round(n);
+    }
+    function stepsKcal(n) {   // caminata: ~0.5 kcal por kg y por km, con el largo de paso según la estatura
+      var b = bodyData(), km = (n || 0) * (b.h / 100 * 0.415) / 1000;
+      return Math.max(0, Math.round(0.5 * b.w * km));
+    }
+    function dailyKey(date) { return tk('daily_' + date); }
+    function dailyFor(date) { try { var o = JSON.parse(localStorage.getItem(dailyKey(date)) || 'null'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+    function dailyStepsKcal(rec) { return (rec && rec.pasos && rec.pasos.v > 0) ? stepsKcal(rec.pasos.v) : 0; }
+    function alcParts(inp) { var m = /^alc_([a-z]+)_(.+)$/.exec(inp.id || ''); return m ? { f: m[1], day: m[2] } : null; }
+    function alcTarget(f, dayId) {
+      var d = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(function(x) { return x.id === dayId; })[0];
+      var raw = d && d.habits ? d.habits[f] : '';
+      var n = f === 'pasos' ? parseSteps(raw) : parseNum(raw);
+      return n > 0 ? n : null;
+    }
+    function alcTouch(inp) {
+      try {
+        var pt = alcParts(inp); if (!pt) return;
+        var today = todayIso(), rec = dailyFor(today);
+        var v = pt.f === 'pasos' ? parseSteps(inp.value) : parseNum(inp.value);
+        if (v > 0) rec[pt.f] = { v: v, t: alcTarget(pt.f, pt.day) }; else delete rec[pt.f];
+        localStorage.setItem(dailyKey(today), JSON.stringify(rec));
+      } catch (e) {}
+    }
+    function goalMet(rec, f) { var g = rec && rec[f]; return !!(g && g.v > 0 && g.t > 0 && g.v >= g.t); }
+    var GOAL_MSG = { pasos: '👟 ¡Meta de pasos cumplida!', agua: '💧 ¡Meta de agua cumplida! Excelente hidratación.', sueno: '😴 ¡Meta de sueño cumplida! Así se recupera el cuerpo.' };
+    function alcDone(inp) {   // al terminar de escribir: felicita solo si cumplió la meta (una vez por meta y por día)
+      try {
+        var pt = alcParts(inp); if (!pt || !GOAL_MSG[pt.f]) return;
+        alcTouch(inp);
+        var today = todayIso(), rec = dailyFor(today), flag = tk('alcc_' + today + '_' + pt.f);
+        if (!goalMet(rec, pt.f) || localStorage.getItem(flag)) return;
+        localStorage.setItem(flag, '1');
+        var msg = GOAL_MSG[pt.f];
+        if (pt.f === 'pasos') msg += ' Sumas ~' + stepsKcal(rec.pasos.v) + ' kcal extra de actividad diaria.';
+        wkToast(msg);
+      } catch (e) {}
+    }
+    function wkToast(msg) {
+      var t = document.getElementById('wk_toast');
+      if (!t) {
+        t = document.createElement('div'); t.id = 'wk_toast';
+        t.style.cssText = 'position:fixed; left:12px; right:12px; bottom:22px; z-index:100010; background:#06d6a0; color:#000; font-weight:800; font-size:0.9rem; text-align:center; padding:14px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.5); display:none;';
+        document.body.appendChild(t);
+      }
+      t.innerText = msg; t.style.display = 'block';
+      clearTimeout(t._h); t._h = setTimeout(function() { t.style.display = 'none'; }, 5000);
     }
     function wkWeekGoal() {
       var n = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(function(d) { return !d.rest; }).length;
@@ -4433,11 +4491,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (n === 0) {
         head = '¡' + (fem ? 'Bienvenida' : 'Bienvenido') + ' al día 1 de entreno de la semana!';
         if (!loadSessions().length) line = 'Hoy arranca tu rutina. ¡Vamos con todo!';
-        else if (prev.days > 0) line = 'La semana pasada lograste <b>' + prev.days + (prev.days === 1 ? ' día' : ' días') + '</b> de entreno' + (prev.kc > 0 ? ' y unas <b>~' + prev.kc + ' kcal</b>' : '') + '. ¡Vamos por una semana todavía mejor! 💪';
+        else if (prev.days > 0) line = 'La semana pasada lograste <b>' + prev.days + (prev.days === 1 ? ' día' : ' días') + '</b> de entreno' + (prev.tk > 0 ? ' y unas <b>~' + prev.tk + ' kcal</b>' : '') + '. ¡Vamos por una semana todavía mejor! 💪';
         else line = 'La semana pasada no te tuvimos por aquí, pero hoy arrancamos de nuevo. ¡Aquí estamos contigo! 💪';
       } else {
         head = n + 1 <= goal ? '🔥 ¡Vas por tu día ' + (n + 1) + ' de entreno esta semana!' : '🔥 ¡Meta de días cumplida, hoy sumas un día extra!';
-        line = 'Felicidades: ya llevas <b>' + n + ' de ' + goal + '</b> días' + (cur.secs > 0 ? ', <b>' + wkHM(cur.secs) + '</b>' : '') + (cur.kc > 0 ? ' y <b>~' + cur.kc + ' de ' + wkKcalGoal() + ' kcal</b> de tu meta semanal' : '') + '. ¡Sigue así!';
+        line = 'Felicidades: ya llevas <b>' + n + ' de ' + goal + '</b> días' + (cur.secs > 0 ? ', <b>' + wkHM(cur.secs) + '</b>' : '') + (cur.tk > 0 ? ' y <b>~' + cur.tk + ' de ' + wkKcalGoal() + ' kcal</b> de tu meta semanal' : '') + '. ¡Sigue así!';
       }
       var chips = '', trainIdx = [];
       days.forEach(function(d, i) { if (!d.rest) trainIdx.push(i); });
@@ -4485,11 +4543,19 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var dow = (new Date().getDay() + 6) % 7, daysLeftWeek = 6 - dow;   // días que quedan de la semana después de hoy
       var row = function(l, v) { return '<div style="display:flex; justify-content:space-between; gap:10px; font-size:0.84rem; padding:3px 0;"><span style="color:var(--muted);">' + l + '</span><b>' + v + '</b></div>'; };
       var h = '<div style="background:#101010; border:1px solid #2c2c2c; border-radius:10px; padding:10px 12px; margin-bottom:14px; text-align:left;">';
-      if (todaySecs > 0) h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin-bottom:2px;">HOY</div>' + row('⏱ Tiempo', wkHM(todaySecs)) + row('🔥 Calorías estimadas', '~' + todayKc + ' kcal');
-      h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:' + (todaySecs > 0 ? '8px' : '0') + ' 0 2px;">ESTA SEMANA</div>' +
+      var rec = dailyFor(todayIso()), stK = dailyStepsKcal(rec), metL = ['pasos', 'agua', 'sueno'].filter(function(f) { return goalMet(rec, f); });
+      var hasToday = todaySecs > 0 || stK > 0 || metL.length;
+      if (hasToday) {
+        h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin-bottom:2px;">HOY</div>';
+        if (todaySecs > 0) h += row('⏱ Tiempo', wkHM(todaySecs)) + row('🔥 Calorías del entreno', '~' + todayKc + ' kcal');
+        if (stK > 0) h += row('👟 Pasos (' + rec.pasos.v + ')', '~' + stK + ' kcal extra');
+        metL.forEach(function(f) { h += '<div style="font-size:0.82rem; font-weight:800; color:var(--primary); padding:3px 0;">' + GOAL_MSG[f] + '</div>'; });
+      }
+      h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:' + (hasToday ? '8px' : '0') + ' 0 2px;">ESTA SEMANA</div>' +
         row('📅 Días de entreno', cur.days + ' de ' + goal) +
         row('⏱ Tiempo acumulado', cur.secs > 0 ? wkHM(cur.secs) : '-') +
-        row('🔥 Calorías estimadas', '~' + cur.kc + ' de ' + kGoal + ' kcal');
+        row('🔥 Calorías estimadas', '~' + cur.tk + ' de ' + kGoal + ' kcal') +
+        (cur.sk > 0 ? '<div style="font-size:0.72rem; color:var(--muted); text-align:right;">incluye ~' + cur.sk + ' kcal por pasos</div>' : '');
       h += '<div style="font-size:0.84rem; font-weight:800; margin-top:8px; color:' + (left ? '#fff' : 'var(--primary)') + ';">' +
         (left ? '🎯 Te ' + (left === 1 ? 'falta 1 día' : 'faltan ' + left + ' días') + ' para cumplir tu meta de la semana' + (daysLeftWeek > 0 ? ' (quedan ' + daysLeftWeek + (daysLeftWeek === 1 ? ' día' : ' días') + ' de la semana)' : '') + '.'
               : '🏆 ¡Cumpliste tu meta de días de esta semana!') + '</div></div>';
@@ -5426,7 +5492,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
