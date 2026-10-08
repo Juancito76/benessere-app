@@ -2897,7 +2897,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var capsuleHtml = '<button class="capsule-btn btn-coach" onclick="openModal(\'ath_modal_coach\')">Nota del Coach</button>';
       state.routineDays.forEach(function(d, i) {
         var bgCol = dayColors[i % dayColors.length];
-        capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openModal(\'' + d.id + '\')">' + (d.rest ? '🌙 Día ' : 'Día ') + (i + 1) + '</button>';
+        capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openDay(\'' + d.id + '\')">' + (d.rest ? '🌙 Día ' : 'Día ') + (i + 1) + '</button>';
       });
       capsuleHtml += '<button class="capsule-btn btn-historial" onclick="openHistorialModal()">📋 Historial de Cargas</button>';
       if (isCoachView()) capsuleHtml += '<button class="capsule-btn" style="background:#ffb703; color:#000;" onclick="openCoachSummary()">📊 Resumen del cliente</button>';
@@ -4253,6 +4253,30 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       else if (done > 0) { t.innerText = wkFmt(done); b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total del entreno ✔'; }
       else { t.innerText = '0:00'; b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total de entreno'; }
     }
+    // Al abrir un día de entreno sin el cronómetro en marcha, se le recuerda iniciarlo (también en modo coach). Una vez por día y por apertura de la app.
+    var WK_NAG = {};
+    function openDay(dayId) {
+      openModal(dayId);
+      try {
+        var d = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(function(x) { return x.id === dayId; })[0];
+        if (!d || d.rest || WK.start || WK_NAG[dayId]) return;
+        if (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0) return;   // ya lo terminó y falta guardar
+        var today = todayIso(), dt = normName(d.title);
+        if (loadWorkouts().some(function(x) { return sessDateIso(x) === today && normName(x.day) === dt; })) return;   // este día ya quedó registrado hoy
+        WK_NAG[dayId] = true;
+        var m = document.getElementById('wk_nag_modal');
+        if (!m) { m = document.createElement('div'); m.id = 'wk_nag_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100005'; document.body.appendChild(m); }
+        m.innerHTML = '<div class="modal-inner congrats-box">' +
+          '<div style="font-size:2.2rem; margin-bottom:6px;">⏱</div>' +
+          '<div style="font-size:1.05rem; color:var(--primary); font-weight:900; margin-bottom:8px;">¡Aún no has iniciado tu entreno!</div>' +
+          '<div style="font-size:0.85rem; color:#f0f0f0; line-height:1.45; margin-bottom:16px;">Inícialo para que queden registrados tu tiempo y tus calorías estimadas.</div>' +
+          '<button type="button" class="wk-btn" style="width:100%; padding:15px; font-size:1rem;" onclick="wkNagStart(\'' + dayId + '\')">▶ Iniciar entreno</button>' +
+          '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.78rem; margin-top:12px; cursor:pointer; text-decoration:underline;" onclick="closeModal(\'wk_nag_modal\')">Más tarde</button></div>';
+        m.classList.add('active');
+      } catch (e) {}
+    }
+    function wkNagStart(dayId) { closeModal('wk_nag_modal'); wkStart(dayId); }
+
     // Si el cliente entrena con el cronómetro pero no anota marcas, el día igual queda registrado (mínimo 10 min).
     // Si después guarda las marcas, esa sesión reemplaza a esta (sup) para no contar el entreno dos veces.
     var NM_PENDING = null;
@@ -5626,7 +5650,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-e';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-f';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
