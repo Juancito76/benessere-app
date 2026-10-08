@@ -2900,6 +2900,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openModal(\'' + d.id + '\')">' + (d.rest ? '🌙 Día ' : 'Día ') + (i + 1) + '</button>';
       });
       capsuleHtml += '<button class="capsule-btn btn-historial" onclick="openHistorialModal()">📋 Historial de Cargas</button>';
+      if (isCoachView()) capsuleHtml += '<button class="capsule-btn" style="background:#ffb703; color:#000;" onclick="openCoachSummary()">📊 Resumen del cliente</button>';
       capsuleHtml += '<button class="capsule-btn btn-medidas" onclick="openModal(\'ath_modal_medidas\')">Ficha Antropométrica</button>';
       document.getElementById('ath_capsuleGroup').innerHTML = capsuleHtml;
 
@@ -3589,13 +3590,19 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       // Además de la última marca por ejercicio, se guarda la sesión completa con su fecha (cada guardado suma una nueva)
       var newSess = null;
       if (sessEx.length) {
-        if (WK.start && WK.dayId === dayId) wkEnd(dayId, true);   // si olvidó tocar "Final del entrenamiento", se cierra al guardar
+        if (WK.start && WK.dayId === dayId) wkEnd(dayId, true, true);   // si olvidó tocar "Final del entrenamiento", se cierra al guardar
         newSess = { d: todayIso(), t: now.toISOString(), hd: fullDateStr, day: dayEl.getAttribute('data-day-title') || '', ex: sessEx };
         var wkSecs = wkTakeDuration(dayId);
         if (wkSecs > 0) { newSess.dur = wkSecs; newSess.kc = kcalEstimate(wkSecs); }
         var wkw = wkTakeWatch(dayId);
         if (wkw) { if (wkw.c) newSess.wc = wkw.c; if (wkw.h) newSess.hr = wkw.h; }
         if (COACH) newSess.o = COACH.name;
+        var nmT = localStorage.getItem(tk('wknm_' + dayId));
+        if (nmT) {   // este entreno ya estaba registrado "sin marcas": ahora lo reemplaza esta sesión con marcas
+          newSess.sup = nmT;
+          if (NM_PENDING && NM_PENDING.t === nmT) NM_PENDING = null;   // aún no se había enviado: ya no hace falta
+          try { localStorage.removeItem(tk('wknm_' + dayId)); } catch (e) {}
+        }
         addSession(newSess);
         CONGRATS_PENDING = newSess;   // se sube a la hoja al cerrar la ventana final, con lo que anote del reloj (si no, la sincronización lo sube después)
       }
@@ -3616,6 +3623,13 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function sessKey() { return 'benessere_sess_' + String(athleteActiveState ? athleteActiveState.clientName : '').trim().toLowerCase().replace(/\s+/g, ' '); }
     function loadSessions() {
       try { var a = JSON.parse(localStorage.getItem(sessKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    }
+    // Los registros del historial pueden ser entrenos con marcas, entrenos sin marcas (nm) o metas diarias (k:'meta').
+    function isMetaSess(s) { return !!(s && s.k === 'meta'); }
+    function loadWorkouts() {   // solo entrenos; si un entreno con marcas reemplaza a uno "sin marcas" (sup), queda el de las marcas
+      var all = loadSessions(), sup = {};
+      all.forEach(function(x) { if (x && x.sup) sup[x.sup] = true; });
+      return all.filter(function(x) { return x && !isMetaSess(x) && !sup[x.t]; });
     }
     function addSession(sess) {
       var a = loadSessions();
@@ -3645,7 +3659,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function renderHistorial() {
       var container = document.getElementById('historialListContainer'), tabs = document.getElementById('historialTabs');
       if (!container || !tabs) return;
-      var sessions = loadSessions().slice().sort(function(a, b) { return a.t < b.t ? 1 : (a.t > b.t ? -1 : 0); });   // más reciente primero
+      var sessions = loadWorkouts().slice().sort(function(a, b) { return a.t < b.t ? 1 : (a.t > b.t ? -1 : 0); });   // más reciente primero
       var seenHd = {};
       sessions.forEach(function(s) { seenHd[s.hd] = true; });
       var legacy = [];
@@ -3676,8 +3690,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         }).join('');
         html += '<details class="hist-sess" style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
-          '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + '</span><span class="hist-arrow">▾</span></summary>' +
+          '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + ((s.ex || []).length ? '' : ' · sin marcas') + '</span><span class="hist-arrow">▾</span></summary>' +
           '<div style="margin-top:8px;">' +
+          ((s.ex || []).length ? '' : '<div style="font-size:0.8rem; color:var(--muted); padding:4px 0;">Entreno registrado con el cronómetro, sin marcas anotadas.</div>') +
           ((s.ex || []).length ? '<button type="button" onclick="mountWholeSession(\'' + escHtml(s.t) + '\')" style="width:100%; background:var(--primary); border:none; color:#000; font-size:0.8rem; font-weight:900; padding:10px; border-radius:8px; cursor:pointer; margin-bottom:4px;">⚡ Montar todo el día en las marcas</button>' : '') +
           rows + '</div></details>';
       });
@@ -4219,8 +4234,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         wkEnd(WK.dayId, true);
       }
       tmrAudio();
+      wkNmCommit(0, 0);   // si había un entreno anterior sin enviar, se envía antes de empezar otro
       WK.dayId = dayId; WK.start = Date.now();
-      try { localStorage.setItem(tk(WK_KEY), JSON.stringify({ d: dayId, s: WK.start })); localStorage.removeItem(tk('wkdur_' + dayId)); localStorage.removeItem(tk('wklast_' + dayId)); } catch (e) {}
+      try { localStorage.setItem(tk(WK_KEY), JSON.stringify({ d: dayId, s: WK.start })); localStorage.removeItem(tk('wknm_' + dayId)); localStorage.removeItem(tk('wkdur_' + dayId)); localStorage.removeItem(tk('wklast_' + dayId)); } catch (e) {}
       wkPaint(dayId);
       if (WK.tick) clearInterval(WK.tick);
       WK.tick = setInterval(wkTick, 1000);
@@ -4237,7 +4253,34 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       else if (done > 0) { t.innerText = wkFmt(done); b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total del entreno ✔'; }
       else { t.innerText = '0:00'; b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total de entreno'; }
     }
-    function wkEnd(dayId, silent) {
+    // Si el cliente entrena con el cronómetro pero no anota marcas, el día igual queda registrado (mínimo 10 min).
+    // Si después guarda las marcas, esa sesión reemplaza a esta (sup) para no contar el entreno dos veces.
+    var NM_PENDING = null;
+    function wkRecordNoMarks(dayId, secs, silent) {
+      if (secs < 600 || !athleteActiveState) return;
+      try {
+        var now = new Date(), dayEl = document.getElementById(dayId);
+        var hd = now.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+        var sess = { d: todayIso(), t: now.toISOString(), hd: hd, day: (dayEl && dayEl.getAttribute('data-day-title')) || '', ex: [], nm: 1, dur: secs, kc: kcalEstimate(secs) };
+        if (COACH) sess.o = COACH.name;
+        addSession(sess);
+        localStorage.setItem(tk('wknm_' + dayId), sess.t);
+        if (silent) pushSession(sess); else NM_PENDING = sess;   // si abrió la ventana final, se sube al cerrarla (con lo que anote del reloj)
+      } catch (e) {}
+    }
+    function wkNmCommit(c, h) {
+      var sess = NM_PENDING; if (!sess) return;
+      NM_PENDING = null;
+      if (c > 0 && c < 5000) sess.wc = c;
+      if (h > 30 && h < 250) sess.hr = h;
+      try {
+        var all = loadSessions();
+        for (var i = 0; i < all.length; i++) { if (all[i].t === sess.t) { if (sess.wc) all[i].wc = sess.wc; if (sess.hr) all[i].hr = sess.hr; } }
+        localStorage.setItem(sessKey(), JSON.stringify(all));
+      } catch (e) {}
+      pushSession(sess);
+    }
+    function wkEnd(dayId, silent, noSess) {
       if (!WK.start) return;
       var secs = Math.round((Date.now() - WK.start) / 1000);
       WK.start = 0; WK.dayId = '';
@@ -4247,6 +4290,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       wkBubbleUpdate();
       if (!CT.active && !RT.active) tmrWakeOff();
       tmrBeep(880, 300, 0); tmrBeep(1175, 600, 400); tmrVibrate([200, 80, 200]);
+      if (!noSess) wkRecordNoMarks(dayId, secs, silent);
       if (!silent) showWkEnd(dayId, secs);
     }
     // Si el cliente cierra o recarga la página con el entreno en marcha, el cronómetro sigue donde iba
@@ -4359,6 +4403,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var c = parseInt((document.getElementById('wke_cal') || {}).value, 10), h = parseInt((document.getElementById('wke_hr') || {}).value, 10);
       var o = {}; if (c > 0 && c < 5000) o.c = c; if (h > 30 && h < 250) o.h = h;
       try { if (o.c || o.h) localStorage.setItem(tk('wkwatch_' + dayId), JSON.stringify(o)); } catch (e) {}
+      wkNmCommit(o.c || 0, o.h || 0);
       closeModal('wk_end_modal');
     }
     function wkTakeWatch(dayId) {
@@ -4389,7 +4434,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     function weekStats(off) {
       var r = weekRange(off), days = {}, secs = 0, kc = 0, sk = 0;
-      loadSessions().forEach(function(s) {
+      loadWorkouts().forEach(function(s) {
         var d = sessDateIso(s); if (!d || d < r.from || d > r.to) return;
         days[d] = true; secs += parseInt(s.dur, 10) || 0; kc += sessKcal(s);
       });
@@ -4411,7 +4456,34 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       return Math.max(0, Math.round(0.5 * b.w * km));
     }
     function dailyKey(date) { return tk('daily_' + date); }
-    function dailyFor(date) { try { var o = JSON.parse(localStorage.getItem(dailyKey(date)) || 'null'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+    function dailyLocal(date) { try { var o = JSON.parse(localStorage.getItem(dailyKey(date)) || 'null'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+    function dailyFor(date) {   // lo anotado en este celular; si no hay, lo último que llegó de la hoja (otro celular o modo coach)
+      var o = dailyLocal(date);
+      if (o.pasos || o.agua || o.sueno) return o;
+      var best = null;
+      loadSessions().forEach(function(x) { if (isMetaSess(x) && x.d === date && x.g && (!best || x.t > best.t)) best = x; });
+      return best ? best.g : o;
+    }
+    // Las metas del día se envían a la hoja (una sola vez, 45 s después del último cambio o al salir de la app) para que el coach las vea
+    var META_TIMER = null;
+    function metaQueue() { clearTimeout(META_TIMER); META_TIMER = setTimeout(metaPush, 45000); }
+    function metaPush() {
+      META_TIMER = null;
+      try {
+        if (!athleteRoutineId || !athleteActiveState) return;
+        var today = todayIso(), rec = dailyLocal(today);
+        if (!(rec.pasos || rec.agua || rec.sueno)) return;
+        var sig = JSON.stringify(rec); if (localStorage.getItem(tk('metasig_' + today)) === sig) return;
+        localStorage.setItem(tk('metasig_' + today), sig);
+        var s = { d: today, t: new Date().toISOString(), k: 'meta', ex: [], g: rec };
+        if (COACH) s.o = COACH.name;
+        var a = loadSessions().filter(function(x) { return !(isMetaSess(x) && x.d === today); });   // en el celular solo queda el último del día
+        a.push(s);
+        try { localStorage.setItem(sessKey(), JSON.stringify(a.slice(-300))); } catch (e) {}
+        pushSession(s);
+      } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden' && META_TIMER) { clearTimeout(META_TIMER); metaPush(); } });
     function dailyStepsKcal(rec) { return (rec && rec.pasos && rec.pasos.v > 0) ? stepsKcal(rec.pasos.v) : 0; }
     function alcParts(inp) { var m = /^alc_([a-z]+)_(.+)$/.exec(inp.id || ''); return m ? { f: m[1], day: m[2] } : null; }
     function alcTarget(f, dayId) {
@@ -4423,10 +4495,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function alcTouch(inp) {
       try {
         var pt = alcParts(inp); if (!pt) return;
-        var today = todayIso(), rec = dailyFor(today);
+        var today = todayIso(), rec = dailyLocal(today);
         var v = pt.f === 'pasos' ? parseSteps(inp.value) : parseNum(inp.value);
         if (v > 0) rec[pt.f] = { v: v, t: alcTarget(pt.f, pt.day) }; else delete rec[pt.f];
         localStorage.setItem(dailyKey(today), JSON.stringify(rec));
+        if (!isCoachView()) metaQueue();
       } catch (e) {}
     }
     function goalMet(rec, f) { var g = rec && rec[f]; return !!(g && g.v > 0 && g.t > 0 && g.v >= g.t); }
@@ -4435,7 +4508,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       try {
         var pt = alcParts(inp); if (!pt || !GOAL_MSG[pt.f]) return;
         alcTouch(inp);
-        var today = todayIso(), rec = dailyFor(today), flag = tk('alcc_' + today + '_' + pt.f);
+        var today = todayIso(), rec = dailyLocal(today), flag = tk('alcc_' + today + '_' + pt.f);
         if (!goalMet(rec, pt.f) || localStorage.getItem(flag)) return;
         localStorage.setItem(flag, '1');
         var msg = GOAL_MSG[pt.f];
@@ -4458,7 +4531,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       return Math.max(1, n);
     }
     function wkKcalGoal() {
-      var list = loadSessions().filter(function(s) { return sessKcal(s) > 0; }).sort(function(a, b) { return a.t < b.t ? 1 : -1; }).slice(0, 8);
+      var list = loadWorkouts().filter(function(s) { return sessKcal(s) > 0; }).sort(function(a, b) { return a.t < b.t ? 1 : -1; }).slice(0, 8);
       var avg = list.length ? list.reduce(function(t, s) { return t + sessKcal(s); }, 0) / list.length : kcalEstimate(3600);
       return Math.max(50, Math.round(avg * wkWeekGoal() / 50) * 50);
     }
@@ -4472,7 +4545,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var days = (athleteActiveState && athleteActiveState.routineDays) || [], first = -1, li = -1;
       days.forEach(function(d, i) { if (!d.rest && first < 0) first = i; });
       if (first < 0) return -1;
-      var sess = loadSessions().slice().sort(function(a, b) { return a.t < b.t ? -1 : 1; }), last = sess.length ? sess[sess.length - 1] : null;
+      var sess = loadWorkouts().slice().sort(function(a, b) { return a.t < b.t ? -1 : 1; }), last = sess.length ? sess[sess.length - 1] : null;
       if (!last || !last.day) return first;
       days.forEach(function(d, i) { if (normName(d.title) === normName(last.day)) li = i; });
       if (li < 0) return first;
@@ -4490,7 +4563,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var cur = weekStats(0), prev = weekStats(-1), goal = wkWeekGoal(), n = cur.days, head, line;
       if (n === 0) {
         head = '¡' + (fem ? 'Bienvenida' : 'Bienvenido') + ' al día 1 de entreno de la semana!';
-        if (!loadSessions().length) line = 'Hoy arranca tu rutina. ¡Vamos con todo!';
+        if (!loadWorkouts().length) line = 'Hoy arranca tu rutina. ¡Vamos con todo!';
         else if (prev.days > 0) line = 'La semana pasada lograste <b>' + prev.days + (prev.days === 1 ? ' día' : ' días') + '</b> de entreno' + (prev.tk > 0 ? ' y unas <b>~' + prev.tk + ' kcal</b>' : '') + '. ¡Vamos por una semana todavía mejor! 💪';
         else line = 'La semana pasada no te tuvimos por aquí, pero hoy arrancamos de nuevo. ¡Aquí estamos contigo! 💪';
       } else {
@@ -4527,7 +4600,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var idx = wkNextDayIndex();
       if (idx < 0) { WKW.shown = true; return; }
       var today = todayIso();
-      if (loadSessions().some(function(s) { return sessDateIso(s) === today; })) { WKW.shown = true; return; }   // hoy ya entrenó: no se le insiste
+      if (loadWorkouts().some(function(s) { return sessDateIso(s) === today; })) { WKW.shown = true; return; }   // hoy ya entrenó: no se le insiste
       WKW.shown = true; WKW.sel = idx;
       wkWelcomeRender();
       openModal('wk_welcome_modal');
@@ -4560,6 +4633,66 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         (left ? '🎯 Te ' + (left === 1 ? 'falta 1 día' : 'faltan ' + left + ' días') + ' para cumplir tu meta de la semana' + (daysLeftWeek > 0 ? ' (quedan ' + daysLeftWeek + (daysLeftWeek === 1 ? ' día' : ' días') + ' de la semana)' : '') + '.'
               : '🏆 ¡Cumpliste tu meta de días de esta semana!') + '</div></div>';
       return h;
+    }
+
+    // ----- Resumen del cliente (modo coach): lo que lleva, aunque no anote marcas -----
+    function coachSumEl() {
+      var m = document.getElementById('coach_sum_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'coach_sum_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100003'; document.body.appendChild(m); }
+      return m;
+    }
+    function openCoachSummary() { renderCoachSummary(); openModal('coach_sum_modal'); syncHistorial(); }
+    function coachSummaryRefresh() { var m = document.getElementById('coach_sum_modal'); if (m && m.classList.contains('active')) renderCoachSummary(); }
+    function renderCoachSummary() {
+      var st = athleteActiveState; if (!st) return;
+      var goal = wkWeekGoal(), kGoal = wkKcalGoal(), today = todayIso();
+      var work = loadWorkouts().slice().sort(function(a, b) { return a.t < b.t ? 1 : (a.t > b.t ? -1 : 0); });
+      var h = '<div class="modal-inner" style="max-width:560px;">' +
+        '<div style="font-size:1.05rem; font-weight:900; color:var(--primary);">📊 Resumen de ' + escHtml(st.clientName || 'cliente') + '</div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 10px;">Meta semanal: ' + goal + ' días de entreno · ~' + kGoal + ' kcal. Semana de lunes a domingo.</div>';
+      // último entreno y alertas
+      var last = work[0];
+      if (!last) h += '<div style="background:#2a1f12; border:1px solid #6b4a1e; border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:10px;">Todavía no tiene entrenos registrados.</div>';
+      else {
+        var ld = sessDateIso(last), dd = Math.round((new Date(today + 'T12:00:00') - new Date(ld + 'T12:00:00')) / 86400000);
+        var when = dd <= 0 ? 'hoy' : (dd === 1 ? 'ayer' : 'hace ' + dd + ' días');
+        h += '<div style="background:' + (dd >= 7 ? '#2a1f12' : '#102418') + '; border:1px solid ' + (dd >= 7 ? '#6b4a1e' : '#1f6b3b') + '; border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:10px;">' +
+          (dd >= 7 ? '⚠️ ' : '✅ ') + 'Último entreno: <b>' + when + '</b> (' + fmtDate(ld) + (last.day ? ' · ' + escHtml(last.day) : '') + ')</div>';
+      }
+      // semanas
+      h += '<table style="width:100%; border-collapse:collapse; font-size:0.8rem; margin-bottom:10px;"><thead><tr style="color:var(--muted); text-align:left;"><th style="padding:4px 2px;">Semana</th><th>Días</th><th>Tiempo</th><th>Kcal</th></tr></thead><tbody>';
+      [0, -1, -2, -3].forEach(function(off) {
+        var w = weekStats(off), r = weekRange(off), ok = w.days >= goal;
+        h += '<tr style="border-top:1px solid var(--border);"><td style="padding:6px 2px;">' + (off === 0 ? '<b>Esta semana</b>' : 'Del ' + fmtDateShort(r.from)) + '</td>' +
+          '<td style="color:' + (ok ? 'var(--primary)' : '#fff') + '; font-weight:800;">' + w.days + ' de ' + goal + (ok ? ' ✔' : '') + '</td>' +
+          '<td>' + (w.secs > 0 ? wkHM(w.secs) : '-') + '</td><td>' + (w.tk > 0 ? '~' + w.tk : '-') + (w.sk > 0 ? ' <span style="color:var(--muted);">(' + w.sk + ' pasos)</span>' : '') + '</td></tr>';
+      });
+      h += '</tbody></table>';
+      // entrenos sin marcas (últimas 4 semanas)
+      var from4 = weekRange(-3).from, recent = work.filter(function(x) { return sessDateIso(x) >= from4; }), nm = recent.filter(function(x) { return !(x.ex || []).length; }).length;
+      if (recent.length) h += '<div style="font-size:0.82rem; margin-bottom:10px; color:' + (nm ? '#ffb703' : 'var(--primary)') + ';">' + (nm ? '⚠️ ' + nm + ' de ' + recent.length + ' entrenos de las últimas 4 semanas quedaron sin marcas.' : '✅ Todos los entrenos de las últimas 4 semanas tienen marcas.') + '</div>';
+      // lista de entrenos
+      h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:6px 0 2px;">ÚLTIMOS ENTRENOS</div>';
+      if (!work.length) h += '<div style="font-size:0.8rem; color:var(--muted);">-</div>';
+      work.slice(0, 14).forEach(function(x) {
+        var n = (x.ex || []).length, kc = sessKcal(x);
+        h += '<div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); font-size:0.8rem;">' +
+          '<span>' + fmtDate(sessDateIso(x)) + (x.day ? ' · ' + escHtml(x.day) : '') + '</span>' +
+          '<span style="text-align:right;">' + (x.dur ? '⏱ ' + wkHM(x.dur) : '') + (kc ? ' · ~' + kc + ' kcal' : '') + ' · ' + (n ? '<span style="color:var(--primary);">' + n + ' ejerc.</span>' : '<span style="color:#ffb703;">sin marcas</span>') + '</span></div>';
+      });
+      // metas diarias (últimos 7 días)
+      var gl = '', dt = new Date(today + 'T12:00:00');
+      for (var i = 0; i < 7; i++) {
+        var iso = isoOfDate(dt), rec = dailyFor(iso), parts = [];
+        if (rec.pasos) parts.push('👟 ' + rec.pasos.v + (goalMet(rec, 'pasos') ? ' ✔' : ''));
+        if (rec.agua) parts.push('💧 ' + rec.agua.v + (goalMet(rec, 'agua') ? ' ✔' : ''));
+        if (rec.sueno) parts.push('😴 ' + rec.sueno.v + (goalMet(rec, 'sueno') ? ' ✔' : ''));
+        if (parts.length) gl += '<div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); font-size:0.8rem;"><span>' + fmtDate(iso) + '</span><span>' + parts.join(' · ') + '</span></div>';
+        dt.setDate(dt.getDate() - 1);
+      }
+      h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:12px 0 2px;">METAS DIARIAS (ÚLTIMOS 7 DÍAS)</div>' + (gl || '<div style="font-size:0.8rem; color:var(--muted);">Sin registros.</div>');
+      h += '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="closeModal(\'coach_sum_modal\')">Cerrar</button></div>';
+      coachSumEl().innerHTML = h;
     }
 
     // ----- Temporizador de circuitos (pantalla completa) -----
@@ -4881,7 +5014,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var q = loadPending(), queued = {};
         q.forEach(function(it) { try { queued[JSON.parse(it.s).t] = true; } catch (e) {} });
         var up = 0;
-        local.forEach(function(x) { if (x && x.t && !remote[x.t] && !queued[x.t] && up < 40 && x.ex && x.ex.length) { q.push({ id: id, s: JSON.stringify(x), c: 0 }); up++; } });
+        local.forEach(function(x) { if (x && x.t && !remote[x.t] && !queued[x.t] && up < 40 && (x.ex && x.ex.length || x.nm || isMetaSess(x))) { q.push({ id: id, s: JSON.stringify(x), c: 0 }); up++; } });
         if (up) savePending(q);
         local.sort(function(a, b) { return a.t < b.t ? -1 : (a.t > b.t ? 1 : 0); });
         if (local.length > 300) local = local.slice(local.length - 300);
@@ -4889,6 +5022,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var hm = document.getElementById('ath_modal_historial');
         if (added && hm && hm.classList.contains('active')) renderHistorial();
         if (added) wkWelcomeRefresh();
+        coachSummaryRefresh();
         if (up) flushPending();
       }).catch(function() { /* sin internet: se queda lo que hay en el celular */ });
     }
@@ -5492,7 +5626,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-d';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-e';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
