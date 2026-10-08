@@ -698,6 +698,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           ¡Excelente trabajo hoy! Tus marcas han quedado archivadas con la fecha de hoy.<br><br>
           💧 Cumple con tu agua y descanso. <em>¡Juntos somos más fuertes!</em>
         </div>
+        <div id="congrats_week"></div>
         <button class="btn-action-primary" style="margin-bottom:8px;" onclick="closeModal('modal_congrats')">Aceptar y Continuar</button>
         <button class="btn-action-wa" id="ath_congratsWaBtn" onclick="sendWhatsAppFromCongrats()">📲 Enviar Reporte al Coach</button>
       </div>
@@ -2862,6 +2863,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       setTimeout(syncHistorial, 600);   // trae/une el historial de la hoja (si hay enlace corto)
       setTimeout(checkAnnouncements, 1200);   // anuncios vigentes para todos los clientes
       setTimeout(wkBubbleUpdate, 0);
+      setTimeout(wkWelcomeShow, 700);   // pantalla de inicio: saluda, resume la semana y deja el botón "Iniciar entreno" a la vista
       athleteCoachName = displayCoach(state.coachName);
       athleteCoachPhone = CONFIG_COACH_PHONE;   // fijo: se ignora cualquier número que traiga el enlace
       // Los identificadores del enlace solo pueden tener letras, números, guion y guion bajo
@@ -3590,6 +3592,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       autoPrefillDay(dayId);   // el día queda cargado con lo último de cada ejercicio, listo para la próxima vez
       lastActiveDayId = dayId;
       lastSavedSess = sessEx.length ? newSess : null;
+      var cw = document.getElementById('congrats_week');
+      if (cw) { try { cw.innerHTML = newSess ? wkWeekSummaryHtml(newSess.dur || 0, sessKcal(newSess)) : ''; } catch (e) { cw.innerHTML = ''; } }
       openModal('modal_congrats');
     }
 
@@ -4334,6 +4338,131 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       return 0;
     }
 
+    // ----- Pantalla de inicio del día y resumen semanal -----
+    // Semana = lunes a domingo. Meta de días = días de entreno de la rutina (los de descanso no cuentan).
+    // Meta de calorías = meta de días × calorías de un entreno típico del propio cliente (promedio de sus últimos entrenos; si no hay, una hora estimada).
+    var WKW = { shown: false, sel: 0 };
+    function isoOfDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    function sessDateIso(s) {
+      if (s && s.d) return String(s.d);
+      try { var d = new Date(s.t); return isNaN(d.getTime()) ? '' : isoOfDate(d); } catch (e) { return ''; }
+    }
+    function sessKcal(s) { return parseInt(s && s.wc, 10) || parseInt(s && s.kc, 10) || 0; }   // si anotó lo de su reloj, se usa eso
+    function weekRange(off) {
+      var a = new Date(); a.setHours(12, 0, 0, 0);
+      a.setDate(a.getDate() - ((a.getDay() + 6) % 7) + 7 * (off || 0));
+      var b = new Date(a.getTime()); b.setDate(b.getDate() + 6);
+      return { from: isoOfDate(a), to: isoOfDate(b) };
+    }
+    function weekStats(off) {
+      var r = weekRange(off), days = {}, secs = 0, kc = 0;
+      loadSessions().forEach(function(s) {
+        var d = sessDateIso(s); if (!d || d < r.from || d > r.to) return;
+        days[d] = true; secs += parseInt(s.dur, 10) || 0; kc += sessKcal(s);
+      });
+      return { days: Object.keys(days).length, secs: secs, kc: kc };
+    }
+    function wkWeekGoal() {
+      var n = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(function(d) { return !d.rest; }).length;
+      return Math.max(1, n);
+    }
+    function wkKcalGoal() {
+      var list = loadSessions().filter(function(s) { return sessKcal(s) > 0; }).sort(function(a, b) { return a.t < b.t ? 1 : -1; }).slice(0, 8);
+      var avg = list.length ? list.reduce(function(t, s) { return t + sessKcal(s); }, 0) / list.length : kcalEstimate(3600);
+      return Math.max(50, Math.round(avg * wkWeekGoal() / 50) * 50);
+    }
+    function wkHM(sec) {
+      sec = Math.max(0, Math.round(sec));
+      if (sec < 60) return sec + ' s';
+      var m = Math.round(sec / 60), h = Math.floor(m / 60);
+      return h ? (h + ' h ' + (m % 60) + ' min') : (m + ' min');
+    }
+    function wkNextDayIndex() {   // el día que sigue después del último que entrenó (saltando descansos)
+      var days = (athleteActiveState && athleteActiveState.routineDays) || [], first = -1, li = -1;
+      days.forEach(function(d, i) { if (!d.rest && first < 0) first = i; });
+      if (first < 0) return -1;
+      var sess = loadSessions().slice().sort(function(a, b) { return a.t < b.t ? -1 : 1; }), last = sess.length ? sess[sess.length - 1] : null;
+      if (!last || !last.day) return first;
+      days.forEach(function(d, i) { if (normName(d.title) === normName(last.day)) li = i; });
+      if (li < 0) return first;
+      for (var k = 1; k <= days.length; k++) { var j = (li + k) % days.length; if (!days[j].rest) return j; }
+      return first;
+    }
+    function wkWelcomeEl() {
+      var m = document.getElementById('wk_welcome_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'wk_welcome_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100003'; document.body.appendChild(m); }
+      return m;
+    }
+    function wkWelcomeRender() {
+      var st = athleteActiveState; if (!st) return;
+      var days = st.routineDays || [], fem = st.clientGender === 'a';
+      var cur = weekStats(0), prev = weekStats(-1), goal = wkWeekGoal(), n = cur.days, head, line;
+      if (n === 0) {
+        head = '¡' + (fem ? 'Bienvenida' : 'Bienvenido') + ' al día 1 de entreno de la semana!';
+        if (!loadSessions().length) line = 'Hoy arranca tu rutina. ¡Vamos con todo!';
+        else if (prev.days > 0) line = 'La semana pasada lograste <b>' + prev.days + (prev.days === 1 ? ' día' : ' días') + '</b> de entreno' + (prev.kc > 0 ? ' y unas <b>~' + prev.kc + ' kcal</b>' : '') + '. ¡Vamos por una semana todavía mejor! 💪';
+        else line = 'La semana pasada no te tuvimos por aquí, pero hoy arrancamos de nuevo. ¡Aquí estamos contigo! 💪';
+      } else {
+        head = n + 1 <= goal ? '🔥 ¡Vas por tu día ' + (n + 1) + ' de entreno esta semana!' : '🔥 ¡Meta de días cumplida, hoy sumas un día extra!';
+        line = 'Felicidades: ya llevas <b>' + n + ' de ' + goal + '</b> días' + (cur.secs > 0 ? ', <b>' + wkHM(cur.secs) + '</b>' : '') + (cur.kc > 0 ? ' y <b>~' + cur.kc + ' de ' + wkKcalGoal() + ' kcal</b> de tu meta semanal' : '') + '. ¡Sigue así!';
+      }
+      var chips = '', trainIdx = [];
+      days.forEach(function(d, i) { if (!d.rest) trainIdx.push(i); });
+      if (trainIdx.length > 1) {
+        chips = '<div style="font-size:0.72rem; color:var(--muted); margin:14px 0 4px;">Hoy entrenas:</div><div class="med-chip-row" style="justify-content:center; flex-wrap:wrap;">' +
+          trainIdx.map(function(i) { return '<button type="button" class="med-chip' + (i === WKW.sel ? ' active' : '') + '" onclick="wkWelcomePick(' + i + ')">' + escHtml(days[i].title || ('Día ' + (i + 1))) + '</button>'; }).join('') + '</div>';
+      }
+      wkWelcomeEl().innerHTML = '<div class="modal-inner congrats-box">' +
+        '<div style="font-size:2.6rem; margin-bottom:6px;">💪</div>' +
+        '<div style="font-size:1.2rem; color:var(--primary); font-weight:900; margin-bottom:8px; line-height:1.25;">' + head + '</div>' +
+        '<div style="font-size:0.88rem; color:#f0f0f0; line-height:1.5;">' + line + '</div>' + chips +
+        '<button type="button" class="wk-btn" style="width:100%; margin-top:18px; padding:16px; font-size:1.05rem;" onclick="wkWelcomeStart()">▶ Iniciar entreno</button>' +
+        '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.78rem; margin-top:12px; cursor:pointer; text-decoration:underline;" onclick="wkWelcomeClose()">Solo quiero ver mi rutina</button>' +
+        '</div>';
+    }
+    function wkWelcomePick(i) { WKW.sel = i; wkWelcomeRender(); }
+    function wkWelcomeClose() { closeModal('wk_welcome_modal'); }
+    function wkWelcomeStart() {
+      var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
+      closeModal('wk_welcome_modal');
+      if (!d) return;
+      openModal(d.id);
+      wkStart(d.id);
+    }
+    function wkWelcomeShow() {
+      if (WKW.shown || !athleteActiveState || isCoachView() || WK.start) return;
+      var av = document.getElementById('athlete_client_view');
+      if (!av || av.style.display === 'none') return;
+      var idx = wkNextDayIndex();
+      if (idx < 0) { WKW.shown = true; return; }
+      var today = todayIso();
+      if (loadSessions().some(function(s) { return sessDateIso(s) === today; })) { WKW.shown = true; return; }   // hoy ya entrenó: no se le insiste
+      WKW.shown = true; WKW.sel = idx;
+      wkWelcomeRender();
+      openModal('wk_welcome_modal');
+    }
+    // Al llegar sesiones nuevas desde la hoja, la pantalla de inicio (si sigue abierta) se actualiza con los números correctos
+    function wkWelcomeRefresh() {
+      var m = document.getElementById('wk_welcome_modal');
+      if (m && m.classList.contains('active')) wkWelcomeRender();
+    }
+    // Resumen de la semana para la ventana "Entrenamiento Guardado"
+    function wkWeekSummaryHtml(todaySecs, todayKc) {
+      var cur = weekStats(0), goal = wkWeekGoal(), kGoal = wkKcalGoal(), left = Math.max(0, goal - cur.days);
+      var dow = (new Date().getDay() + 6) % 7, daysLeftWeek = 6 - dow;   // días que quedan de la semana después de hoy
+      var row = function(l, v) { return '<div style="display:flex; justify-content:space-between; gap:10px; font-size:0.84rem; padding:3px 0;"><span style="color:var(--muted);">' + l + '</span><b>' + v + '</b></div>'; };
+      var h = '<div style="background:#101010; border:1px solid #2c2c2c; border-radius:10px; padding:10px 12px; margin-bottom:14px; text-align:left;">';
+      if (todaySecs > 0) h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin-bottom:2px;">HOY</div>' + row('⏱ Tiempo', wkHM(todaySecs)) + row('🔥 Calorías estimadas', '~' + todayKc + ' kcal');
+      h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:' + (todaySecs > 0 ? '8px' : '0') + ' 0 2px;">ESTA SEMANA</div>' +
+        row('📅 Días de entreno', cur.days + ' de ' + goal) +
+        row('⏱ Tiempo acumulado', cur.secs > 0 ? wkHM(cur.secs) : '-') +
+        row('🔥 Calorías estimadas', '~' + cur.kc + ' de ' + kGoal + ' kcal');
+      h += '<div style="font-size:0.84rem; font-weight:800; margin-top:8px; color:' + (left ? '#fff' : 'var(--primary)') + ';">' +
+        (left ? '🎯 Te ' + (left === 1 ? 'falta 1 día' : 'faltan ' + left + ' días') + ' para cumplir tu meta de la semana' + (daysLeftWeek > 0 ? ' (quedan ' + daysLeftWeek + (daysLeftWeek === 1 ? ' día' : ' días') + ' de la semana)' : '') + '.'
+              : '🏆 ¡Cumpliste tu meta de días de esta semana!') + '</div></div>';
+      return h;
+    }
+
     // ----- Temporizador de circuitos (pantalla completa) -----
     var TRANS_SECS = 15;   // transición para preparar el siguiente ejercicio
     var SIDE_SECS = 10;    // pausa para cambiar de lado en unilaterales por tiempo
@@ -4660,6 +4789,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         try { localStorage.setItem(sessKey(), JSON.stringify(local)); } catch (e) {}
         var hm = document.getElementById('ath_modal_historial');
         if (added && hm && hm.classList.contains('active')) renderHistorial();
+        if (added) wkWelcomeRefresh();
         if (up) flushPending();
       }).catch(function() { /* sin internet: se queda lo que hay en el celular */ });
     }
@@ -5263,7 +5393,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-07-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-08-a';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
