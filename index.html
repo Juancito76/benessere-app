@@ -294,7 +294,15 @@
 
     /* ===== Registro por serie (etapa 1, 07/10/2026) ===== */
     .set-box { margin-top: 8px; background: #141414; border-radius: 8px; padding: 8px; }
-    details.set-box > summary { cursor: pointer; font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; padding: 2px 0 6px; }
+    details.set-box > summary { cursor: pointer; font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; padding: 4px 0; display: flex; align-items: center; gap: 6px; list-style: none; -webkit-tap-highlight-color: transparent; }
+    details.set-box > summary::-webkit-details-marker { display: none; }
+    details.set-box > summary::before { content: '▸'; font-size: 0.8rem; transition: transform 0.15s; flex: 0 0 auto; }
+    details.set-box[open] > summary::before { transform: rotate(90deg); }
+    details.set-box[open] > summary { padding-bottom: 6px; }
+    details.set-box > summary .set-lbl { flex: 0 0 auto; }
+    details.set-box > summary .set-sum { flex: 1 1 auto; min-width: 0; text-transform: none; font-weight: 600; font-size: 0.74rem; color: #cfcfcf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+    details.set-box > summary .set-sum.empty, details.set-box > summary .set-sum.pre { color: #777; font-weight: 500; }
+    details.set-box[open] > summary .set-sum { display: none; }
     .set-head, .set-row { display: grid; align-items: center; gap: 6px; grid-template-columns: 34px 1fr 1fr; }
     .set-rows.no-w .set-head, .set-rows.no-w .set-row { grid-template-columns: 34px 1fr; }
     .set-head span { font-size: 0.62rem; color: var(--muted); font-weight: 700; text-transform: uppercase; text-align: center; }
@@ -3311,6 +3319,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         if (inp.classList.contains('prefilled')) localStorage.removeItem(tk(inp.id));   // lo precargado no cuenta como anotado
         else localStorage.setItem(tk(inp.id), inp.value);
       });
+      refreshAllSetSummaries();
     }
 
     // ----- Registro por serie: una fila (peso + reps o segundos) por cada serie -----
@@ -3329,7 +3338,28 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var body = '<div class="set-rows' + (usesW ? '' : ' no-w') + '" id="sets_' + key + '" data-key="' + key + '" data-timed="' + (timed ? 1 : 0) + '" data-base="' + n + '">' + head +
         '<div class="set-rows-list">' + rows + '</div>' +
         '<button type="button" class="btn-add-set" onclick="addSetRow(\'' + key + '\')">＋ Serie</button></div>';
-      return fold ? ('<details class="set-box"><summary>📝 Registro por ronda</summary>' + body + '</details>') : ('<div class="set-box">' + body + '</div>');
+      // Siempre plegado: el resumen de lo anotado queda a la vista y se despliega solo al tocarlo
+      return '<details class="set-box" id="setbox_' + key + '"><summary><span class="set-lbl">📝 ' + (fold ? 'Registro por ronda' : 'Registro por serie') + '</span><span class="set-sum empty" id="ssum_' + key + '">Toca para anotar</span></summary>' + body + '</details>';
+    }
+    // Resumen de una línea de lo anotado (o precargado en gris) para mostrarlo con el registro plegado
+    function refreshSetSummary(key) {
+      var h = document.getElementById('sets_' + key), el = document.getElementById('ssum_' + key);
+      if (!h || !el) return;
+      var timed = h.getAttribute('data-timed') === '1', parts = [], real = 0;
+      h.querySelectorAll('.set-rows-list .set-row').forEach(function(row, i) {
+        var w = row.querySelector('input[id^="pw_"]'), r = row.querySelector('input[id^="pr_"]');
+        var wv = w ? w.value.trim() : '', rv = r ? r.value.trim() : '';
+        if (!wv && !rv) return;
+        if ((w && wv && !w.classList.contains('prefilled')) || (r && rv && !r.classList.contains('prefilled'))) real++;
+        if (rv && timed && /^\d+$/.test(rv)) rv += ' s';
+        parts.push('S' + (i + 1) + ' ' + (wv && rv ? wv + '×' + rv : (wv || rv)));
+      });
+      if (!parts.length) { el.textContent = 'Toca para anotar'; el.className = 'set-sum empty'; }
+      else if (!real) { el.textContent = 'Anterior: ' + parts.join(' · '); el.className = 'set-sum pre'; }
+      else { el.textContent = parts.join(' · '); el.className = 'set-sum'; }
+    }
+    function refreshAllSetSummaries() {
+      document.querySelectorAll('.set-rows[data-key]').forEach(function(h) { refreshSetSummary(h.getAttribute('data-key')); });
     }
     // Garantiza que existan al menos n filas (máx. 20). Las filas extra se recuerdan hasta que se guarde el día.
     function ensureSetRows(key, n, silent) {
@@ -3403,7 +3433,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       return ' · por lado';
     }
 
-    document.addEventListener('input', function(e) { if (e.target && e.target.classList) e.target.classList.remove('prefilled'); });
+    document.addEventListener('input', function(e) {
+      if (e.target && e.target.classList) e.target.classList.remove('prefilled');
+      var h = e.target && e.target.closest && e.target.closest('.set-rows[data-key]');
+      if (h) refreshSetSummary(h.getAttribute('data-key'));
+    });
 
     function normName(s) { return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
     function cleanMark(v) { v = String(v == null ? '' : v).trim(); return v === '-' ? '' : v; }
@@ -3470,6 +3504,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           else if (!x[0].value.trim()) { x[0].value = x[1]; x[0].classList.add('prefilled'); n++; }
         });
       });
+      refreshSetSummary(key);
       return n;
     }
     // Deja cada ejercicio con lo último que se guardó de él, serie por serie (en gris); los que no se llenaron la vez pasada quedan como estaban
@@ -3504,6 +3539,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var val = localStorage.getItem(tk(inp.id));
         if (val) inp.value = val;
       });
+      refreshAllSetSummaries();
       document.querySelectorAll('.prev-load-badge').forEach(function(b) {
         var baseKey = b.id.replace('prev_', '');
         var p = lastMarkFor(baseKey);
@@ -3628,6 +3664,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         holder.querySelectorAll('input').forEach(function(inp) { localStorage.removeItem(tk(inp.id)); inp.value = ''; inp.classList.remove('prefilled'); });
         try { localStorage.removeItem(tk('nsets_' + key)); } catch (e) {}
         trimSetRows(key);
+        refreshSetSummary(key);
       });
       // Además de la última marca por ejercicio, se guarda la sesión completa con su fecha (cada guardado suma una nueva)
       var newSess = null;
@@ -5785,7 +5822,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-08-i';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-09-a';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
