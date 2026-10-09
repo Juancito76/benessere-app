@@ -2465,6 +2465,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
       parsedDays.forEach(function(pd) { if (!pd.items.length && /descanso/i.test(pd.title)) { pd.rest = true; pd.habits.entreno = 'Descanso'; } });
       if (parsedDays.length > 0) {
+        // Los ejercicios que llegan sin video se precargan con el que ya está guardado bajo ese nombre
+        parsedDays.forEach(function(pd) {
+          (pd.items || []).forEach(function(it) {
+            (it.sub || []).forEach(function(sb) {
+              if (sb && !String(sb.video || '').trim()) { var kv = findVideoInLibrary(sb.name); if (kv) sb.video = kv; }
+            });
+          });
+        });
         routineDays = parsedDays;
         renderDays();
         var nMeas = applyImportedMeasures(importMeas, importMeasDate || document.getElementById('startDate').value);
@@ -3267,7 +3275,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           new Function('val', pickVideoState.targetPath + ' = val;')(link);
           // También lo guarda bajo el nombre del ejercicio actual, para que la próxima
           // vez que se escriba ese nombre, se sugiera solo.
-          rememberVideoFromPath(pickVideoState.targetPath);
+          // (targetPath termina en ".video"; hay que pasar la ruta del ejercicio, sin ese final,
+          // o no encuentra el nombre y el link elegido de la lista nunca se guardaba)
+          rememberVideoFromPath(pickVideoState.targetPath.replace(/\.video$/, ''));
         } catch (e) {}
       }
       closeModal('modal_pick_video');
@@ -3283,6 +3293,16 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var names = Object.keys(lib).filter(function(n) {
         return !query || n.toLowerCase().indexOf(query) !== -1;
       }).sort(function(a, b) { return a.localeCompare(b, 'es'); });
+      // El video guardado bajo el mismo nombre del ejercicio que se está editando va fijo arriba,
+      // para elegirlo (o probarlo) sin buscarlo en la lista
+      var sameHtml = '';
+      try {
+        var curName = String(new Function('return ' + pickVideoState.targetPath.replace(/\.video$/, '.name') + ';')() || '').trim();
+        var same = curName ? findVideoInLibrary(curName) : '';
+        if (same) sameHtml = '<div style="font-size:0.7rem; font-weight:800; color:var(--accent); margin:0 0 4px;">⭐ GUARDADO CON EL NOMBRE DE ESTE EJERCICIO</div>' +
+          '<div class="pick-ex-list" style="margin-bottom:10px;"><button type="button" class="pick-ex-btn" style="border-color:var(--accent);" onclick="pickVideoChoose(' + jsArg(same) + ')" title="' + escHtml(same) + '">' + escHtml(curName) + '</button></div>';
+      } catch (e) {}
+      if (names.length === 0 && sameHtml) { body.innerHTML = sameHtml; return; }
       if (names.length === 0) {
         body.innerHTML = '<div class="pick-empty">' +
           (Object.keys(lib).length === 0 ? 'Todavía no hay videos guardados.' : 'Sin resultados para "' + escHtml(query) + '".') +
@@ -3294,7 +3314,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         html += '<button type="button" class="pick-ex-btn" onclick="pickVideoChoose(' + jsArg(lib[n]) + ')" title="' + escHtml(lib[n]) + '">' + escHtml(n) + '</button>';
       });
       html += '</div>';
-      body.innerHTML = html;
+      body.innerHTML = sameHtml + html;
     }
 
     function switchDaySection(dayId, sec) {
@@ -5822,7 +5842,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-09-a';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-09-b';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
