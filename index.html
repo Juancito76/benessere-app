@@ -1455,9 +1455,27 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       document.querySelectorAll('.demo-field-box').forEach(function(box) { box.style.display = showDemos ? 'block' : 'none'; });
     }
 
+    // Precarga el video guardado bajo el mismo nombre en todo ejercicio que lo tenga vacío
+    // (sin pisar los que ya traen link), sin importar cómo llegó el ejercicio a la rutina
+    function autofillEmptyVideos() {
+      var lib = getVideoLibrary(), map = {}, any = false;
+      Object.keys(lib).forEach(function(k) { if (lib[k] && String(lib[k]).trim()) { map[normKey(k)] = lib[k]; any = true; } });
+      if (!any) return;
+      (routineDays || []).forEach(function(d) {
+        (d.items || []).forEach(function(it) {
+          (it.sub || []).forEach(function(sb) {
+            if (!sb || String(sb.video || '').trim()) return;
+            var nk = normKey(sb.name);
+            if (nk && map[nk]) sb.video = map[nk];
+          });
+        });
+      });
+    }
+
     function renderDays() {
       var container = document.getElementById('daysList');
       if (!container) return;
+      try { autofillEmptyVideos(); } catch (e) {}
       container.innerHTML = '';
       var badge = document.getElementById('daysCounterBadge');
       if (badge) badge.innerText = routineDays.length + ' Día' + (routineDays.length > 1 ? 's' : '');
@@ -5842,7 +5860,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-09-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-09-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
