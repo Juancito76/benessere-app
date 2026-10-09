@@ -500,6 +500,7 @@
         <button type="button" class="btn btn-accent" style="width: 100%; padding: 14px; font-size: 0.95rem;" onclick="loadRoutineFromUrl()">
           🚀 Montar Todos los Días y Datos
         </button>
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="openExportText()">📤 Exportar a texto plano (lo que está montado ahora)</button>
         <p id="loadFromUrlStatus" style="font-size:0.78rem; color:var(--muted); margin-top:10px; line-height:1.5;"></p>
         <p style="font-size:0.72rem; color:var(--muted); margin-top:10px; line-height:1.5;">
           💡 Si el enlace es de un archivo alojado fuera de GitHub Pages (por ejemplo Google Drive), asegúrate de que sea un enlace de <strong>descarga directa</strong> y no de "ver" — de lo contrario el navegador podría bloquear la lectura.
@@ -562,7 +563,10 @@ Almuerzo: 1.5 palmas Proteína + 1 puño Carbohidratos + 2 puños Vegetales + 1 
 Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 </div>
 
-        <button type="button" class="btn btn-secondary" style="margin-bottom: 12px;" onclick="copyTemplateExample()">📋 Copiar Plantilla de Ejemplo</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 12px;">
+          <button type="button" class="btn btn-secondary" onclick="copyTemplateExample()">📋 Copiar Plantilla de Ejemplo</button>
+          <button type="button" class="btn btn-accent" onclick="openExportText()">📤 Exportar rutina actual a texto plano</button>
+        </div>
         <div class="form-group">
           <textarea id="importRawText" style="min-height: 200px; font-family: monospace; font-size: 0.85rem;" placeholder="Pega el texto estructurado aquí..."></textarea>
         </div>
@@ -764,6 +768,20 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       <a id="share_wa" class="btn-action-wa" href="#" target="_blank" rel="noopener" style="display:none; text-align:center; text-decoration:none;">📲 Abrir WhatsApp con el mensaje</a>
       <button type="button" id="share_copy" class="btn-action-primary" style="display:none; margin-top:8px;" onclick="copyShareMessage()">📋 Copiar mensaje</button>
       <button type="button" class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="closeModal('modal_share')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- ================= VENTANA: EXPORTAR A TEXTO PLANO ================= -->
+  <div id="modal_export_text" class="modal-overlay">
+    <div class="modal-inner">
+      <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:6px;">📤 Rutina en texto plano</div>
+      <div id="exportTextInfo" style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; line-height:1.5;"></div>
+      <textarea id="exportTextArea" readonly style="width:100%; min-height:300px; font-family:monospace; font-size:0.78rem; margin-bottom:10px;" onfocus="this.select()"></textarea>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <button type="button" class="btn btn-accent" id="exportTextCopyBtn" style="flex:1;" onclick="copyExportText()">📋 Copiar texto</button>
+        <button type="button" class="btn btn-secondary" style="flex:1;" onclick="downloadExportText()">⬇️ Descargar .txt</button>
+      </div>
+      <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_export_text')">Cerrar</button>
     </div>
   </div>
 
@@ -2499,6 +2517,168 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       } else {
         alert('No se detectaron días válidos.');
       }
+    }
+
+    // ================= EXPORTAR A TEXTO PLANO =================
+    // Arma, con lo que está montado en el constructor, el mismo texto que lee "Importación Rápida de Texto".
+    function expClean(t) { return String(t == null ? '' : t).replace(/\s*\|\s*/g, ' / ').replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+    function expVideo(items, idx, subIdx) {
+      var it = items[idx], s = (it.sub || [])[subIdx] || {};
+      var v = (s.video && String(s.video).trim()) ? String(s.video).trim() : slotVideo(items, slotNumOf(items, idx), subIdx, s.name);
+      return v ? expandYtUrl(extractYtId(v)) : '';
+    }
+    function expVigenciaLine(it) {
+      var d = parseInt(it.vigenciaDesde, 10) || 1;
+      var h = (it.vigenciaHasta === null || it.vigenciaHasta === undefined || it.vigenciaHasta === '' || it.vigenciaHasta === 0) ? null : (parseInt(it.vigenciaHasta, 10) || null);
+      if (d <= 1 && h === null) return '';
+      return 'Vigencia: semanas ' + d + (h === null ? '+' : '-' + h);
+    }
+    function expFirstFilled(subs, key) {
+      for (var i = 0; i < subs.length; i++) { var v = expClean(subs[i][key]); if (v) return v; }
+      return '';
+    }
+
+    function buildExportText() {
+      var L = [];
+      function g(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+
+      // ----- [ATLETA] -----
+      L.push('[ATLETA]');
+      if (g('clientName')) L.push('Nombre: ' + g('clientName'));
+      L.push('Genero: ' + (g('clientGender') === 'a' ? 'a' : 'o'));
+      if (g('startDate')) L.push('Fecha: ' + g('startDate'));
+      if (g('durationWeeks')) L.push('Semanas: ' + g('durationWeeks'));
+      if (g('m_objetivo')) L.push('Objetivo: ' + expClean(g('m_objetivo')));
+      if (g('m_estatura')) L.push('Estatura: ' + g('m_estatura'));
+      if (g('m_edad')) L.push('Edad: ' + g('m_edad'));
+      var log = normalizeMeasureLog(measureLog), last = log.length ? log[log.length - 1] : null;
+      var formVals = {};
+      MEASURE_FIELDS.forEach(function(f) { var n = parseNum(g(f.k)); if (n !== null) formVals[f.k] = n; });
+      var mVals = null, mDate = '';
+      if (Object.keys(formVals).length) { mVals = formVals; mDate = (last && sameValues(last.v, formVals)) ? last.d : (g('m_fecha') || todayIso()); }
+      else if (last) { mVals = last.v; mDate = last.d; }
+      if (mVals) {
+        var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I' };
+        MEASURE_FIELDS.forEach(function(f) { if (mVals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(mVals[f.k], f.unit)); });
+        if (isIsoDate(mDate)) L.push('Fecha medicion: ' + mDate);
+      }
+
+      // ----- [MENSAJE COACH] -----
+      var mt = g('coachMsgTitle'), mb = g('coachMsgBody');
+      if (mt || mb) {
+        L.push('', '[MENSAJE COACH]');
+        if (mt) L.push('Titulo: ' + mt);
+        if (mb) {
+          var bl = mb.split(/\r?\n/).map(function(x) { return x.trim(); }).filter(Boolean);
+          L.push('Mensaje: ' + bl[0]);
+          bl.slice(1).forEach(function(x) { L.push(x); });
+        }
+      }
+
+      // ----- Días -----
+      routineDays.forEach(function(d, di) {
+        var title = String(d.title || '');
+        var mNum = title.match(/d[ií]a\s*(\d+)/i);
+        var num = mNum ? mNum[1] : String(di + 1);
+        var nm = title.replace(/^\s*d[ií]a\s*\d*\s*:?\s*/i, '').trim();
+        L.push('');
+        L.push('[' + (d.rest ? 'DESCANSO' : 'DIA') + ' ' + num + (nm ? ': ' + nm : '') + ']');
+        var h = d.habits || {};
+        L.push('Kcal: ' + expClean(h.kcal) + ' | Agua: ' + expClean(h.agua) + ' | Sueño: ' + expClean(h.sueno) + ' | Pasos: ' + expClean(h.pasos) + ' | Entreno: ' + expClean(h.entreno));
+        if (String(d.security || '').trim()) L.push('Seguridad: ' + String(d.security).replace(/[\r\n]+/g, ' ').trim());
+        var diet = d.diet || {};
+        [['desayuno', 'Desayuno'], ['snack', 'Snacks'], ['almuerzo', 'Almuerzo'], ['cena', 'Cena']].forEach(function(p) {
+          var v = String(diet[p[0]] || '').replace(/[\r\n]+/g, ' ').trim();
+          if (v) L.push(p[1] + ': ' + v);
+        });
+        if (d.loadPlan && d.loadPlan.length) {
+          L.push('Carga: ' + d.loadPlan.map(function(x) {
+            var rng = (x.hasta == null) ? (x.desde + '+') : (x.hasta === x.desde ? String(x.desde) : (x.desde + '-' + x.hasta));
+            var pct = Number(x.pct);
+            return 'semanas ' + rng + ' ' + (pct > 0 ? '+' : '') + pct + '%';
+          }).join(' | '));
+        }
+        var items = d.items || [], wrote = false, prevSlot = null;
+        items.forEach(function(it, idx) {
+          var subs = it.sub || [];
+          var named = subs.filter(function(s) { return String(s.name || '').trim(); });
+          if (!named.length && it.type !== 'circuito') return;               // posición vacía: no se exporta
+          if (it.type === 'circuito' && !named.length && !String((it.circ || {}).nombre || '').trim()) return;
+          var sl = slotNumOf(items, idx);
+          if (!wrote) L.push('--'); else if (prevSlot !== null && sl !== prevSlot) L.push('--');
+          wrote = true; prevSlot = sl;
+          var vig = expVigenciaLine(it); if (vig) L.push(vig);
+
+          if (it.type === 'circuito') {
+            var cc = it.circ || {};
+            var head = 'Circuito: ' + (expClean(cc.nombre) || 'Circuito') + ' | Rondas: ' + expClean(cc.rondas) + ' | Trabajo: ' + expClean(cc.trabajo) + ' | Descanso: ' + expClean(cc.descanso);
+            if (expClean(cc.notas)) head += ' | Notas: ' + expClean(cc.notas);
+            L.push(head);
+            subs.forEach(function(s, si) {
+              if (!String(s.name || '').trim()) return;
+              var ln = 'Estacion: ' + expClean(s.name) + ' | Reps: ' + expClean(s.reps);
+              if (expClean(s.notes)) ln += ' | Notas: ' + expClean(s.notes);
+              if (s.uni) ln += ' | Unilateral: si';
+              if (s.peso === false) ln += ' | Peso: no';
+              var vu = expVideo(items, idx, si); if (vu) ln += ' | Video: ' + vu;
+              L.push(ln);
+            });
+          } else if (it.type === 'normal' || subs.length === 1) {
+            var s0 = named[0];
+            var ln0 = 'Ejercicio: ' + expClean(s0.name) + ' | Series: ' + expClean(s0.series) + ' | Reps: ' + expClean(s0.reps);
+            if (expClean(s0.notes)) ln0 += ' | Notas: ' + expClean(s0.notes);
+            if (s0.uni) ln0 += ' | Unilateral: si';
+            if (s0.peso === false) ln0 += ' | Peso: no';
+            var v0 = expVideo(items, idx, subs.indexOf(s0)); if (v0) ln0 += ' | Video: ' + v0;
+            L.push(ln0);
+          } else {
+            var isBi = it.type === 'biserie';
+            var ln1 = (isBi ? 'Biserie: ' : 'Triserie: ') + subs.map(function(s) { return expClean(s.name); }).join(' + ');
+            ln1 += ' | Series: ' + expFirstFilled(subs, 'series') + ' | Reps: ' + expFirstFilled(subs, 'reps');
+            var notesU = []; subs.forEach(function(s) { var n = expClean(s.notes); if (n && notesU.indexOf(n) === -1) notesU.push(n); });
+            if (notesU.length) ln1 += ' | Notas: ' + notesU.join(' / ');
+            var uniIdx = []; subs.forEach(function(s, si) { if (s.uni) uniIdx.push(si); });
+            if (uniIdx.length === subs.length) ln1 += ' | Unilateral: si';
+            else if (uniIdx.length) ln1 += ' | Unilateral: ' + uniIdx.map(function(si) { return 'ABC'.charAt(si); }).join(',');
+            if (subs.every(function(s) { return s.peso === false; })) ln1 += ' | Peso: no';
+            var vids = subs.map(function(s, si) { return expVideo(items, idx, si); });
+            if (vids.some(Boolean)) vids.forEach(function(v) { ln1 += ' | Video: ' + v; });
+            L.push(ln1);
+          }
+        });
+      });
+      return L.join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
+    }
+
+    function openExportText() {
+      var txt = buildExportText();
+      document.getElementById('exportTextArea').value = txt;
+      var nDays = routineDays.length;
+      var nEx = 0, hasDiet = false;
+      routineDays.forEach(function(d) {
+        (d.items || []).forEach(function(it) { (it.sub || []).forEach(function(s) { if (String(s.name || '').trim()) nEx++; }); });
+        var df = d.diet || {}; if (df.desayuno || df.snack || df.almuerzo || df.cena) hasDiet = true;
+      });
+      document.getElementById('exportTextInfo').innerText = nDays + ' día(s), ' + nEx + ' ejercicio(s)/estación(es)' + (hasDiet ? ', con alimentación' : ', sin alimentación') + '. Es el mismo formato de "📥 Importación Rápida de Texto": se puede pegar allá para volver a cargarlo. Las medidas incluyen solo la medición más reciente.';
+      var cb = document.getElementById('exportTextCopyBtn'); if (cb) cb.innerText = '📋 Copiar texto';
+      openModal('modal_export_text');
+    }
+    function copyExportText() {
+      var ta = document.getElementById('exportTextArea');
+      copyTextSilently(ta.value);
+      var cb = document.getElementById('exportTextCopyBtn');
+      if (cb) { cb.innerText = '✅ Copiado'; setTimeout(function() { cb.innerText = '📋 Copiar texto'; }, 2500); }
+    }
+    function downloadExportText() {
+      var ta = document.getElementById('exportTextArea');
+      var clientPart = (document.getElementById('clientName').value.trim() || 'rutina').replace(/[^A-Za-z0-9_-]+/g, '_');
+      var fname = 'rutina_' + clientPart + '_' + todayIso() + '.txt';
+      var blob = new Blob([ta.value], { type: 'text/plain;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
     }
 
     // ================= ENLACE ULTRA-COMPACTO =================
@@ -5860,7 +6040,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-09-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-09-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
