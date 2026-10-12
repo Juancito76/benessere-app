@@ -271,6 +271,9 @@
     /* ================= SELECTOR DE EJERCICIOS (Clasificación → Ejercicio) ================= */
     .btn-pick-ex { display: inline-flex; align-items: center; gap: 4px; background: var(--card); border: 1px solid var(--primary); color: var(--primary); font-size: 0.72rem; font-weight: 800; padding: 6px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap; margin-top: 6px; }
     .btn-pick-ex:active { background: var(--primary); color: #000; }
+    @keyframes pulseSave { 0% { box-shadow: 0 0 0 0 rgba(255,183,3,0.9); } 70% { box-shadow: 0 0 0 16px rgba(255,183,3,0); } 100% { box-shadow: 0 0 0 0 rgba(255,183,3,0); } }
+    .pulse-save { animation: pulseSave 1.2s ease-out 7; outline: 3px solid #ffb703; }
+    .video-missing { border: 2px solid #ff5252 !important; box-shadow: 0 0 0 3px rgba(255,82,82,0.25); }
     .pick-name-row { display: flex; gap: 6px; align-items: flex-end; }
     .pick-name-row input { flex: 1; }
     .pick-modal-inner { max-width: 420px; }
@@ -1623,6 +1626,46 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       });
       if (!bad.length) return true;
       return confirm('⚠️ Hay caminadora dentro de una biserie, triserie o circuito:\n\n• ' + bad.join('\n• ') + '\n\nA veces está ocupada o la pierden al bajarse. Lo recomendado es cambiarla por skipping alto, saltos de tijera o cuerda, y dejar la caminadora sola como cardio.\n\n¿Enviar la rutina de todos modos?');
+    }
+    // ---- Guardia de videos: con "Demostraciones en Video" activo, no se puede enviar si falta algún video ----
+    // Cuenta como "con video" el que está escrito o el que se hereda de la misma posición (mismo ejercicio), igual que al generar el enlace.
+    function missingVideos() {
+      var out = [];
+      routineDays.forEach(function(d, di) {
+        if (d.rest) return;
+        (d.items || []).forEach(function(it, ii) {
+          (it.sub || []).forEach(function(sb, k) {
+            if (!sb) return;
+            if (String(sb.video || '').trim()) return;
+            if (slotVideo(d.items, slotNumOf(d.items, ii), k, sb.name)) return;
+            var pos = it.type === 'normal' ? '' : (it.type === 'circuito' ? ' · estación ' + (k + 1) : ' · ejercicio ' + 'ABC'.charAt(k));
+            out.push({ di: di, ii: ii, k: k, label: (d.title || ('Día ' + (di + 1))) + ' · posición ' + slotNumOf(d.items, ii) + pos + (sb.name ? ' — ' + sb.name : ' — (sin nombre)') });
+          });
+        });
+      });
+      return out;
+    }
+    function clearVideoMissingMarks() {
+      document.querySelectorAll('.video-missing').forEach(function(el) { el.classList.remove('video-missing'); });
+    }
+    document.addEventListener('input', function(e) { var t = e.target; if (t && t.classList && t.classList.contains('video-missing')) t.classList.remove('video-missing'); });
+    function videoGuard() {
+      var demos = document.getElementById('featureDemos');
+      if (!demos || !demos.checked) { clearVideoMissingMarks(); return true; }
+      var miss = missingVideos();
+      if (!miss.length) { clearVideoMissingMarks(); return true; }
+      switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+      clearVideoMissingMarks();
+      var first = null;
+      miss.forEach(function(m) {
+        var sel = 'input[oninput^="routineDays[' + m.di + '].items[' + m.ii + '].sub[' + m.k + '].video"]';
+        var el = document.querySelector(sel);
+        if (el) { el.classList.add('video-missing'); if (!first) first = el; }
+      });
+      var shown = miss.slice(0, 8).map(function(m) { return '• ' + m.label; }).join('\n');
+      alert('🎥 Falta el video de ' + miss.length + ' ejercicio' + (miss.length > 1 ? 's' : '') + ' (las demostraciones en video están activadas):\n\n' + shown + (miss.length > 8 ? '\n• … y ' + (miss.length - 8) + ' más' : '') + '\n\nPega el link de cada uno (o usa "🎥 Elegir"). Si no quieres demostraciones, desactiva "Activar Demostraciones en Video" en Perfil del Coach.');
+      if (first) { try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
+      return false;
     }
     // Banderas del texto de importación: "Unilateral: si" / "Unilateral: A,B" (letras del combo) y "Peso: no"
     function importFlagApplies(raw, idx) {
@@ -3070,6 +3113,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var baseUrl = getAppBaseUrl();
       if (!baseUrl) return;
 
+      if (!videoGuard()) return;
       if (!treadmillGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
@@ -3292,7 +3336,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           '<button type="button" class="btn-restore-all-day" style="margin-top:6px;" onclick="openSessionPicker(\'' + d.id + '\')">📅 Montar marcas de otra fecha</button>' +
           exercisesHtml +
           '<div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">' +
-            '<button class="btn-action-primary" onclick="archiveCurrentDay(\'' + d.id + '\')">💾 Guardar Día y Actualizar Marca Anterior</button>' +
+            '<button class="btn-action-primary" id="btn_save_' + d.id + '" onclick="archiveCurrentDay(\'' + d.id + '\')">💾 Guardar Día y Actualizar Marca Anterior</button>' +
             '<button class="btn-action-wa" onclick="sendWhatsAppReport(\'' + d.id + '\')">📲 Enviar Reporte a ' + escHtml(athleteCoachName) + '</button>' +
           '</div>' +
         '</div>' +
@@ -4769,7 +4813,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           '<input type="number" inputmode="numeric" id="wke_cal" placeholder="Calorías" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
           '<input type="number" inputmode="numeric" id="wke_hr" placeholder="Pulso promedio" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
         '</div>' +
-        '<div style="font-size:0.8rem; color:#ddd; margin-bottom:12px;">Ahora anota tus pesos y toca "Guardar Día".</div>' +
+        '<div style="background:#fff3cd; border:3px solid #ffb703; border-radius:12px; padding:14px 12px; margin-bottom:14px; text-align:center;">' +
+          '<div style="font-size:1.6rem; line-height:1;">⚠️</div>' +
+          '<div style="font-size:1.05rem; font-weight:900; color:#7a4b00; margin:4px 0; line-height:1.25;">¡No olvides actualizar tus pesos y reps!</div>' +
+          '<div style="font-size:0.88rem; font-weight:700; color:#5c3a00; line-height:1.4;">Anota lo que levantaste en cada ejercicio y toca <span style="background:#ffb703; color:#000; padding:1px 6px; border-radius:6px;">💾 Guardar Día</span> para que tu próxima semana arranque con tus marcas.</div>' +
+        '</div>' +
         '<button type="button" class="btn-action-primary" onclick="wkEndSave(\'' + dayId + '\')">Listo</button></div>';
       m.classList.add('active');
     }
@@ -4779,6 +4827,17 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       try { if (o.c || o.h) localStorage.setItem(tk('wkwatch_' + dayId), JSON.stringify(o)); } catch (e) {}
       wkNmCommit(o.c || 0, o.h || 0);
       closeModal('wk_end_modal');
+      // Lleva al cliente al botón "Guardar Día" y lo hace palpitar para que no se le olvide actualizar sus marcas
+      try {
+        var sb = document.getElementById('btn_save_' + dayId);
+        if (sb) {
+          setTimeout(function() {
+            sb.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            sb.classList.remove('pulse-save'); void sb.offsetWidth; sb.classList.add('pulse-save');
+            setTimeout(function() { sb.classList.remove('pulse-save'); }, 9000);
+          }, 250);
+        }
+      } catch (e) {}
     }
     function wkTakeWatch(dayId) {
       try { var o = JSON.parse(localStorage.getItem(tk('wkwatch_' + dayId)) || 'null'); localStorage.removeItem(tk('wkwatch_' + dayId)); return o; } catch (e) { return null; }
@@ -4947,8 +5006,23 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var chips = '', trainIdx = [];
       days.forEach(function(d, i) { if (!d.rest) trainIdx.push(i); });
       if (trainIdx.length > 1) {
-        chips = '<div style="font-size:0.72rem; color:var(--muted); margin:14px 0 4px;">Hoy entrenas:</div><div class="med-chip-row" style="justify-content:center; flex-wrap:wrap;">' +
-          trainIdx.map(function(i) { return '<button type="button" class="med-chip' + (i === WKW.sel ? ' active' : '') + '" onclick="wkWelcomePick(' + i + ')">' + escHtml(days[i].title || ('Día ' + (i + 1))) + '</button>'; }).join('') + '</div>';
+        var wr = weekRange(0), doneNames = {}, lastS = null;
+        loadWorkouts().slice().sort(function(a, b) { return a.t < b.t ? -1 : 1; }).forEach(function(s) {
+          lastS = s;
+          var sd = sessDateIso(s);
+          if (s.day && sd >= wr.from && sd <= wr.to) doneNames[normName(s.day)] = true;
+        });
+        var sug = (WKW.sug != null && days[WKW.sug]) ? WKW.sug : -1;
+        var sugTitle = sug >= 0 ? (days[sug].title || ('Día ' + (sug + 1))) : '';
+        var why = sug < 0 ? '' : ((lastS && lastS.day) ? 'Te sugerimos <b>' + escHtml(sugTitle) + '</b> porque tu último entreno fue <b>' + escHtml(lastS.day) + '</b>.' : 'Te sugerimos <b>' + escHtml(sugTitle) + '</b> para arrancar tu rutina.');
+        chips = '<div style="font-size:0.95rem; color:#fff; font-weight:800; margin:16px 0 4px;">¿Qué día vas a entrenar hoy?</div>' +
+          (why ? '<div style="font-size:0.76rem; color:var(--muted); line-height:1.4; margin-bottom:8px;">' + why + ' Si hoy toca otro, tócalo aquí.</div>' : '') +
+          '<div class="med-chip-row" style="justify-content:center; flex-wrap:wrap; gap:8px;">' +
+          trainIdx.map(function(i) {
+            var t = days[i].title || ('Día ' + (i + 1)), tag = i === sug ? ' ⭐' : '', done = doneNames[normName(days[i].title)] ? ' ✓' : '';
+            return '<button type="button" class="med-chip' + (i === WKW.sel ? ' active' : '') + '" style="padding:10px 14px; font-size:0.88rem;" onclick="wkWelcomePick(' + i + ')">' + escHtml(t) + tag + done + '</button>';
+          }).join('') + '</div>' +
+          '<div style="font-size:0.68rem; color:var(--muted); margin-top:6px;">⭐ sugerido · ✓ ya lo hiciste esta semana</div>';
       }
       wkWelcomeEl().innerHTML = '<div class="modal-inner congrats-box">' +
         '<div style="font-size:2.6rem; margin-bottom:6px;">💪</div>' +
@@ -4962,6 +5036,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function wkWelcomeClose() { closeModal('wk_welcome_modal'); }
     function wkWelcomeStart() {
       var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
+      try { if (WKW.sel !== WKW.sug && d) wkToast('Entrenas hoy: ' + (d.title || 'otro día')); } catch (e) {}
       closeModal('wk_welcome_modal');
       if (!d) return;
       openModal(d.id);
@@ -4976,7 +5051,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (idx < 0) { WKW.shown = true; return; }
       var today = todayIso();
       if (loadWorkouts().some(function(s) { return sessDateIso(s) === today; })) { WKW.shown = true; return; }   // hoy ya entrenó: no se le insiste
-      WKW.shown = true; WKW.sel = idx;
+      WKW.shown = true; WKW.sel = idx; WKW.sug = idx;
       wkWelcomeRender();
       openModal('wk_welcome_modal');
     }
@@ -5752,6 +5827,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       if (!editingRoutine) return;
       if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
       if (!confirm('¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
+      if (!videoGuard()) return;
       if (!treadmillGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
@@ -6040,7 +6116,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-09-d';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-12-a';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
