@@ -4355,7 +4355,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
     function tmrAudio() {
       try {
-        if (navigator.audioSession) navigator.audioSession.type = 'playback';   // iPhone: que suene aunque el interruptor esté en silencio (iOS 17+)
+        // iPhone (iOS 17+): "ambient" mezcla con la música que ya suena; "playback" toma el audio completo. Se elige con el botón de sonido del temporizador
+        if (navigator.audioSession) navigator.audioSession.type = (tmrMode() === 'mix') ? 'ambient' : 'playback';
         var AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
         if (!TMR.ctx) TMR.ctx = new AC();
@@ -4365,14 +4366,19 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function tmrBeep(freq, ms, delayMs) {
       var c = TMR.ctx;
       if (!c) return;
-      try {
-        var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + (delayMs || 0) / 1000;
-        o.type = 'sine'; o.frequency.value = freq;
-        o.connect(g); g.connect(c.destination);
-        g.gain.setValueAtTime(0.5, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + ms / 1000);
-        o.start(t); o.stop(t + ms / 1000 + 0.02);
-      } catch (e) {}
+      var play = function() {
+        try {
+          var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + (delayMs || 0) / 1000;
+          o.type = 'sine'; o.frequency.value = freq;
+          o.connect(g); g.connect(c.destination);
+          g.gain.setValueAtTime(0.7, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + ms / 1000);
+          o.start(t); o.stop(t + ms / 1000 + 0.02);
+        } catch (e) {}
+      };
+      // iPhone: tras una interrupción (música, llamada, otra app) el audio queda "suspendido/interrumpido" y hay que reanudarlo antes de cada pitido
+      if (c.state === 'running') play();
+      else { try { var pr = c.resume(); if (pr && pr.then) pr.then(play).catch(function() {}); else play(); } catch (e) {} }
     }
     function tmrVibrate(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
     function tmrWakeOn() {
@@ -5174,7 +5180,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           else if (!lastRound && rest > 0) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r, si: -1 });
         }
       }
-      return { phases: phases, rounds: rounds, nSt: names.length, hasOpen: phases.some(function(p) { return p.open; }), label: c.restMode === 'round' ? 'Serie' : 'Ronda' };
+      var openSt = names.map(function() { return false; }); phases.forEach(function(p) { if (p.open) openSt[p.si] = true; });
+      return { phases: phases, rounds: rounds, nSt: names.length, names: names, openSt: openSt, hasOpen: phases.some(function(p) { return p.open; }), label: c.restMode === 'round' ? 'Serie' : 'Ronda' };
     }
     // Texto de la meta de reps de un ejercicio para la pantalla del temporizador ("12 reps", "8-10 reps", "6 reps por lado (12 en total)")
     function ctRepsText(sub, uni) {
@@ -5204,7 +5211,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       CT.keys = c.keys || []; CT.acc = {};   // para anotar los segundos logrados en cada serie
       CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? SR[srId].cur : 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = c.nombre || 'Circuito';
-      CT.nSt = built.nSt; CT.hasOpen = built.hasOpen;
+      CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = [];
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
       ctEnter(CT.phases[0], Date.now());
       ctOpen();
@@ -5221,15 +5228,18 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       o.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; z-index:100000; background:#111; display:flex; flex-direction:column; padding:18px 16px calc(18px + env(safe-area-inset-bottom)); color:#fff; text-align:center; overflow:auto;';
       o.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary);"></div><div id="tm_round" style="font-size:0.85rem; color:#ccc; font-weight:700;"></div></div>' +
         '<div id="tm_phase" style="margin-top:18px; font-size:1.3rem; font-weight:900; letter-spacing:2px;"></div>' +
+        '<div id="tm_prog" style="margin-top:4px; font-size:0.95rem; font-weight:800; min-height:1.3em; color:#ccc;"></div>' +
         '<div id="tm_station" style="margin-top:6px; font-size:1.6rem; font-weight:800; min-height:2.2em;"></div>' +
         '<div id="tm_reps" style="font-size:1.5rem; font-weight:800; color:#ffd60a; min-height:1.3em;"></div>' +
         '<button type="button" class="tm-btn" id="tm_demo" style="display:none; flex:none; margin:2px auto 0; padding:9px 18px; font-size:0.85rem;">🎥 Ver demo</button>' +
         '<div id="tm_time" style="font-size:min(26vw, 160px); font-weight:900; line-height:1; margin:10px 0; font-variant-numeric:tabular-nums;"></div>' +
         '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
         '<div id="tm_next" style="margin-top:14px; font-size:1rem; color:#ccc;"></div>' +
+        '<div id="tm_sheet" style="display:none; margin-top:12px; background:#1b1b1b; border:1px solid #333; border-radius:12px; padding:10px; text-align:left;"></div>' +
+        '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>' +
         '<div style="flex:1; min-height:16px;"></div>' +
         '<div style="display:flex; gap:10px;"><button type="button" class="tm-btn" id="tm_pause">⏸ Pausar</button><button type="button" class="tm-btn" id="tm_plus" style="display:none;">+5 s</button><button type="button" class="tm-btn" id="tm_stop" style="display:none; border-color:#ff453a; color:#ff9a93;">⏹ Parar</button><button type="button" class="tm-btn" id="tm_done" style="display:none; background:#06d6a0; border-color:#06d6a0; color:#000;">✔ Terminé</button><button type="button" class="tm-btn" id="tm_skip">⏭ Saltar</button></div>' +
-        '<div style="display:flex; gap:10px; margin-top:10px;"><button type="button" class="tm-btn" id="tm_exit">✖ Salir</button></div>' +
+        '<div style="display:flex; gap:10px; margin-top:10px;"><button type="button" class="tm-btn" id="tm_exit">✖ Salir</button><button type="button" class="tm-btn" id="tm_snd" style="font-size:0.78rem;"></button></div>' +
         '<button type="button" class="tm-btn" id="tm_more" style="display:none; margin-top:10px; background:#06d6a0; color:#000; width:100%; flex:none;">➕ 1 serie más</button>';
       document.body.appendChild(o);
       document.getElementById('tm_pause').onclick = ctTogglePause;
@@ -5239,10 +5249,13 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       document.getElementById('tm_stop').onclick = ctStop;
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
+      document.getElementById('tm_snd').onclick = tmrToggleMode; tmrModeLabel();
       document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId; startCircuitTimer(ci, sid, true); };
     }
 
     function ctPhaseSound(ph) {
+      if (ph.t === 'work') ctSheetHide();   // la ventanita de peso/reps se cierra al empezar la siguiente serie
+      ctFlash(ph.t === 'work' ? '#0b5a47' : (ph.t === 'rest' ? '#1d3a6b' : '#6b4a0b'));
       if (ph.t === 'work') { tmrBeep(1000, 600, 0); tmrVibrate(250); }
       else if (ph.t === 'rest') { tmrBeep(520, 450, 0); tmrVibrate([100, 60, 100]); }
       else if (ph.t === 'trans') {
@@ -5285,7 +5298,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       el('tm_round').innerText = ph.t === 'ready' ? '' : ((CT.roundLabel || 'Ronda') + ' ' + ph.r + ' de ' + CT.rounds);
       el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
       var stationTxt = ph.st;
-      if (ph.t === 'rest') stationTxt = 'Toma aire y prepárate';
+      if (ph.t === 'rest') stationTxt = 'Tu ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' ' + Math.min(CT.rounds, ph.r + 1) + ' iniciará en:';
       else if (ph.t === 'trans') stationTxt = (ph.kind === 'side' ? 'Cambia de lado ↔' : 'Prepara: ' + ph.st);
       else if (ph.side) stationTxt = ph.st + ' · Lado ' + ph.side + ' de 2';
       el('tm_station').innerText = stationTxt;
@@ -5293,6 +5306,19 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       el('tm_time').innerText = isOpen ? wkFmt(remain) : tmrFmt(remain); el('tm_time').style.color = col;
       el('tm_bar').style.width = isOpen ? '0%' : Math.max(0, Math.min(100, (1 - remain / ph.d) * 100)) + '%'; el('tm_bar').style.background = col;
       if (el('tm_reps')) el('tm_reps').innerText = (isOpen && ph.reps) ? ph.reps : '';
+      if (el('tm_prog')) {   // avance del bloque: cuánto falta, y "ya casi" cuando queda poco
+        var left = CT.rounds - ph.r, lab = (CT.roundLabel || 'Ronda').toLowerCase(), pTxt = '', pCol = '#ccc';
+        if (CT.rounds > 1 && ph.t !== 'ready') {
+          if (left <= 0) { pTxt = '¡Última ' + lab + '! Ya casi 🔥'; pCol = '#ffd60a'; }
+          else if (left === 1) { pTxt = '¡Ya casi! Te falta 1 más'; pCol = '#ffd60a'; }
+          else pTxt = 'Te faltan ' + left + ' más';
+        }
+        el('tm_prog').innerText = pTxt; el('tm_prog').style.color = pCol;
+      }
+      if (isOpen && el('tm_done')) {   // leyenda del botón según lo que sigue
+        var nxp = CT.phases[CT.i + 1];
+        el('tm_done').innerText = !nxp ? '✔ Terminé el último' : (nxp.t === 'rest' ? '✔ Terminé · toca para descansar' : '✔ Terminé · pasa al siguiente');
+      }
       var isWork = ph.t === 'work';   // por tiempo: Pausar, +5 s y Parar; por reps: Pausar y Terminé; en descanso/transición: Pausar y Saltar
       el('tm_plus').style.display = (isWork && !isOpen) ? '' : 'none';
       el('tm_stop').style.display = (isWork && !isOpen) ? '' : 'none';
@@ -5345,7 +5371,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         el('tm_round').innerText = ''; el('tm_phase').innerText = '¡TERMINADO!'; el('tm_phase').style.color = '#06d6a0';
         el('tm_station').innerText = CT.title + ' completado 💪'; el('tm_time').innerText = '✔'; el('tm_time').style.color = '#06d6a0';
         el('tm_bar').style.width = '100%'; el('tm_bar').style.background = '#06d6a0'; el('tm_next').innerText = '';
-        el('tm_pause').style.display = 'none'; el('tm_skip').style.display = 'none'; el('tm_plus').style.display = 'none'; el('tm_stop').style.display = 'none'; el('tm_done').style.display = 'none'; if (el('tm_reps')) el('tm_reps').innerText = ''; el('tm_exit').innerText = CT.srId ? 'Terminar ya' : 'Cerrar';
+        el('tm_pause').style.display = 'none'; el('tm_skip').style.display = 'none'; el('tm_plus').style.display = 'none'; el('tm_stop').style.display = 'none'; el('tm_done').style.display = 'none'; if (el('tm_reps')) el('tm_reps').innerText = ''; if (el('tm_prog')) el('tm_prog').innerText = '';
+        ctSummaryShow(); el('tm_exit').innerText = CT.srId ? 'Terminar ya' : 'Cerrar';
         if (CT.srId && SR[CT.srId]) {
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
           el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = 'block';
@@ -5361,8 +5388,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var ph = CT.phases[i];
       if (!ph || ph.t !== 'work') return;
       if (!ph.open) ctRecord(ph, ph.d);
+      else CT.log.push({ si: ph.si, r: ph.r, secs: Math.max(0, Math.round((CT.paused ? CT.openElapsed : (Date.now() - CT.openStart)) / 1000)) });
       // al cerrar la última estación de una ronda con ejercicios por reps, esa serie cuenta como hecha (lo precargado en gris pasa a confirmado)
       if (CT.hasOpen && ph.si === CT.nSt - 1 && ph.side !== 1 && CT.srId && SR[CT.srId]) srFill(CT.srId, (CT.doneBefore || 0) + ph.r);
+      if (CT.hasOpen && ph.si === CT.nSt - 1 && ph.side !== 1) ctSheetShow(ph.r);   // ventanita para anotar peso y reps de esa serie
     }
     // Anota los segundos de ese tiempo de trabajo en la fila de la serie (unilateral: "lado 1/lado 2")
     function ctRecord(ph, secs) {
@@ -5371,6 +5400,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       ensureSetRows(key, idx + 1);
       var inp = document.getElementById('pr_' + key + '_' + idx); if (!inp) return;
       var val = String(Math.max(0, Math.round(secs)));
+      if (CT.log) CT.log.push({ si: ph.si, r: ph.r, secs: Math.max(0, Math.round(secs)) });
       var ak = key + '|' + idx;
       if (ph.side === 1) CT.acc[ak] = val;
       else if (ph.side === 2 && CT.acc[ak] != null) val = CT.acc[ak] + '/' + val;
@@ -5394,6 +5424,72 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       ctEnter(CT.phases[CT.i], Date.now()); CT.paused = false; CT.lastBeep = '';
       var b = document.getElementById('tm_pause'); if (b) b.innerText = '⏸ Pausar';
       ctPhaseSound(CT.phases[CT.i]); ctTick();
+    }
+
+    // ----- Ventanita para anotar peso y reps sin salir del temporizador (no bloquea el descanso) -----
+    function ctSheetHide() { var b = document.getElementById('tm_sheet'); if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
+    function ctSheetShow(round) {
+      var box = document.getElementById('tm_sheet'); if (!box) return;
+      var idx = (CT.doneBefore || 0) + round - 1, rows = '';
+      var stepBtn = 'style="width:38px; height:38px; border-radius:10px; border:1px solid #444; background:#262626; color:#fff; font-size:1.2rem; font-weight:800;"';
+      var inpSty = 'style="width:64px; height:38px; text-align:center; background:#202020; border:1px solid #333; color:#fff; border-radius:8px; font-size:1rem;"';
+      var stepper = function(kind, key, v, step, unit) {
+        return '<span style="display:inline-flex; align-items:center; gap:4px; margin-left:8px;">' +
+          '<button type="button" ' + stepBtn + ' onclick="ctSheetStep(\'' + key + '\',' + idx + ',\'' + kind + '\',' + (-step) + ')">−</button>' +
+          '<input type="text" inputmode="decimal" id="sh_' + kind + '_' + key + '_' + idx + '" value="' + escHtml(v) + '" ' + inpSty + ' oninput="ctSheetSet(\'' + key + '\',' + idx + ',\'' + kind + '\',this.value)">' +
+          '<button type="button" ' + stepBtn + ' onclick="ctSheetStep(\'' + key + '\',' + idx + ',\'' + kind + '\',' + step + ')">+</button>' +
+          '<span style="font-size:0.7rem; color:#aaa;">' + unit + '</span></span>';
+      };
+      for (var s = 0; s < CT.nSt; s++) {
+        if (!(CT.openSt && CT.openSt[s])) continue;
+        var key = (CT.keys || [])[s]; if (!key) continue;
+        ensureSetRows(key, idx + 1);
+        var w = document.getElementById('pw_' + key + '_' + idx), r = document.getElementById('pr_' + key + '_' + idx);
+        if (!r) continue;
+        rows += '<div style="margin-top:8px;"><div style="font-size:0.9rem; font-weight:800; margin-bottom:4px;">' + escHtml(CT.names[s] || ('Ejercicio ' + (s + 1))) + '</div>' +
+          '<div style="display:flex; flex-wrap:wrap; align-items:center;">' + (w ? stepper('pw', key, w.value, 2.5, 'lbs') : '') + stepper('pr', key, r.value, 1, 'reps') + '</div></div>';
+      }
+      if (!rows) { ctSheetHide(); return; }
+      box.innerHTML = '<div style="font-size:0.8rem; color:#ccc; font-weight:800;">📝 ' + escHtml(CT.roundLabel || 'Serie') + ' ' + round + ' · anota lo que hiciste (opcional)</div>' + rows;
+      box.style.display = 'block';
+    }
+    function ctSheetSet(key, idx, kind, val) {
+      var t = document.getElementById(kind + '_' + key + '_' + idx); if (!t) return;
+      t.value = val; t.classList.remove('prefilled'); saveTracker(); refreshSetSummary(key);
+    }
+    function ctSheetStep(key, idx, kind, delta) {
+      var i = document.getElementById('sh_' + kind + '_' + key + '_' + idx); if (!i) return;
+      var cur = parseFloat(String(i.value).replace(',', '.')); if (isNaN(cur)) cur = 0;
+      var nv = Math.max(0, Math.round((cur + delta) * 10) / 10);
+      i.value = String(nv); ctSheetSet(key, idx, kind, i.value);
+    }
+    // Resumen al terminar: tiempo de cada serie (o de cada ejercicio por ronda)
+    function ctSummaryShow() {
+      var box = document.getElementById('tm_summary'); if (!box || !CT.log || !CT.log.length) return;
+      var byR = {}, tot = 0;
+      CT.log.forEach(function(e) { var k = e.r + '|' + e.si; byR[k] = (byR[k] || 0) + e.secs; tot += e.secs; });
+      var lab = CT.roundLabel || 'Serie', html = '<div style="font-weight:800; color:#fff; margin-bottom:4px;">⏱ Tiempo de cada ' + lab.toLowerCase() + '</div>';
+      for (var r = 1; r <= CT.rounds; r++) {
+        var parts = [];
+        for (var s = 0; s < CT.nSt; s++) { var v = byR[r + '|' + s]; if (v != null) parts.push((CT.nSt > 1 ? escHtml(CT.names[s] || ('Ej. ' + (s + 1))) + ' ' : '') + wkFmt(v)); }
+        if (parts.length) html += '<div>' + lab + ' ' + (CT.doneBefore + r) + ' · ' + parts.join(' · ') + '</div>';
+      }
+      html += '<div style="margin-top:4px; color:#aaa;">Tiempo total de trabajo: ' + wkFmt(tot) + '</div>';
+      box.innerHTML = html; box.style.display = 'block';
+    }
+    // Destello de color al cambiar de fase (refuerzo visual por si el celular no suena o no vibra)
+    function ctFlash(col) {
+      var o = document.getElementById('tm_overlay'); if (!o) return;
+      o.style.transition = 'none'; o.style.background = col; o.style.opacity = '0.9';
+      setTimeout(function() { o.style.transition = 'background 0.5s, opacity 0.5s'; o.style.background = '#111'; o.style.opacity = '1'; }, 60);
+    }
+    // Modo de sonido: "mezclar con música" (iPhone: la música sigue sonando) o "normal"
+    function tmrMode() { try { return localStorage.getItem('benessere_audio_mode') || 'mix'; } catch (e) { return 'mix'; } }
+    function tmrModeLabel() { var b = document.getElementById('tm_snd'); if (b) b.innerText = tmrMode() === 'mix' ? '🔊 Sonido: con música' : '🔊 Sonido: normal'; }
+    function tmrToggleMode() {
+      var nm = tmrMode() === 'mix' ? 'normal' : 'mix';
+      try { localStorage.setItem('benessere_audio_mode', nm); } catch (e) {}
+      tmrModeLabel(); tmrAudio(); tmrBeep(1000, 300, 0);   // pitido de prueba con el modo nuevo
     }
 
     // ----- Recordatorio de 5 s al terminar la última ronda de un ejercicio -----
@@ -6143,7 +6239,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-a';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-b';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
