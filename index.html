@@ -4095,6 +4095,28 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       else renderHistByDate(container, sessions, legacy);
     }
 
+    // Anotar o corregir calorías y pulso del reloj de un entreno ya cerrado
+    function histWatchSave(t) {
+      var ce = document.getElementById('hw_c_' + t), he = document.getElementById('hw_h_' + t);
+      var c = parseInt(ce && ce.value, 10), h = parseInt(he && he.value, 10);
+      var all = loadSessions(), sel = null;
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].t === t) {
+          if (c > 0 && c < 5000) all[i].wc = c; else delete all[i].wc;
+          if (h > 30 && h < 250) all[i].hr = h; else delete all[i].hr;
+          sel = all[i];
+        }
+      }
+      if (!sel) return;
+      try { localStorage.setItem(sessKey(), JSON.stringify(all)); } catch (e) {}
+      pushSession(sel);
+      try { loadTracker(); } catch (e) {}
+      var open = {}; document.querySelectorAll('#historialListContainer details.hist-sess[open]').forEach(function(d) { var b = d.querySelector('[id^="hw_c_"]'); if (b) open[b.id] = true; });
+      renderHistorial();
+      document.querySelectorAll('#historialListContainer details.hist-sess').forEach(function(d) { var b = d.querySelector('[id^="hw_c_"]'); if (b && open[b.id]) d.open = true; });
+      try { wkToast('✅ Guardado'); } catch (e) {}
+    }
+
     function renderHistByDate(container, sessions, legacy) {
       var html = '';
       sessions.forEach(function(s) {
@@ -4106,8 +4128,13 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '<button type="button" onclick="mountFromSession(\'' + escHtml(s.t) + '\',' + idx + ')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:4px;">⤴️ Montar</button></div></div>';
         }).join('');
         html += '<details class="hist-sess" style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
-          '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + ((s.ex || []).length ? '' : ' · sin marcas') + ((s.sc && !s.dur) ? ' · sin cerrar' : '') + '</span><span class="hist-arrow">▾</span></summary>' +
+          '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.wc ? ' · 🔥 ' + s.wc : '') + (s.hr ? ' · ❤️ ' + s.hr : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + ((s.ex || []).length ? '' : ' · sin marcas') + ((s.sc && !s.dur) ? ' · sin cerrar' : '') + '</span><span class="hist-arrow">▾</span></summary>' +
           '<div style="margin-top:8px;">' +
+          '<div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">' +
+            '<span style="font-size:0.72rem; color:var(--muted);">⌚</span>' +
+            '<input type="number" inputmode="numeric" id="hw_c_' + escHtml(s.t) + '" value="' + (s.wc || '') + '" placeholder="Calorías" style="flex:1; min-width:0; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; font-size:0.85rem;">' +
+            '<input type="number" inputmode="numeric" id="hw_h_' + escHtml(s.t) + '" value="' + (s.hr || '') + '" placeholder="Pulso prom." style="flex:1; min-width:0; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; font-size:0.85rem;">' +
+            '<button type="button" onclick="histWatchSave(\'' + escHtml(s.t) + '\')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.72rem; font-weight:800; padding:8px 10px; border-radius:8px; cursor:pointer;">Guardar</button></div>' +
           ((s.ex || []).length ? '' : '<div style="font-size:0.8rem; color:var(--muted); padding:4px 0;">Entreno registrado con el cronómetro, sin marcas anotadas.</div>') +
           ((s.ex || []).length ? '<button type="button" onclick="mountWholeSession(\'' + escHtml(s.t) + '\')" style="width:100%; background:var(--primary); border:none; color:#000; font-size:0.8rem; font-weight:900; padding:10px; border-radius:8px; cursor:pointer; margin-bottom:4px;">⚡ Montar todo el día en las marcas</button>' : '') +
           rows + '</div></details>';
@@ -6528,7 +6555,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-f';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-g';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
