@@ -1182,6 +1182,25 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var st = athleteActiveState, box = document.getElementById('med_chart_box');
       if (st && box) box.innerHTML = medChartBlock(athleteEntries(st), athMedKey, 'selectMedMetric');
     }
+    // Comparación compacta de las últimas 3 mediciones (por medida, las 3 fechas más recientes en que se midió)
+    function last3Html(entries, keys) {
+      var dates = [];
+      entries.forEach(function(e) { if (dates.indexOf(e.d) < 0) dates.push(e.d); });
+      dates.sort();
+      dates = dates.slice(-3);
+      if (dates.length < 2) return '';
+      var head = '<tr><th>Medida</th>' + dates.map(function(d) { return '<th>' + fmtDateTable(d) + '</th>'; }).join('') + '<th>Cambio</th></tr>';
+      var rows = keys.map(function(f) {
+        var vals = dates.map(function(d) { for (var i = 0; i < entries.length; i++) { if (entries[i].d === d && entries[i].v[f.k] != null) return entries[i].v[f.k]; } return null; });
+        var have = vals.filter(function(x) { return x != null; });
+        if (have.length < 1) return '';
+        var chg = have.length > 1 ? deltaText(have[have.length - 1] - have[0], f.unit) : '–';
+        return '<tr><td style="text-align:left;">' + f.label + (f.unit ? ' <small>(' + f.unit + ')</small>' : '') + '</td>' +
+          vals.map(function(x) { return '<td>' + (x != null ? fmtNum(x) : '–') + '</td>'; }).join('') + '<td>' + chg + '</td></tr>';
+      }).join('');
+      if (!rows) return '';
+      return '<div class="med-h">Últimas ' + dates.length + ' mediciones</div><div class="med-table-wrap"><table class="med-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
+    }
     function renderAthleteMeasures() {
       var st = athleteActiveState, body = document.getElementById('ath_medBody');
       if (!st || !body) return;
@@ -1205,7 +1224,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           (cur.d !== lastDate ? '<div class="med-delta"><span>medido el ' + fmtDateShort(cur.d) + '</span></div>' : '') + '</div>';
       }).join('');
       body.innerHTML = '<div class="med-h">Última medición · ' + fmtDate(lastDate) + '</div><div class="metrics-grid">' + cards + '</div>' +
-        '<div class="med-h">Evolución</div><div id="med_chart_box">' + medChartBlock(entries, athMedKey, 'selectMedMetric') + '</div>' +
+        last3Html(entries, keys) + '<div class="med-h">Evolución</div><div id="med_chart_box">' + medChartBlock(entries, athMedKey, 'selectMedMetric') + '</div>' +
         '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, 'athlete') +
         '<div class="med-sum">● = medición del coach &nbsp; 👤 = medición que anotaste tú</div>';
     }
@@ -6555,7 +6574,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-g';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-h';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
