@@ -1542,6 +1542,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             '</div>';
           });
 
+          if (item.type !== 'circuito') {
+            subsHtml += '<div class="sub-box"><div class="form-grid"><div class="form-group" style="grid-column: span 2;"><label>Descanso entre series (opcional)</label>' +
+              '<input type="text" value="' + escHtml(item.rest || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].rest = this.value" placeholder="Ej: 90 s (pesados) o 30 s (accesorios). El cliente puede ajustarlo 30/60/90"></div></div></div>';
+          }
           if (item.type === 'circuito') subsHtml = circuitEditorHtml(dayIndex, itemIndex, item, showDemos);
           itemsHtml += '<div class="exercise-item ' + (item.type || 'normal') + '">' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
@@ -2492,10 +2496,12 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             lastCircuit = null;
             var props = line.substring(10).split('|');
             var sub = { name: props[0].trim(), series: '', reps: '', notes: '', video: '' };
+            var restN = '';
             props.slice(1).forEach(function(pr) {
               var pair = pr.split(':');
               if (pair.length >= 2) {
                 var pk = pair[0].trim().toLowerCase(), pv = pair.slice(1).join(':').trim();
+                if (pk.indexOf('descans') !== -1) restN = pv;
                 if (pk.indexOf('serie') !== -1) sub.series = pv;
                 if (pk.indexOf('rep') !== -1) sub.reps = pv;
                 if (pk.indexOf('nota') !== -1) sub.notes = pv;
@@ -2505,7 +2511,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
               }
             });
             var meta = resolveSlotAndVig([sub.name]);
-            curDay.items.push({ type: 'normal', slot: meta.slot, vigenciaDesde: meta.vDesde, vigenciaHasta: meta.vHasta, sub: [sub] });
+            curDay.items.push({ type: 'normal', slot: meta.slot, vigenciaDesde: meta.vDesde, vigenciaHasta: meta.vHasta, rest: restN, sub: [sub] });
             continue;
           }
 
@@ -2515,11 +2521,12 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var namesRaw = props2[0].trim();
             if (namesRaw.indexOf('+') !== -1) {
               var names = namesRaw.split('+').map(function(n) { return n.trim(); }).filter(Boolean);
-              var series2 = '', reps2 = '', notes2 = '', videos2 = [], uniRaw = '', pesoRaw = '';
+              var series2 = '', reps2 = '', notes2 = '', videos2 = [], uniRaw = '', pesoRaw = '', restB = '';
               props2.slice(1).forEach(function(pr) {
                 var pair = pr.split(':');
                 if (pair.length >= 2) {
                   var pk = pair[0].trim().toLowerCase(), pv = pair.slice(1).join(':').trim();
+                  if (pk.indexOf('descans') !== -1) restB = pv;
                   if (pk.indexOf('serie') !== -1) series2 = pv;
                   if (pk.indexOf('rep') !== -1) reps2 = pv;
                   if (pk.indexOf('nota') !== -1) notes2 = pv;
@@ -2535,7 +2542,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 return { name: n, series: series2, reps: reps2, notes: notes2, video: v, uni: importFlagApplies(uniRaw, ni), peso: importNoWeight(pesoRaw) ? false : true };
               });
               var meta2 = resolveSlotAndVig(names);
-              curDay.items.push({ type: isBi ? 'biserie' : 'triserie', slot: meta2.slot, vigenciaDesde: meta2.vDesde, vigenciaHasta: meta2.vHasta, sub: subList });
+              curDay.items.push({ type: isBi ? 'biserie' : 'triserie', slot: meta2.slot, vigenciaDesde: meta2.vDesde, vigenciaHasta: meta2.vHasta, rest: restB, sub: subList });
             }
             continue;
           }
@@ -2669,6 +2676,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           } else if (it.type === 'normal' || subs.length === 1) {
             var s0 = named[0];
             var ln0 = 'Ejercicio: ' + expClean(s0.name) + ' | Series: ' + expClean(s0.series) + ' | Reps: ' + expClean(s0.reps);
+            if (expClean(it.rest)) ln0 += ' | Descanso: ' + expClean(it.rest);
             if (expClean(s0.notes)) ln0 += ' | Notas: ' + expClean(s0.notes);
             if (s0.uni) ln0 += ' | Unilateral: si';
             if (s0.peso === false) ln0 += ' | Peso: no';
@@ -2678,6 +2686,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var isBi = it.type === 'biserie';
             var ln1 = (isBi ? 'Biserie: ' : 'Triserie: ') + subs.map(function(s) { return expClean(s.name); }).join(' + ');
             ln1 += ' | Series: ' + expFirstFilled(subs, 'series') + ' | Reps: ' + expFirstFilled(subs, 'reps');
+            if (expClean(it.rest)) ln1 += ' | Descanso: ' + expClean(it.rest);
             var notesU = []; subs.forEach(function(s) { var n = expClean(s.notes); if (n && notesU.indexOf(n) === -1) notesU.push(n); });
             if (notesU.length) ln1 += ' | Notas: ' + notesU.join(' / ');
             var uniIdx = []; subs.forEach(function(s, si) { if (s.uni) uniIdx.push(si); });
@@ -2823,7 +2832,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                   if (sFl) sArr.push(sFl);
                   return sArr;
                 })
-              ];
+              ].concat((it.type !== 'circuito' && it.rest && String(it.rest).trim()) ? [String(it.rest).trim()] : []);
             })
           ];
           d.items.forEach(function(it, idx) { if (it.type === 'circuito') { var cc = it.circ || {}; dArr[5][idx].push([cc.rondas||'', cc.trabajo||'', cc.descanso||'', cc.notas||'', cc.nombre||'']); } });
@@ -2900,6 +2909,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 slot: it[1],
                 vigenciaDesde: it[2],
                 vigenciaHasta: it[3],
+                rest: (it[0] !== 'c' && typeof it[5] === 'string') ? it[5] : '',
                 circ: (it[0] === 'c' && Array.isArray(it[5])) ? { rondas: it[5][0]||'', trabajo: it[5][1]||'', descanso: it[5][2]||'', notas: it[5][3]||'', nombre: it[5][4]||'' } : undefined,
                 sub: (it[4] || []).map(function(s) {
                   return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||''), uni: ((s[5] | 0) & 1) === 1, peso: ((s[5] | 0) & 2) ? false : true };
@@ -3270,7 +3280,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var timedWorks = subList.map(function(s3) { return isTimeText(s3.reps) ? parseSecs(s3.reps) : 0; });
             var nSets = parseInt(subList[0].series, 10) || 1;
             athCircuits.push({ nombre: (isNormal ? (subList[0].name || 'Serie') : typeBadge), rondas: String(nSets), trabajo: '', works: timedWorks, reps: subList.map(function(s6, k6) { return ctRepsText(s6, subUnis[k6]); }), restMode: 'round', descanso: '@REST@', stations: subList.map(function(s4) { return s4.name || ''; }), videos: subVideos, keys: subKeys, unis: subUnis });
-            subsDetails += setRunnerHtml(nSets, 0, 'Serie', athCircuits.length - 1);
+            subsDetails += setRunnerHtml(nSets, 0, 'Serie', athCircuits.length - 1, false, isTimeText(item.rest) || /^\d+$/.test(String(item.rest || '').trim()) ? parseSecs(item.rest) : 0);
           }
           exercisesHtml += '<div class="exercise-card ' + (['normal', 'biserie', 'triserie', 'circuito'].indexOf(item.type) >= 0 ? item.type : 'normal') + ' exercise-variant" data-slot="' + slotNum + '" data-vig-desde="' + vDesde + '" ' + vHastaAttr + '>' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
@@ -4453,7 +4463,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     function setRunnerHtml(sets, fixedRest, label, timerIdx, noPicker, defRest) {
       var id = ++athSetSeq;
-      var startRest = fixedRest || snapRest(defRest) || 60;
+      var coachRest = parseInt(defRest, 10) || 0;   // descanso fijado por el coach: queda preseleccionado tal cual
+      var startRest = fixedRest || coachRest || 60;
       SR[id] = { sets: sets, base: sets, fixedRest: fixedRest || 0, label: label, cur: 0, state: 'idle', rest: startRest, noPick: !!noPicker, t0: 0 };
       var isTimed = (timerIdx !== undefined && timerIdx !== null);
       var html = '<div class="set-runner" id="sr_' + id + '">';
@@ -4467,10 +4478,16 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       }
       if (!fixedRest && !noPicker) {
         html += '<div class="rest-row"><span>⏱ Descanso entre ' + (label === 'Ronda' ? 'rondas' : 'series') + '</span>' +
-          [30, 60, 90].map(function(sec) { return '<button type="button" class="rest-btn' + (sec === startRest ? ' sel' : '') + '" data-sr="' + id + '" onclick="srSetRest(' + id + ',' + sec + ')">' + sec + ' s</button>'; }).join('') +
+          restOptions(coachRest).map(function(sec) { return '<button type="button" class="rest-btn' + (sec === startRest ? ' sel' : '') + '" data-sr="' + id + '" onclick="srSetRest(' + id + ',' + sec + ')">' + sec + ' s</button>'; }).join('') +
           '</div>';
       }
       return html + '</div>';
+    }
+    // Botones de descanso del cliente: 30/60/90 y, si el coach fijó otro valor (ej. 45 o 120 s), ese valor también
+    function restOptions(coachRest) {
+      var o = [30, 60, 90];
+      if (coachRest > 0 && o.indexOf(coachRest) < 0) { o.push(coachRest); o.sort(function(a, b) { return a - b; }); }
+      return o;
     }
     function srSetRest(id, sec) {
       if (!SR[id]) return;
@@ -5796,6 +5813,10 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '<label style="margin:0; text-transform:none; font-size:0.78rem; color:#ddd;"><input type="checkbox" id="edx_' + p + '_' + sIdx + '_peso"' + (subUsesWeight(sub) ? ' checked' : '') + '> Usa peso</label></div></div>';
       return h;
     }
+    function edxRestHtml(p, item) {
+      if (item.type === 'circuito') return '';
+      return '<div class="edx-sub"><label>Descanso entre series (opcional)</label><input type="text" id="edx_' + p + '_rest" value="' + edxAttr(item.rest) + '" placeholder="Ej: 90 s"></div>';
+    }
     function edxCircHtml(p, item) {
       var c = item.circ || {};
       return '<div class="edx-sub"><div style="font-size:0.72rem; font-weight:800; color:var(--accent);">Circuito</div>' +
@@ -5818,6 +5839,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         sub.uni = edxChk('edx_' + p + '_' + k + '_uni');
         sub.peso = edxChk('edx_' + p + '_' + k + '_peso');
       });
+      if (item.type !== 'circuito') item.rest = edxVal('edx_' + p + '_rest');
       if (item.type === 'circuito') {
         item.circ = item.circ || {};
         item.circ.nombre = edxVal('edx_' + p + '_c_nombre');
@@ -5835,6 +5857,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">' + escHtml(d.title || '') + ' · ' + (vd < W ? 'los cambios aplican desde la semana ' + W + ' en adelante; las semanas anteriores quedan como estaban' : 'cambia esta versión del ejercicio (semana ' + vd + (it.vigenciaHasta ? '-' + it.vigenciaHasta : '+') + ')') + '</div>';
       if (it.type === 'circuito') h += edxCircHtml('cur', it);
       (it.sub || []).forEach(function(sub, k) { h += edxSubHtml('cur', it, k, sub); });
+      h += edxRestHtml('cur', it);
       // progresiones restantes: versiones posteriores del mismo ejercicio en este día
       d.items.forEach(function(o, oi) {
         if (oi === ii) return;
@@ -5850,6 +5873,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           h += '<div style="margin-top:8px; font-size:0.75rem; font-weight:800; color:#fff;">Semana ' + o.vigenciaDesde + (o.vigenciaHasta ? '-' + o.vigenciaHasta : '+') + '</div>';
           if (o.type === 'circuito') h += edxCircHtml('f' + n, o);
           (o.sub || []).forEach(function(sub, k) { h += edxSubHtml('f' + n, o, k, sub); });
+          h += edxRestHtml('f' + n, o);
         });
         h += '</details>';
       }
@@ -6239,7 +6263,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
