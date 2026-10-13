@@ -5478,7 +5478,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.keys = c.keys || []; CT.acc = {};   // para anotar los segundos logrados en cada serie
       CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? SR[srId].cur : 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = c.nombre || 'Circuito';
-      ctGuideClear(); CT.guide = guide || null;
+      ctGuideClear(); CT.guide = guide || null; CT.cls = false;
       CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = !!built.hiit;
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
       ctEnter(CT.phases[0], Date.now());
@@ -5511,6 +5511,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_prog" style="display:none; margin-top:2px; font-size:0.9rem; font-weight:800; color:#ccc;"></div>' +
         '<div id="tm_station" style="margin-top:4px; font-size:1.35rem; font-weight:800; line-height:1.2;"></div>' +
         '<div id="tm_reps" style="font-size:1.3rem; font-weight:800; color:#ffd60a; margin-top:2px;"></div>' +
+        '<div id="tm_list" style="display:none; text-align:left; margin:6px 0 2px; font-size:0.95rem; line-height:1.35;"></div>' +
         '<button type="button" class="tm-btn" id="tm_demo" style="display:none; flex:none; margin:2px auto 0; padding:9px 18px; font-size:0.85rem;">🎥 Ver demo</button>' +
         '<div id="tm_time" style="font-size:min(24vw, 130px); font-weight:900; line-height:1; margin:6px 0 8px; font-variant-numeric:tabular-nums;"></div>' +
         '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
@@ -5518,6 +5519,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '</div>' +
         '<div id="tm_side">' +
         '<button type="button" class="tm-btn" id="tm_done" style="display:none; background:#06d6a0; border-color:#06d6a0; color:#000;">✔ Terminé</button>' +
+        '<button type="button" class="tm-btn" id="tm_rnd" style="display:none; background:#06d6a0; border-color:#06d6a0; color:#000;">➕ Ronda</button>' +
         '<button type="button" class="tm-btn" id="tm_skip">⏭ Saltar</button>' +
         '<button type="button" class="tm-btn" id="tm_pause">⏸ Pausar</button>' +
         '<button type="button" class="tm-btn" id="tm_plus" style="display:none;">+5 s</button>' +
@@ -5537,6 +5539,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_skip').onclick = ctSkip;
       document.getElementById('tm_done').onclick = ctSkip;   // en una fase por reps, "Terminé" cierra la serie y pasa a lo que sigue
       document.getElementById('tm_plus').onclick = ctPlus5;
+      document.getElementById('tm_rnd').onclick = clsAmrapPlus;
       document.getElementById('tm_stop').onclick = ctStop;
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
@@ -5573,7 +5576,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         changed = true;
       }
       if (changed) { CT.lastBeep = ''; ctPhaseSound(CT.phases[CT.i]); }
-      if (CT.phases[CT.i].open) { ctRender(Math.floor((now - CT.openStart) / 1000)); return; }   // fase por reps: el cronómetro sube
+      var cph = CT.phases[CT.i];
+      if (cph.open) {   // fase por reps: el cronómetro sube
+        var osecs = Math.floor((now - CT.openStart) / 1000);
+        if (cph.cap && osecs >= cph.cap) { ctSkip(); return; }   // "por tiempo" con límite: se acaba el tiempo
+        ctRender(osecs); return;
+      }
       var remain = Math.ceil((CT.end - now) / 1000);
       if (remain <= 3 && remain >= 1 && CT.lastBeep !== CT.i + '-' + remain) { CT.lastBeep = CT.i + '-' + remain; tmrBeep(700, 140, 0); }
       ctRender(remain);
@@ -5595,6 +5603,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
       var stationTxt = ctShort(ph.st);
       if (ph.t === 'rest' && CT.hiit) stationTxt = ph.nextName ? (ph.multi ? 'Sigue: ' + ctShort(ph.nextName) : ctShort(ph.nextName)) : 'Vuelta a la calma';
+      else if (ph.t === 'rest' && CT.cls) stationTxt = ph.nextName ? 'Sigue: ' + ctShort(ph.nextName) : 'Descanso';
       else if (ph.t === 'rest') stationTxt = 'Tu ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' ' + Math.min(CT.rounds, ph.r + 1) + ' iniciará en:';
       else if (ph.t === 'trans') stationTxt = (ph.kind === 'side' ? 'Cambia de lado ↔' : 'Prepara: ' + ctShort(ph.st));
       else if (ph.side) stationTxt = ctShort(ph.st) + ' · Lado ' + ph.side + ' de 2';
@@ -5623,14 +5632,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       var isWork = ph.t === 'work';   // por tiempo: Pausar, +5 s y Parar; por reps: Pausar y Terminé; en descanso/transición: Pausar y Saltar
       el('tm_plus').style.display = (isWork && !isOpen) ? '' : 'none';
-      el('tm_stop').style.display = (isWork && !isOpen) ? '' : 'none';
+      el('tm_stop').style.display = (isWork && !isOpen && !CT.cls) ? '' : 'none';
       el('tm_done').style.display = isOpen ? '' : 'none';
       el('tm_skip').style.display = isWork ? 'none' : '';
       var demoBtn = el('tm_demo');
       if (demoBtn) {   // demo del ejercicio actual (en descanso o transición, el del que sigue); el temporizador no se pausa
-        var di = ph.si;
+        var di = ph.list ? (CT.listSel || 0) : ph.si;
         if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
         CT.demoUrl = (CT.videos && di >= 0 && CT.videos[di]) ? CT.videos[di] : '';
+        if (ph.nextVideo) CT.demoUrl = ph.nextVideo;   // pausa: se ve el primer ejercicio del siguiente bloque
         ctVidSync(false);
         var vb = document.getElementById('tm_vid');
         demoBtn.style.display = (CT.demoUrl && !(vb && vb.style.display !== 'none')) ? 'block' : 'none';
@@ -5638,10 +5648,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var nx = CT.phases[CT.i + 1], nxTxt = 'Última estación';
       if (nx) {
         if (nx.t === 'rest') nxTxt = 'Sigue: Descanso ' + tmrFmt(nx.d) + (nx.d < 60 ? ' s' : '');
-        else if (nx.t === 'trans') nxTxt = 'Sigue: ' + (nx.kind === 'side' ? 'Cambio de lado' : 'Transición ' + nx.d + ' s');
+        else if (nx.t === 'trans') nxTxt = 'Sigue: ' + (nx.kind === 'side' ? 'Cambio de lado' : (nx.lbl || 'Transición') + ' ' + nx.d + ' s');
         else nxTxt = 'Sigue: ' + ctShort(nx.st) + (nx.side ? ' · lado ' + nx.side : '') + (nx.open && nx.reps ? ' · ' + nx.reps : '');
       }
       el('tm_next').innerText = nxTxt;
+      if (CT.cls) ctClsRender(ph);
       if (PIP.prep) ctPipDraw(col, labels[ph.t], stationTxt, el('tm_time').innerText, el('tm_round').innerText, (isOpen && ph.reps) ? ph.reps : (ph.note || ''), isOpen ? 0 : Math.max(0, Math.min(1, 1 - remain / ph.d)));
     }
 
@@ -5765,6 +5776,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ctPhaseSound(CT.phases[CT.i]); ctTick();
     }
     function ctFinish() {
+      if (CT.cls) { ctClsFinish(); return; }
       ctPipStop();
       CT.done = true;
       ctVidSync(true);
@@ -5793,6 +5805,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctPhaseDone(i) {
       var ph = CT.phases[i];
       if (!ph || ph.t !== 'work') return;
+      if (CT.cls) { clsPhaseDone(ph); return; }   // en clase no se anota nada
       if (!ph.open) ctRecord(ph, ph.d);
       else CT.log.push({ si: ph.si, r: ph.r, secs: Math.max(0, Math.round((CT.paused ? CT.openElapsed : (Date.now() - CT.openStart)) / 1000)) });
       // al cerrar la última estación de una ronda con ejercicios por reps, esa serie cuenta como hecha (lo precargado en gris pasa a confirmado)
@@ -5833,6 +5846,199 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ctPhaseSound(CT.phases[CT.i]); ctTick();
     }
 
+
+    // ================= CLASES: REPRODUCTOR =================
+    // Reutiliza el temporizador (CT) pero sin anotar nada: sin series, pesos, historial ni reportes. CT.cls = true.
+    var CLS_GAP = 15;   // segundos entre un bloque y el siguiente
+    function clsRepsTxt(sub, rep) { return ctRepsText({ reps: rep != null ? rep : (sub ? sub.reps : '') }, false); }
+    // Convierte un bloque de la clase en las fases del temporizador (mismo formato que buildCircuitPhases)
+    function buildClassPhases(it, nextIt) {
+      var c = it.circ || {}, subs = it.sub || [], tp = c.tipo || '';
+      var names = subs.map(function(sb, i) { return (sb.name && String(sb.name).trim()) || ('Ejercicio ' + (i + 1)); });
+      var videos = subs.map(function(sb) { return sb.video || ''; });
+      var repsTxt = subs.map(function(sb) { return isTimeText(sb.reps) ? '' : clsRepsTxt(sb); });
+      var n = names.length, label = 'Ronda', rounds = parseInt(c.rondas, 10) || 1, phases = [];
+      var pack = function() { return { phases: phases, rounds: rounds, nSt: Math.max(n, 1), names: names, openSt: names.map(function() { return false; }), hasOpen: false, hiit: false, label: label, videos: videos, repsTxt: repsTxt }; };
+      var blockName = c.nombre || 'Bloque';
+      if (tp === 'pausa') {
+        var pd = clsSecs(c.total) || 60, nx0 = nextIt && nextIt.sub && nextIt.sub[0];
+        phases.push({ t: 'rest', d: pd, st: 'Pausa', r: 1, si: -1, lbl: 'Pausa', pausa: true, nextName: nx0 ? nx0.name : (nextIt ? nextIt.circ.nombre : ''), note: nx0 ? (clsRepsTxt(nx0) || (isTimeText(nx0.reps) ? nx0.reps : '')) : '', nextVideo: nx0 ? (nx0.video || '') : '' });
+        rounds = 1; label = 'Pausa'; return pack();
+      }
+      if (!n) return { err: 'El bloque "' + blockName + '" no tiene ejercicios.' };
+      phases.push({ t: 'ready', d: 5, st: (tp === 'amrap' || tp === 'portiempo') ? blockName : names[0], r: 1, si: 0 });
+      if (tp === 'amrap') {
+        var tot = clsSecs(c.total);
+        if (!tot) return { err: 'El AMRAP "' + blockName + '" no tiene tiempo total (ej: Tiempo: 15 min).' };
+        phases.push({ t: 'work', d: tot, st: blockName, r: 1, si: 0, amrap: true, list: true, lbl: 'AMRAP' });
+        rounds = 1; label = 'AMRAP'; return pack();
+      }
+      if (tp === 'portiempo') {
+        phases.push({ t: 'work', d: 0, open: true, st: blockName, r: 1, si: 0, list: true, timed: true, cap: clsSecs(c.limite), lbl: 'Por tiempo', reps: '' });
+        rounds = 1; label = 'Por tiempo'; return pack();
+      }
+      var works = clsListSecs(c.trabajo), rest = clsSecs(c.descanso), cambio = clsSecs(c.cambio);
+      if (tp === 'tabata') {
+        var tw = works[0] || 20, tr = rest || 10, N = parseInt(c.rondas, 10) || (clsSecs(c.total) ? Math.max(1, Math.floor(clsSecs(c.total) / (tw + tr))) : 8);
+        for (var k = 0; k < N; k++) {
+          var si = k % n, sn = (k + 1) % n;
+          phases.push({ t: 'work', d: tw, st: names[si], r: k + 1, si: si, side: 0, note: repsTxt[si] });
+          if (k < N - 1) phases.push({ t: 'rest', d: tr, st: 'Descanso', r: k + 1, si: -1, nextName: names[sn], note: repsTxt[sn] });
+        }
+        rounds = N; label = 'Intervalo'; return pack();
+      }
+      if (tp === 'emom') {
+        var cada = clsSecs(c.cada) || 60, tt = clsSecs(c.total), M = tt ? Math.max(1, Math.floor(tt / cada)) : n * rounds;
+        for (var m = 0; m < M; m++) { var sm = m % n; phases.push({ t: 'work', d: cada, st: names[sm], r: m + 1, si: sm, side: 0, note: repsTxt[sm] || (isTimeText(subs[sm].reps) ? subs[sm].reps : '') }); }
+        rounds = M; label = cada === 60 ? 'Minuto' : 'Intervalo'; return pack();
+      }
+      var repsList = String(c.repsList || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+      if (tp === 'escalera') { if (!repsList.length) return { err: 'La escalera "' + blockName + '" necesita Reps: 10, 8, 6, 4, 2.' }; rounds = repsList.length; }
+      var repAt = function(r, s) { return tp === 'escalera' ? repsList[r - 1] : subs[s].reps; };
+      for (var r = 1; r <= rounds; r++) {
+        for (var s = 0; s < n; s++) {
+          var rp = repAt(r, s), timed = tp !== 'escalera' && isTimeText(rp);
+          var w = timed ? clsSecs(rp) : (tp === 'escalera' ? 0 : (works.length ? works[Math.min(r - 1, works.length - 1)] : 0));
+          var rtxt = timed ? '' : clsRepsTxt(null, rp);
+          if (w <= 0) phases.push({ t: 'work', d: 0, open: true, st: names[s], r: r, si: s, side: 0, reps: rtxt || 'Hasta terminar' });
+          else if (tp === 'parejas') {
+            phases.push({ t: 'work', d: w, st: names[s], r: r, si: s, side: 0, note: 'Persona 1 · la otra descansa' + (rtxt ? ' · ' + rtxt : '') });
+            phases.push({ t: 'work', d: w, st: names[s], r: r, si: s, side: 0, note: 'Persona 2 · la otra descansa' + (rtxt ? ' · ' + rtxt : '') });
+          } else phases.push({ t: 'work', d: w, st: names[s], r: r, si: s, side: 0, note: rtxt });
+          var lastAll = (r === rounds && s === n - 1); if (lastAll) continue;
+          var nr = (s < n - 1) ? r : r + 1, ns = (s < n - 1) ? s + 1 : 0, nrep = repAt(nr, ns);
+          var ntxt = isTimeText(nrep) && tp !== 'escalera' ? '' : clsRepsTxt(null, nrep);
+          if (rest > 0) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r, si: -1, nextName: names[ns], note: ntxt });
+          if (cambio > 0 && s < n - 1) phases.push({ t: 'trans', d: cambio, st: names[ns], r: r, si: ns, kind: 'next', lbl: 'Cambio de estación' });
+        }
+      }
+      return pack();
+    }
+    function clsBlockNums(G) {   // numeración de bloques sin contar las pausas
+      var items = G.clase.items, n = 0, cur = -1;
+      items.forEach(function(it, i) { if (it.circ.tipo !== 'pausa') { n++; if (i <= G.pos) cur = n - 1; } });
+      return { n: Math.max(1, n), cur: Math.max(0, cur) };
+    }
+    function clsPlay(clase) {
+      if (!clase || !clase.items || !clase.items.length) return;
+      var G = { cls: true, clase: clase, blocks: clase.items.map(function(it, i) { return { name: it.circ.nombre || ('Bloque ' + (i + 1)), tipo: it.circ.tipo }; }), pos: 0, t0: Date.now(), results: [] };
+      clsRunBlock(G, 0);
+    }
+    function clsGo() { var G = CT.guide; ctGuideClear(); if (!G || !G.cls) return; clsRunBlock(G, G.pos + 1); }
+    function clsRunBlock(G, pos) {
+      var it = G.clase.items[pos]; if (!it) return;
+      var built = buildClassPhases(it, G.clase.items[pos + 1]);
+      if (built.err) { alert(built.err); return; }
+      G.pos = pos;
+      tmrAudio(); rtClose();
+      CT.cls = true; CT.keys = []; CT.acc = {}; CT.videos = built.videos; CT.repsTxt = built.repsTxt; CT.ci = -1; CT.srId = 0; CT.doneBefore = 0;
+      CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = it.circ.nombre || 'Bloque';
+      ctGuideClear(); CT.guide = G;
+      CT.nSt = built.nSt; CT.hasOpen = false; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = false;
+      CT.amrapN = 0; CT.listSel = 0; CT.listKey = '';
+      CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
+      ctEnter(CT.phases[0], Date.now());
+      ctOpen();
+      if (CT.tick) clearInterval(CT.tick);
+      CT.tick = setInterval(ctTick, 200);
+      tmrWakeOn();
+      tmrBeep(660, 200, 0); tmrBeep(880, 320, 260); tmrVibrate([150, 80, 150]);   // pitido de inicio de bloque
+      ctTick();
+    }
+    function clsPhaseDone(ph) {   // aquí solo se guardan resultados de la clase (AMRAP y por tiempo), nada del historial
+      var G = CT.guide; if (!G) return;
+      if (ph.amrap) G.results.push({ n: CT.title, kind: 'amrap', v: CT.amrapN || 0 });
+      else if (ph.timed) G.results.push({ n: CT.title, kind: 'tiempo', v: Math.max(0, Math.round((CT.paused ? CT.openElapsed : (Date.now() - CT.openStart)) / 1000)) });
+    }
+    function clsAmrapPlus() {
+      if (!CT.active || CT.done || !CT.cls) return;
+      CT.amrapN = (CT.amrapN || 0) + 1; tmrBeep(900, 90, 0); tmrVibrate(60); ctTick();
+    }
+    function clsListPick(i) { CT.listSel = i; CT.listKey = ''; ctTick(); }
+    function ctClsRender(ph) {
+      var el = function(id) { return document.getElementById(id); };
+      if (!el('tm_list')) return;
+      if (ph.t === 'ready' || ph.list || ph.pausa) el('tm_round').innerText = '';
+      if (ph.t === 'trans' && ph.lbl) el('tm_phase').innerText = ph.lbl.toUpperCase();
+      if (ph.list && ph.t === 'work') {
+        var key = CT.i + '|' + (CT.listSel || 0);
+        if (CT.listKey !== key) {
+          CT.listKey = key;
+          el('tm_list').innerHTML = CT.names.map(function(nm, i) {
+            var sel = i === (CT.listSel || 0), rt = (CT.repsTxt && CT.repsTxt[i]) || '';
+            return '<div onclick="clsListPick(' + i + ')" style="padding:4px 8px; margin-bottom:3px; border-radius:8px; border:1px solid ' + (sel ? '#06d6a0' : '#2a2a2a') + '; background:' + (sel ? '#0d2318' : '#181818') + ';"><b>' + (i + 1) + '.</b> ' + escHtml(ctShort(nm)) + (rt ? ' <span style="color:#ffd60a;">· ' + escHtml(rt) + '</span>' : '') + ((CT.videos && CT.videos[i]) ? ' 🎥' : '') + '</div>';
+          }).join('');
+        }
+        el('tm_list').style.display = 'block'; el('tm_station').style.display = 'none';
+        el('tm_rnd').style.display = ph.amrap ? '' : 'none';
+        if (ph.amrap) el('tm_reps').innerText = 'Rondas: ' + (CT.amrapN || 0);
+        else if (ph.cap) el('tm_reps').innerText = 'Límite ' + tmrFmt(ph.cap);
+        el('tm_next').innerText = '';
+      } else {
+        el('tm_list').style.display = 'none'; el('tm_station').style.display = ''; el('tm_rnd').style.display = 'none';
+        if (!CT.phases[CT.i + 1]) el('tm_next').innerText = 'Último ejercicio del bloque';
+      }
+    }
+    function clsFmtDur(sec) {
+      sec = Math.max(0, Math.round(sec)); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+      return h ? h + ' h ' + m + ' min' : (m ? m + ' min' : sec + ' s');
+    }
+    // Fin de un bloque de la clase: pitido, y pasa al siguiente (o a la pantalla final)
+    function ctClsFinish() {
+      var G = CT.guide; if (!G) return;
+      ctPipStop(); CT.done = true; ctVidSync(true);
+      if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
+      var it = G.clase.items[G.pos], next = G.clase.items[G.pos + 1];
+      if (it.circ.tipo === 'pausa') { if (next) { clsGo(); return; } }
+      tmrBeep(880, 300, 0); tmrBeep(880, 300, 400); tmrBeep(1175, 700, 800); tmrVibrate([300, 100, 300, 100, 500]);   // pitido de fin de bloque
+      var el = function(id) { return document.getElementById(id); };
+      if (el('tm_time')) {
+        ['tm_pause', 'tm_skip', 'tm_plus', 'tm_stop', 'tm_done', 'tm_rnd', 'tm_list'].forEach(function(k) { if (el(k)) el(k).style.display = 'none'; });
+        el('tm_station').style.display = '';
+        el('tm_round').innerText = ''; el('tm_phase').innerText = next ? '¡BLOQUE LISTO!' : '¡CLASE COMPLETA!'; el('tm_phase').style.color = '#06d6a0';
+        el('tm_station').innerText = next ? CT.title : G.clase.t; el('tm_time').innerText = '✔'; el('tm_time').style.color = '#06d6a0';
+        el('tm_bar').style.width = '100%'; el('tm_bar').style.background = '#06d6a0'; el('tm_next').innerText = ''; el('tm_reps').innerText = ''; el('tm_prog').innerText = '';
+        el('tm_exit').innerText = next ? 'Salir' : 'Cerrar';
+      }
+      tmrWakeOff();
+      if (next) clsAfterBlock(G, next); else clsFinalScreen(G);
+    }
+    function clsAfterBlock(G, next) {
+      var box = document.getElementById('tm_guide'); if (!box) return;
+      var nums = clsBlockNums(G), isP = next.circ.tipo === 'pausa', gap = isP ? 3 : CLS_GAP, first = next.sub && next.sub[0];
+      if (document.getElementById('tm_g')) document.getElementById('tm_g').style.display = 'block';
+      if (document.getElementById('tm_gbar')) document.getElementById('tm_gbar').style.width = Math.round(((nums.cur + 1) / nums.n) * 100) + '%';
+      if (document.getElementById('tm_gpct')) document.getElementById('tm_gpct').innerText = Math.round(((nums.cur + 1) / nums.n) * 100) + '%';
+      box.innerHTML = '<div style="font-size:0.8rem; color:#9fe8c8;">Bloque ' + (nums.cur + 1) + ' de ' + nums.n + ' listo ✔</div>' +
+        '<div style="font-size:1rem; font-weight:800; margin-top:6px;">' + (isP ? 'Sigue: Pausa de ' + escHtml(next.circ.total) : 'Sigue: ' + escHtml(next.circ.nombre)) + '</div>' +
+        ((!isP && first) ? '<div style="font-size:0.85rem; color:#ccc;">Empieza con ' + escHtml(first.name) + '</div>' : '') +
+        '<div id="tm_gnum" style="font-size:2.2rem; font-weight:900; font-variant-numeric:tabular-nums; margin:4px 0;"></div>' +
+        '<div style="display:flex; gap:8px;"><button type="button" class="tm-btn" style="background:#06d6a0; border-color:#06d6a0; color:#000;" onclick="clsGo()">▶ Empezar ya</button><button type="button" class="tm-btn" onclick="ctGuidePlus()">+15 s</button></div>';
+      box.style.display = 'block';
+      CT.gEnd = Date.now() + gap * 1000; CT.gLast = null;
+      var tick = function() {
+        var rem = Math.ceil((CT.gEnd - Date.now()) / 1000), nEl = document.getElementById('tm_gnum');
+        if (rem <= 0) { clsGo(); return; }
+        if (nEl) nEl.innerText = tmrFmt(rem);
+        if (rem <= 3 && CT.gLast !== rem) { CT.gLast = rem; tmrBeep(700, 140, 0); }
+      };
+      ctGuideClear(); CT.gTimer = setInterval(tick, 500); tick();
+    }
+    function clsFinalScreen(G) {
+      var box = document.getElementById('tm_guide'); if (!box) return;
+      var gb = document.getElementById('tm_gbar'); if (document.getElementById('tm_g')) document.getElementById('tm_g').style.display = 'block';
+      if (gb) gb.style.width = '100%'; if (document.getElementById('tm_gpct')) document.getElementById('tm_gpct').innerText = '100%';
+      var dur = (Date.now() - G.t0) / 1000;
+      var h = '<div style="font-size:1.2rem; font-weight:900; color:#06d6a0;">🏁 ¡Clase completa!</div>' +
+        '<div style="font-size:0.95rem; margin-top:8px;">⏱ Duración: <b>' + clsFmtDur(dur) + '</b></div>';
+      G.results.forEach(function(r) {
+        h += '<div style="font-size:0.9rem; margin-top:4px;">' + (r.kind === 'amrap' ? '🔁 ' + escHtml(r.n) + ': <b>' + r.v + ' ronda' + (r.v === 1 ? '' : 's') + '</b>' : '⏱ ' + escHtml(r.n) + ': <b>' + wkFmt(r.v) + '</b>') + '</div>';
+      });
+      if (G.clase.m) h += '<div style="font-size:0.95rem; margin-top:8px;">💪 Músculos trabajados: <b>' + escHtml(G.clase.m) + '</b></div>';
+      h += '<div style="font-size:0.85rem; color:#ccc; margin-top:8px;">¡Buen trabajo! 👏</div>';
+      box.innerHTML = h; box.style.display = 'block';
+    }
+
     // ================= ENTRENO GUIADO DEL DÍA COMPLETO =================
     // Encadena los bloques visibles del día (según la semana) en el temporizador, con una pausa para cambiar de máquina entre bloques.
     var GUIDE_PAUSE = 45;
@@ -5864,11 +6070,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctGuideClear() { if (CT.gTimer) { clearInterval(CT.gTimer); CT.gTimer = null; } }
     function ctGuideProgress(ph) {   // barra y texto de avance del día: cuánto llevas y cuánto falta; amarillo cuando ya casi
       var G = CT.guide, el = function(id) { return document.getElementById(id); }; if (!G) return;
-      var nB = G.blocks.length, left = nB - G.pos - 1, frac = (CT.phases.length > 1 ? Math.min(1, CT.i / (CT.phases.length - 1)) : 0), col = '#ccc', txt;
+      var nB = G.blocks.length, gp = G.pos;
+      if (G.cls) { var nums = clsBlockNums(G); nB = nums.n; gp = nums.cur; }
+      var left = nB - gp - 1, frac = (CT.phases.length > 1 ? Math.min(1, CT.i / (CT.phases.length - 1)) : 0), col = '#ccc', txt;
       if (left === 0) { txt = 'Bloque ' + nB + ' de ' + nB + ' · ¡último! 🔥'; col = '#ffd60a'; }
-      else if (left === 1) { txt = 'Bloque ' + (G.pos + 1) + ' de ' + nB + ' · ¡ya casi!'; col = '#ffd60a'; }
-      else txt = 'Bloque ' + (G.pos + 1) + ' de ' + nB;
-      var pct = Math.round(((G.pos + frac) / nB) * 100);
+      else if (left === 1) { txt = 'Bloque ' + (gp + 1) + ' de ' + nB + ' · ¡ya casi!'; col = '#ffd60a'; }
+      else txt = 'Bloque ' + (gp + 1) + ' de ' + nB;
+      var pct = Math.min(100, Math.round(((gp + frac) / nB) * 100));
       el('tm_g').style.display = 'block';
       el('tm_gtxt').innerText = txt; el('tm_gtxt').style.color = col; el('tm_gpct').innerText = pct + '%';
       el('tm_gbar').style.width = pct + '%'; el('tm_gbar').style.background = left <= 1 ? '#ffd60a' : '#4d8bff';
@@ -5900,6 +6108,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctGuidePlus() { if (CT.gEnd) CT.gEnd += 15000; }
     function ctGuideGo() {
       var G = CT.guide; ctGuideClear(); if (!G) return;
+      if (G.cls) { clsGo(); return; }
       tmrAudio(); guideRun(G.dayId, G.blocks, G.pos + 1);
     }
 
@@ -6078,7 +6287,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function ctClose() {
       ctPipStop();
-      ctGuideClear(); CT.guide = null;
+      ctGuideClear(); CT.guide = null; CT.cls = false;
       CT.active = false; CT.done = false;
       if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
       var o = document.getElementById('tm_overlay'); if (o) o.remove();
@@ -6697,17 +6906,36 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return out;
     }
     function clsFirst(str) { return String(str || '').split('|')[0].trim(); }
+    // Tipo de bloque: '' (estándar) | hiit | amrap | emom | tabata | portiempo | escalera | pausa | parejas
+    function clsTipo(t) {
+      var x = String(t || '').toLowerCase().replace(/[áä]/g, 'a').replace(/[éë]/g, 'e').replace(/[íï]/g, 'i').replace(/[óö]/g, 'o').replace(/[úü]/g, 'u').replace(/[^a-z ]/g, '').trim();
+      if (!x) return '';
+      if (x.indexOf('hiit') === 0) return 'hiit';
+      if (x.indexOf('amrap') === 0) return 'amrap';
+      if (x.indexOf('emom') === 0 || x.indexOf('cada') === 0) return 'emom';
+      if (x.indexOf('tabata') === 0) return 'tabata';
+      if (x.indexOf('por tiempo') === 0 || x.indexOf('portiempo') === 0 || x.indexOf('chipper') === 0) return 'portiempo';
+      if (x.indexOf('escalera') === 0 || x.indexOf('piramide') === 0) return 'escalera';
+      if (x.indexOf('pausa') === 0) return 'pausa';
+      if (x.indexOf('pareja') === 0 || x.indexOf('alternad') === 0) return 'parejas';
+      return '';
+    }
+    function clsListSecs(t) { return String(t || '').split(',').map(function(x) { return clsSecs(x); }).filter(function(n) { return n > 0; }); }
+    function clsNewItem(slot, nombre, p, firstTxt) {
+      var tp = clsTipo(p.tipo);
+      var hasTotal = (tp === 'amrap' || tp === 'emom' || tp === 'pausa' || tp === 'tabata');
+      var rondas = p.rondas || p.ronda || '';
+      var rl = String(p.reps || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+      if (!rondas) rondas = tp === 'escalera' && rl.length ? String(rl.length) : (clsListSecs(p.trabajo).length > 1 ? String(clsListSecs(p.trabajo).length) : (tp === 'tabata' ? '' : '1'));
+      return { type: 'circuito', slot: slot, vigenciaDesde: 1, vigenciaHasta: null, circ: { nombre: nombre, rondas: rondas, trabajo: p.trabajo || '', descanso: /^(0|sin|no|ninguno|ninguna|-)(\s|$)/i.test(p.descanso || '') ? '' : (p.descanso || ''), cambio: p.cambio || p.transicion || '', entre: p.entre || p.intercalar || '', notas: p.notas || p.nota || '', tipo: tp, total: hasTotal ? (p.tiempo || p.total || p.duracion || firstTxt || '') : '', cada: p.cada || '', limite: p.limite || p.tope || '', repsList: tp === 'escalera' ? (p.reps || '') : '' }, sub: [] };
+    }
     function clsSecs(t) { var n = parseSecs(t); return (n && n > 0) ? n : 0; }
     // Duración aproximada en segundos de una lista de bloques
-    function clsDuration(items) {
+    function clsDuration(items) {   // suma de las fases con tiempo fijo (las de repeticiones no cuentan)
       var tot = 0;
-      (items || []).forEach(function(it) {
-        var c = it.circ || {}, subs = it.sub || [];
-        if (c.tipo === 'amrap') { tot += clsSecs(c.total); return; }
-        var rondas = Math.max(1, parseInt(c.rondas, 10) || 1), w = clsSecs(c.trabajo), r = clsSecs(c.descanso), ch = clsSecs(c.cambio);
-        var per = 0;
-        subs.forEach(function(sb, k) { var sw = isTimeText(sb.reps) ? clsSecs(sb.reps) : w; per += sw + r + (k < subs.length - 1 ? ch : 0); });
-        tot += per * rondas;
+      (items || []).forEach(function(it, i) {
+        var b = buildClassPhases(it, items[i + 1]); if (b.err) return;
+        b.phases.forEach(function(p) { if (p.t !== 'ready' && !p.open) tot += p.d; });
       });
       return tot;
     }
@@ -6726,9 +6954,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (p.musculos) clase.m = p.musculos;
           return;
         }
+        if (low.indexOf('pausa:') === 0) {   // atajo: "Pausa: 60 s"
+          var rp = line.substring(line.indexOf(':') + 1).trim();
+          cur = clsNewItem(clase.items.length + 1, 'Pausa', { tipo: 'pausa', tiempo: clsFirst(rp) }, ''); clase.items.push(cur); cur = null; return;
+        }
         if (low.indexOf('circuito:') === 0 || low.indexOf('bloque:') === 0) {
           var rest2 = line.substring(line.indexOf(':') + 1), p2 = clsProps(rest2);
-          cur = { type: 'circuito', slot: clase.items.length + 1, vigenciaDesde: 1, vigenciaHasta: null, circ: { nombre: clsFirst(rest2) || ('Bloque ' + (clase.items.length + 1)), rondas: p2.rondas || p2.ronda || '1', trabajo: p2.trabajo || '', descanso: /^(0|sin|no|ninguno|ninguna|-)(\s|$)/i.test(p2.descanso || '') ? '' : (p2.descanso || ''), cambio: p2.cambio || p2.transicion || '', entre: p2.entre || p2.intercalar || '', notas: p2.notas || p2.nota || '', tipo: /hiit/i.test(p2.tipo || '') ? 'hiit' : (/amrap/i.test(p2.tipo || '') ? 'amrap' : ''), total: (/amrap/i.test(p2.tipo || '') ? (p2.tiempo || p2.total || p2.duracion || '') : '') }, sub: [] };
+          cur = clsNewItem(clase.items.length + 1, clsFirst(rest2) || ('Bloque ' + (clase.items.length + 1)), p2, '');
           clase.items.push(cur); return;
         }
         if (low.indexOf('estacion:') === 0 || low.indexOf('estación:') === 0 || low.indexOf('ejercicio:') === 0) {
@@ -6739,14 +6971,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         }
         warns.push('Línea ' + (idx + 1) + ' no reconocida: "' + line.substring(0, 40) + '"');
       });
-      if (!clase.items.length || !nSub) return null;
+      if (!clase.items.length || !nSub) return null;   // (las pausas solas no son una clase)
       clase.items.forEach(function(it) {
-        if (!it.sub.length) warns.push('El bloque "' + it.circ.nombre + '" no tiene estaciones.');
-        if (it.circ.tipo === 'amrap' && !clsSecs(it.circ.total)) warns.push('El bloque AMRAP "' + it.circ.nombre + '" necesita "Tiempo: 15 min" (el tiempo total).');
+        var tp = it.circ.tipo;
+        if (!it.sub.length && tp !== 'pausa') warns.push('El bloque "' + it.circ.nombre + '" no tiene estaciones.');
+        if ((tp === 'amrap' || tp === 'emom' || tp === 'pausa') && !clsSecs(it.circ.total)) warns.push('El bloque ' + tp.toUpperCase() + ' "' + it.circ.nombre + '" necesita "Tiempo: 15 min" (el tiempo total).');
+        if (tp === 'escalera' && !it.circ.repsList) warns.push('La escalera "' + it.circ.nombre + '" necesita "Reps: 10, 8, 6, 4, 2".');
         // (un bloque sin tiempo de trabajo es válido: los ejercicios por repeticiones se terminan tocando «Terminé»)
       });
       if (!clase.t) clase.t = (clase.k === 'r' ? 'Reto' : 'Clase') + ' ' + fmtDate(clase.f);
-      clase.items = clase.items.filter(function(it) { return it.sub.length; });
+      clase.items = clase.items.filter(function(it) { return it.sub.length || it.circ.tipo === 'pausa'; });
       // "Entre: 20 burpees" -> después de cada ejercicio (menos el último) se mete ese ejercicio fijo, sin descanso de por medio
       clase.items.forEach(function(it) {
         var e = String(it.circ.entre || '').trim(); if (!e) return;
@@ -6759,6 +6993,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         it.sub = out;
       });
       return { clase: clase, warns: warns };
+    }
+    var CLS_TIPO_NAME = { hiit: 'HIIT', amrap: 'AMRAP', emom: 'EMOM', tabata: 'Tabata', portiempo: 'Por tiempo', escalera: 'Escalera', pausa: 'Pausa', parejas: 'Parejas' };
+    function clsBlockInfo(cc) {
+      var rn = String(cc.rondas || '1'), rtxt = rn + ' ronda' + (rn === '1' ? '' : 's');
+      if (cc.tipo === 'amrap') return 'Tantas rondas como se pueda en ' + escHtml(cc.total);
+      if (cc.tipo === 'emom') return 'Cada ' + escHtml(cc.cada || '1 min') + ' durante ' + escHtml(cc.total || '—');
+      if (cc.tipo === 'tabata') return escHtml(cc.rondas || '8') + ' intervalos de ' + escHtml(clsListSecs(cc.trabajo)[0] ? clsListSecs(cc.trabajo)[0] + ' s' : '20 s') + ' / ' + escHtml(cc.descanso || '10 s');
+      if (cc.tipo === 'portiempo') return 'Termínalo lo más rápido que puedas' + (cc.limite ? ' · límite ' + escHtml(cc.limite) : '');
+      if (cc.tipo === 'escalera') return 'Escalera: ' + escHtml(cc.repsList) + ' reps';
+      if (cc.tipo === 'pausa') return 'Pausa de ' + escHtml(cc.total);
+      return rtxt + (cc.trabajo ? ' · trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · descanso ' + escHtml(cc.descanso) : '') + (cc.cambio ? ' · cambio ' + escHtml(cc.cambio) : '');
     }
     function clsLibVideo(name) {
       var lib = getVideoLibrary(), key = normExName(name);
@@ -6782,7 +7027,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('clsText').value = ''; document.getElementById('clsMsg').innerText = ''; document.getElementById('clsPreview').innerHTML = '';
       CLS_WORK = null; CLS_EDIT_ID = '';
     }
-    function clsHasOpen(items) { return (items || []).some(function(it) { var c = it.circ || {}; return c.tipo !== 'amrap' && it.sub.some(function(sb) { return !isTimeText(sb.reps) && !clsSecs(c.trabajo); }); }); }
+    function clsHasOpen(items) { return (items || []).some(function(it) { var c = it.circ || {}; if (c.tipo === 'portiempo' || c.tipo === 'escalera') return true; if (/^(amrap|emom|tabata|pausa)$/.test(c.tipo)) return false; return it.sub.some(function(sb) { return !isTimeText(sb.reps) && !clsListSecs(c.trabajo).length; }); }); }
     function clsFmtMin(sec) { var m = Math.round(sec / 60); return m <= 0 ? '' : m + ' min'; }
     function clsRenderPreview() {
       var box = document.getElementById('clsPreview'), c = CLS_WORK;
@@ -6796,8 +7041,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:0.78rem; color:#ddd; margin-top:8px;">⏱ Duración aproximada: <strong>' + (clsHasOpen(c.items) ? ((clsFmtMin(dur) ? clsFmtMin(dur) + ' + ' : '') + 'ejercicios por repeticiones') : (clsFmtMin(dur) || '—')) + '</strong> · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + '</div></div>';
       c.items.forEach(function(it, bi) {
         var cc = it.circ;
-        h += '<div class="edx-sub"><div style="font-size:0.78rem; font-weight:800; color:var(--accent);">' + escHtml(cc.nombre) + (cc.tipo === 'hiit' ? ' · HIIT' : (cc.tipo === 'amrap' ? ' · AMRAP ' + escHtml(cc.total) : '')) + '</div>' +
-          '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:6px;">' + (cc.tipo === 'amrap' ? 'Tantas rondas como se pueda en ' + escHtml(cc.total) : (escHtml(cc.rondas) + ' ronda' + (String(cc.rondas) === '1' ? '' : 's') + (cc.trabajo ? ' · trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · descanso ' + escHtml(cc.descanso) : '') + (cc.cambio ? ' · cambio ' + escHtml(cc.cambio) : '')) ) + '</div>';
+        h += '<div class="edx-sub"><div style="font-size:0.78rem; font-weight:800; color:var(--accent);">' + escHtml(cc.nombre) + (cc.tipo ? ' · ' + CLS_TIPO_NAME[cc.tipo] : '') + '</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:6px;">' + clsBlockInfo(cc) + '</div>';
         it.sub.forEach(function(sb, si) {
           var ok = !sb.video || !!ytIdStrict(sb.video);
           h += '<div style="margin-bottom:8px;"><div style="font-size:0.84rem; font-weight:700; color:#fff;">' + escHtml(sb.name) + (sb.reps ? ' <span style="color:#ffd60a;">· ' + escHtml(sb.reps) + '</span>' : '') + '</div>' +
@@ -6857,7 +7102,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var out = [(c.k === 'r' ? 'Reto: ' : 'Clase: ') + c.t + ' | Fecha: ' + c.f + (c.m ? ' | Musculos: ' + c.m : '')];
       c.items.forEach(function(it) {
         var cc = it.circ;
-        out.push('Circuito: ' + cc.nombre + ' | Rondas: ' + cc.rondas + (cc.trabajo ? ' | Trabajo: ' + cc.trabajo : '') + (cc.descanso ? ' | Descanso: ' + cc.descanso : '') + (cc.cambio ? ' | Cambio: ' + cc.cambio : '') + (cc.entre ? ' | Entre: ' + cc.entre : '') + (cc.tipo === 'hiit' ? ' | Tipo: HIIT' : '') + (cc.notas ? ' | Notas: ' + cc.notas : ''));
+        out.push('Circuito: ' + cc.nombre + (cc.rondas ? ' | Rondas: ' + cc.rondas : '') + (cc.trabajo ? ' | Trabajo: ' + cc.trabajo : '') + (cc.descanso ? ' | Descanso: ' + cc.descanso : '') + (cc.cambio ? ' | Cambio: ' + cc.cambio : '') + (cc.entre ? ' | Entre: ' + cc.entre : '') + (cc.tipo ? ' | Tipo: ' + CLS_TIPO_NAME[cc.tipo] : '') + (cc.total ? ' | Tiempo: ' + cc.total : '') + (cc.cada ? ' | Cada: ' + cc.cada : '') + (cc.limite ? ' | Limite: ' + cc.limite : '') + (cc.repsList ? ' | Reps: ' + cc.repsList : '') + (cc.notas ? ' | Notas: ' + cc.notas : ''));
         it.sub.filter(function(sb) { return !sb.filler; }).forEach(function(sb) { out.push('Estacion: ' + sb.name + (sb.reps ? ' | Reps: ' + sb.reps : '') + (sb.notes ? ' | Notas: ' + sb.notes : '') + (sb.video ? ' | Video: ' + sb.video : '')); });
       });
       return out.join('\n');
@@ -6868,6 +7113,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-weight:800; font-size:0.9rem; color:#fff;">' + escHtml(c.t) + '</div>' +
         '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 8px;">📅 ' + fmtDate(c.f) + (dur ? ' · ⏱ ' + dur : '') + ' · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + (c.m ? ' · 💪 ' + escHtml(c.m) : '') + '</div>' +
         '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
+        '<button type="button" class="btn btn-secondary" style="padding:7px 10px; font-size:0.74rem;" onclick="clsPlay(clsFind(\'' + c.id + '\'))">▶ Probar</button>' +
         (c.k === 'c' && !isToday ? '<button type="button" class="btn btn-secondary" style="padding:7px 10px; font-size:0.74rem;" onclick="clsSetToday(\'' + c.id + '\')">⭐ Poner de hoy</button>' : '') +
         (isToday ? '<span style="font-size:0.74rem; font-weight:800; color:#06d6a0;">⭐ Clase de hoy</span>' : '<label style="font-size:0.74rem; color:#ddd; display:inline-flex; gap:5px; align-items:center;"><input type="checkbox"' + (c.vis ? ' checked' : '') + ' onchange="clsToggleVis(\'' + c.id + '\')"> ' + (c.k === 'r' ? 'Visible en Retos' : 'Visible en anteriores') + '</label>') +
         '<button type="button" class="btn btn-secondary" style="padding:7px 10px; font-size:0.74rem;" onclick="clsEdit(\'' + c.id + '\')">✏️ Editar</button>' +
@@ -7025,7 +7271,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-r';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-s';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
