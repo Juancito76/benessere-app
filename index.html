@@ -1587,6 +1587,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'biserie\')">➕ Biserie</button>' +
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'triserie\')">➕ Triserie</button>' +
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'circuito\')">➕ Circuito</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'hiit\')">🔥 HIIT / Finisher</button>' +
         '</div>';
 
         if (day.rest) {
@@ -1608,7 +1609,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       '</div></div>';
     }
     var TREAD_RE = /caminadora|treadmill|cinta\s+(?:de\s+)?(?:correr|caminar)/i;
-    function itemHasTread(it) { return !!(it && it.type !== 'normal' && (it.sub || []).some(function(sb) { return TREAD_RE.test((sb && sb.name) || ''); })); }
+    function itemHasTread(it) { if (it && it.type === 'circuito' && (it.sub || []).filter(function(sb) { return sb && String(sb.name || '').trim(); }).length <= 1) return false; return !!(it && it.type !== 'normal' && (it.sub || []).some(function(sb) { return TREAD_RE.test((sb && sb.name) || ''); })); }
     function comboLabel(t) { return t === 'circuito' ? 'circuito' : (t === 'biserie' ? 'biserie' : 'triserie'); }
     function scanTreadmill() {
       routineDays.forEach(function(d, di) {
@@ -1693,7 +1694,35 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     function removeDay(index) { if (confirm('¿Eliminar este día?')) { routineDays.splice(index, 1); renderDays(); } }
+    // Plantillas de HIIT (puntos de partida editables). Descanso después de CADA intervalo, también el último.
+    var HIIT_TEMPLATES = {
+      caminadora: { nombre: 'HIIT caminadora', rondas: '10', trabajo: '30 s', descanso: '30 s', etqT: 'Rápido', etqD: 'Despacio', rpeT: '8', rpeD: '4', ajuste: 'Elevación 6', est: ['Caminadora'] },
+      bicicleta: { nombre: 'HIIT bicicleta', rondas: '8', trabajo: '30 s', descanso: '30 s', etqT: 'Máxima velocidad', etqD: 'Despacio', rpeT: '9', rpeD: '3', ajuste: '', est: ['Bicicleta'] },
+      alterno: { nombre: 'HIIT alterno', rondas: '4', trabajo: '40 s', descanso: '20 s', etqT: '', etqD: '', rpeT: '8', rpeD: '3', ajuste: '', est: ['Jumping jacks', 'Battle slams'] }
+    };
+    function applyHiitTemplate(di, ii, key) {
+      var t = HIIT_TEMPLATES[key], item = routineDays[di] && routineDays[di].items[ii]; if (!t || !item) return;
+      item.circ = item.circ || {};
+      var fin = item.circ.finisher;
+      item.circ = { nombre: t.nombre, rondas: t.rondas, trabajo: t.trabajo, descanso: t.descanso, notas: item.circ.notas || '', tipo: 'hiit', finisher: fin, etqT: t.etqT, etqD: t.etqD, rpeT: t.rpeT, rpeD: t.rpeD, ajuste: t.ajuste };
+      var old = item.sub || [];
+      item.sub = t.est.map(function(n, k) { var o = old[k] || {}; return { name: n, series: '', reps: '', notes: o.notes || '', video: (o.name === n ? (o.video || '') : '') }; });
+      renderDays();
+    }
+    function setCircFlag(di, ii, key, on) {
+      var item = routineDays[di] && routineDays[di].items[ii]; if (!item) return;
+      item.circ = item.circ || {};
+      if (key === 'tipo') item.circ.tipo = on ? 'hiit' : ''; else item.circ.finisher = !!on;
+      renderDays();
+    }
     function addItem(dayIndex, type) {
+      if (type === 'hiit') {
+        var tt = HIIT_TEMPLATES.caminadora;
+        routineDays[dayIndex].items.push({ type: 'circuito', slot: routineDays[dayIndex].items.length + 1, vigenciaDesde: 1, vigenciaHasta: null,
+          circ: { nombre: tt.nombre, rondas: tt.rondas, trabajo: tt.trabajo, descanso: tt.descanso, notas: '', tipo: 'hiit', finisher: true, etqT: tt.etqT, etqD: tt.etqD, rpeT: tt.rpeT, rpeD: tt.rpeD, ajuste: tt.ajuste },
+          sub: tt.est.map(function(n) { return { name: n, series: '', reps: '', notes: '', video: '' }; }) });
+        renderDays(); return;
+      }
       var count = type === 'normal' ? 1 : (type === 'biserie' ? 2 : 3);   // triserie y circuito (3 estaciones por defecto)
       var sub = [];
       for (var i = 0; i < count; i++) sub.push({ name: '', series: '', reps: '', notes: '', video: '' });
@@ -1753,7 +1782,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       });
       renderDays();
     }
-    function addStation(di, ii) { routineDays[di].items[ii].sub.push({ name: '', series: '', reps: '', notes: '', video: '' }); renderDays(); }
+    function addStation(di, ii) { var itH = routineDays[di].items[ii]; if (itH.circ && itH.circ.tipo === 'hiit' && (itH.sub || []).length >= 3) { alert('Un HIIT lleva máximo 3 ejercicios (de preferencia peso corporal o peso libre).'); return; } itH.sub.push({ name: '', series: '', reps: '', notes: '', video: '' }); renderDays(); }
     function removeStation(di, ii, si) { var it = routineDays[di].items[ii]; if (it.sub.length > 1) { it.sub.splice(si, 1); renderDays(); } }
     function fld(label, path, val, span2, withPicker) {
       var blurAttr = withPicker ? (' onblur="suggestVideoFromLibrary(' + jsArg(path.replace(/\.name$/, '')) + ')"') : '';
@@ -1766,11 +1795,19 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function circuitEditorHtml(di, ii, item, showDemos) {
       var c = item.circ || (item.circ = { nombre: '', rondas: '', trabajo: '', descanso: '', notas: '' });
       var base = 'routineDays[' + di + '].items[' + ii + ']';
-      var h = '<div class="sub-box"><div class="sub-tag">Circuito:</div><div class="form-grid">' +
+      var isH = c.tipo === 'hiit', cbSty = 'style="text-transform:none; font-size:0.82rem; margin-right:14px;"';
+      var h = '<div class="sub-box"><div class="sub-tag">' + (isH ? 'HIIT:' : 'Circuito:') + '</div><div class="form-grid">' +
+        '<div class="form-group" style="grid-column: span 2;"><label ' + cbSty + '><input type="checkbox"' + (isH ? ' checked' : '') + ' onchange="setCircFlag(' + di + ',' + ii + ',\'tipo\',this.checked)"> HIIT</label>' +
+        '<label ' + cbSty + '><input type="checkbox"' + (c.finisher ? ' checked' : '') + ' onchange="setCircFlag(' + di + ',' + ii + ',\'finisher\',this.checked)"> Finisher (va al final del día)</label></div>' +
+        (isH ? '<div class="form-group" style="grid-column: span 2;"><label>Plantilla (puntos de partida; ajústalos a tu criterio)</label><select onchange="applyHiitTemplate(' + di + ',' + ii + ',this.value)"><option value="">— elegir —</option>' +
+          '<option value="caminadora">Caminadora · 10 min · 30 s rápido / 30 s despacio</option><option value="bicicleta">Bicicleta · 8 min · 30 s máxima / 30 s despacio</option><option value="alterno">Alterno · 8 min · 40 s trabajo / 20 s descanso</option></select></div>' : '') +
         fld('Nombre del circuito', base + '.circ.nombre', c.nombre, true) +
         fld('Rondas', base + '.circ.rondas', c.rondas) +
         fld('Trabajo (por estación)', base + '.circ.trabajo', c.trabajo) +
         fld('Descanso', base + '.circ.descanso', c.descanso) +
+        (isH ? fld('Etiqueta del trabajo (ej. Rápido)', base + '.circ.etqT', c.etqT) + fld('Etiqueta del descanso (ej. Despacio)', base + '.circ.etqD', c.etqD) +
+               fld('Esfuerzo percibido del trabajo (1-10)', base + '.circ.rpeT', c.rpeT) + fld('Esfuerzo percibido del descanso (1-10)', base + '.circ.rpeD', c.rpeD) +
+               fld('Ajuste del equipo (ej. Elevación 6)', base + '.circ.ajuste', c.ajuste, true) : '') +
         fld('Notas del circuito', base + '.circ.notas', c.notas, true) +
       '</div></div>';
       (item.sub || []).forEach(function(sb, k) {
@@ -1789,14 +1826,16 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '</div></div>';
       });
       h += '<button type="button" class="btn btn-secondary" style="margin-top:6px;" onclick="addStation(' + di + ', ' + ii + ')">➕ Estación</button>';
+      if (isH) h += '<div style="font-size:0.72rem; color:var(--muted); margin-top:6px;">HIIT: máximo 3 ejercicios, de preferencia peso corporal o peso libre. Con cardio de caminadora o bicicleta, un solo ejercicio.</div>';
       return h;
     }
     function circuitHeaderHtml(c) {
       c = c || {};
       var pills = '';
       if (c.rondas) pills += '<span class="circ-pill">' + escHtml(c.rondas) + ' rondas</span>';
-      if (c.trabajo) pills += '<span class="circ-pill">Trabajo ' + escHtml(c.trabajo) + '</span>';
-      if (c.descanso) pills += '<span class="circ-pill">Descanso ' + escHtml(c.descanso) + '</span>';
+      if (c.trabajo) pills += '<span class="circ-pill">' + escHtml(c.etqT || 'Trabajo') + ' ' + escHtml(c.trabajo) + (c.rpeT ? ' · esfuerzo ' + escHtml(c.rpeT) + '/10' : '') + '</span>';
+      if (c.descanso) pills += '<span class="circ-pill">' + escHtml(c.etqD || 'Descanso') + ' ' + escHtml(c.descanso) + (c.rpeD ? ' · esfuerzo ' + escHtml(c.rpeD) + '/10' : '') + '</span>';
+      if (c.ajuste) pills += '<span class="circ-pill">' + escHtml(c.ajuste) + '</span>';
       return '<div class="circ-head">' + (c.nombre ? '<div class="circ-title">' + escHtml(c.nombre) + '</div>' : '') +
         (pills ? '<div class="circ-pills">' + pills + '</div>' : '') +
         (c.notas ? '<div class="ex-notes">📌 ' + escHtml(c.notas) + '</div>' : '') + '</div>';
@@ -2466,6 +2505,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 if (pk.indexOf('trabajo') !== -1) circ.trabajo = pv;
                 if (pk.indexOf('descanso') !== -1) circ.descanso = pv;
                 if (pk.indexOf('nota') !== -1) circ.notas = pv;
+                if (pk === 'tipo') circ.tipo = /hiit/i.test(pv) ? 'hiit' : '';
+                if (pk.indexOf('finisher') !== -1) circ.finisher = /^(si|sí|s|1|true|yes)$/i.test(pv);
+                if (pk.indexOf('etiqueta') !== -1) { var eq = pv.split('/'); circ.etqT = (eq[0] || '').trim(); circ.etqD = (eq[1] || '').trim(); }
+                if (pk.indexOf('esfuerzo') !== -1) { var rq = pv.split('/'); circ.rpeT = (rq[0] || '').trim(); circ.rpeD = (rq[1] || '').trim(); }
+                if (pk.indexOf('ajuste') !== -1) circ.ajuste = pv;
               }
             });
             var metaC = resolveSlotAndVig([circ.nombre]);
@@ -2662,6 +2706,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           if (it.type === 'circuito') {
             var cc = it.circ || {};
             var head = 'Circuito: ' + (expClean(cc.nombre) || 'Circuito') + ' | Rondas: ' + expClean(cc.rondas) + ' | Trabajo: ' + expClean(cc.trabajo) + ' | Descanso: ' + expClean(cc.descanso);
+            if (cc.tipo === 'hiit') head += ' | Tipo: HIIT';
+            if (cc.finisher) head += ' | Finisher: si';
+            if (expClean(cc.etqT) || expClean(cc.etqD)) head += ' | Etiquetas: ' + expClean(cc.etqT) + ' / ' + expClean(cc.etqD);
+            if (expClean(cc.rpeT) || expClean(cc.rpeD)) head += ' | Esfuerzo: ' + expClean(cc.rpeT) + ' / ' + expClean(cc.rpeD);
+            if (expClean(cc.ajuste)) head += ' | Ajuste: ' + expClean(cc.ajuste);
             if (expClean(cc.notas)) head += ' | Notas: ' + expClean(cc.notas);
             L.push(head);
             subs.forEach(function(s, si) {
@@ -2835,7 +2884,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
               ].concat((it.type !== 'circuito' && it.rest && String(it.rest).trim()) ? [String(it.rest).trim()] : []);
             })
           ];
-          d.items.forEach(function(it, idx) { if (it.type === 'circuito') { var cc = it.circ || {}; dArr[5][idx].push([cc.rondas||'', cc.trabajo||'', cc.descanso||'', cc.notas||'', cc.nombre||'']); } });
+          d.items.forEach(function(it, idx) { if (it.type === 'circuito') { var cc = it.circ || {}; var cArr = [cc.rondas||'', cc.trabajo||'', cc.descanso||'', cc.notas||'', cc.nombre||'']; var cFl = (cc.finisher ? 1 : 0) | (cc.tipo === 'hiit' ? 2 : 0); if (cFl || cc.etqT || cc.etqD || cc.rpeT || cc.rpeD || cc.ajuste) cArr.push(cFl, cc.etqT||'', cc.etqD||'', cc.rpeT||'', cc.rpeD||'', cc.ajuste||''); dArr[5][idx].push(cArr); } });
           dArr.push(d.rest ? 1 : 0);
           if (d.loadPlan && d.loadPlan.length) dArr.push(d.loadPlan.map(function(x) { return [x.desde, x.hasta == null ? 0 : x.hasta, x.pct]; }));
           return dArr;
@@ -2910,7 +2959,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
                 vigenciaDesde: it[2],
                 vigenciaHasta: it[3],
                 rest: (it[0] !== 'c' && typeof it[5] === 'string') ? it[5] : '',
-                circ: (it[0] === 'c' && Array.isArray(it[5])) ? { rondas: it[5][0]||'', trabajo: it[5][1]||'', descanso: it[5][2]||'', notas: it[5][3]||'', nombre: it[5][4]||'' } : undefined,
+                circ: (it[0] === 'c' && Array.isArray(it[5])) ? { rondas: it[5][0]||'', trabajo: it[5][1]||'', descanso: it[5][2]||'', notas: it[5][3]||'', nombre: it[5][4]||'', finisher: ((it[5][5] | 0) & 1) === 1, tipo: ((it[5][5] | 0) & 2) ? 'hiit' : '', etqT: it[5][6]||'', etqD: it[5][7]||'', rpeT: it[5][8]||'', rpeD: it[5][9]||'', ajuste: it[5][10]||'' } : undefined,
                 sub: (it[4] || []).map(function(s) {
                   return { name: s[0]||'', series: s[1]||'', reps: s[2]||'', notes: s[3]||'', video: expandYtUrl(s[4]||''), uni: ((s[5] | 0) & 1) === 1, peso: ((s[5] | 0) & 2) ? false : true };
                 })
@@ -3211,9 +3260,13 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       athSetSeq = 0; SR = {}; SETMETA = {};   // controles "Iniciar serie / Descanso" y filas de registro por serie de esta rutina
       state.routineDays.forEach(function(d, i) {
         var exercisesHtml = '';
-        (d.items || []).forEach(function(item, itIdx) {
+        var itemOrder = (d.items || []).map(function(it0, ix) { return ix; });
+        itemOrder.sort(function(a, b) { var fa = (d.items[a].circ && d.items[a].circ.finisher) ? 1 : 0, fb = (d.items[b].circ && d.items[b].circ.finisher) ? 1 : 0; return (fa - fb) || (a - b); });   // el finisher va al final del día
+        itemOrder.forEach(function(itIdx) {
+          var item = d.items[itIdx];
           var isNormal = item.type === 'normal';
-          var typeBadge = isNormal ? 'SERIE NORMAL' : (item.type === 'biserie' ? 'BISERIE (A + B)' : (item.type === 'circuito' ? 'CIRCUITO' : 'TRISERIE (A + B + C)'));
+          var isHiit = item.type === 'circuito' && !!item.circ && item.circ.tipo === 'hiit', isFin = item.type === 'circuito' && !!item.circ && !!item.circ.finisher;
+          var typeBadge = isNormal ? 'SERIE NORMAL' : (item.type === 'biserie' ? 'BISERIE (A + B)' : (item.type === 'circuito' ? ((isFin ? '🔥 FINISHER · ' : '') + (isHiit ? 'HIIT' : 'CIRCUITO')) : 'TRISERIE (A + B + C)'));
           var slotNum = parseInt(item.slot, 10) || (itIdx + 1);
           var vDesde = parseInt(item.vigenciaDesde, 10) || 1;
           var vHasta = (item.vigenciaHasta === undefined || item.vigenciaHasta === null) ? null : (parseInt(item.vigenciaHasta, 10) || null);
@@ -3251,11 +3304,11 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
               '<div class="ex-target">' + targetTxt + (sUni ? escHtml(uniNote(sub.reps || (circTimed ? cI.trabajo : ''))) + '<span class="uni-badge">↔ UNILATERAL</span>' : '') + '</div>' +
               (sub.notes ? '<div class="ex-notes">📌 ' + escHtml(sub.notes) + '</div>' : '') +
               demoButtonHtml +
-              setRowsHtml(fieldId, sSets, sW, sTimed, item.type === 'circuito') +
+              (isHiit ? '<div style="display:none;">' : '') + setRowsHtml(fieldId, sSets, sW, sTimed, item.type === 'circuito') +
               '<div class="prev-load-badge-row">' +
                 '<span class="prev-load-badge" id="prev_' + fieldId + '">Marca Anterior: -</span>' +
                 '<button type="button" class="btn-load-prev" id="btn_restore_' + fieldId + '" onclick="restoreSingleLoad(\'' + fieldId + '\')" style="display:none;">⤴️ Montar</button>' +
-              '</div>' +
+              '</div>' + (isHiit ? '</div>' : '') +
             '</div>';
           });
 
@@ -3266,9 +3319,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
             var cStations = subList.map(function(s2) { return s2.name || ''; });
             subsDetails = circuitHeaderHtml(item.circ) + '@@RUN@@' + subsDetails;
             if (isTimeText(cInfo.trabajo)) {
-              athCircuits.push({ nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations, videos: subVideos, keys: subKeys, unis: subUnis });
-              // el circuito por tiempo también lleva la cuenta de rondas (para "1 ronda más" y el campo Series)
-              subsDetails = subsDetails.replace('@@RUN@@', setRunnerHtml(parseInt(cInfo.rondas, 10) || 1, 0, 'Ronda', athCircuits.length - 1, false, parseSecs(cInfo.descanso) || 0));   // el descanso entre rondas lo elige el cliente (30/60/90); lo del coach es el valor inicial
+              athCircuits.push({ nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations, videos: subVideos, keys: subKeys, unis: subUnis, hiit: isHiit, lblT: cInfo.etqT || '', lblD: cInfo.etqD || '', rpeT: cInfo.rpeT || '', rpeD: cInfo.rpeD || '', ajuste: cInfo.ajuste || '' });
+              // el circuito por tiempo también lleva la cuenta de rondas (para "1 ronda más" y el campo Series). En HIIT el descanso lo fija el coach (sin botones 30/60/90)
+              subsDetails = subsDetails.replace('@@RUN@@', setRunnerHtml(parseInt(cInfo.rondas, 10) || 1, isHiit ? (parseSecs(cInfo.descanso) || 0) : 0, 'Ronda', athCircuits.length - 1, isHiit, parseSecs(cInfo.descanso) || 0));   // el descanso entre rondas lo elige el cliente (30/60/90); lo del coach es el valor inicial
             } else {
               // circuito por reps: cada estación es una fase "abierta" (cronómetro que sube + botón "Terminé")
               var cRest = isTimeText(cInfo.descanso) ? parseSecs(cInfo.descanso) : 0;
@@ -5180,6 +5233,21 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var unis = c.unis || [];
       var repsArr = c.reps || [];
       var phases = [{ t: 'ready', d: 5, st: names[0], r: 1, si: 0 }];
+      if (c.hiit) {   // HIIT: trabajo y descanso alternados; el descanso va después de CADA intervalo (también el último), así el tiempo total cuadra (ej. 10 x 30/30 = 10 min)
+        var wNote = [c.rpeT ? 'Esfuerzo ' + c.rpeT + '/10' : '', c.ajuste || ''].filter(Boolean).join(' · '), rNote = c.rpeD ? 'Esfuerzo ' + c.rpeD + '/10' : '';
+        var wH = work || (c.works && c.works[0]) || 0;
+        if (!wH || wH < 1) return { err: 'No pude leer el tiempo de trabajo de este HIIT ("' + (c.trabajo || 'vacío') + '"). Pídele a tu coach que lo escriba así: 30 s.' };
+        for (var rh = 1; rh <= rounds; rh++) {
+          for (var sh = 0; sh < names.length; sh++) {
+            phases.push({ t: 'work', d: wH, st: names[sh], r: rh, si: sh, side: 0, lbl: c.lblT || '', note: wNote });
+            if (rest > 0) {
+              var nxIdx = (sh + 1) % names.length, lastH = (rh === rounds && sh === names.length - 1);
+              phases.push({ t: 'rest', d: rest, st: 'Descanso', r: rh, si: -1, lbl: c.lblD || '', note: rNote, nextName: lastH ? '' : names[nxIdx], multi: names.length > 1 });
+            }
+          }
+        }
+        return { phases: phases, rounds: rounds, nSt: names.length, names: names, openSt: names.map(function() { return false; }), hasOpen: false, hiit: true, label: 'Ronda' };
+      }
       for (var r = 1; r <= rounds; r++) {
         for (var s = 0; s < names.length; s++) {
           var w = hasWorks ? (c.works[s] || 0) : work;
@@ -5228,7 +5296,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       CT.keys = c.keys || []; CT.acc = {};   // para anotar los segundos logrados en cada serie
       CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? SR[srId].cur : 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = c.nombre || 'Circuito';
-      CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = [];
+      CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = !!built.hiit;
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
       ctEnter(CT.phases[0], Date.now());
       ctOpen();
@@ -5308,24 +5376,30 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function ctRender(remain) {
       var ph = CT.phases[CT.i], colors = { work: '#06d6a0', rest: '#4d8bff', ready: '#ffd60a', trans: '#ff9f1c' };
       var col = colors[ph.t] || '#fff';
-      var labels = { work: 'TRABAJO', rest: 'DESCANSO', ready: 'PREPÁRATE', trans: (ph.kind === 'side' ? 'CAMBIA DE LADO' : 'TRANSICIÓN') };
+      var labels = { work: (ph.lbl ? ph.lbl.toUpperCase() : 'TRABAJO'), rest: (ph.lbl ? ph.lbl.toUpperCase() : 'DESCANSO'), ready: 'PREPÁRATE', trans: (ph.kind === 'side' ? 'CAMBIA DE LADO' : 'TRANSICIÓN') };
       var el = function(id) { return document.getElementById(id); };
       if (!el('tm_time')) return;
       el('tm_title').innerText = CT.title;
       el('tm_round').innerText = ph.t === 'ready' ? '' : ((CT.roundLabel || 'Ronda') + ' ' + ph.r + ' de ' + CT.rounds);
       el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
       var stationTxt = ph.st;
-      if (ph.t === 'rest') stationTxt = 'Tu ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' ' + Math.min(CT.rounds, ph.r + 1) + ' iniciará en:';
+      if (ph.t === 'rest' && CT.hiit) stationTxt = ph.nextName ? (ph.multi ? 'Sigue: ' + ph.nextName : ph.nextName) : 'Vuelta a la calma';
+      else if (ph.t === 'rest') stationTxt = 'Tu ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' ' + Math.min(CT.rounds, ph.r + 1) + ' iniciará en:';
       else if (ph.t === 'trans') stationTxt = (ph.kind === 'side' ? 'Cambia de lado ↔' : 'Prepara: ' + ph.st);
       else if (ph.side) stationTxt = ph.st + ' · Lado ' + ph.side + ' de 2';
       el('tm_station').innerText = stationTxt;
       var isOpen = !!ph.open;   // fase por reps: "remain" trae los segundos que lleva (cronómetro que sube)
       el('tm_time').innerText = isOpen ? wkFmt(remain) : tmrFmt(remain); el('tm_time').style.color = col;
       el('tm_bar').style.width = isOpen ? '0%' : Math.max(0, Math.min(100, (1 - remain / ph.d) * 100)) + '%'; el('tm_bar').style.background = col;
-      if (el('tm_reps')) el('tm_reps').innerText = (isOpen && ph.reps) ? ph.reps : '';
+      if (el('tm_reps')) el('tm_reps').innerText = (isOpen && ph.reps) ? ph.reps : (ph.note || '');
       if (el('tm_prog')) {   // avance del bloque: cuánto falta, y "ya casi" cuando queda poco
         var left = CT.rounds - ph.r, lab = (CT.roundLabel || 'Ronda').toLowerCase(), pTxt = '', pCol = '#ccc';
-        if (CT.rounds > 1 && ph.t !== 'ready') {
+        if (CT.hiit && ph.t !== 'ready') {   // HIIT: cuánto tiempo queda en total
+          var remTot = Math.max(0, (CT.end - Date.now()) / 1000);
+          for (var qh = CT.i + 1; qh < CT.phases.length; qh++) remTot += CT.phases[qh].d;
+          remTot = Math.ceil(remTot);
+          pTxt = (remTot <= 60 ? '¡Ya casi! Queda ' : 'Quedan ') + tmrFmt(remTot) + (remTot < 60 ? ' s' : ' min'); pCol = remTot <= 60 ? '#ffd60a' : '#ccc';
+        } else if (CT.rounds > 1 && ph.t !== 'ready') {
           if (left <= 0) { pTxt = '¡Última ' + lab + '! Ya casi 🔥'; pCol = '#ffd60a'; }
           else if (left === 1) { pTxt = '¡Ya casi! Te falta 1 más'; pCol = '#ffd60a'; }
           else pTxt = 'Te faltan ' + left + ' más';
@@ -5392,7 +5466,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         ctSummaryShow(); el('tm_exit').innerText = CT.srId ? 'Terminar ya' : 'Cerrar';
         if (CT.srId && SR[CT.srId]) {
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
-          el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = 'block';
+          el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = CT.hiit ? 'none' : 'block';
         }
       }
       tmrWakeOff();
@@ -5412,6 +5486,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     // Anota los segundos de ese tiempo de trabajo en la fila de la serie (unilateral: "lado 1/lado 2")
     function ctRecord(ph, secs) {
+      if (CT.hiit) return;   // en HIIT no se anotan segundos por ronda
       var key = (CT.keys || [])[ph.si]; if (!key) return;
       var idx = (CT.doneBefore || 0) + ph.r - 1;
       ensureSetRows(key, idx + 1);
@@ -6263,7 +6338,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
