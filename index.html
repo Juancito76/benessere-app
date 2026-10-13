@@ -172,6 +172,10 @@
       display: flex; justify-content: space-between; align-items: center;
       z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.7);
     }
+    #tab_class .edx-sub { background:#161616; border:1px solid #2c2c2c; border-radius:10px; padding:10px; margin-top:10px; }
+    #tab_class .edx-sub label { display:block; margin:8px 0 3px; font-size:0.7rem; font-weight:800; color:var(--muted); text-transform:uppercase; }
+    #tab_class .edx-sub input[type=text], #tab_class .edx-sub input[type=date], #tab_class .edx-sub select { display:block; width:100%; box-sizing:border-box; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:9px; font-size:0.88rem; }
+    #tab_class .edx-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
     @media (max-width: 640px) {   /* celular: sin el texto de marca y con los botones en 2 columnas, para que la barra no se coma la pantalla */
       .export-bar { flex-direction: column; align-items: stretch; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
       .export-bar > div:first-child { display: none; }
@@ -403,6 +407,7 @@
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">🔗 Cargar desde Link</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
+      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_class', this); clsRender();">🎓 Clases y Retos</button>
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
       <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
@@ -616,6 +621,32 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         <div class="med-h">📈 Historial de mediciones <span id="med_count"></span></div>
         <div id="measureLogList"></div>
         <div id="measureChartBox"></div>
+      </section>
+    </div>
+
+    <!-- TAB: CLASES Y RETOS -->
+    <div id="tab_class" class="gen-view">
+      <section class="section-box">
+        <div class="section-title">🎓 Clases y Retos <span class="badge">Grupal</span></div>
+        <p style="font-size:0.8rem; color:var(--muted); line-height:1.5; margin-bottom:10px;">
+          Pega el texto de la clase (o del reto), toca <strong>Leer</strong>, pon los videos y guárdala. La clase de hoy y los retos que habilites se verán en el mismo link para todos.
+        </p>
+        <textarea id="clsText" rows="9" placeholder="Clase: GAP | Fecha: 2026-10-15 | Musculos: Glúteos, piernas, abdomen
+Circuito: Calentamiento | Rondas: 1 | Trabajo: 40 s | Descanso: 20 s | Cambio: 10 s
+Estacion: Trote en sitio | Reps: 40 s
+Estacion: Saltos de tijera | Reps: 40 s
+Circuito: Bloque A | Rondas: 3 | Trabajo: 40 s | Descanso: 20 s | Cambio: 10 s
+Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="width:100%; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:10px; padding:10px; font-size:0.8rem; font-family:monospace;"></textarea>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-accent" style="flex:1;" onclick="clsRead()">📖 Leer</button>
+          <button type="button" class="btn btn-secondary" onclick="clsClearForm()">🧹 Limpiar</button>
+        </div>
+        <div id="clsMsg" style="font-size:0.78rem; color:var(--muted); margin-top:8px; line-height:1.5;"></div>
+        <div id="clsPreview"></div>
+      </section>
+      <section class="section-box">
+        <div class="section-title">📚 Mis clases y retos</div>
+        <div id="clsList"></div>
       </section>
     </div>
 
@@ -6211,7 +6242,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       var q = normName(document.getElementById('cl_search').value);
       var groups = {}, order = [];
       clientRows.forEach(function(r) {   // el servidor las entrega de la más nueva a la más vieja
-        var k = normName(r.atleta); if (!k || k === '__anuncios__') return;
+        var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__') return;
         if (!groups[k]) { groups[k] = { name: r.atleta, list: [] }; order.push(k); }
         groups[k].list.push(r);
       });
@@ -6644,6 +6675,217 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       }).catch(function(e) { btn.disabled = false; btn.innerText = '📤 Publicar'; msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo publicar: ' + updateErrorText(e && e.message); });
     }
 
+
+    // ================= CLASES Y RETOS (modo grupal) =================
+    // Una clase (o reto) es una lista de bloques; cada bloque es un circuito con estaciones. Se escribe en texto plano,
+    // con las mismas líneas "Circuito:" y "Estacion:" de las rutinas, más una línea inicial "Clase:" o "Reto:".
+    var CLS_KEY = 'benessere_clases_v1';
+    var CLS = { lista: [], hoy: '' };
+    var CLS_WORK = null;      // clase leída que se está revisando (aún sin guardar)
+    var CLS_EDIT_ID = '';     // id de la clase guardada que se está editando
+    function clsLoad() {
+      try { var o = JSON.parse(localStorage.getItem(CLS_KEY) || 'null'); if (o && Array.isArray(o.lista)) { CLS = { lista: o.lista, hoy: o.hoy || '' }; return; } } catch (e) {}
+      CLS = { lista: [], hoy: '' };
+    }
+    function clsSave() { try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); } catch (e) { alert('No se pudo guardar (¿memoria del navegador llena?).'); } }
+    function clsProps(str) {
+      var out = {};
+      String(str || '').split('|').forEach(function(pr) {
+        var i = pr.indexOf(':'); if (i < 0) return;
+        out[pr.substring(0, i).trim().toLowerCase().replace(/[áä]/g, 'a').replace(/[éë]/g, 'e').replace(/[íï]/g, 'i').replace(/[óö]/g, 'o').replace(/[úü]/g, 'u')] = pr.substring(i + 1).trim();
+      });
+      return out;
+    }
+    function clsFirst(str) { return String(str || '').split('|')[0].trim(); }
+    function clsSecs(t) { var n = parseSecs(t); return (n && n > 0) ? n : 0; }
+    // Duración aproximada en segundos de una lista de bloques
+    function clsDuration(items) {
+      var tot = 0;
+      (items || []).forEach(function(it) {
+        var c = it.circ || {}, subs = it.sub || [];
+        if (c.tipo === 'amrap') { tot += clsSecs(c.total); return; }
+        var rondas = Math.max(1, parseInt(c.rondas, 10) || 1), w = clsSecs(c.trabajo), r = clsSecs(c.descanso), ch = clsSecs(c.cambio);
+        var per = 0;
+        subs.forEach(function(sb, k) { var sw = isTimeText(sb.reps) ? clsSecs(sb.reps) : w; per += sw + r + (k < subs.length - 1 ? ch : 0); });
+        tot += per * rondas;
+      });
+      return tot;
+    }
+    // Lee el texto y devuelve { clase, warns } (o null si no hay nada que leer)
+    function parseClassText(raw) {
+      var lines = String(raw || '').split('\n').map(function(l) { return l.trim(); });
+      var clase = { id: '', k: 'c', f: todayIso(), t: '', m: '', items: [], vis: false }, warns = [], cur = null, nSub = 0;
+      lines.forEach(function(line, idx) {
+        if (!line) return;
+        var low = line.toLowerCase();
+        if (low.indexOf('clase:') === 0 || low.indexOf('reto:') === 0) {
+          clase.k = low.indexOf('reto:') === 0 ? 'r' : 'c';
+          var rest = line.substring(line.indexOf(':') + 1), p = clsProps(rest);
+          clase.t = clsFirst(rest);
+          if (p.fecha && /^\d{4}-\d{2}-\d{2}$/.test(p.fecha)) clase.f = p.fecha; else if (p.fecha) warns.push('La fecha "' + p.fecha + '" no se entendió (usa AAAA-MM-DD); se usó hoy.');
+          if (p.musculos) clase.m = p.musculos;
+          return;
+        }
+        if (low.indexOf('circuito:') === 0 || low.indexOf('bloque:') === 0) {
+          var rest2 = line.substring(line.indexOf(':') + 1), p2 = clsProps(rest2);
+          cur = { type: 'circuito', slot: clase.items.length + 1, vigenciaDesde: 1, vigenciaHasta: null, circ: { nombre: clsFirst(rest2) || ('Bloque ' + (clase.items.length + 1)), rondas: p2.rondas || p2.ronda || '1', trabajo: p2.trabajo || '', descanso: /^(0|sin|no|ninguno|ninguna|-)(\s|$)/i.test(p2.descanso || '') ? '' : (p2.descanso || ''), cambio: p2.cambio || p2.transicion || '', entre: p2.entre || p2.intercalar || '', notas: p2.notas || p2.nota || '', tipo: /hiit/i.test(p2.tipo || '') ? 'hiit' : (/amrap/i.test(p2.tipo || '') ? 'amrap' : ''), total: (/amrap/i.test(p2.tipo || '') ? (p2.tiempo || p2.total || p2.duracion || '') : '') }, sub: [] };
+          clase.items.push(cur); return;
+        }
+        if (low.indexOf('estacion:') === 0 || low.indexOf('estación:') === 0 || low.indexOf('ejercicio:') === 0) {
+          if (!cur) { warns.push('Línea ' + (idx + 1) + ': hay un ejercicio antes de un bloque; se ignoró.'); return; }
+          var rest3 = line.substring(line.indexOf(':') + 1), p3 = clsProps(rest3);
+          cur.sub.push({ name: clsFirst(rest3), series: '', reps: p3.reps || p3.tiempo || '', notes: p3.notas || p3.nota || '', video: p3.video || '' });
+          nSub++; return;
+        }
+        warns.push('Línea ' + (idx + 1) + ' no reconocida: "' + line.substring(0, 40) + '"');
+      });
+      if (!clase.items.length || !nSub) return null;
+      clase.items.forEach(function(it) {
+        if (!it.sub.length) warns.push('El bloque "' + it.circ.nombre + '" no tiene estaciones.');
+        if (it.circ.tipo === 'amrap' && !clsSecs(it.circ.total)) warns.push('El bloque AMRAP "' + it.circ.nombre + '" necesita "Tiempo: 15 min" (el tiempo total).');
+        // (un bloque sin tiempo de trabajo es válido: los ejercicios por repeticiones se terminan tocando «Terminé»)
+      });
+      if (!clase.t) clase.t = (clase.k === 'r' ? 'Reto' : 'Clase') + ' ' + fmtDate(clase.f);
+      clase.items = clase.items.filter(function(it) { return it.sub.length; });
+      // "Entre: 20 burpees" -> después de cada ejercicio (menos el último) se mete ese ejercicio fijo, sin descanso de por medio
+      clase.items.forEach(function(it) {
+        var e = String(it.circ.entre || '').trim(); if (!e) return;
+        var m = e.match(/^(\d+)\s*(?:reps?|repeticiones)?\s*(?:de\s+)?(.+)$/i) || e.match(/^(.+?)\s*(?:x|×)\s*(\d+)$/i);
+        if (!m) { warns.push('No entendí "Entre: ' + e + '" (ejemplo: Entre: 20 burpees).'); return; }
+        var n = /^\d+$/.test(m[1]) ? m[1] : m[2], nm = (/^\d+$/.test(m[1]) ? m[2] : m[1]).trim();
+        nm = nm.charAt(0).toUpperCase() + nm.slice(1);
+        var base = it.sub.filter(function(sb) { return !sb.filler; }), out = [];
+        base.forEach(function(sb, k) { out.push(sb); if (k < base.length - 1) out.push({ name: nm, series: '', reps: n, notes: '', video: '', filler: true }); });
+        it.sub = out;
+      });
+      return { clase: clase, warns: warns };
+    }
+    function clsLibVideo(name) {
+      var lib = getVideoLibrary(), key = normExName(name);
+      for (var k in lib) { if (normExName(k) === key) return lib[k]; }
+      return '';
+    }
+    function clsRead() {
+      var raw = document.getElementById('clsText').value, msg = document.getElementById('clsMsg');
+      if (!raw.trim()) { msg.style.color = '#ff6b6b'; msg.innerText = 'Pega primero el texto de la clase.'; return; }
+      var r = parseClassText(raw);
+      if (!r) { msg.style.color = '#ff6b6b'; msg.innerText = 'No encontré bloques con ejercicios. Cada bloque empieza con "Circuito:" y sus ejercicios con "Estacion:".'; return; }
+      r.clase.src = raw;
+      if (CLS_EDIT_ID) r.clase.id = CLS_EDIT_ID;
+      r.clase.items.forEach(function(it) { it.sub.forEach(function(sb) { if (!sb.video) sb.video = clsLibVideo(sb.name); }); });   // videos ya guardados en la biblioteca
+      CLS_WORK = r.clase;
+      msg.style.color = r.warns.length ? '#ffd166' : '#06d6a0';
+      msg.innerText = r.warns.length ? ('Leída con avisos: ' + r.warns.join(' · ')) : '✅ Clase leída. Revisa los videos y guarda.';
+      clsRenderPreview();
+    }
+    function clsClearForm() {
+      document.getElementById('clsText').value = ''; document.getElementById('clsMsg').innerText = ''; document.getElementById('clsPreview').innerHTML = '';
+      CLS_WORK = null; CLS_EDIT_ID = '';
+    }
+    function clsHasOpen(items) { return (items || []).some(function(it) { var c = it.circ || {}; return c.tipo !== 'amrap' && it.sub.some(function(sb) { return !isTimeText(sb.reps) && !clsSecs(c.trabajo); }); }); }
+    function clsFmtMin(sec) { var m = Math.round(sec / 60); return m <= 0 ? '' : m + ' min'; }
+    function clsRenderPreview() {
+      var box = document.getElementById('clsPreview'), c = CLS_WORK;
+      if (!box) return; if (!c) { box.innerHTML = ''; return; }
+      var dur = clsDuration(c.items);
+      var h = '<div class="edx-sub" style="margin-top:12px;"><div class="edx-row">' +
+        '<div><label>Tipo</label><select id="clsK" onchange="clsReadHead()"><option value="c"' + (c.k === 'c' ? ' selected' : '') + '>Clase</option><option value="r"' + (c.k === 'r' ? ' selected' : '') + '>Reto</option></select></div>' +
+        '<div><label>Fecha</label><input type="date" id="clsF" value="' + edxAttr(c.f) + '" onchange="clsReadHead()"></div></div>' +
+        '<label>Título</label><input type="text" id="clsT" value="' + edxAttr(c.t) + '" oninput="clsReadHead()">' +
+        '<label>Músculos trabajados (se muestran al terminar)</label><input type="text" id="clsM" value="' + edxAttr(c.m) + '" oninput="clsReadHead()" placeholder="Ej: Glúteos, piernas, abdomen">' +
+        '<div style="font-size:0.78rem; color:#ddd; margin-top:8px;">⏱ Duración aproximada: <strong>' + (clsHasOpen(c.items) ? ((clsFmtMin(dur) ? clsFmtMin(dur) + ' + ' : '') + 'ejercicios por repeticiones') : (clsFmtMin(dur) || '—')) + '</strong> · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + '</div></div>';
+      c.items.forEach(function(it, bi) {
+        var cc = it.circ;
+        h += '<div class="edx-sub"><div style="font-size:0.78rem; font-weight:800; color:var(--accent);">' + escHtml(cc.nombre) + (cc.tipo === 'hiit' ? ' · HIIT' : (cc.tipo === 'amrap' ? ' · AMRAP ' + escHtml(cc.total) : '')) + '</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:6px;">' + (cc.tipo === 'amrap' ? 'Tantas rondas como se pueda en ' + escHtml(cc.total) : (escHtml(cc.rondas) + ' ronda' + (String(cc.rondas) === '1' ? '' : 's') + (cc.trabajo ? ' · trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · descanso ' + escHtml(cc.descanso) : '') + (cc.cambio ? ' · cambio ' + escHtml(cc.cambio) : '')) ) + '</div>';
+        it.sub.forEach(function(sb, si) {
+          var ok = !sb.video || !!ytIdStrict(sb.video);
+          h += '<div style="margin-bottom:8px;"><div style="font-size:0.84rem; font-weight:700; color:#fff;">' + escHtml(sb.name) + (sb.reps ? ' <span style="color:#ffd60a;">· ' + escHtml(sb.reps) + '</span>' : '') + '</div>' +
+            '<input type="text" id="clsV_' + bi + '_' + si + '" value="' + edxAttr(sb.video) + '" placeholder="Link de YouTube (opcional)" onchange="clsSetVideo(' + bi + ',' + si + ',this.value)" style="margin-top:4px;">' +
+            (ok ? '' : '<div style="font-size:0.7rem; color:#ffd166;">Este link no parece de YouTube; se abrirá solo con «Ver demo».</div>') + '</div>';
+        });
+        h += '</div>';
+      });
+      h += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"><button type="button" class="btn btn-accent" style="flex:1; min-width:130px;" onclick="clsStore(false)">💾 Guardar</button>' +
+        (c.k === 'c' ? '<button type="button" class="btn btn-export-wa" style="flex:1; min-width:150px;" onclick="clsStore(true)">⭐ Guardar como clase de hoy</button>' : '') + '</div>';
+      box.innerHTML = h;
+    }
+    function clsReadHead() {
+      var c = CLS_WORK; if (!c) return;
+      c.k = document.getElementById('clsK').value; c.f = document.getElementById('clsF').value || c.f; c.t = document.getElementById('clsT').value; c.m = document.getElementById('clsM').value;
+    }
+    function clsSetVideo(bi, si, v) {
+      var c = CLS_WORK; if (!c || !c.items[bi] || !c.items[bi].sub[si]) return;
+      v = String(v || '').trim(); var sb = c.items[bi].sub[si]; sb.video = v;
+      c.items.forEach(function(it2) { it2.sub.forEach(function(s2) { if (normExName(s2.name) === normExName(sb.name)) s2.video = v; }); });   // mismo ejercicio = mismo video (por ejemplo los burpees intercalados)
+      if (v) rememberExerciseVideo(sb.name, v);   // queda en la biblioteca para la próxima clase
+      clsRenderPreview();
+    }
+    function clsStore(asToday) {
+      var c = CLS_WORK; if (!c) return;
+      clsReadHead();
+      if (!c.t.trim()) { alert('Ponle un título.'); return; }
+      var rec = JSON.parse(JSON.stringify(c));
+      if (!rec.id) rec.id = 'c' + Date.now().toString(36);
+      var i = -1; CLS.lista.forEach(function(x, k) { if (x.id === rec.id) i = k; });
+      if (i >= 0) { rec.vis = CLS.lista[i].vis; CLS.lista[i] = rec; } else CLS.lista.push(rec);
+      if (asToday && rec.k === 'c') CLS.hoy = rec.id;
+      if (CLS.hoy === rec.id && rec.k !== 'c') CLS.hoy = '';
+      clsSave();
+      document.getElementById('clsMsg').style.color = '#06d6a0';
+      document.getElementById('clsMsg').innerText = '✅ Guardada: ' + rec.t + (CLS.hoy === rec.id ? ' (clase de hoy)' : '') + '.';
+      clsClearForm(); clsRender();
+    }
+    function clsFind(id) { for (var i = 0; i < CLS.lista.length; i++) { if (CLS.lista[i].id === id) return CLS.lista[i]; } return null; }
+    function clsSetToday(id) { var c = clsFind(id); if (!c || c.k !== 'c') return; CLS.hoy = id; clsSave(); clsRender(); }
+    function clsToggleVis(id) { var c = clsFind(id); if (!c) return; c.vis = !c.vis; clsSave(); clsRender(); }
+    function clsDelete(id) {
+      var c = clsFind(id); if (!c) return;
+      if (!confirm('¿Borrar "' + c.t + '"?')) return;
+      CLS.lista = CLS.lista.filter(function(x) { return x.id !== id; }); if (CLS.hoy === id) CLS.hoy = '';
+      clsSave(); clsRender();
+    }
+    function clsEdit(id) {
+      var c = clsFind(id); if (!c) return;
+      CLS_EDIT_ID = id; CLS_WORK = JSON.parse(JSON.stringify(c));
+      document.getElementById('clsText').value = c.src || clsToText(c);
+      document.getElementById('clsMsg').style.color = 'var(--muted)'; document.getElementById('clsMsg').innerText = 'Editando "' + c.t + '". Cambia lo que necesites y guarda.';
+      clsRenderPreview(); window.scrollTo(0, 0);
+    }
+    // Texto plano de una clase guardada (por si no conserva el original)
+    function clsToText(c) {
+      var out = [(c.k === 'r' ? 'Reto: ' : 'Clase: ') + c.t + ' | Fecha: ' + c.f + (c.m ? ' | Musculos: ' + c.m : '')];
+      c.items.forEach(function(it) {
+        var cc = it.circ;
+        out.push('Circuito: ' + cc.nombre + ' | Rondas: ' + cc.rondas + (cc.trabajo ? ' | Trabajo: ' + cc.trabajo : '') + (cc.descanso ? ' | Descanso: ' + cc.descanso : '') + (cc.cambio ? ' | Cambio: ' + cc.cambio : '') + (cc.entre ? ' | Entre: ' + cc.entre : '') + (cc.tipo === 'hiit' ? ' | Tipo: HIIT' : '') + (cc.notas ? ' | Notas: ' + cc.notas : ''));
+        it.sub.filter(function(sb) { return !sb.filler; }).forEach(function(sb) { out.push('Estacion: ' + sb.name + (sb.reps ? ' | Reps: ' + sb.reps : '') + (sb.notes ? ' | Notas: ' + sb.notes : '') + (sb.video ? ' | Video: ' + sb.video : '')); });
+      });
+      return out.join('\n');
+    }
+    function clsRowHtml(c, isToday) {
+      var dur = clsHasOpen(c.items) ? '' : clsFmtMin(clsDuration(c.items));
+      return '<div style="background:#161616; border:1px solid #2c2c2c; border-left:4px solid ' + (isToday ? '#06d6a0' : '#444') + '; border-radius:10px; padding:10px; margin-bottom:8px;">' +
+        '<div style="font-weight:800; font-size:0.9rem; color:#fff;">' + escHtml(c.t) + '</div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 8px;">📅 ' + fmtDate(c.f) + (dur ? ' · ⏱ ' + dur : '') + ' · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + (c.m ? ' · 💪 ' + escHtml(c.m) : '') + '</div>' +
+        '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
+        (c.k === 'c' && !isToday ? '<button type="button" class="btn btn-secondary" style="padding:7px 10px; font-size:0.74rem;" onclick="clsSetToday(\'' + c.id + '\')">⭐ Poner de hoy</button>' : '') +
+        (isToday ? '<span style="font-size:0.74rem; font-weight:800; color:#06d6a0;">⭐ Clase de hoy</span>' : '<label style="font-size:0.74rem; color:#ddd; display:inline-flex; gap:5px; align-items:center;"><input type="checkbox"' + (c.vis ? ' checked' : '') + ' onchange="clsToggleVis(\'' + c.id + '\')"> ' + (c.k === 'r' ? 'Visible en Retos' : 'Visible en anteriores') + '</label>') +
+        '<button type="button" class="btn btn-secondary" style="padding:7px 10px; font-size:0.74rem;" onclick="clsEdit(\'' + c.id + '\')">✏️ Editar</button>' +
+        '<button type="button" class="btn btn-secondary" style="padding:7px 10px; font-size:0.74rem; color:#ff6b6b;" onclick="clsDelete(\'' + c.id + '\')">🗑</button></div></div>';
+    }
+    function clsRender() {
+      clsLoad();
+      var box = document.getElementById('clsList'); if (!box) return;
+      var byDate = function(a, b) { return a.f < b.f ? 1 : (a.f > b.f ? -1 : 0); };
+      var today = clsFind(CLS.hoy), clases = CLS.lista.filter(function(c) { return c.k === 'c' && c.id !== CLS.hoy; }).sort(byDate), retos = CLS.lista.filter(function(c) { return c.k === 'r'; }).sort(byDate);
+      var h = '<div class="med-h">Clase de hoy</div>' + (today ? clsRowHtml(today, true) : '<div class="med-sum">Todavía no has elegido la clase de hoy.</div>');
+      h += '<details style="margin-top:10px;"' + (clases.length && !today ? ' open' : '') + '><summary style="cursor:pointer; font-weight:800; color:var(--primary); font-size:0.88rem; padding:6px 0;">📅 Clases anteriores (' + clases.length + ')</summary>' +
+        (clases.length ? clases.map(function(c) { return clsRowHtml(c, false); }).join('') : '<div class="med-sum">Aquí quedan las clases que ya no son la de hoy, con su fecha, para elegirlas de nuevo o habilitarlas.</div>') + '</details>';
+      h += '<details style="margin-top:10px;"><summary style="cursor:pointer; font-weight:800; color:var(--primary); font-size:0.88rem; padding:6px 0;">🏆 Retos (' + retos.length + ')</summary>' +
+        (retos.length ? retos.map(function(c) { return clsRowHtml(c, false); }).join('') : '<div class="med-sum">Escribe «Reto:» en la primera línea del texto para cargar un reto. Solo los que marques como visibles aparecerán en el link.</div>') + '</details>';
+      box.innerHTML = h;
+    }
+
     // ================= ENRUTADOR INICIAL =================
     var ATHLETE_KEY = 'benessere_athlete_payload';
 
@@ -6783,7 +7025,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-q';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-r';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
