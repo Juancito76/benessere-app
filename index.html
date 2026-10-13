@@ -172,6 +172,14 @@
       display: flex; justify-content: space-between; align-items: center;
       z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.7);
     }
+    @media (max-width: 640px) {   /* celular: sin el texto de marca y con los botones en 2 columnas, para que la barra no se coma la pantalla */
+      .export-bar { flex-direction: column; align-items: stretch; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+      .export-bar > div:first-child { display: none; }
+      .export-bar > div:last-child { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
+      .export-bar .btn { padding: 11px 6px !important; font-size: 0.8rem !important; }
+      .export-bar #btn_update_routine { grid-column: 1 / -1; }
+      #coach_builder_view { padding-bottom: 150px; }
+    }
     .btn-export-wa { background: var(--success); color: #000; font-size: 0.95rem; font-weight: 800; padding: 12px 20px; }
     .btn-export-download { background: #222; border: 1px solid #555; color: #fff; font-size: 0.85rem; font-weight: 700; padding: 12px 14px; }
     .btn-export-pdf { background: #ffffff; color: #000; font-size: 0.85rem; font-weight: 800; padding: 12px 14px; }
@@ -416,7 +424,6 @@
           <button type="button" class="btn btn-secondary" onclick="downloadDraftFile()">⬇️ Descargar como archivo</button>
           <button type="button" class="btn btn-secondary" onclick="document.getElementById('draftFileInput').click()">📤 Cargar desde archivo</button>
         </div>
-        <button type="button" class="btn btn-accent" style="width:100%; padding:12px; margin-bottom:10px;" onclick="saveAndResetBuilder()">💾➡️🧹 Guardar y reiniciar para el próximo cliente</button>
         <input type="file" id="draftFileInput" accept=".json" style="display:none;" onchange="loadDraftFromFile(this)">
         <p id="draftStatus" style="font-size:0.75rem; color:var(--muted); margin-top:6px; line-height:1.5;"></p>
       </section>
@@ -618,8 +625,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         <div style="font-weight: 800; color: #fff; font-size: 0.95rem;">Benessere Gym Pro</div>
         <div style="font-size: 0.75rem; color: var(--muted);">Enlace Ultra-Corto sin Servidores Externos</div>
       </div>
-      <div style="display: flex; gap: 8px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
         <button type="button" id="btn_update_routine" class="btn btn-accent" style="display:none;" onclick="updateEditingRoutine()">🔄 Actualizar rutina</button>
+        <button type="button" class="btn btn-accent" style="font-size:0.85rem; padding:12px 14px;" onclick="saveAndResetBuilder()" title="Guarda un borrador y deja el constructor limpio para el próximo cliente">💾➡️🧹 Guardar y reiniciar</button>
         <button type="button" class="btn btn-export-pdf" onclick="generateGymPDF()">📄 PDF Ficha</button>
         <button type="button" class="btn btn-export-download" onclick="downloadManualHTML()">💾 Guardar HTML</button>
         <button type="button" class="btn btn-export-wa" onclick="generateDirectWhatsAppLink()">📲 Enviar por WhatsApp</button>
@@ -6775,7 +6783,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-p';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-q';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
