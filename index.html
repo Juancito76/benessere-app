@@ -430,6 +430,7 @@
           Cada vez que ponés un link de YouTube en un ejercicio, queda guardado acá automáticamente con su nombre — sin que tengas que hacer nada extra. Es tu catálogo propio de "qué video va con qué ejercicio", reutilizable entre rutinas.
         </p>
         <button type="button" class="btn btn-secondary" style="width:100%;" onclick="openVideoLibrary()">📚 Ver biblioteca de videos</button>
+        <button type="button" class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="reviewVideos()">🔎 Revisar videos (¿se pueden incrustar?)</button>
       </section>
 
       <section class="section-box">
@@ -794,6 +795,15 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:10px;">📂 Borradores guardados en este dispositivo</div>
       <div id="draftListBody" style="max-height:340px; overflow-y:auto; margin-bottom:10px;"></div>
       <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_drafts')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- ================= VENTANA: REVISAR VIDEOS ================= -->
+  <div id="modal_video_review" class="modal-overlay">
+    <div class="modal-inner">
+      <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:10px;">🔎 Revisar videos</div>
+      <div id="videoReviewBody" style="max-height:380px; overflow-y:auto; margin-bottom:10px;"></div>
+      <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_video_review')">Cerrar</button>
     </div>
   </div>
 
@@ -5324,12 +5334,13 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         '<div id="tm_time" style="font-size:min(26vw, 160px); font-weight:900; line-height:1; margin:10px 0; font-variant-numeric:tabular-nums;"></div>' +
         '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
         '<div id="tm_next" style="margin-top:14px; font-size:1rem; color:#ccc;"></div>' +
+        '<div id="tm_vid" style="display:none; position:relative; margin:12px auto 0; width:min(100%, 360px); aspect-ratio:16/9; background:#000; border-radius:10px; overflow:hidden;"></div>' +
         '<div id="tm_sheet" style="display:none; margin-top:12px; background:#1b1b1b; border:1px solid #333; border-radius:12px; padding:10px; text-align:left;"></div>' +
         '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>' +
         '<div id="tm_guide" style="display:none; margin-top:12px; background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; text-align:center;"></div>' +
         '<div style="flex:1; min-height:16px;"></div>' +
         '<div style="display:flex; gap:10px;"><button type="button" class="tm-btn" id="tm_pause">⏸ Pausar</button><button type="button" class="tm-btn" id="tm_plus" style="display:none;">+5 s</button><button type="button" class="tm-btn" id="tm_stop" style="display:none; border-color:#ff453a; color:#ff9a93;">⏹ Parar</button><button type="button" class="tm-btn" id="tm_done" style="display:none; background:#06d6a0; border-color:#06d6a0; color:#000;">✔ Terminé</button><button type="button" class="tm-btn" id="tm_skip">⏭ Saltar</button></div>' +
-        '<div style="display:flex; gap:10px; margin-top:10px;"><button type="button" class="tm-btn" id="tm_exit">✖ Salir</button><button type="button" class="tm-btn" id="tm_snd" style="font-size:0.78rem;"></button></div>' +
+        '<div style="display:flex; gap:10px; margin-top:10px;"><button type="button" class="tm-btn" id="tm_exit">✖ Salir</button><button type="button" class="tm-btn" id="tm_vtog" style="font-size:0.78rem;"></button><button type="button" class="tm-btn" id="tm_snd" style="font-size:0.78rem;"></button></div>' +
         '<button type="button" class="tm-btn" id="tm_more" style="display:none; margin-top:10px; background:#06d6a0; color:#000; width:100%; flex:none;">➕ 1 serie más</button>';
       document.body.appendChild(o);
       document.getElementById('tm_pause').onclick = ctTogglePause;
@@ -5339,7 +5350,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       document.getElementById('tm_stop').onclick = ctStop;
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
-      document.getElementById('tm_snd').onclick = tmrToggleMode; tmrModeLabel();
+      document.getElementById('tm_snd').onclick = tmrToggleMode; tmrModeLabel(); document.getElementById('tm_vtog').onclick = ctVidToggle; ctVidLabel();
       document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId, gd = CT.guide; startCircuitTimer(ci, sid, true, gd); };
     }
 
@@ -5426,7 +5437,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         var di = ph.si;
         if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
         CT.demoUrl = (CT.videos && di >= 0 && CT.videos[di]) ? CT.videos[di] : '';
-        demoBtn.style.display = CT.demoUrl ? 'block' : 'none';
+        ctVidSync(false);
+        var vb = document.getElementById('tm_vid');
+        demoBtn.style.display = (CT.demoUrl && !(vb && vb.style.display !== 'none')) ? 'block' : 'none';
       }
       var nx = CT.phases[CT.i + 1], nxTxt = 'Última estación';
       if (nx) {
@@ -5438,6 +5451,104 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
 
     // Abre el video del ejercicio en otra pestaña/pantalla flotante SIN detener el temporizador (sigue avanzando por reloj)
+    // ---- Video de YouTube bajo el temporizador (mudo, en bucle; toca el boton para el sonido) ----
+    var VID_BAD = {};   // ids que YouTube no deja incrustar en esta sesion (error 100/101/150)
+    function ytIdStrict(url) {
+      var m = String(url || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^#\s]*&)?v=|embed\/|shorts\/|v\/))([A-Za-z0-9_-]{11})/);
+      return m ? m[1] : '';
+    }
+    function ytOriginParam() { return /^https?:$/.test(location.protocol) ? '&origin=' + encodeURIComponent(location.origin) : ''; }
+    function ctVidOn() { try { return localStorage.getItem('benessere_ct_video') !== 'off'; } catch (e) { return true; } }
+    function ctVidLabel() { var b = document.getElementById('tm_vtog'); if (b) b.innerText = ctVidOn() ? '🎬 Video: sí' : '🎬 Video: no'; }
+    function ctVidToggle() {
+      try { localStorage.setItem('benessere_ct_video', ctVidOn() ? 'off' : 'on'); } catch (e) {}
+      ctVidLabel(); ctVidSync(true);
+      var demoBtn = document.getElementById('tm_demo'), vb = document.getElementById('tm_vid');
+      if (demoBtn) demoBtn.style.display = (CT.demoUrl && !(vb && vb.style.display !== 'none')) ? 'block' : 'none';
+    }
+    function ctVidSync(force) {
+      var box = document.getElementById('tm_vid'); if (!box) return;
+      var id = (ctVidOn() && !CT.done) ? ytIdStrict(CT.demoUrl) : '';
+      if (!id || VID_BAD[id]) { box.style.display = 'none'; box.innerHTML = ''; CT.vidId = ''; return; }
+      if (CT.vidId === id && !force) { box.style.display = 'block'; return; }   // mismo video: no se reinicia
+      CT.vidId = id; CT.vidMuted = true;
+      box.style.display = 'block';
+      box.innerHTML = '<iframe id="tm_vframe" title="Demostración" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute; inset:0; width:100%; height:100%; border:0; pointer-events:none;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&controls=0&playsinline=1&modestbranding=1&rel=0&enablejsapi=1' + ytOriginParam() + '"></iframe>' +
+        '<button type="button" id="tm_vsnd" style="position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,0.65); color:#fff; border:1px solid #666; border-radius:16px; padding:5px 11px; font-size:0.78rem; font-weight:700;">🔇 Sonido</button>';
+      var fr = document.getElementById('tm_vframe');
+      fr.onload = function() { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch (e) {} };
+      document.getElementById('tm_vsnd').onclick = function() {
+        CT.vidMuted = !CT.vidMuted;
+        try { fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: CT.vidMuted ? 'mute' : 'unMute', args: [] }), '*'); if (!CT.vidMuted) fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'); } catch (e) {}
+        this.innerText = CT.vidMuted ? '🔇 Sonido' : '🔊 Sonido';
+      };
+    }
+    window.addEventListener('message', function(e) {   // si YouTube no deja incrustar ese video, se oculta y queda el boton Ver demo
+      if (!CT || !CT.active || !/youtube/.test(String(e.origin || ''))) return;
+      var fr = document.getElementById('tm_vframe'); if (!fr || e.source !== fr.contentWindow) return;
+      var d; try { d = JSON.parse(e.data); } catch (x) { return; }
+      if (d && d.event === 'onError') {
+        if (CT.vidId) VID_BAD[CT.vidId] = true;
+        ctVidSync(true);
+        var demoBtn = document.getElementById('tm_demo'); if (demoBtn && CT.demoUrl) demoBtn.style.display = 'block';
+      }
+    });
+
+    // ---- Revisar videos: prueba cada link en un reproductor oculto y avisa cuales no se pueden incrustar ----
+    function vidCheckOne(id) {
+      return new Promise(function(res) {
+        var f = document.createElement('iframe'), done = false, t;
+        f.style.cssText = 'position:fixed; left:-9999px; top:0; width:200px; height:120px; border:0;';
+        f.allow = 'autoplay';
+        function fin(st) { if (done) return; done = true; window.removeEventListener('message', h); clearTimeout(t); try { f.remove(); } catch (e) {} res(st); }
+        function h(e) {
+          if (e.source !== f.contentWindow) return;
+          var d; try { d = JSON.parse(e.data); } catch (x) { return; }
+          if (!d) return;
+          if (d.event === 'onError') fin(d.info === 100 ? 'missing' : (d.info === 101 || d.info === 150) ? 'noembed' : 'error');
+          else if (d.event === 'onReady' || (d.event === 'infoDelivery' && d.info && (d.info.playerState !== undefined || d.info.videoData))) fin('ok');
+        }
+        window.addEventListener('message', h);
+        t = setTimeout(function() { fin('timeout'); }, 9000);
+        f.onload = function() { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch (e) {} };
+        f.src = 'https://www.youtube-nocookie.com/embed/' + id + '?enablejsapi=1&mute=1' + ytOriginParam();
+        document.body.appendChild(f);
+      });
+    }
+    function vidCollect() {
+      var seen = {}, out = [];
+      function add(name, url, where) {
+        var id = ytIdStrict(url); var raw = String(url || '').trim();
+        if (!raw) return;
+        var key = id || raw;
+        if (seen[key]) { if (where && seen[key].where.indexOf(where) === -1) seen[key].where.push(where); return; }
+        seen[key] = { id: id, url: raw, names: [name], where: where ? [where] : [] }; out.push(seen[key]);
+        if (seen[key].names.indexOf(name) === -1) seen[key].names.push(name);
+      }
+      try { (routineDays || []).forEach(function(d, di) { (d.items || []).forEach(function(it) { (it.sub || []).forEach(function(sb) { if (sb && sb.video) add(sb.name || 'Ejercicio', sb.video, 'Día ' + (di + 1)); }); }); }); } catch (e) {}
+      try { var lib = getVideoLibrary(); Object.keys(lib).forEach(function(n) { add(n, lib[n], ''); }); } catch (e) {}
+      return out;
+    }
+    async function reviewVideos() {
+      var list = vidCollect(), body = document.getElementById('videoReviewBody');
+      openModal('modal_video_review');
+      if (!list.length) { body.innerHTML = '<p style="font-size:0.85rem; color:var(--muted); text-align:center; padding:16px 0;">No hay videos para revisar todavía.</p>'; return; }
+      var rows = list.map(function(v) { return { v: v, st: v.id ? 'wait' : 'invalid' }; });
+      function paint(msg) {
+        var bad = rows.filter(function(r) { return r.st !== 'ok' && r.st !== 'wait'; }).length;
+        var lab = { wait: '⏳ revisando…', ok: '✅ se puede incrustar', noembed: '❌ no permite incrustar (cámbialo a No listado o público con incrustación)', missing: '❌ privado, borrado o no existe', invalid: '❌ link no válido', error: '❌ error al cargar', timeout: '⚠️ sin respuesta (revisa la conexión)' };
+        body.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">' + (msg || ('Con problemas: ' + bad + ' de ' + rows.length)) + '</div>' +
+          rows.map(function(r) {
+            return '<div style="border:1px solid ' + (r.st === 'ok' ? '#2a2a2a' : (r.st === 'wait' ? '#2a2a2a' : '#ff5252')) + '; border-radius:8px; padding:8px; margin-bottom:6px;"><div style="font-weight:700; font-size:0.82rem;">' + escHtml(r.v.names.join(' / ')) + (r.v.where.length ? ' <span style="color:var(--muted); font-weight:400;">(' + escHtml(r.v.where.join(', ')) + ')</span>' : '') + '</div>' +
+              '<div style="font-size:0.74rem; margin-top:2px;">' + lab[r.st] + '</div>' +
+              '<a href="' + escHtml(r.v.url) + '" target="_blank" rel="noopener" style="font-size:0.7rem; color:var(--primary); word-break:break-all;">' + escHtml(r.v.url) + '</a></div>';
+          }).join('');
+      }
+      paint('Revisando ' + rows.length + ' videos…');
+      for (var i = 0; i < rows.length; i++) { if (rows[i].st === 'wait') { rows[i].st = await vidCheckOne(rows[i].v.id); paint('Revisando ' + (i + 1) + ' de ' + rows.length + '…'); } }
+      paint(null);
+    }
+
     function ctOpenDemo() {
       if (!CT.demoUrl) return;
       try { window.open(CT.demoUrl, '_blank', 'noopener'); } catch (e) {}
@@ -5460,6 +5571,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     }
     function ctFinish() {
       CT.done = true;
+      ctVidSync(true);
       if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
       tmrBeep(880, 300, 0); tmrBeep(880, 300, 400); tmrBeep(1175, 700, 800);
       tmrVibrate([300, 100, 300, 100, 500]);
@@ -6416,7 +6528,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-e';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-f';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
