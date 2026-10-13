@@ -5467,7 +5467,43 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else CT.end = startAt + ph.d * 1000;
     }
 
-    function startCircuitTimer(ci, srId, extra, guide) {
+    // ----- Avance del entreno guiado / clase: se guarda en el celular para retomarlo si el cliente sale -----
+    var RESUME_KEY = 'benessere_resume_v1', RESUME_MAX_MS = 12 * 3600 * 1000;
+    function resumeLoad(kind) {
+      var o = null; try { o = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null'); } catch (e) {}
+      return (o && o.k === kind && o.t && Date.now() - o.t < RESUME_MAX_MS) ? o : null;
+    }
+    function resumeClear() { try { localStorage.removeItem(RESUME_KEY); } catch (e) {} }
+    function resumeStore(o) { try { localStorage.setItem(RESUME_KEY, JSON.stringify(o)); } catch (e) {} }
+    function ctSaveResume(force) {
+      if (!CT.active || CT.done || !CT.guide || !CT.phases[CT.i]) return;
+      var now = Date.now(); if (!force && CT.rsAt && now - CT.rsAt < 2000) return; CT.rsAt = now;
+      var ph = CT.phases[CT.i], G = CT.guide, o = { t: now, i: CT.i, pos: G.pos };
+      if (ph.open) o.oe = CT.paused ? (CT.openElapsed || 0) : now - CT.openStart; else o.rm = CT.paused ? (CT.remain || 0) : Math.max(0, CT.end - now);
+      if (G.cls) { o.k = 'c'; o.clase = G.clase; o.t0 = G.t0; o.res = G.results; o.am = CT.amrapN || 0; }
+      else { o.k = 'g'; o.dayId = G.dayId; o.ci = CT.ci; }
+      resumeStore(o);
+    }
+    function ctSaveResumeNext(G, nextPos) {   // entre bloques: se retoma en el inicio del siguiente
+      var o = { t: Date.now(), i: 0, pos: nextPos };
+      if (G.cls) { o.k = 'c'; o.clase = G.clase; o.t0 = G.t0; o.res = G.results; o.am = 0; }
+      else { o.k = 'g'; o.dayId = G.dayId; o.ci = G.blocks[nextPos] ? G.blocks[nextPos].ci : -1; }
+      resumeStore(o);
+    }
+    // Deja el temporizador en la fase guardada, en pausa, para que el cliente toque "Continuar"
+    function ctApplyResume(resume) {
+      if (!resume || !(resume.i > 0) || resume.i >= CT.phases.length) return;
+      var rph = CT.phases[CT.i = resume.i];
+      CT.paused = true; CT.lastBeep = '';
+      if (rph.open) { CT.openElapsed = resume.oe || 0; CT.openStart = Date.now() - CT.openElapsed; CT.end = Infinity; }
+      else { CT.remain = resume.rm != null ? resume.rm : rph.d * 1000; CT.end = Date.now() + CT.remain; }
+      var b = document.getElementById('tm_pause'); if (b) b.innerText = '▶ Continuar';
+      ctRender(rph.open ? Math.floor(CT.openElapsed / 1000) : Math.ceil(CT.remain / 1000));
+    }
+    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') ctSaveResume(true); });
+    window.addEventListener('pagehide', function() { ctSaveResume(true); });
+
+    function startCircuitTimer(ci, srId, extra, guide, resume) {
       var src = athCircuits[ci];
       if (!src) return;
       var c = {}; Object.keys(src).forEach(function(k) { c[k] = src[k]; });
@@ -5483,12 +5519,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ctGuideClear(); CT.guide = guide || null; CT.cls = false;
       CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = !!built.hiit;
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
+      CT.gapPreview = false; CT.rsAt = 0;
       ctEnter(CT.phases[0], Date.now());
       ctOpen();
       if (CT.tick) clearInterval(CT.tick);
       CT.tick = setInterval(ctTick, 200);
       tmrWakeOn();
       ctTick();
+      if (resume) ctApplyResume(resume);
     }
 
     function ctOpen() {
@@ -5578,6 +5616,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         changed = true;
       }
       if (changed) { CT.lastBeep = ''; ctPhaseSound(CT.phases[CT.i]); }
+      ctSaveResume(changed);
       var cph = CT.phases[CT.i];
       if (cph.open) {   // fase por reps: el cronómetro sube
         var osecs = Math.floor((now - CT.openStart) / 1000);
@@ -5614,7 +5653,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var isOpen = !!ph.open;   // fase por reps: "remain" trae los segundos que lleva (cronómetro que sube)
       el('tm_time').innerText = isOpen ? wkFmt(remain) : tmrFmt(remain); el('tm_time').style.color = col;
       el('tm_bar').style.width = isOpen ? '0%' : Math.max(0, Math.min(100, (1 - remain / ph.d) * 100)) + '%'; el('tm_bar').style.background = col;
-      if (el('tm_reps')) el('tm_reps').innerText = (isOpen && ph.reps) ? ph.reps : (ph.note || '');
+      var repsStr = (isOpen && ph.reps) ? ph.reps : (ph.note || '');
+      if (!repsStr && (ph.t === 'rest' || ph.t === 'trans' || ph.t === 'ready')) {   // vista previa de lo que viene: reps o tiempo del siguiente ejercicio
+        for (var qn = CT.i + 1; qn < CT.phases.length; qn++) { var pn = CT.phases[qn]; if (pn.t === 'work') { repsStr = pn.open ? (pn.reps || '') : (pn.note || (pn.d ? tmrFmt(pn.d) + (pn.d < 60 ? ' s' : ' min') : '')); break; } }
+      }
+      if (el('tm_reps')) el('tm_reps').innerText = repsStr;
       if (el('tm_prog')) {   // avance del bloque: cuánto falta, y "ya casi" cuando queda poco
         var left = CT.rounds - ph.r, lab = (CT.roundLabel || 'Ronda').toLowerCase(), pTxt = '', pCol = '#ccc';
         if (CT.hiit && ph.t !== 'ready') {   // HIIT: cuánto tiempo queda en total
@@ -5628,10 +5671,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         }
         el('tm_prog').innerText = pTxt; el('tm_prog').style.color = pCol; el('tm_prog').style.display = pTxt ? '' : 'none';
       }
-      if (isOpen && el('tm_done')) {   // leyenda del botón según lo que sigue
-        var nxp = CT.phases[CT.i + 1];
-        el('tm_done').innerText = '✔ Terminé';
+      var nxp = CT.phases[CT.i + 1], nextWork = null;
+      for (var qw = CT.i + 1; qw < CT.phases.length; qw++) { if (CT.phases[qw].t === 'work') { nextWork = CT.phases[qw]; break; } }
+      if (isOpen && el('tm_done')) {   // leyenda del botón según lo que sigue: otro ejercicio, descanso o fin
+        el('tm_done').innerText = !nxp ? '✔ Terminé' : (nxp.t === 'rest' ? '😮‍💨 Descansar' : '⏭ Siguiente ejercicio');
       }
+      if (el('tm_skip')) el('tm_skip').innerText = (ph.t === 'work') ? '⏭ Saltar' : (nextWork ? '▶ Iniciar ya' : (ph.pausa ? '⏭ Saltar pausa' : '⏭ Terminar'));
       var isWork = ph.t === 'work';   // por tiempo: Pausar, +5 s y Parar; por reps: Pausar y Terminé; en descanso/transición: Pausar y Saltar
       el('tm_plus').style.display = (isWork && !isOpen) ? '' : 'none';
       el('tm_stop').style.display = (isWork && !isOpen && !CT.cls) ? '' : 'none';
@@ -5655,7 +5700,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       el('tm_next').innerText = nxTxt;
       if (CT.cls) ctClsRender(ph);
-      if (PIP.prep) ctPipDraw(col, labels[ph.t], stationTxt, el('tm_time').innerText, el('tm_round').innerText, (isOpen && ph.reps) ? ph.reps : (ph.note || ''), isOpen ? 0 : Math.max(0, Math.min(1, 1 - remain / ph.d)));
+      if (PIP.prep) ctPipDraw(col, labels[ph.t], stationTxt, el('tm_time').innerText, el('tm_round').innerText, repsStr, isOpen ? 0 : Math.max(0, Math.min(1, 1 - remain / ph.d)));
     }
 
     // Abre el video del ejercicio en otra pestaña/pantalla flotante SIN detener el temporizador (sigue avanzando por reloj)
@@ -5676,7 +5721,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function ctVidSync(force) {
       var box = document.getElementById('tm_vid'); if (!box) return;
-      var id = (ctVidOn() && !CT.done) ? ytIdStrict(CT.demoUrl) : '';
+      var id = (ctVidOn() && (!CT.done || CT.gapPreview)) ? ytIdStrict(CT.demoUrl) : '';
       if (!id || VID_BAD[id]) { box.style.display = 'none'; box.innerHTML = ''; CT.vidId = ''; return; }
       if (CT.vidId === id && !force) { box.style.display = 'block'; return; }   // mismo video: no se reinicia
       CT.vidId = id; CT.vidMuted = true;
@@ -5767,6 +5812,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var open = !!(CT.phases[CT.i] && CT.phases[CT.i].open);
       if (!CT.paused) { CT.paused = true; if (open) CT.openElapsed = Date.now() - CT.openStart; else CT.remain = CT.end - Date.now(); if (b) b.innerText = '▶ Continuar'; }
       else { CT.paused = false; if (open) CT.openStart = Date.now() - CT.openElapsed; else CT.end = Date.now() + CT.remain; tmrAudio(); if (b) b.innerText = '⏸ Pausar'; ctTick(); }
+      ctSaveResume(true);
     }
     function ctSkip() {
       if (!CT.active || CT.done) return;
@@ -5775,7 +5821,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (CT.i >= CT.phases.length) { ctFinish(); return; }
       ctEnter(CT.phases[CT.i], Date.now()); CT.paused = false; CT.lastBeep = '';
       var b = document.getElementById('tm_pause'); if (b) b.innerText = '⏸ Pausar';
-      ctPhaseSound(CT.phases[CT.i]); ctTick();
+      ctPhaseSound(CT.phases[CT.i]); ctTick(); ctSaveResume(true);
     }
     function ctFinish() {
       if (CT.cls) { ctClsFinish(); return; }
@@ -5927,7 +5973,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       clsRunBlock(G, 0);
     }
     function clsGo() { var G = CT.guide; ctGuideClear(); if (!G || !G.cls) return; clsRunBlock(G, G.pos + 1); }
-    function clsRunBlock(G, pos) {
+    function clsRunBlock(G, pos, resume) {
       var it = G.clase.items[pos]; if (!it) return;
       var built = buildClassPhases(it, G.clase.items[pos + 1]);
       if (built.err) { alert(built.err); return; }
@@ -5937,15 +5983,29 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = it.circ.nombre || 'Bloque';
       ctGuideClear(); CT.guide = G;
       CT.nSt = built.nSt; CT.hasOpen = false; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = false;
-      CT.amrapN = 0; CT.listSel = 0; CT.listKey = '';
+      CT.amrapN = (resume && resume.am) || 0; CT.listSel = 0; CT.listKey = ''; CT.gapPreview = false; CT.rsAt = 0;
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
       ctEnter(CT.phases[0], Date.now());
       ctOpen();
       if (CT.tick) clearInterval(CT.tick);
       CT.tick = setInterval(ctTick, 200);
       tmrWakeOn();
-      tmrBeep(660, 200, 0); tmrBeep(880, 320, 260); tmrVibrate([150, 80, 150]);   // pitido de inicio de bloque
+      if (!resume || !(resume.i > 0)) { tmrBeep(660, 200, 0); tmrBeep(880, 320, 260); tmrVibrate([150, 80, 150]); }   // pitido de inicio de bloque
       ctTick();
+      if (resume) ctApplyResume(resume);
+    }
+    // Clase a medias: aviso en la portada para continuar donde iba
+    function clsResumeBanner() {
+      var rs = resumeLoad('c'); if (!rs || !rs.clase || !rs.clase.items || !rs.clase.items[rs.pos]) return '';
+      return '<div style="background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; margin-top:12px;"><div style="font-weight:800;">▶ Dejaste una clase a medias</div>' +
+        '<div style="font-size:0.8rem; color:#ccc; margin:2px 0 8px;">' + escHtml(rs.clase.t) + ' · bloque ' + (rs.pos + 1) + ' de ' + rs.clase.items.length + '</div>' +
+        '<div style="display:flex; gap:8px;"><button type="button" class="btn-action-primary" style="flex:2;" onclick="clsResume()">Continuar donde iba</button>' +
+        '<button type="button" class="btn btn-secondary" style="flex:1;" onclick="resumeClear(); clsPaint();">Descartar</button></div></div>';
+    }
+    function clsResume() {
+      var rs = resumeLoad('c'); if (!rs) return;
+      var G = { cls: true, clase: rs.clase, blocks: rs.clase.items.map(function(it, i) { return { name: it.circ.nombre || ('Bloque ' + (i + 1)), tipo: it.circ.tipo }; }), pos: rs.pos, t0: rs.t0 || Date.now(), results: rs.res || [] };
+      clsRunBlock(G, rs.pos, rs);
     }
     function clsPhaseDone(ph) {   // aquí solo se guardan resultados de la clase (AMRAP y por tiempo), nada del historial
       var G = CT.guide; if (!G) return;
@@ -6015,10 +6075,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:1rem; font-weight:800; margin-top:6px;">' + (isP ? 'Sigue: Pausa de ' + escHtml(next.circ.total) : 'Sigue: ' + escHtml(next.circ.nombre)) + '</div>' +
         ((!isP && first) ? '<div style="font-size:0.85rem; color:#ccc;">Empieza con ' + escHtml(first.name) + '</div>' : '') +
         '<div id="tm_gnum" style="font-size:2.2rem; font-weight:900; font-variant-numeric:tabular-nums; margin:4px 0;"></div>' +
-        '<div style="display:flex; gap:8px;"><button type="button" class="tm-btn" style="background:#06d6a0; border-color:#06d6a0; color:#000;" onclick="clsGo()">▶ Empezar ya</button><button type="button" class="tm-btn" onclick="ctGuidePlus()">+15 s</button></div>';
+        '<div style="display:flex; gap:8px;"><button type="button" class="tm-btn" style="background:#06d6a0; border-color:#06d6a0; color:#000;" onclick="clsGo()">▶ Iniciar ya</button><button type="button" class="tm-btn" id="tm_gpause" onclick="ctGapPause()">⏸ Pausar</button><button type="button" class="tm-btn" onclick="ctGuidePlus()">+15 s</button></div>';
       box.style.display = 'block';
-      CT.gEnd = Date.now() + gap * 1000; CT.gLast = null;
+      CT.gEnd = Date.now() + gap * 1000; CT.gLast = null; CT.gPaused = false;
+      ctSaveResumeNext(G, G.pos + 1);
+      ctGapPreview(isP ? ((first && first.video) || '') : ((first && first.video) || ''));
       var tick = function() {
+        if (CT.gPaused) return;
         var rem = Math.ceil((CT.gEnd - Date.now()) / 1000), nEl = document.getElementById('tm_gnum');
         if (rem <= 0) { clsGo(); return; }
         if (nEl) nEl.innerText = tmrFmt(rem);
@@ -6027,6 +6090,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ctGuideClear(); CT.gTimer = setInterval(tick, 500); tick();
     }
     function clsFinalScreen(G) {
+      resumeClear(); CT.gapPreview = false; ctVidSync(true);
       var box = document.getElementById('tm_guide'); if (!box) return;
       var gb = document.getElementById('tm_gbar'); if (document.getElementById('tm_g')) document.getElementById('tm_g').style.display = 'block';
       if (gb) gb.style.width = '100%'; if (document.getElementById('tm_gpct')) document.getElementById('tm_gpct').innerText = '100%';
@@ -6062,12 +6126,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var blocks = guideBlocks(dayId); if (!blocks.length) return;
       var pos = 0;
       for (var i = 0; i < blocks.length; i++) { var r = SR[blocks[i].srId]; if (!(r && r.cur >= r.base)) { pos = i; break; } }   // arranca en el primer bloque que aún no se ha hecho
+      var rs = resumeLoad('g');   // ¿salió a la mitad la vez anterior?
+      if (rs && rs.dayId === dayId && blocks[rs.pos] && blocks[rs.pos].ci === rs.ci) {
+        if (confirm('Dejaste este entreno guiado a medias (bloque ' + (rs.pos + 1) + ' de ' + blocks.length + ').\n\nAceptar = continuar donde ibas\nCancelar = empezar de nuevo')) {
+          if (!(WK.start && WK.dayId === dayId)) wkStart(dayId);
+          guideRun(dayId, blocks, rs.pos, rs); return;
+        }
+        resumeClear();
+      }
       if (!(WK.start && WK.dayId === dayId)) wkStart(dayId);   // si no había iniciado el entreno, lo inicia
       guideRun(dayId, blocks, pos);
     }
-    function guideRun(dayId, blocks, pos) {
+    function guideRun(dayId, blocks, pos, resume) {
       var b = blocks[pos]; if (!b) return;
-      startCircuitTimer(b.ci, b.srId, false, { dayId: dayId, blocks: blocks, pos: pos });
+      startCircuitTimer(b.ci, b.srId, false, { dayId: dayId, blocks: blocks, pos: pos }, resume);
     }
     function ctGuideClear() { if (CT.gTimer) { clearInterval(CT.gTimer); CT.gTimer = null; } }
     function ctGuideProgress(ph) {   // barra y texto de avance del día: cuánto llevas y cuánto falta; amarillo cuando ya casi
@@ -6090,16 +6162,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (gb) gb.style.width = Math.round(((G.pos + 1) / nB) * 100) + '%';
       if (document.getElementById('tm_gpct')) document.getElementById('tm_gpct').innerText = Math.round(((G.pos + 1) / nB) * 100) + '%';
       if (!next) {
+        resumeClear();
         box.innerHTML = '<div style="font-size:1.1rem; font-weight:900; color:#06d6a0;">🏁 ¡Entreno completo!</div><div style="font-size:0.9rem; color:#ccc; margin-top:4px;">Terminaste los ' + nB + ' bloques. Cuando termines de anotar, toca "Final del entrenamiento".</div>';
         box.style.display = 'block'; return;
       }
       box.innerHTML = '<div style="font-size:0.8rem; color:#9fe8c8;">Bloque ' + (G.pos + 1) + ' de ' + nB + ' listo ✔ · te faltan ' + (nB - G.pos - 1) + '</div>' +
         '<div style="font-size:1rem; font-weight:800; margin-top:6px;">Cambia de máquina. Sigue: ' + escHtml(next.name) + '</div>' +
         '<div id="tm_gnum" style="font-size:2.2rem; font-weight:900; font-variant-numeric:tabular-nums; margin:4px 0;"></div>' +
-        '<div style="display:flex; gap:8px;"><button type="button" class="tm-btn" style="background:#06d6a0; border-color:#06d6a0; color:#000;" onclick="ctGuideGo()">▶ Empezar ya</button><button type="button" class="tm-btn" onclick="ctGuidePlus()">+15 s</button></div>';
+        '<div style="display:flex; gap:8px;"><button type="button" class="tm-btn" style="background:#06d6a0; border-color:#06d6a0; color:#000;" onclick="ctGuideGo()">▶ Iniciar ya</button><button type="button" class="tm-btn" id="tm_gpause" onclick="ctGapPause()">⏸ Pausar</button><button type="button" class="tm-btn" onclick="ctGuidePlus()">+15 s</button></div>';
       box.style.display = 'block';
-      CT.gEnd = Date.now() + GUIDE_PAUSE * 1000;
+      CT.gEnd = Date.now() + GUIDE_PAUSE * 1000; CT.gPaused = false;
+      ctSaveResumeNext(G, G.pos + 1);
+      ctGapPreview((athCircuits[next.ci] && athCircuits[next.ci].videos && athCircuits[next.ci].videos[0]) || '');
       var tick = function() {
+        if (CT.gPaused) return;
         var rem = Math.ceil((CT.gEnd - Date.now()) / 1000), n = document.getElementById('tm_gnum');
         if (rem <= 0) { ctGuideGo(); return; }
         if (n) n.innerText = tmrFmt(rem);
@@ -6107,7 +6183,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       };
       ctGuideClear(); CT.gTimer = setInterval(tick, 500); tick();
     }
-    function ctGuidePlus() { if (CT.gEnd) CT.gEnd += 15000; }
+    function ctGuidePlus() { if (CT.gPaused) CT.gRem += 15000; else if (CT.gEnd) CT.gEnd += 15000; }
+    function ctGapPause() {   // pausa la cuenta de la pantalla entre bloques
+      var b = document.getElementById('tm_gpause');
+      if (!CT.gPaused) { CT.gPaused = true; CT.gRem = Math.max(0, CT.gEnd - Date.now()); if (b) b.innerText = '▶ Continuar'; }
+      else { CT.gPaused = false; CT.gEnd = Date.now() + CT.gRem; if (b) b.innerText = '⏸ Pausar'; }
+    }
+    function ctGapPreview(url) {   // vista previa (video) del primer ejercicio del siguiente bloque
+      CT.gapPreview = !!url; CT.demoUrl = url || '';
+      ctVidSync(true);
+    }
     function ctGuideGo() {
       var G = CT.guide; ctGuideClear(); if (!G) return;
       if (G.cls) { clsGo(); return; }
@@ -6288,6 +6373,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (navigator.mediaSession && navigator.mediaSession.setActionHandler) navigator.mediaSession.setActionHandler('enterpictureinpicture', null); } catch (e) {}
     }
     function ctClose() {
+      ctSaveResume(true);   // si sale a mitad del entreno, queda guardado para continuar
+      CT.gapPreview = false;
       ctPipStop();
       ctGuideClear(); CT.guide = null; CT.cls = false;
       CT.active = false; CT.done = false;
@@ -7247,7 +7334,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function clsPaint() {
       var box = document.getElementById('cls_app'); if (!box) return;
       var d = CLS_SHOWN, tabs = [['hoy', 'Clase de hoy']]; if (d.ant.length) tabs.push(['ant', 'Clases anteriores']); if (d.ret.length) tabs.push(['ret', '🏆 Retos']);
-      var h = (CLS_PREVIEW ? '<button type="button" class="btn btn-secondary" style="margin-bottom:10px;" onclick="clsClosePreview()">← Volver al constructor</button>' : '') +
+      var h = (CLS_PREVIEW ? '<button type="button" class="btn btn-secondary" style="margin-bottom:10px;" onclick="clsClosePreview()">← Volver al constructor</button>' : clsResumeBanner()) +
         '<div style="text-align:center; margin:6px 0 4px;"><div style="font-size:0.75rem; font-weight:800; letter-spacing:2px; color:var(--primary);">BENESSERE GYM</div>' +
         '<div style="font-size:1.45rem; font-weight:900; margin-top:4px;">🎓 ' + (d.hoy && CLS_TAB === 'hoy' ? '¡Bienvenido a la clase de hoy!' : 'Clases Benessere') + '</div></div>' +
         '<div style="display:flex; gap:6px; margin-top:12px;">' + tabs.map(function(t) {
@@ -7404,7 +7491,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-t';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-u';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
