@@ -3352,6 +3352,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ================= VISTA DEL ATLETA =================
     function renderAthleteApp(state) {
+      if (state && state.coachMsgTitle === '__CLASES__') { renderClassApp(state); return; }   // link único de clases: portada de clases
+      CLS_VIEW = false; var clsBox = document.getElementById('cls_app'); if (clsBox) clsBox.style.display = 'none';
       athleteActiveState = state;
       setTimeout(syncHistorial, 600);   // trae/une el historial de la hoja (si hay enlace corto)
       setTimeout(checkAnnouncements, 1200);   // anuncios vigentes para todos los clientes
@@ -6889,14 +6891,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Una clase (o reto) es una lista de bloques; cada bloque es un circuito con estaciones. Se escribe en texto plano,
     // con las mismas líneas "Circuito:" y "Estacion:" de las rutinas, más una línea inicial "Clase:" o "Reto:".
     var CLS_KEY = 'benessere_clases_v1';
-    var CLS = { lista: [], hoy: '' };
+    var CLS = { lista: [], hoy: '', hoyD: '', dirty: false };
+    var CLASS_ID = '';   // código del link único de clases (se pega aquí tras la primera publicación, como ANNOUNCE_ID)
+    var CLS_ID_KEY = 'benessere_class_id', CLS_PAY_KEY = 'benessere_class_payload';
+    var CLS_VIEW = false, CLS_PREVIEW = false, CLS_DATA = null, CLS_TAB = 'hoy', CLS_SEL = { ant: 0, ret: 0 }, CLS_SHOWN = { hoy: null, ant: [], ret: [] }, CLS_PUBMSG = '';
+    function clsLinkId() { var v = CLASS_ID; if (!v) { try { v = localStorage.getItem(CLS_ID_KEY) || ''; } catch (e) {} } return v; }
+    function clsHoyId() { return (CLS.hoy && (!CLS.hoyD || CLS.hoyD >= todayIso())) ? CLS.hoy : ''; }   // pasado el día, la clase de hoy cae a la lista
     var CLS_WORK = null;      // clase leída que se está revisando (aún sin guardar)
     var CLS_EDIT_ID = '';     // id de la clase guardada que se está editando
     function clsLoad() {
-      try { var o = JSON.parse(localStorage.getItem(CLS_KEY) || 'null'); if (o && Array.isArray(o.lista)) { CLS = { lista: o.lista, hoy: o.hoy || '' }; return; } } catch (e) {}
-      CLS = { lista: [], hoy: '' };
+      try { var o = JSON.parse(localStorage.getItem(CLS_KEY) || 'null'); if (o && Array.isArray(o.lista)) { CLS = { lista: o.lista, hoy: o.hoy || '', hoyD: o.hoyD || '', dirty: !!o.dirty }; return; } } catch (e) {}
+      CLS = { lista: [], hoy: '', hoyD: '', dirty: false };
     }
-    function clsSave() { try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); } catch (e) { alert('No se pudo guardar (¿memoria del navegador llena?).'); } }
+    function clsSave(clean) { if (!clean) CLS.dirty = true; try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); } catch (e) { alert('No se pudo guardar (¿memoria del navegador llena?).'); } }
     function clsProps(str) {
       var out = {};
       String(str || '').split('|').forEach(function(pr) {
@@ -7074,7 +7081,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!rec.id) rec.id = 'c' + Date.now().toString(36);
       var i = -1; CLS.lista.forEach(function(x, k) { if (x.id === rec.id) i = k; });
       if (i >= 0) { rec.vis = CLS.lista[i].vis; CLS.lista[i] = rec; } else CLS.lista.push(rec);
-      if (asToday && rec.k === 'c') CLS.hoy = rec.id;
+      if (asToday && rec.k === 'c') { CLS.hoy = rec.id; CLS.hoyD = rec.f > todayIso() ? rec.f : todayIso(); }
       if (CLS.hoy === rec.id && rec.k !== 'c') CLS.hoy = '';
       clsSave();
       document.getElementById('clsMsg').style.color = '#06d6a0';
@@ -7082,12 +7089,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       clsClearForm(); clsRender();
     }
     function clsFind(id) { for (var i = 0; i < CLS.lista.length; i++) { if (CLS.lista[i].id === id) return CLS.lista[i]; } return null; }
-    function clsSetToday(id) { var c = clsFind(id); if (!c || c.k !== 'c') return; CLS.hoy = id; clsSave(); clsRender(); }
+    function clsSetToday(id) { var c = clsFind(id); if (!c || c.k !== 'c') return; CLS.hoy = id; CLS.hoyD = c.f > todayIso() ? c.f : todayIso(); clsSave(); clsRender(); }
     function clsToggleVis(id) { var c = clsFind(id); if (!c) return; c.vis = !c.vis; clsSave(); clsRender(); }
     function clsDelete(id) {
       var c = clsFind(id); if (!c) return;
       if (!confirm('¿Borrar "' + c.t + '"?')) return;
-      CLS.lista = CLS.lista.filter(function(x) { return x.id !== id; }); if (CLS.hoy === id) CLS.hoy = '';
+      CLS.lista = CLS.lista.filter(function(x) { return x.id !== id; }); if (CLS.hoy === id) { CLS.hoy = ''; CLS.hoyD = ''; }
       clsSave(); clsRender();
     }
     function clsEdit(id) {
@@ -7123,13 +7130,138 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       clsLoad();
       var box = document.getElementById('clsList'); if (!box) return;
       var byDate = function(a, b) { return a.f < b.f ? 1 : (a.f > b.f ? -1 : 0); };
-      var today = clsFind(CLS.hoy), clases = CLS.lista.filter(function(c) { return c.k === 'c' && c.id !== CLS.hoy; }).sort(byDate), retos = CLS.lista.filter(function(c) { return c.k === 'r'; }).sort(byDate);
-      var h = '<div class="med-h">Clase de hoy</div>' + (today ? clsRowHtml(today, true) : '<div class="med-sum">Todavía no has elegido la clase de hoy.</div>');
+      var hoyId = clsHoyId(), today = clsFind(hoyId), clases = CLS.lista.filter(function(c) { return c.k === 'c' && c.id !== hoyId; }).sort(byDate), retos = CLS.lista.filter(function(c) { return c.k === 'r'; }).sort(byDate);
+      var lid = clsLinkId(), link = lid ? getAppBaseUrl() + '#i=' + lid : '';
+      var h = '<div class="med-h">Link de clases (uno solo para todos)</div><div class="edx-sub">' +
+        (link ? '<div style="font-size:0.78rem; word-break:break-all; color:#9fe8c8; margin-bottom:6px;">' + escHtml(link) + '</div>' : '<div style="font-size:0.78rem; color:var(--muted); margin-bottom:6px;">Todavía no has publicado. Al publicar por primera vez se crea el link, que ya no cambia.</div>') +
+        (link && CLS.dirty ? '<div style="font-size:0.76rem; color:#ffd166; margin-bottom:6px;">⚠️ Hay cambios sin publicar: tus clientes todavía ven la versión anterior.</div>' : '') +
+        '<div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="btn btn-accent" id="clsPubBtn" style="flex:1; min-width:140px;" onclick="clsPublish()">📤 ' + (lid ? 'Actualizar el link' : 'Publicar y crear el link') + '</button>' +
+        '<button type="button" class="btn btn-secondary" style="flex:1; min-width:120px;" onclick="clsPreviewPortada()">👁 Ver portada</button>' +
+        (link ? '<button type="button" class="btn btn-secondary" style="flex:1; min-width:100px;" onclick="clsCopyLink()">📋 Copiar</button><button type="button" class="btn btn-export-wa" style="flex:1; min-width:110px;" onclick="clsShareWa()">📲 WhatsApp</button>' : '') +
+        '</div><div id="clsPubMsg" style="font-size:0.78rem; min-height:18px; margin-top:6px;">' + CLS_PUBMSG + '</div></div>' +
+        '<div class="med-h" style="margin-top:12px;">Clase de hoy</div>' + (today ? clsRowHtml(today, true) : '<div class="med-sum">Todavía no has elegido la clase de hoy.</div>');
       h += '<details style="margin-top:10px;"' + (clases.length && !today ? ' open' : '') + '><summary style="cursor:pointer; font-weight:800; color:var(--primary); font-size:0.88rem; padding:6px 0;">📅 Clases anteriores (' + clases.length + ')</summary>' +
         (clases.length ? clases.map(function(c) { return clsRowHtml(c, false); }).join('') : '<div class="med-sum">Aquí quedan las clases que ya no son la de hoy, con su fecha, para elegirlas de nuevo o habilitarlas.</div>') + '</details>';
       h += '<details style="margin-top:10px;"><summary style="cursor:pointer; font-weight:800; color:var(--primary); font-size:0.88rem; padding:6px 0;">🏆 Retos (' + retos.length + ')</summary>' +
         (retos.length ? retos.map(function(c) { return clsRowHtml(c, false); }).join('') : '<div class="med-sum">Escribe «Reto:» en la primera línea del texto para cargar un reto. Solo los que marques como visibles aparecerán en el link.</div>') + '</details>';
       box.innerHTML = h;
+    }
+
+
+    // ----- Publicar: un solo link permanente para todas las clases (atleta especial "__CLASES__") -----
+    function clsStrip(c) { return { id: c.id, k: c.k, f: c.f, t: c.t, m: c.m, items: c.items }; }
+    function clsPayloadObj() {
+      var hoyId = clsHoyId(), byDate = function(a, b) { return a.f < b.f ? 1 : (a.f > b.f ? -1 : 0); };
+      return {
+        v: 1, hd: hoyId ? CLS.hoyD : '', hoy: hoyId ? clsStrip(clsFind(hoyId)) : null,
+        ant: CLS.lista.filter(function(c) { return c.k === 'c' && c.vis && c.id !== hoyId; }).sort(byDate).map(clsStrip),
+        ret: CLS.lista.filter(function(c) { return c.k === 'r' && c.vis; }).sort(byDate).map(clsStrip)
+      };
+    }
+    function clsEncode() {
+      return encodePayload(buildUltraCompactState({
+        clientName: 'CLASES', clientGender: 'o', startDate: '', durationWeeks: 1,
+        coachMsgTitle: '__CLASES__', coachMsgBody: JSON.stringify(clsPayloadObj()), coachName: COACH ? COACH.name : '',
+        configFeatures: { nutrition: false, demos: false }, measures: {}, measureLog: [], routineDays: []
+      }));
+    }
+    function clsSetPubMsg(txt, col) { CLS_PUBMSG = txt ? '<span style="color:' + col + ';">' + txt + '</span>' : ''; var m = document.getElementById('clsPubMsg'); if (m) m.innerHTML = CLS_PUBMSG; }
+    function clsPublish() {
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      clsLoad();
+      if (!clsHoyId() && !CLS.lista.some(function(c) { return c.vis; })) { if (!confirm('No hay clase de hoy ni clases/retos habilitados. ¿Publicar la portada vacía?')) return; }
+      var payloadText = clsEncode(), id = clsLinkId(), btn = document.getElementById('clsPubBtn');
+      if (payloadText.length > 45000) { clsSetPubMsg('Son demasiadas clases habilitadas para un solo link. Deshabilita algunas anteriores.', '#ff6b6b'); return; }
+      if (btn) { btn.disabled = true; btn.innerText = 'Publicando…'; }
+      clsSetPubMsg('', '');
+      var pr = id ? postJson({ a: 'actualizar', id: id, p: payloadText, pin: COACH.pin })
+        : fetchJson(SHARE_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: SHARE_KEY, p: payloadText, coach: COACH.name, atleta: '__CLASES__' }) }, 25000);
+      pr.then(function(j) {
+        if (j && j.ok) {
+          var newId = id || j.id;
+          if (!id && newId) { try { localStorage.setItem(CLS_ID_KEY, newId); } catch (e) {} }
+          CLS.dirty = false; clsSave(true); clsRender();
+          clsSetPubMsg('✅ Publicado. El link no cambia: tus clientes ven la clase al abrirlo.' + ((!CLASS_ID && newId) ? '<br><span style="color:#ffd166;">Para que otros coaches/dispositivos actualicen este mismo link, hay que pegar este código en la app (CLASS_ID): <b>' + escHtml(newId) + '</b></span>' : ''), '#06d6a0');
+        } else {
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          if (btn) { btn.disabled = false; btn.innerText = '📤 Reintentar'; }
+          clsSetPubMsg('No se pudo publicar: ' + escHtml(updateErrorText(j && j.error)), '#ff6b6b');
+        }
+      }).catch(function(e) { if (btn) { btn.disabled = false; btn.innerText = '📤 Reintentar'; } clsSetPubMsg('No se pudo publicar: ' + escHtml(updateErrorText(e && e.message)), '#ff6b6b'); });
+    }
+    function clsShareText() {
+      var hoy = clsFind(clsHoyId()), link = getAppBaseUrl() + '#i=' + clsLinkId();
+      return '🎓 ' + (hoy ? 'Clase de hoy en Benessere Gym: ' + hoy.t : 'Clases de Benessere Gym') + '\nEntra aquí 👇\n' + link;
+    }
+    function clsCopyLink() { copyTextSilently(getAppBaseUrl() + '#i=' + clsLinkId()); clsSetPubMsg('📋 Link copiado.', '#06d6a0'); }
+    function clsShareWa() { try { window.open('https://wa.me/?text=' + encodeURIComponent(clsShareText()), '_blank', 'noopener'); } catch (e) {} }
+    function clsPreviewPortada() {
+      clsLoad();
+      var st = { coachMsgTitle: '__CLASES__', coachMsgBody: JSON.stringify(clsPayloadObj()) };
+      renderClassApp(st, true); window.scrollTo(0, 0);
+    }
+
+    // ----- Portada que ve el cliente (tipo SmartWOD): Clase de hoy / Clases anteriores / Retos -----
+    function loadClassPayload() { try { return JSON.parse(localStorage.getItem(CLS_PAY_KEY) || 'null'); } catch (e) { return null; } }
+    function renderClassApp(state, preview) {
+      var obj = {}; try { obj = JSON.parse(state.coachMsgBody || '{}') || {}; } catch (e) {}
+      CLS_VIEW = !preview; CLS_PREVIEW = !!preview; CLS_DATA = obj;
+      document.getElementById('coach_builder_view').style.display = 'none';
+      document.getElementById('athlete_message_view').style.display = 'none';
+      document.getElementById('athlete_client_view').style.display = 'none';
+      var box = document.getElementById('cls_app');
+      if (!box) { box = document.createElement('div'); box.id = 'cls_app'; box.style.cssText = 'max-width:640px; margin:0 auto; padding:16px 14px calc(30px + env(safe-area-inset-bottom));'; document.body.appendChild(box); }
+      box.style.display = 'block';
+      var t = todayIso(), hoyOk = !!(obj.hoy && (!obj.hd || obj.hd >= t));
+      CLS_SHOWN = { hoy: hoyOk ? obj.hoy : null, ant: obj.ant || [], ret: obj.ret || [] };
+      if (CLS_TAB === 'ant' && !CLS_SHOWN.ant.length) CLS_TAB = 'hoy';
+      if (CLS_TAB === 'ret' && !CLS_SHOWN.ret.length) CLS_TAB = 'hoy';
+      clsPaint();
+    }
+    function clsTab(k) { CLS_TAB = k; clsPaint(); }
+    function clsPickSel(k, v) { CLS_SEL[k] = parseInt(v, 10) || 0; clsPaint(); }
+    function clsCardHtml(c, kind, idx) {
+      var dur = clsDuration(c.items), open = clsHasOpen(c.items), dtxt = open ? ((clsFmtMin(dur) ? '~' + clsFmtMin(dur) + ' + ' : '') + 'ejercicios por repeticiones') : (clsFmtMin(dur) ? '~' + clsFmtMin(dur) : '');
+      var h = '<div style="background:#161616; border:1px solid #2c2c2c; border-radius:14px; padding:14px; margin-top:12px;">' +
+        '<div style="font-size:1.15rem; font-weight:900; color:#fff;">' + escHtml(c.t) + '</div>' +
+        '<div style="font-size:0.78rem; color:var(--muted); margin:3px 0 10px;">📅 ' + fmtDate(c.f) + (dtxt ? ' · ⏱ ' + dtxt : '') + ' · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + '</div>';
+      c.items.forEach(function(it) {
+        var cc = it.circ, names = (it.sub || []).filter(function(sb) { return !sb.filler; }).map(function(sb) { return escHtml(sb.name); });
+        h += '<div style="border-top:1px solid #262626; padding:7px 0;"><div style="font-size:0.88rem; font-weight:800; color:var(--accent);">' + escHtml(cc.nombre) + '</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted);">' + clsBlockInfo(cc) + '</div>' +
+          (names.length ? '<div style="font-size:0.8rem; color:#ddd; margin-top:2px;">' + names.join(' · ') + '</div>' : '') + '</div>';
+      });
+      h += '<button type="button" class="btn-action-primary" style="margin-top:12px; font-size:1.05rem;" onclick="clsStartShown(\'' + kind + '\',' + idx + ')">▶ Iniciar la clase</button></div>';
+      return h;
+    }
+    function clsStartShown(kind, idx) {
+      var c = kind === 'hoy' ? CLS_SHOWN.hoy : (CLS_SHOWN[kind] || [])[idx];
+      if (c) clsPlay(c);
+    }
+    function clsSelPanel(kind, emptyTxt) {
+      var list = CLS_SHOWN[kind]; if (!list.length) return '<div style="color:var(--muted); margin-top:14px;">' + emptyTxt + '</div>';
+      var i = Math.min(CLS_SEL[kind], list.length - 1);
+      return '<select onchange="clsPickSel(\'' + kind + '\', this.value)" style="width:100%; margin-top:12px; padding:11px; font-size:0.95rem; border-radius:10px;">' +
+        list.map(function(c, k) { return '<option value="' + k + '"' + (k === i ? ' selected' : '') + '>' + fmtDate(c.f) + ' — ' + escHtml(c.t) + '</option>'; }).join('') + '</select>' + clsCardHtml(list[i], kind, i);
+    }
+    function clsPaint() {
+      var box = document.getElementById('cls_app'); if (!box) return;
+      var d = CLS_SHOWN, tabs = [['hoy', 'Clase de hoy']]; if (d.ant.length) tabs.push(['ant', 'Clases anteriores']); if (d.ret.length) tabs.push(['ret', '🏆 Retos']);
+      var h = (CLS_PREVIEW ? '<button type="button" class="btn btn-secondary" style="margin-bottom:10px;" onclick="clsClosePreview()">← Volver al constructor</button>' : '') +
+        '<div style="text-align:center; margin:6px 0 4px;"><div style="font-size:0.75rem; font-weight:800; letter-spacing:2px; color:var(--primary);">BENESSERE GYM</div>' +
+        '<div style="font-size:1.45rem; font-weight:900; margin-top:4px;">🎓 ' + (d.hoy && CLS_TAB === 'hoy' ? '¡Bienvenido a la clase de hoy!' : 'Clases Benessere') + '</div></div>' +
+        '<div style="display:flex; gap:6px; margin-top:12px;">' + tabs.map(function(t) {
+          var on = CLS_TAB === t[0];
+          return '<button type="button" onclick="clsTab(\'' + t[0] + '\')" style="flex:1; padding:10px 4px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer; border:1px solid ' + (on ? 'var(--primary)' : '#333') + '; background:' + (on ? 'var(--primary)' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';">' + t[1] + '</button>';
+        }).join('') + '</div>';
+      if (CLS_TAB === 'hoy') h += d.hoy ? clsCardHtml(d.hoy, 'hoy', 0) : '<div style="color:var(--muted); margin-top:18px; text-align:center; line-height:1.5;">Hoy todavía no hay una clase publicada.' + (d.ant.length ? '<br>Mira las clases anteriores 👆' : '') + '</div>';
+      else if (CLS_TAB === 'ant') h += clsSelPanel('ant', '');
+      else h += clsSelPanel('ret', '');
+      box.innerHTML = h;
+    }
+    function clsClosePreview() {
+      var box = document.getElementById('cls_app'); if (box) box.style.display = 'none';
+      CLS_PREVIEW = false; document.getElementById('coach_builder_view').style.display = 'block'; window.scrollTo(0, 0);
     }
 
     // ================= ENRUTADOR INICIAL =================
@@ -7252,7 +7384,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
         .then(function(j) {
           if (!j || !j.ok || !j.p || j.p === currentPayload) return;
-          if (!decodePayload('q', j.p)) return;
+          var stN = decodePayload('q', j.p); if (!stN) return;
+          if (stN.coachMsgTitle === '__CLASES__') { if (!CT.active) { if (CLS_VIEW) applyPayloadNow(id, j.p); } return; }   // clases: se actualiza sola, salvo en plena clase
           if (!later) { applyPayloadNow(id, j.p); return; }
           try { localStorage.setItem(PENDING_UPD_KEY, JSON.stringify({ id: id, p: j.p })); } catch (e) {}
           if (j.p !== UPD_DISMISSED) showUpdateButton();
@@ -7262,8 +7395,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Con la app abierta: revisa cada 5 minutos y cada vez que el cliente vuelve a ella
     function checkUpdatesWhileOpen() {
       var av = document.getElementById('athlete_client_view');
-      if (!athleteRoutineId || isCoachView() || !av || av.style.display === 'none') return;
-      var cur = loadAthletePayload();
+      if (!athleteRoutineId || isCoachView() || (!CLS_VIEW && (!av || av.style.display === 'none'))) return;
+      var cur = CLS_VIEW ? loadClassPayload() : loadAthletePayload();
       if (!cur || cur.id !== athleteRoutineId || !cur.v) return;
       refreshInBackground(athleteRoutineId, cur.v, true);
     }
@@ -7271,7 +7404,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-s';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-t';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
@@ -7323,7 +7456,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       // Copia local: si este celular ya abrió esta misma rutina, se muestra al instante
       // y la hoja de Google se consulta en segundo plano para ver si hay una versión más nueva.
-      var cached = loadAthletePayload();
+      var cached = loadAthletePayload(), ccache = loadClassPayload();
+      if (ccache && ccache.id === id) cached = ccache;   // este código es el de clases
       var pendNote = false;
       var pendP = takePending(id);   // actualización que el cliente dejó "para después"
       if (pendP && decodePayload('q', pendP)) { cached = { k: 'q', v: pendP, id: id }; saveAthletePayload(cached); pendNote = true; }
@@ -7372,7 +7506,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function hasCoachProfile() {
       try { var c = JSON.parse(localStorage.getItem(COACH_CFG_KEY) || '{}'); return !!(c && c.name); } catch (e) { return false; }
     }
-    function saveAthletePayload(pl) { try { localStorage.setItem(ATHLETE_KEY, JSON.stringify(pl)); } catch (e) {} }
+    function saveAthletePayload(pl) {
+      if (CLS_VIEW) { try { localStorage.setItem(CLS_PAY_KEY, JSON.stringify(pl)); } catch (e) {} return; }   // la portada de clases no pisa la rutina personal guardada
+      try { localStorage.setItem(ATHLETE_KEY, JSON.stringify(pl)); } catch (e) {}
+    }
     function loadAthletePayload() { try { return JSON.parse(localStorage.getItem(ATHLETE_KEY) || 'null'); } catch (e) { return null; } }
 
     window.onload = function() {
@@ -7412,6 +7549,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (st2) {
           try { if (saved.id && saved.k === 'q') athleteRoutineId = saved.id; renderAthleteApp(st2); if (pendNote2) setTimeout(showUpdatedNotice, 400); if (saved.id && saved.k === 'q') refreshInBackground(saved.id, saved.v); return; } catch (e) { console.error(e); }
         }
+      }
+
+      // 3b) Quien solo usa las clases: vuelve a su portada
+      var cp = loadClassPayload();
+      if (cp && cp.v && cp.id) {
+        var st3 = decodePayload('q', cp.v);
+        if (st3) { try { athleteRoutineId = cp.id; renderAthleteApp(st3); refreshInBackground(cp.id, cp.v); return; } catch (e) { console.error(e); } }
       }
 
       // 4) Sin datos: aviso claro (el constructor solo se abre con "Acceso para coaches")
