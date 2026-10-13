@@ -3145,7 +3145,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     // Mientras está activo, el almacenamiento del celular se simula en memoria (se parte de una copia de lo real) y las
     // escrituras al servidor se bloquean. Al salir se recarga la app y todo queda exactamente como estaba.
     var PRUEBA = { on: false, data: null };
-    (function() {
+    function pruebaInstall() {   // se instala solo al activar el modo prueba: el uso normal de la app no se toca
+      if (PRUEBA.installed) return true; PRUEBA.installed = true;
       try {
         var SP = Storage.prototype, oGet = SP.getItem, oSet = SP.setItem, oRem = SP.removeItem, oClr = SP.clear, oKey = SP.key;
         var lenDesc = Object.getOwnPropertyDescriptor(SP, 'length');
@@ -3156,8 +3157,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         SP.key = function(i) { if (PRUEBA.on && this === window.localStorage) { var ks = Object.keys(PRUEBA.data); return i < ks.length ? ks[i] : null; } return oKey.apply(this, arguments); };
         if (lenDesc && lenDesc.get) Object.defineProperty(SP, 'length', { configurable: true, get: function() { if (PRUEBA.on && this === window.localStorage) return Object.keys(PRUEBA.data).length; return lenDesc.get.call(this); } });
         PRUEBA.snapshot = function() { var d = {}; for (var i = 0, n = lenDesc.get.call(window.localStorage); i < n; i++) { var k = oKey.call(window.localStorage, i); d[k] = oGet.call(window.localStorage, k); } return d; };
-      } catch (e) {}
-    })();
+      } catch (e) { PRUEBA.installed = false; return false; }
+      return true;
+    }
     function pruebaBanner() {
       var b = document.getElementById('prueba_pill');
       if (!PRUEBA.on) { if (b) b.remove(); return; }
@@ -3171,7 +3173,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     function pruebaToggle() {
       if (!PRUEBA.on) {
         if (!confirm('🧪 Modo prueba\n\nPodrás abrir los perfiles de los clientes y experimentar (marcar pesos, cerrar entrenos, editar).\nNada se guarda en el celular ni se envía a la hoja.\n\n¿Activarlo?')) return;
-        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar el modo prueba.'); return; }
+        try { if (!pruebaInstall()) throw new Error('x'); PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar el modo prueba.'); return; }
         PRUEBA.on = true; pruebaBanner(); pruebaLabel();
       } else {
         PRUEBA.on = false; PRUEBA.data = null;
@@ -6722,7 +6724,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-13-k';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-13-l';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
