@@ -5827,11 +5827,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ---- Música de YouTube dentro de la app: miniatura elegante + botón para intercambiar con el video del ejercicio ----
     var MU = { list: false, on: false, big: false, playing: false, url: '', iv: null };
     function muSaved() { try { return localStorage.getItem('benessere_music_url') || ''; } catch (e) { return ''; } }
-    function muSrc(url) {
+    function muMixPref() { try { return localStorage.getItem('benessere_music_mix') !== 'off'; } catch (e) { return true; } }
+    function muSrc(url, mix) {
       var list = (String(url).match(/[?&]list=([A-Za-z0-9_-]{10,})/) || [])[1] || '', id = ytIdStrict(url);
       var base = 'https://www.youtube-nocookie.com/embed/', q = '?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1' + ytOriginParam();
       if (list && !id) return base + 'videoseries' + q + '&list=' + list + '&loop=1';
       if (list) return base + id + q + '&list=' + list + '&loop=1';
+      if (id && mix) return base + id + q + '&list=RD' + id;   // "mezcla" automática de YouTube: sigue con canciones parecidas
       if (id) return base + id + q + '&loop=1&playlist=' + id;
       return '';
     }
@@ -5871,10 +5873,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       muSync();
     }
     function muPlay(url) {
-      var src = muSrc(url); if (!src) return false;
+      var hasList = /[?&]list=[A-Za-z0-9_-]{10,}/.test(String(url)), mixTry = !hasList && !!ytIdStrict(url) && muMixPref() && !(MU.mixOff && MU.url === url);
+      var src = muSrc(url, mixTry); if (!src) return false;
+      MU.mixTry = mixTry;
       try { localStorage.setItem('benessere_music_url', url); } catch (e) {}
       var d = muDock(); MU.on = true; MU.url = url; MU.playing = true;
-      MU.list = /[?&]list=[A-Za-z0-9_-]{10,}/.test(String(url));   // anterior/siguiente solo existen en listas de reproducción
+      MU.list = hasList || mixTry;   // anterior/siguiente solo existen en listas de reproducción
       ['mu_prev', 'mu_next'].forEach(function(k) { var bt = document.getElementById(k); if (bt) bt.style.display = MU.list ? '' : 'none'; });
       document.getElementById('mu_ttl').innerText = '🎵 MÚSICA';
       var fr = document.getElementById('mu_frame');
@@ -5888,6 +5892,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var f = document.querySelector('#mu_frame iframe'); if (!f || e.source !== f.contentWindow) return;
       var d; try { d = JSON.parse(e.data); } catch (x) { return; }
       if (!d) return;
+      if (d.event === 'onError' && MU.mixTry) { MU.mixTry = false; MU.mixOff = true; var u0 = MU.url; muStop(); muPlay(u0); wkToast('YouTube no dejó seguir con canciones parecidas aquí: este video se repetirá. Para seguir con otras, pega una lista de reproducción 🎵'); return; }
       if (d.event === 'onError') { var code = d.info; muStop(); wkToast(code === 101 || code === 150 ? 'YouTube no deja reproducir ese video aquí. Prueba otro enlace o una lista de reproducción 🎵' : 'No se pudo cargar esa música. Revisa el enlace 🎵'); return; }
       if (d.event === 'infoDelivery' && d.info && d.info.playerState !== undefined) {
         MU.playing = d.info.playerState === 1 || d.info.playerState === 3;
@@ -5953,6 +5958,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="display:flex; gap:8px; margin-top:12px;"><button type="button" class="mu-b" id="mu_yt" style="flex:1; background:#ff2d2d; color:#fff; padding:11px 6px; font-size:0.85rem;">🔎 Buscar en YouTube</button><button type="button" class="mu-b" id="mu_paste" style="flex:1; background:#2a1d47; color:#e7dcff; padding:11px 6px; font-size:0.85rem;">📋 Pegar enlace copiado</button></div>' +
         '<div style="font-size:0.7rem; color:#8070a8; margin-top:5px; line-height:1.35;">1) Toca Buscar y encuentra tu música. 2) En YouTube toca Compartir → Copiar enlace. 3) Vuelve aquí y toca Pegar.</div>' +
         '<input id="mu_in" type="url" inputmode="url" autocomplete="off" placeholder="https://youtube.com/…" value="' + escHtml(muSaved()) + '">' +
+        '<label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#d9c7ff; margin:6px 0 2px; text-transform:none;"><input type="checkbox" id="mu_mix" style="width:auto; margin:0;"' + (muMixPref() ? ' checked' : '') + '> Al terminar, seguir con canciones parecidas</label>' +
         '<div id="mu_err" style="min-height:18px; font-size:0.76rem; color:#ff9a93; margin-bottom:6px;"></div>' +
         '<div style="display:flex; gap:8px;"><button type="button" class="mu-b" id="mu_go" style="flex:2; background:#b388ff; color:#1a0f33;">▶ Reproducir</button>' +
         (MU.on ? '<button type="button" class="mu-b" id="mu_off" style="flex:1; background:#2a1d47; color:#e7dcff;">Quitar</button>' : '') +
@@ -5966,6 +5972,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('mu_go').onclick = function() {
         var v = document.getElementById('mu_in').value.trim();
         if (!muSrc(v)) { document.getElementById('mu_err').innerText = 'Ese enlace no parece de YouTube. Copia el enlace del video o de la lista.'; return; }
+        try { localStorage.setItem('benessere_music_mix', document.getElementById('mu_mix').checked ? 'on' : 'off'); } catch (e) {}
         muPlay(v); sh.classList.remove('on');
       };
     }
@@ -8043,7 +8050,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-i';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-j';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
