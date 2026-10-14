@@ -3773,6 +3773,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     function pickVideoChoose(link) {
+      var cm = String(pickVideoState.targetPath || '').match(/^CLS_WORK\.items\[(\d+)\]\.sub\[(\d+)\]\.video$/);
+      if (cm) { closeModal('modal_pick_video'); clsSetVideo(parseInt(cm[1], 10), parseInt(cm[2], 10), link); return; }
       if (pickVideoState.targetPath) {
         try {
           new Function('val', pickVideoState.targetPath + ' = val;')(link);
@@ -7726,6 +7728,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<label>Título</label><input type="text" id="clsT" value="' + edxAttr(c.t) + '" oninput="clsReadHead()">' +
         '<label>Músculos trabajados (se muestran al terminar)</label><input type="text" id="clsM" value="' + edxAttr(c.m) + '" oninput="clsReadHead()" placeholder="Ej: Glúteos, piernas, abdomen">' +
         '<div style="font-size:0.78rem; color:#ddd; margin-top:8px;">⏱ Duración aproximada: <strong>' + (clsHasOpen(c.items) ? ((clsFmtMin(dur) ? clsFmtMin(dur) + ' + ' : '') + 'ejercicios por repeticiones') : (clsFmtMin(dur) || '—')) + '</strong> · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + '</div></div>';
+      var falta = clsMissingVideos(c);
+      h += '<div style="font-size:0.78rem; margin:8px 0; color:' + (falta.length ? '#ffd166' : '#06d6a0') + ';">' + (falta.length ? ('🎥 Faltan videos (' + falta.length + '): ' + escHtml(falta.join(', '))) : '🎥 Todos los ejercicios tienen video') + '</div>' +
+        '<button type="button" class="btn btn-secondary" style="width:100%; margin-bottom:8px;" onclick="openVideoLibrary()">📚 Ver biblioteca de videos</button>';
       c.items.forEach(function(it, bi) {
         var cc = it.circ;
         h += '<div class="edx-sub"><div style="font-size:0.78rem; font-weight:800; color:var(--accent);">' + escHtml(cc.nombre) + (cc.tipo ? ' · ' + CLS_TIPO_NAME[cc.tipo] : '') + '</div>' +
@@ -7733,7 +7738,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         it.sub.forEach(function(sb, si) {
           var ok = !sb.video || !!ytIdStrict(sb.video);
           h += '<div style="margin-bottom:8px;"><div style="font-size:0.84rem; font-weight:700; color:#fff;">' + escHtml(sb.name) + (sb.reps ? ' <span style="color:#ffd60a;">· ' + escHtml(sb.reps) + '</span>' : '') + '</div>' +
-            '<input type="text" id="clsV_' + bi + '_' + si + '" value="' + edxAttr(sb.video) + '" placeholder="Link de YouTube (opcional)" onchange="clsSetVideo(' + bi + ',' + si + ',this.value)" style="margin-top:4px;">' +
+            '<div class="pick-name-row" style="margin-top:4px;"><input type="text" id="clsV_' + bi + '_' + si + '" value="' + edxAttr(sb.video) + '" placeholder="Link de YouTube" onchange="clsSetVideo(' + bi + ',' + si + ',this.value)">' +
+            '<button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg('CLS_WORK.items[' + bi + '].sub[' + si + '].video') + ')">🎥 Elegir</button>' +
+            '<button type="button" class="btn-pick-ex" onclick="clsTestVideo(' + bi + ',' + si + ')">▶ Probar</button></div>' +
             (ok ? '' : '<div style="font-size:0.7rem; color:#ffd166;">Este link no parece de YouTube; se abrirá solo con «Ver demo».</div>') + '</div>';
         });
         h += '</div>';
@@ -7741,6 +7748,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       h += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"><button type="button" class="btn btn-accent" style="flex:1; min-width:130px;" onclick="clsStore(false)">💾 Guardar</button>' +
         (c.k === 'c' ? '<button type="button" class="btn btn-export-wa" style="flex:1; min-width:150px;" onclick="clsStore(true)">⭐ Guardar como clase de hoy</button>' : '') + '</div>';
       box.innerHTML = h;
+    }
+    // Ejercicios (sin repetir) que todavía no tienen video
+    function clsMissingVideos(c) {
+      var seen = {}, out = [];
+      (c.items || []).forEach(function(it) { (it.sub || []).forEach(function(sb) {
+        if (sb.filler) return; var k = normExName(sb.name); if (seen[k]) return; seen[k] = 1;
+        if (!String(sb.video || '').trim()) out.push(sb.name);
+      }); });
+      return out;
+    }
+    function clsTestVideo(bi, si) {
+      var c = CLS_WORK, sb = c && c.items[bi] && c.items[bi].sub[si]; var v = String((sb && sb.video) || '').trim();
+      var el = document.getElementById('clsV_' + bi + '_' + si); if (el && el.value.trim() && el.value.trim() !== v) { clsSetVideo(bi, si, el.value); v = el.value.trim(); }
+      if (!v) { alert('Ese ejercicio todavía no tiene ningún link de video.'); return; }
+      if (!/^https?:\/\//i.test(v)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      window.open(v, '_blank', 'noopener');
     }
     function clsReadHead() {
       var c = CLS_WORK; if (!c) return;
@@ -7757,6 +7780,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var c = CLS_WORK; if (!c) return;
       clsReadHead();
       if (!c.t.trim()) { alert('Ponle un título.'); return; }
+      var fv = clsMissingVideos(c);
+      if (fv.length && !confirm('Faltan videos en: ' + fv.join(', ') + '.\n\n¿Guardar la clase de todos modos?')) return;
       var rec = JSON.parse(JSON.stringify(c));
       if (!rec.id) rec.id = 'c' + Date.now().toString(36);
       var i = -1; CLS.lista.forEach(function(x, k) { if (x.id === rec.id) i = k; });
@@ -8147,7 +8172,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-m';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-n';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
