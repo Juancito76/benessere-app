@@ -5990,6 +5990,36 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
     });
 
+    // ---- Aviso al escribir un video: ✅ se puede usar / ❌ no permite incrustación ----
+    var VID_CHK = {};
+    function vidIsInput(t) {
+      if (!t || t.tagName !== 'INPUT') return false;
+      return /_video$/.test(t.id || '') || /^clsV_/.test(t.id || '') || /\.video\s*=/.test(t.getAttribute('oninput') || '');
+    }
+    function vidBadge(inp) {
+      var b = inp._vb;
+      if (!b) {
+        b = document.createElement('div'); b.style.cssText = 'font-size:0.72rem; margin-top:3px; font-weight:700; text-align:left;';
+        var host = (inp.parentNode && inp.parentNode.classList && inp.parentNode.classList.contains('pick-name-row')) ? inp.parentNode : inp;
+        host.insertAdjacentElement('afterend', b); inp._vb = b;
+      }
+      var v = inp.value.trim(), id = ytIdStrict(v);
+      function show(st) {
+        if (ytIdStrict(inp.value.trim()) !== id) return;
+        var ok = st === 'ok';
+        b.style.color = ok ? '#06d6a0' : (st === 'timeout' || st === 'error' ? '#ffd60a' : '#ff9a93');
+        b.innerText = ok ? '✅ Este video sí se puede usar en la app' : st === 'noembed' ? '❌ Este video NO permite incrustación: la app no lo mostrará. Usa otro.' : st === 'missing' ? '❌ Video privado, borrado o inexistente.' : '⚠️ No pude revisarlo (conexión). Pruébalo con ▶ Probar.';
+        inp.dataset.vst = (st === 'noembed' || st === 'missing') ? 'bad' : '';
+      }
+      if (!v) { b.innerText = ''; inp.dataset.vst = ''; return; }
+      if (!id) { b.style.color = '#ff9a93'; b.innerText = '❌ No parece un enlace de YouTube.'; inp.dataset.vst = 'bad'; return; }
+      if (VID_CHK[id]) { show(VID_CHK[id]); return; }
+      b.style.color = '#aaa'; b.innerText = '⏳ Revisando si se puede mostrar en la app…'; inp.dataset.vst = 'wait';
+      vidCheckOne(id).then(function(st) { if (st !== 'timeout' && st !== 'error') VID_CHK[id] = st; show(st); });
+    }
+    document.addEventListener('change', function(e) { if (vidIsInput(e.target)) vidBadge(e.target); });
+    document.addEventListener('paste', function(e) { var t = e.target; if (vidIsInput(t)) setTimeout(function() { vidBadge(t); }, 60); });
+
     // ---- Revisar videos: prueba cada link en un reproductor oculto y avisa cuales no se pueden incrustar ----
     function vidCheckOne(id) {
       return new Promise(function(res) {
@@ -6832,8 +6862,40 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + (r.coach ? ' · ' + escHtml(r.coach) : '') + '</div>' +
             '<div style="display:flex; gap:8px; margin-top:6px;">' +
             (/^https?:\/\//i.test(String(r.url || '')) ? '<a href="' + escHtml(r.url) + '" target="_blank" rel="noopener" style="color:var(--primary); font-weight:800; font-size:0.78rem;">Ver video ↗</a>' : '') +
+            (r.id ? '<button type="button" onclick="vrepOpenFix(' + i + ')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✏️ Reemplazar video</button>' : '') +
             '<button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Ya lo arreglé</button></div></div>';
         }).join('') + '</div>';
+    }
+    // Abre la rutina del cliente y directamente el editor del ejercicio cuyo video falló
+    function vrepOpenFix(i) {
+      var r = VREP_INBOX[i]; if (!r || !r.id) return;
+      var id = r.id, tries = 0;
+      if (!COACH) { showToastTop('Entra primero a "Mis clientes" con tu PIN.'); return; }
+      openClientRoutine(id);
+      var iv = setInterval(function() {
+        tries++;
+        if (athleteRoutineId === id && isCoachView() && athleteActiveState) { clearInterval(iv); vrepEditFound(r); }
+        else if (tries > 60) { clearInterval(iv); showToastTop('No se pudo abrir esa rutina. Revisa la conexión e inténtalo otra vez.'); }
+      }, 500);
+    }
+    function vrepEditFound(r) {
+      var st = athleteActiveState, want = ytIdStrict(r.url), W = ATH_WEEK, best = null;
+      (st.routineDays || []).forEach(function(d, di) { (d.items || []).forEach(function(it, ii) {
+        var has = (it.sub || []).some(function(sb) { return want ? ytIdStrict(sb.video) === want : String(sb.video || '').trim() === String(r.url || '').trim(); });
+        if (!has) return;
+        var vd = parseInt(it.vigenciaDesde, 10) || 1, vh = it.vigenciaHasta ? parseInt(it.vigenciaHasta, 10) : 9999;
+        var cubre = vd <= W && W <= vh;
+        if (!best || (cubre && !best.cubre)) best = { di: di, ii: ii, cubre: cubre };
+      }); });
+      if (!best) { showToastTop('No encontré ese video en la rutina (quizá ya lo cambiaste). Revisa el ejercicio "' + (r.ej || '') + '".'); return; }
+      openEditEx(best.di, best.ii);
+      setTimeout(function() {
+        var inps = document.querySelectorAll('#edx_modal input[id$="_video"]');
+        for (var k = 0; k < inps.length; k++) {
+          if ((want && ytIdStrict(inps[k].value) === want) || (!want && inps[k].value.trim() === String(r.url || '').trim())) { try { inps[k].scrollIntoView({ block: 'center' }); inps[k].focus(); inps[k].select(); } catch (e) {} break; }
+        }
+        var m = document.getElementById('edx_msg'); if (m) m.innerText = 'Pega aquí el video nuevo: la app revisará que sí se pueda mostrar antes de guardarlo.';
+      }, 120);
     }
     function vrepResolve(i) {
       var r = VREP_INBOX[i], pin = vrepPin(); if (!r || !pin) return;
@@ -7144,6 +7206,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         sub.reps = edxVal('edx_' + p + '_' + k + '_reps');
         sub.notes = edxVal('edx_' + p + '_' + k + '_notes');
         sub.video = edxVal('edx_' + p + '_' + k + '_video');
+        if (sub.name && sub.video && ytIdStrict(sub.video)) rememberExerciseVideo(sub.name, sub.video);
         sub.uni = edxChk('edx_' + p + '_' + k + '_uni');
         sub.peso = edxChk('edx_' + p + '_' + k + '_peso');
       });
@@ -7196,6 +7259,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function saveEditEx() {
       var st = athleteActiveState; if (!st || !EDX || !isCoachView()) return;
       if (!athleteRoutineId) { alert('Esta rutina no tiene enlace corto, no se puede actualizar desde aquí.'); return; }
+      var pendIn = document.querySelector('#edx_modal input[data-vst="wait"]'), badIn = document.querySelector('#edx_modal input[data-vst="bad"]'), msg0 = document.getElementById('edx_msg');
+      if (pendIn || badIn) { if (msg0) { msg0.style.color = '#ff6b6b'; msg0.innerText = pendIn ? 'Espera un momento: estoy revisando el video…' : 'Ese video no se puede mostrar en la app. Pega otro enlace antes de guardar.'; } return; }
       var d = st.routineDays[EDX.di], cur = d.items[EDX.ii]; if (!cur) return;
       var snap = JSON.stringify(st.routineDays);
       var W = EDX.w, vd = parseInt(cur.vigenciaDesde, 10) || 1;
@@ -7951,7 +8016,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
