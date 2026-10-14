@@ -5582,7 +5582,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '#tm_radjl{display:none; font-size:0.66rem; color:#8fb0f5; font-weight:800; text-align:center; margin-bottom:-3px;}' +
           '@keyframes tmBlink{0%,100%{opacity:1} 50%{opacity:0.12}} .tm-blink{animation:tmBlink .6s linear infinite;}' +
           '#tm_vrep{display:none; margin:6px auto 0; background:none; border:none; color:#ff9a93; font-size:0.8rem; font-weight:700; text-decoration:underline; padding:6px 8px; cursor:pointer;}' +
-          '#tm_vid{width:100%; flex:none; height:calc((100vw - 32px) * 0.5625); min-height:200px; margin:12px 0 0;}' +
+          '#tm_vid{width:100%; flex:none; height:calc(100vh - 380px); height:clamp(calc((100vw - 32px) * 0.5625), calc(100vh - 380px), calc((100vw - 32px) * 1.35)); min-height:200px; margin:12px 0 0;}' +
           '@media (orientation:landscape) and (max-height:520px){#tm_overlay{display:grid !important; grid-template-columns:1fr 1fr; column-gap:14px; align-content:start; grid-auto-rows:min-content;} #tm_overlay > *{grid-column:1;} #tm_g{grid-column:1 / -1; grid-row:1;} #tm_top{grid-column:1; grid-row:2;} #tm_vid{grid-column:2; grid-row:2 / span 8; width:100%; height:calc(100vh - 70px); flex:none; margin:0; align-self:start;} #tm_time{font-size:min(18vh, 90px) !important;}}';
         document.head.appendChild(cs);
       }
@@ -5633,7 +5633,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
       document.getElementById('tm_vtog').onclick = ctVidToggle; ctVidLabel(); ctPipInit();
-      document.getElementById('tm_mu_btn').onclick = muOpenSheet; o.addEventListener('scroll', muSync, { passive: true }); muSync();
+      document.getElementById('tm_mu_btn').onclick = function() { if (MU.on) { muStop(); wkToast('Música quitada'); } else muOpenSheet(); }; o.addEventListener('scroll', muSync, { passive: true }); muSync();
       document.getElementById('tm_rminus').onclick = function() { ctRestAdj(-15); };
       document.getElementById('tm_rplus').onclick = function() { ctRestAdj(15); };
       document.getElementById('tm_vrep').onclick = ctReportVideo;
@@ -5887,7 +5887,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var o = document.getElementById('tm_overlay'), d = document.getElementById('mu_dock'), slot = document.getElementById('tm_mslot');
       var inl = !!(MU.on && o && slot);
       if (o) o.classList.toggle('mu-on', !!MU.on);
-      var b = document.getElementById('tm_mu_btn'); if (b) b.innerText = MU.on ? '🎵 Música ✓' : '🎵 Música';
+      var b = document.getElementById('tm_mu_btn'); if (b) b.innerText = MU.on ? '🎵 Quitar' : '🎵 Música';
       var pl = document.getElementById('mu_pill') || (MU.on ? muPill() : null);
       if (!d) return;
       if (MU.on) d.classList.add('on');
@@ -8016,7 +8016,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-d';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-e';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
