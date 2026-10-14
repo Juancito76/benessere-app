@@ -5588,10 +5588,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '#tm_extra{display:none; position:fixed; left:0; right:0; bottom:0; z-index:100005; background:#17171c; border-top:1px solid #444; border-radius:20px 20px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); flex-direction:column; gap:10px; box-shadow:0 -10px 30px rgba(0,0,0,0.7);} #tm_extra.on{display:flex;} #tm_extra .tm-btn.tm-sm{width:100%; padding:15px 14px !important; font-size:0.95rem !important; text-align:left; border-radius:12px !important; display:block;}' +
           '#tm_muinv{flex:none; display:block; margin:12px 0 0; width:100%; background:transparent; color:#d9c7ff; border:1.5px dashed #6a4bb0; border-radius:14px; padding:12px; font-size:0.95rem; font-weight:800; cursor:pointer;} #tm_overlay.mu-on #tm_muinv{display:none;}' +
           'body.tm-extra-open .wk-bubble{display:none !important;}' +
+          '#tm_overlay.tm-fin #tm_time{font-size:2.4rem !important; margin:2px 0 6px !important;} #tm_overlay.tm-fin #tm_station{font-size:1.05rem !important;} #tm_overlay.tm-fin #tm_vid{height:calc((100vw - 32px) * 0.5625) !important;} #tm_overlay.tm-fin #tm_phase{margin-top:4px !important;}' +
+          '@keyframes tmBob{0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)}} #tm_scrollhint{margin-top:12px; font-size:0.85rem; font-weight:800; color:#ffd60a; transition:opacity .3s; animation:tmBob 1.4s ease-in-out infinite;}' +
           '#tm_radj{display:none; gap:6px; align-items:stretch;} #tm_radj .tm-btn{flex:1 1 0; min-width:0; padding:14px 0; font-size:1rem; background:#16264a; border-color:#4d8bff; color:#bcd3ff;}' +
           '#tm_radjl{display:none; font-size:0.66rem; color:#8fb0f5; font-weight:800; text-align:center; margin-bottom:-3px;}' +
           '@keyframes tmBlink{0%,100%{opacity:1} 50%{opacity:0.12}} .tm-blink{animation:tmBlink .6s linear infinite;}' +
-          '#tm_vrep{display:none; margin:6px auto 0; background:none; border:none; color:#ff9a93; font-size:0.8rem; font-weight:700; text-decoration:underline; padding:6px 8px; cursor:pointer;}' +
+          '#tm_vrep{display:none; flex:none; align-self:center; margin:4px auto 0; background:none; border:none; color:#ff9a93; font-size:0.8rem; font-weight:700; text-decoration:underline; padding:6px 8px; cursor:pointer;}' +
           '#tm_vid{width:100%; flex:none; height:calc(100vh - 380px); height:clamp(calc((100vw - 32px) * 0.5625), calc(100vh - 380px), calc((100vw - 32px) * 1.35)); min-height:200px; margin:12px 0 0;}' +
           '@media (orientation:landscape) and (max-height:520px){#tm_overlay{display:grid !important; grid-template-columns:1fr 1fr; column-gap:14px; align-content:start; grid-auto-rows:min-content;} #tm_overlay > *{grid-column:1;} #tm_g{grid-column:1 / -1; grid-row:1;} #tm_top{grid-column:1; grid-row:2;} #tm_vid{grid-column:2; grid-row:2 / span 8; width:100%; height:calc(100vh - 70px); flex:none; margin:0; align-self:start;} #tm_time{font-size:min(18vh, 90px) !important;}}';
         document.head.appendChild(cs);
@@ -5607,7 +5609,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_reps" style="font-size:1.3rem; font-weight:800; color:#ffd60a; margin-top:2px;"></div>' +
         '<div id="tm_list" style="display:none; text-align:left; margin:6px 0 2px; font-size:0.95rem; line-height:1.35;"></div>' +
         '<button type="button" class="tm-btn" id="tm_demo" style="display:none; flex:none; margin:2px auto 0; padding:9px 18px; font-size:0.85rem;">🎥 Ver demo</button>' +
-        '<button type="button" id="tm_vrep">⚠️ El video no se ve</button>' +
         '<div id="tm_time" style="font-size:min(24vw, 130px); font-weight:900; line-height:1; margin:6px 0 8px; font-variant-numeric:tabular-nums;"></div>' +
         '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
         '<div id="tm_next" style="margin-top:8px; font-size:0.95rem; color:#aaa;"></div>' +
@@ -5632,9 +5633,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '</div>' +
         '<div id="tm_guide" style="display:none; margin-top:12px; background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; text-align:center;"></div>' +
         '<div id="tm_vid" style="display:none; position:relative; background:#000; border-radius:10px; overflow:hidden; min-height:200px;"></div>' +
+        '<button type="button" id="tm_vrep">⚠️ El video no se ve</button>' +
+        '<div id="tm_sheet" style="display:none; margin-top:12px; background:#1b1b1b; border:1px solid #333; border-radius:12px; padding:10px; text-align:left;"></div>' +
         '<button type="button" id="tm_muinv">🎵 Poner música</button>' +
         '<div id="tm_mslot" style="flex:none; margin-top:14px; height:calc((100vw - 32px) * 0.5625 + 38px);"></div>' +
-        '<div id="tm_sheet" style="display:none; margin-top:12px; background:#1b1b1b; border:1px solid #333; border-radius:12px; padding:10px; text-align:left;"></div>' +
         '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>' +
         '<button type="button" class="tm-btn" id="tm_more" style="display:none; margin-top:10px; background:#06d6a0; color:#000; width:100%; flex:none;">➕ 1 serie más</button>';
       document.body.appendChild(o);
@@ -5650,7 +5652,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_muinv').onclick = muOpenSheet;
       document.getElementById('tm_more_btn').onclick = function() { document.getElementById('tm_extra').classList.add('on'); document.body.classList.add('tm-extra-open'); };
       document.getElementById('tm_extra_x').onclick = function() { document.getElementById('tm_extra').classList.remove('on'); document.body.classList.remove('tm-extra-open'); };
-      document.getElementById('tm_mu_btn').onclick = function() { if (MU.on) { muStop(); wkToast('Música quitada'); } else muOpenSheet(); }; o.addEventListener('scroll', muSync, { passive: true }); muSync();
+      document.getElementById('tm_mu_btn').onclick = function() { if (MU.on) { muStop(); wkToast('Música quitada'); } else muOpenSheet(); }; o.addEventListener('scroll', function() { muSync(); var h = document.getElementById('tm_scrollhint'); if (h) h.style.opacity = o.scrollTop > 40 ? '0' : '1'; }, { passive: true }); muSync();
       document.getElementById('tm_rminus').onclick = function() { ctRestAdj(-15); };
       document.getElementById('tm_rplus').onclick = function() { ctRestAdj(15); };
       document.getElementById('tm_vrep').onclick = ctReportVideo;
@@ -5981,6 +5983,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function ctVidSync(force) {
       var box = document.getElementById('tm_vid'); if (!box) return;
+      var ovf = document.getElementById('tm_overlay'); if (ovf) ovf.classList.toggle('tm-fin', !!CT.done);
       var id = (ctVidOn() && (!CT.done || CT.gapPreview)) ? ytIdStrict(CT.demoUrl) : '';
       if (!id || VID_BAD[id]) { box.style.display = 'none'; box.innerHTML = ''; CT.vidId = ''; return; }
       if (CT.vidId === id && !force) { box.style.display = 'block'; return; }   // mismo video: no se reinicia
@@ -6578,6 +6581,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_gnum" style="font-size:2.2rem; font-weight:900; font-variant-numeric:tabular-nums; margin:4px 0;"></div>' +
         '<div id="tm_gwarn" style="display:none; font-size:0.85rem; font-weight:800; color:#ffd60a; margin:-2px 0 6px;"></div>' +
         '<div style="display:flex; gap:8px;"><button type="button" class="tm-btn" style="background:#06d6a0; border-color:#06d6a0; color:#000; font-size:1rem; padding:16px 6px;" onclick="ctGuideGo()">▶ Iniciar ya</button><button type="button" class="tm-btn" id="tm_gpause" onclick="ctGapPause()">⏸ Pausar</button><button type="button" class="tm-btn" onclick="ctGuidePlus()">+15 s</button></div>';
+      box.insertAdjacentHTML('beforeend', '<div id="tm_scrollhint">⬇ Desplaza para ver el siguiente ejercicio</div>');
       box.style.display = 'block';
       CT.gEnd = Date.now() + GUIDE_PAUSE * 1000; CT.gPaused = false; CT.gW10 = 0; CT.gLast = 0;
       ctSaveResumeNext(G, G.pos + 1);
@@ -8034,7 +8038,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-f';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-h';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
