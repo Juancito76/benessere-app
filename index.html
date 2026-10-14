@@ -5565,7 +5565,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ctGuideClear(); CT.guide = guide || null; CT.cls = false;
       CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = !!built.hiit;
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
-      CT.gapPreview = false; CT.rsAt = 0; CT.warnI = -1; CT.demoName = '';
+      CT.gapPreview = false; CT.rsAt = 0; CT.warnI = -1; CT.demoName = ''; CT.vidId = ''; CT.vidReloads = {}; CT.vidAuto = {};
       ctEnter(CT.phases[0], Date.now());
       ctOpen();
       if (CT.tick) clearInterval(CT.tick);
@@ -5655,7 +5655,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_mu_btn').onclick = function() { if (MU.on) { muStop(); wkToast('Música quitada'); } else muOpenSheet(); }; o.addEventListener('scroll', function() { muSync(); var h = document.getElementById('tm_scrollhint'); if (h) h.style.opacity = o.scrollTop > 40 ? '0' : '1'; }, { passive: true }); muSync();
       document.getElementById('tm_rminus').onclick = function() { ctRestAdj(-15); };
       document.getElementById('tm_rplus').onclick = function() { ctRestAdj(15); };
-      document.getElementById('tm_vrep').onclick = ctReportVideo;
+      document.getElementById('tm_vrep').onclick = ctVrepClick;
       if (tmrSndVisible()) { var sndB = document.getElementById('tm_snd'); sndB.style.display = ''; sndB.onclick = tmrToggleMode; tmrModeLabel(); }
       document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId, gd = CT.guide; startCircuitTimer(ci, sid, true, gd); };
     }
@@ -5998,7 +5998,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var ovf = document.getElementById('tm_overlay'); if (ovf) ovf.classList.toggle('tm-fin', !!CT.done);
       var id = (ctVidOn() && (!CT.done || CT.gapPreview)) ? ytIdStrict(CT.demoUrl) : '';
       if (!id || VID_BAD[id]) { box.style.display = 'none'; box.innerHTML = ''; CT.vidId = ''; return; }
-      if (CT.vidId === id && !force) { box.style.display = 'block'; return; }   // mismo video: no se reinicia
+      if (CT.vidId === id && !force && box.querySelector('iframe')) { box.style.display = 'block'; return; }   // mismo video: no se reinicia (si la caja está vacía, se vuelve a cargar)
       CT.vidId = id; CT.vidMuted = true;
       box.style.display = 'block';
       box.innerHTML = '<iframe id="tm_vframe" title="Demostración" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute; inset:0; width:100%; height:100%; border:0; pointer-events:none;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&controls=0&playsinline=1&modestbranding=1&rel=0&enablejsapi=1' + ytOriginParam() + '"></iframe>' +
@@ -6010,11 +6010,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         this.innerText = CT.vidMuted ? '🔇 Activar sonido' : '🔊 Silenciar';
       };
       fr.onload = function() { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch (e) {} };
+      CT.vidOk = false; clearTimeout(CT.vidWatch);
+      CT.vidWatch = setTimeout(function() {   // si en 8 s el video no dio señales de vida, se intenta una vez más solo
+        CT.vidAuto = CT.vidAuto || {};
+        if (CT.active && !CT.vidOk && CT.vidId === id && !CT.vidAuto[id]) { CT.vidAuto[id] = 1; ctVidSync(true); }
+      }, 8000);
     }
     window.addEventListener('message', function(e) {   // si YouTube no deja incrustar ese video, se oculta y queda el boton Ver demo
       if (!CT || !CT.active || !/youtube/.test(String(e.origin || ''))) return;
       var fr = document.getElementById('tm_vframe'); if (!fr || e.source !== fr.contentWindow) return;
       var d; try { d = JSON.parse(e.data); } catch (x) { return; }
+      if (d && (d.event === 'onReady' || d.event === 'infoDelivery')) CT.vidOk = true;
       if (d && d.event === 'onError') {
         if (CT.vidId) VID_BAD[CT.vidId] = true;
         ctVidSync(true);
@@ -6837,8 +6843,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctVrepLabel() {
       var b = document.getElementById('tm_vrep'); if (!b) return;
       var d = vrepDone(CT.demoUrl);
-      b.innerText = d ? '✅ Video reportado, gracias' : '⚠️ El video no se ve';
+      var rl = (CT.vidReloads && CT.vidReloads[ytIdStrict(CT.demoUrl)]) || 0;
+      b.innerText = d ? '✅ Video reportado, gracias' : (rl < 2 ? '🔄 ¿No se ve? Recargar video' : '⚠️ El video no se ve · avisar al coach');
       b.style.textDecoration = d ? 'none' : 'underline'; b.style.color = d ? '#9fe8c8' : '#ff9a93';
+    }
+    function ctVrepClick() {   // primero recarga el video (hasta 2 veces); si sigue sin verse, avisa al coach
+      var id = ytIdStrict(CT.demoUrl);
+      CT.vidReloads = CT.vidReloads || {};
+      if (id && !vrepDone(CT.demoUrl) && (CT.vidReloads[id] || 0) < 2) {
+        CT.vidReloads[id] = (CT.vidReloads[id] || 0) + 1;
+        delete VID_BAD[id]; ctVidSync(true); ctVrepLabel();
+        wkToast('🔄 Recargando el video…');
+        return;
+      }
+      ctReportVideo();
     }
     function ctReportVideo() {
       if (!CT.demoUrl || vrepDone(CT.demoUrl)) return;
@@ -8050,7 +8068,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-j';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-k';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
