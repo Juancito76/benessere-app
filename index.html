@@ -5086,6 +5086,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var kc = kcalEstimate(secs), b = bodyData();
       el.style.display = 'block';
       document.getElementById('wb_main').innerText = '⏱ ' + wkFmt(secs) + '  ·  🔥 ~' + kc + ' kcal';
+      try {   // si el texto creció y se sale por el borde, se acomoda dentro de la pantalla
+        if (el.style.left) {
+          var lx = parseInt(el.style.left, 10), ly = parseInt(el.style.top, 10);
+          var nx = Math.max(4, Math.min(window.innerWidth - el.offsetWidth - 4, lx)), ny = Math.max(4, Math.min(window.innerHeight - el.offsetHeight - 4, ly));
+          if (nx !== lx) el.style.left = nx + 'px'; if (ny !== ly) el.style.top = ny + 'px';
+        }
+      } catch (e) {}
       document.getElementById('wb_sub').innerHTML = 'Calorías estimadas con tus datos (' + Math.round(b.w) + ' kg, ' + Math.round(b.a) + ' años)' + (b.est ? ', completando con valores promedio lo que falta' : '') + '. Es una estimación: tu reloj puede marcar otro número.<br><button type="button" class="wb-hide" onclick="wkBubbleHide()">Ocultar</button>';
     }
     // Al terminar el entreno: tiempo, calorías estimadas y, si el cliente quiere, lo que marcó su reloj
@@ -5578,6 +5585,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '#tm_side{display:flex; flex-direction:column; gap:7px; width:98px; flex:none; margin-top:2px;}' +
           '#tm_side .tm-btn{flex:none; padding:14px 3px; font-size:0.88rem; line-height:1.15; border-radius:12px;}' +
           '#tm_side .tm-btn.tm-sm{padding:9px 2px; font-size:0.72rem; border-radius:10px;}' +
+          '#tm_extra{display:none; position:fixed; left:0; right:0; bottom:0; z-index:100005; background:#17171c; border-top:1px solid #444; border-radius:20px 20px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); flex-direction:column; gap:10px; box-shadow:0 -10px 30px rgba(0,0,0,0.7);} #tm_extra.on{display:flex;} #tm_extra .tm-btn.tm-sm{width:100%; padding:15px 14px !important; font-size:0.95rem !important; text-align:left; border-radius:12px !important; display:block;}' +
+          '#tm_muinv{flex:none; display:block; margin:12px 0 0; width:100%; background:transparent; color:#d9c7ff; border:1.5px dashed #6a4bb0; border-radius:14px; padding:12px; font-size:0.95rem; font-weight:800; cursor:pointer;} #tm_overlay.mu-on #tm_muinv{display:none;}' +
+          'body.tm-extra-open .wk-bubble{display:none !important;}' +
           '#tm_radj{display:none; gap:6px; align-items:stretch;} #tm_radj .tm-btn{flex:1 1 0; min-width:0; padding:14px 0; font-size:1rem; background:#16264a; border-color:#4d8bff; color:#bcd3ff;}' +
           '#tm_radjl{display:none; font-size:0.66rem; color:#8fb0f5; font-weight:800; text-align:center; margin-bottom:-3px;}' +
           '@keyframes tmBlink{0%,100%{opacity:1} 50%{opacity:0.12}} .tm-blink{animation:tmBlink .6s linear infinite;}' +
@@ -5610,15 +5620,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_radjl">Descanso</div><div id="tm_radj"><button type="button" class="tm-btn" id="tm_rminus" aria-label="Menos descanso">−15</button><button type="button" class="tm-btn" id="tm_rplus" aria-label="Más descanso">+15</button></div>' +
         '<button type="button" class="tm-btn" id="tm_plus" style="display:none;">+5 s</button>' +
         '<button type="button" class="tm-btn" id="tm_stop" style="display:none; border-color:#ff453a; color:#ff9a93;">⏹ Parar</button>' +
+        '<button type="button" class="tm-btn tm-sm" id="tm_mu_btn" style="border-color:#b388ff; color:#d9c7ff;">🎵 Música</button>' +
+        '<button type="button" class="tm-btn tm-sm" id="tm_more_btn">⚙️ Más</button>' +
+        '<div id="tm_extra"><div style="font-weight:900; font-size:1rem; color:#fff; text-align:left; margin-bottom:2px;">⚙️ Ajustes</div>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_vtog"></button>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_snd" style="display:none;"></button>' +
-        '<button type="button" class="tm-btn tm-sm" id="tm_pip" style="display:none;">🪟 Flotante</button>' +
-        '<button type="button" class="tm-btn tm-sm" id="tm_mu_btn" style="border-color:#b388ff; color:#d9c7ff;">🎵 Música</button>' +
+        '<button type="button" class="tm-btn tm-sm" id="tm_pip" style="display:none;">🪟 Ventana flotante</button>' +
+        '<button type="button" class="tm-btn tm-sm" id="tm_extra_x" style="background:#2a2a2a;">Cerrar</button></div>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_exit">✖ Salir</button>' +
         '</div>' +
         '</div>' +
         '<div id="tm_guide" style="display:none; margin-top:12px; background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; text-align:center;"></div>' +
         '<div id="tm_vid" style="display:none; position:relative; background:#000; border-radius:10px; overflow:hidden; min-height:200px;"></div>' +
+        '<button type="button" id="tm_muinv">🎵 Poner música</button>' +
         '<div id="tm_mslot" style="flex:none; margin-top:14px; height:calc((100vw - 32px) * 0.5625 + 38px);"></div>' +
         '<div id="tm_sheet" style="display:none; margin-top:12px; background:#1b1b1b; border:1px solid #333; border-radius:12px; padding:10px; text-align:left;"></div>' +
         '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>' +
@@ -5633,6 +5647,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
       document.getElementById('tm_vtog').onclick = ctVidToggle; ctVidLabel(); ctPipInit();
+      document.getElementById('tm_muinv').onclick = muOpenSheet;
+      document.getElementById('tm_more_btn').onclick = function() { document.getElementById('tm_extra').classList.add('on'); document.body.classList.add('tm-extra-open'); };
+      document.getElementById('tm_extra_x').onclick = function() { document.getElementById('tm_extra').classList.remove('on'); document.body.classList.remove('tm-extra-open'); };
       document.getElementById('tm_mu_btn').onclick = function() { if (MU.on) { muStop(); wkToast('Música quitada'); } else muOpenSheet(); }; o.addEventListener('scroll', muSync, { passive: true }); muSync();
       document.getElementById('tm_rminus').onclick = function() { ctRestAdj(-15); };
       document.getElementById('tm_rplus').onclick = function() { ctRestAdj(15); };
@@ -5970,12 +5987,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.vidId = id; CT.vidMuted = true;
       box.style.display = 'block';
       box.innerHTML = '<iframe id="tm_vframe" title="Demostración" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute; inset:0; width:100%; height:100%; border:0; pointer-events:none;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&controls=0&playsinline=1&modestbranding=1&rel=0&enablejsapi=1' + ytOriginParam() + '"></iframe>' +
-        '<button type="button" id="tm_vsnd" aria-label="Sonido del video" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:50%; background:rgba(0,0,0,0.6); color:#fff; border:1px solid #888; font-size:1.2rem; line-height:1; padding:0;">🔇</button>';
+        '<button type="button" id="tm_vsnd" aria-label="Sonido del video" style="position:absolute; left:8px; bottom:8px; height:36px; border-radius:18px; background:rgba(0,0,0,0.72); color:#fff; border:1px solid #aaa; font-size:0.82rem; font-weight:800; line-height:1; padding:0 14px; z-index:2;">🔇 Activar sonido</button>';
       var fr = document.getElementById('tm_vframe');
       document.getElementById('tm_vsnd').onclick = function() {   // activar/quitar el audio del video (por defecto va en silencio)
         CT.vidMuted = !CT.vidMuted;
         try { fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: CT.vidMuted ? 'mute' : 'unMute', args: [] }), '*'); if (!CT.vidMuted) fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'); } catch (e) {}
-        this.innerText = CT.vidMuted ? '🔇' : '🔊';
+        this.innerText = CT.vidMuted ? '🔇 Activar sonido' : '🔊 Silenciar';
       };
       fr.onload = function() { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch (e) {} };
     }
@@ -6667,7 +6684,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // "Normal": los pitidos suenan siempre (aunque el iPhone esté en silencio), pero pueden pausar la música.
     function tmrMode() { try { return localStorage.getItem('benessere_audio_mode') === 'normal' ? 'normal' : 'mix'; } catch (e) { return 'mix'; } }
     function tmrSndVisible() { try { return !!(navigator.audioSession || /iPhone|iPad|iPod/i.test(navigator.userAgent || '')); } catch (e) { return false; } }
-    function tmrModeLabel() { var b = document.getElementById('tm_snd'); if (b) b.innerText = tmrMode() === 'mix' ? '🔊 Con música' : '🔊 Normal'; }
+    function tmrModeLabel() { var b = document.getElementById('tm_snd'); if (b) b.innerText = tmrMode() === 'mix' ? '🔔 Pitidos: mezclados con la música' : '🔔 Pitidos: siempre se oyen'; }
     function tmrToggleMode() {
       var nm = tmrMode() === 'mix' ? 'normal' : 'mix';
       try { localStorage.setItem('benessere_audio_mode', nm); } catch (e) {}
@@ -6790,6 +6807,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.active = false; CT.done = false;
       if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
       var o = document.getElementById('tm_overlay'); if (o) o.remove();
+      document.body.classList.remove('tm-extra-open');
       if (!RT.active) tmrWakeOff();
       try { guidePaintAll(); } catch (e) {}   // la lista del día muestra por dónde va
     }
@@ -8016,7 +8034,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-e';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-f';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
