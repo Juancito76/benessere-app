@@ -7944,7 +7944,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Pestaña «Clases» dentro de la app del cliente -----
     var CLS_FROM_ROUTINE = false, CLS_CACHE_KEY = 'benessere_cls_cache';
     function openClasesTab(auto) {
-      var st = athleteActiveState, cf = (st && st.configFeatures) || {}, id = cf.classId;
+      var st = athleteActiveState, cf = (st && st.configFeatures) || {}, id = cf.classId || (isCoachView() ? clsLinkId() : '');   // en modo coach, si al cliente le falta el código, se usa el link de clases del coach
       var onlyCls = cf.uso === 'c';
       var show = function(cst) { CLS_FROM_ROUTINE = !onlyCls; renderClassApp(cst); window.scrollTo(0, 0); };
       var cached = function() { try { return JSON.parse(localStorage.getItem(CLS_CACHE_KEY + '_' + id) || 'null'); } catch (e) { return null; } };
@@ -8190,7 +8190,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-o';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-p';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
