@@ -5904,12 +5904,30 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (MU.on && !MU.iv) MU.iv = setInterval(function() { if (MU.on) muSync(); else { clearInterval(MU.iv); MU.iv = null; } }, 400);
       if (!MU.on && MU.iv) { clearInterval(MU.iv); MU.iv = null; }
     }
+    function muPasteClip(manual) {   // lee el enlace copiado; en iPhone el sistema pide permiso para pegar
+      var err = document.getElementById('mu_err'), inp = document.getElementById('mu_in');
+      if (!inp) return;
+      function fail(msg) { if (err && manual) { err.style.color = '#ff9a93'; err.innerText = msg; } }
+      if (!navigator.clipboard || !navigator.clipboard.readText) { fail('Tu teléfono no deja pegar desde aquí: mantén presionado el cuadro de abajo y elige Pegar.'); return; }
+      navigator.clipboard.readText().then(function(t) {
+        t = String(t || '').trim();
+        if (!muSrc(t)) { fail('No encontré un enlace de YouTube copiado. En YouTube toca Compartir → Copiar enlace.'); return; }
+        inp.value = t; if (err) { err.style.color = '#9fe8c8'; err.innerText = '¡Enlace listo! Toca Reproducir ▶'; }
+      }).catch(function() { fail('No pude leer lo copiado: mantén presionado el cuadro de abajo y elige Pegar.'); });
+    }
+    document.addEventListener('visibilitychange', function() {   // al volver de YouTube, intenta traer el enlace copiado
+      if (document.visibilityState !== 'visible' || !MU.searched) return;
+      var sh = document.getElementById('mu_sheet'); if (!sh || !sh.classList.contains('on')) return;
+      MU.searched = false; muPasteClip(false);
+    });
     function muOpenSheet() {
       muCss();
       var sh = document.getElementById('mu_sheet');
       if (!sh) { sh = document.createElement('div'); sh.id = 'mu_sheet'; document.body.appendChild(sh); }
       sh.innerHTML = '<div style="font-weight:900; font-size:1.05rem; color:#d9c7ff;">🎵 Tu música mientras entrenas</div>' +
         '<div style="font-size:0.78rem; color:#a99bc9; margin-top:4px; line-height:1.4;">Pega un enlace de YouTube (un video o una lista de reproducción). Queda en un bloque grande bajo el video del ejercicio: desliza hacia abajo para verla.</div>' +
+        '<div style="display:flex; gap:8px; margin-top:12px;"><button type="button" class="mu-b" id="mu_yt" style="flex:1; background:#ff2d2d; color:#fff; padding:11px 6px; font-size:0.85rem;">🔎 Buscar en YouTube</button><button type="button" class="mu-b" id="mu_paste" style="flex:1; background:#2a1d47; color:#e7dcff; padding:11px 6px; font-size:0.85rem;">📋 Pegar enlace copiado</button></div>' +
+        '<div style="font-size:0.7rem; color:#8070a8; margin-top:5px; line-height:1.35;">1) Toca Buscar y encuentra tu música. 2) En YouTube toca Compartir → Copiar enlace. 3) Vuelve aquí y toca Pegar.</div>' +
         '<input id="mu_in" type="url" inputmode="url" autocomplete="off" placeholder="https://youtube.com/…" value="' + escHtml(muSaved()) + '">' +
         '<div id="mu_err" style="min-height:18px; font-size:0.76rem; color:#ff9a93; margin-bottom:6px;"></div>' +
         '<div style="display:flex; gap:8px;"><button type="button" class="mu-b" id="mu_go" style="flex:2; background:#b388ff; color:#1a0f33;">▶ Reproducir</button>' +
@@ -5918,6 +5936,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:0.7rem; color:#8070a8; margin-top:10px; line-height:1.35;">Si un video no se deja reproducir aquí, prueba otro o una lista. La música se detiene si bloqueas el teléfono o cambias de app.</div>';
       sh.classList.add('on');
       document.getElementById('mu_cl').onclick = function() { sh.classList.remove('on'); };
+      document.getElementById('mu_yt').onclick = function() { MU.searched = true; try { window.open('https://www.youtube.com/', '_blank'); } catch (e) {} };
+      document.getElementById('mu_paste').onclick = function() { muPasteClip(true); };
       var off = document.getElementById('mu_off'); if (off) off.onclick = function() { muStop(); sh.classList.remove('on'); };
       document.getElementById('mu_go').onclick = function() {
         var v = document.getElementById('mu_in').value.trim();
@@ -7931,7 +7951,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
