@@ -5825,7 +5825,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
 
     // ---- Música de YouTube dentro de la app: miniatura elegante + botón para intercambiar con el video del ejercicio ----
-    var MU = { on: false, big: false, playing: false, url: '', iv: null };
+    var MU = { list: false, on: false, big: false, playing: false, url: '', iv: null };
     function muSaved() { try { return localStorage.getItem('benessere_music_url') || ''; } catch (e) { return ''; } }
     function muSrc(url) {
       var list = (String(url).match(/[?&]list=([A-Za-z0-9_-]{10,})/) || [])[1] || '', id = ytIdStrict(url);
@@ -5855,10 +5855,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       muCss();
       var d = document.getElementById('mu_dock'); if (d) return d;
       d = document.createElement('div'); d.id = 'mu_dock';
-      d.innerHTML = '<div id="mu_frame"></div><div id="mu_bar"><button type="button" id="mu_pp" aria-label="Reproducir o pausar">⏸</button><span id="mu_ttl">🎵 MÚSICA</span><button type="button" id="mu_x" aria-label="Quitar música">✕</button></div>';
+      d.innerHTML = '<div id="mu_frame"></div><div id="mu_bar"><button type="button" id="mu_prev" aria-label="Canción anterior" style="display:none;">⏮</button><button type="button" id="mu_pp" aria-label="Reproducir o pausar">⏸</button><button type="button" id="mu_next" aria-label="Siguiente canción" style="display:none;">⏭</button><span id="mu_ttl">🎵 MÚSICA</span><button type="button" id="mu_x" aria-label="Quitar música">✕</button></div>';
       document.body.appendChild(d);
       document.getElementById('mu_pp').onclick = function() { muCmd(MU.playing ? 'pauseVideo' : 'playVideo'); };
       document.getElementById('mu_x').onclick = muStop;
+      document.getElementById('mu_prev').onclick = function() { muCmd('previousVideo'); };
+      document.getElementById('mu_next').onclick = function() { muCmd('nextVideo'); };
       return d;
     }
     function muCmd(fn) { try { var f = document.querySelector('#mu_frame iframe'); f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: fn, args: [] }), '*'); } catch (e) {} }
@@ -5872,6 +5874,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var src = muSrc(url); if (!src) return false;
       try { localStorage.setItem('benessere_music_url', url); } catch (e) {}
       var d = muDock(); MU.on = true; MU.url = url; MU.playing = true;
+      MU.list = /[?&]list=[A-Za-z0-9_-]{10,}/.test(String(url));   // anterior/siguiente solo existen en listas de reproducción
+      ['mu_prev', 'mu_next'].forEach(function(k) { var bt = document.getElementById(k); if (bt) bt.style.display = MU.list ? '' : 'none'; });
       document.getElementById('mu_ttl').innerText = '🎵 MÚSICA';
       var fr = document.getElementById('mu_frame');
       fr.innerHTML = '<iframe title="Música" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" src="' + src + '"></iframe>';
@@ -5895,9 +5899,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pl = document.getElementById('mu_pill');
       if (!pl) {
         pl = document.createElement('div'); pl.id = 'mu_pill';
-        pl.innerHTML = '<button type="button" id="mu_pp2" aria-label="Reproducir o pausar">⏸</button><button type="button" id="mu_go2">🎵 Música ↓</button>';
+        pl.innerHTML = '<button type="button" id="mu_pp2" aria-label="Reproducir o pausar">⏸</button><button type="button" id="mu_next2" aria-label="Siguiente canción" style="display:none; width:38px; padding:0;">⏭</button><button type="button" id="mu_go2">🎵 Música ↓</button>';
         document.body.appendChild(pl);
         document.getElementById('mu_pp2').onclick = function() { muCmd(MU.playing ? 'pauseVideo' : 'playVideo'); };
+        document.getElementById('mu_next2').onclick = function() { muCmd('nextVideo'); };
         document.getElementById('mu_go2').onclick = function() { var sl = document.getElementById('tm_mslot'); if (sl) sl.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
       }
       return pl;
@@ -5919,7 +5924,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         off = r.bottom < 80 || r.top > window.innerHeight - 60;
         d.style.visibility = (r.bottom < 0 || r.top > window.innerHeight) ? 'hidden' : '';
       } else { d.style.left = d.style.top = d.style.width = d.style.height = d.style.bottom = ''; d.style.visibility = ''; document.getElementById('mu_frame').style.height = ''; }
-      if (pl) { pl.classList.toggle('on', !!(MU.on && off)); var p2 = document.getElementById('mu_pp2'); if (p2) p2.innerText = MU.playing ? '⏸' : '▶'; }
+      if (pl) { var nx2 = document.getElementById('mu_next2'); if (nx2) nx2.style.display = MU.list ? '' : 'none'; pl.classList.toggle('on', !!(MU.on && off)); var p2 = document.getElementById('mu_pp2'); if (p2) p2.innerText = MU.playing ? '⏸' : '▶'; }
       if (MU.on && !MU.iv) MU.iv = setInterval(function() { if (MU.on) muSync(); else { clearInterval(MU.iv); MU.iv = null; } }, 400);
       if (!MU.on && MU.iv) { clearInterval(MU.iv); MU.iv = null; }
     }
@@ -8038,7 +8043,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-h';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-i';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
