@@ -490,6 +490,9 @@
             <span>🎥 Activar Demostraciones en Video</span>
           </label>
         </div>
+        <div class="form-group" style="margin-top:10px;"><label>¿Qué usa este cliente?</label>
+          <select id="featureUso"><option value="r">🏋️ Solo rutina</option><option value="rc">🏋️ + 🎓 Rutina y clases</option><option value="c">🎓 Solo clases</option></select>
+          <div style="font-size:0.72rem; color:var(--muted); margin-top:4px; line-height:1.4;">Con clases, el cliente ve una pestaña «🎓 Clases» y elige entre las clases que hayas habilitado. Primero publica el link de clases en la pestaña «Clases y Retos».</div></div>
       </section>
 
       <section class="section-box">
@@ -2159,9 +2162,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (state.configFeatures) {
         document.getElementById('featureNutrition').checked = state.configFeatures.nutrition === true;
         document.getElementById('featureDemos').checked = state.configFeatures.demos === true;
+        var fu = document.getElementById('featureUso'); if (fu) fu.value = state.configFeatures.uso || 'r';
       } else {
         document.getElementById('featureNutrition').checked = false;
         document.getElementById('featureDemos').checked = false;
+        var fu2 = document.getElementById('featureUso'); if (fu2) fu2.value = 'r';
       }
 
       if (state.measures) {
@@ -2419,6 +2424,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('coachMsgBody').value = '';
       document.getElementById('featureNutrition').checked = false;
       document.getElementById('featureDemos').checked = false;
+      var fu3 = document.getElementById('featureUso'); if (fu3) fu3.value = 'r';
 
       document.getElementById('m_objetivo').value = '';
       document.getElementById('m_estatura').value = '';
@@ -2948,7 +2954,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         coachName: document.getElementById('coachName').value.trim(),
         coachPhone: CONFIG_COACH_PHONE,
         measureLog: normalizeMeasureLog(measureLog),
-        configFeatures: { nutrition: isNutri, demos: isDemos },
+        configFeatures: { nutrition: isNutri, demos: isDemos, uso: (document.getElementById('featureUso') || {}).value || 'r', classId: (((document.getElementById('featureUso') || {}).value || 'r') === 'r') ? '' : clsLinkId() },
         measures: {
           m_objetivo: document.getElementById('m_objetivo').value.trim() || '-',
           m_estatura: document.getElementById('m_estatura').value.trim() || '-',
@@ -2980,7 +2986,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         full.durationWeeks,
         full.coachMsgTitle,
         full.coachMsgBody,
-        [full.configFeatures.nutrition ? 1 : 0, full.configFeatures.demos ? 1 : 0],
+        (function() {
+          var ft = [full.configFeatures.nutrition ? 1 : 0, full.configFeatures.demos ? 1 : 0], u = full.configFeatures.uso;
+          if (u === 'c' || u === 'rc') { ft.push(u === 'c' ? 1 : 2); ft.push(String(full.configFeatures.classId || '')); }
+          return ft;
+        })(),
         (function() {
           var ma = [
             full.measures.m_objetivo, full.measures.m_estatura, full.measures.m_peso_kg,
@@ -3069,7 +3079,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           MEASURE_FIELDS.forEach(function(f, i) { if (r[i + 1] !== '' && r[i + 1] != null) v[f.k] = r[i + 1]; });
           return { d: r[0], v: v };
         })),
-        configFeatures: { nutrition: feats[0] === 1, demos: feats[1] === 1 },
+        configFeatures: { nutrition: feats[0] === 1, demos: feats[1] === 1, uso: feats[2] === 1 ? 'c' : (feats[2] === 2 ? 'rc' : 'r'), classId: String(feats[3] || '') },
         measures: {
           m_objetivo: m[0]||'-', m_estatura: m[1]||'-', m_peso_kg: m[2]||'-',
           m_grasa: m[3]||'-', m_musculo: m[4]||'-', m_visceral: m[5]||'-',
@@ -3411,10 +3421,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var bgCol = dayColors[i % dayColors.length];
         capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openDay(\'' + d.id + '\')">' + (d.rest ? '🌙 Día ' : 'Día ') + (i + 1) + '</button>';
       });
+      var usoCli = (state.configFeatures && state.configFeatures.uso) || 'r';
+      if (usoCli === 'rc' || usoCli === 'c') capsuleHtml += '<button class="capsule-btn" style="background:#b388ff; color:#1a0f33;" onclick="openClasesTab()">🎓 Clases</button>';
       capsuleHtml += '<button class="capsule-btn btn-historial" onclick="openHistorialModal()">📋 Historial de Cargas</button>';
+      if (isCoachView()) capsuleHtml += '<button class="capsule-btn" style="background:#2a1d47; color:#d9c7ff; border:1px solid #b388ff;" onclick="coachUsoOpen()">⚙️ Qué usa: ' + (usoCli === 'c' ? 'Clases' : (usoCli === 'rc' ? 'Rutina y clases' : 'Rutina')) + '</button>';
       if (isCoachView()) capsuleHtml += '<button class="capsule-btn" style="background:#ffb703; color:#000;" onclick="openCoachSummary()">📊 Resumen del cliente</button>';
       capsuleHtml += '<button class="capsule-btn btn-medidas" onclick="openModal(\'ath_modal_medidas\')">Ficha Antropométrica</button>';
       document.getElementById('ath_capsuleGroup').innerHTML = capsuleHtml;
+      if (usoCli === 'c' && !isCoachView()) setTimeout(function() { openClasesTab(true); }, 400);   // solo clases: entra directo a la portada de clases
 
       var m = {};   // valores de la ficha, con el texto protegido (el enlace puede venir de cualquiera)
       Object.keys(state.measures || {}).forEach(function(k) { m[k] = escHtml(state.measures[k]); });
@@ -7884,6 +7898,68 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (CLS_TAB === 'ret' && !CLS_SHOWN.ret.length) CLS_TAB = 'hoy';
       clsPaint();
     }
+    // ----- Pestaña «Clases» dentro de la app del cliente -----
+    var CLS_FROM_ROUTINE = false, CLS_CACHE_KEY = 'benessere_cls_cache';
+    function openClasesTab(auto) {
+      var st = athleteActiveState, cf = (st && st.configFeatures) || {}, id = cf.classId;
+      var onlyCls = cf.uso === 'c';
+      var show = function(cst) { CLS_FROM_ROUTINE = !onlyCls; renderClassApp(cst); window.scrollTo(0, 0); };
+      var cached = function() { try { return JSON.parse(localStorage.getItem(CLS_CACHE_KEY + '_' + id) || 'null'); } catch (e) { return null; } };
+      if (!id) { if (!auto) wkToast('Las clases todavía no están disponibles. Pregúntale a tu coach.'); return; }
+      if (!auto) wkToast('🎓 Cargando clases…');
+      fetchRoutine(id).then(function(j) {
+        if (!j || !j.ok || !j.p) throw new Error('vacio');
+        var cst = decodePayload('q', j.p);
+        if (!cst || cst.coachMsgTitle !== '__CLASES__') throw new Error('formato');
+        try { localStorage.setItem(CLS_CACHE_KEY + '_' + id, JSON.stringify({ coachMsgTitle: cst.coachMsgTitle, coachMsgBody: cst.coachMsgBody })); } catch (e) {}
+        show(cst);
+      }).catch(function() {
+        var c = cached();
+        if (c) { wkToast('Sin conexión: te muestro las últimas clases guardadas.'); show(c); }
+        else if (!auto) wkToast('No se pudieron cargar las clases. Revisa tu conexión e inténtalo otra vez.');
+      });
+    }
+    function clsBackToRoutine() {
+      CLS_FROM_ROUTINE = false; CLS_VIEW = false;
+      var cb = document.getElementById('cls_app'); if (cb) cb.style.display = 'none';
+      var av = document.getElementById('athlete_client_view'); if (av) av.style.display = 'block';
+      window.scrollTo(0, 0);
+    }
+    function coachUsoOpen() {
+      var st = athleteActiveState; if (!st || !isCoachView()) return;
+      var cur = (st.configFeatures && st.configFeatures.uso) || 'r';
+      var m = document.getElementById('uso_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'uso_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100004'; document.body.appendChild(m); }
+      var opt = function(code, label) { return '<button type="button" class="btn-action-primary" style="margin-top:8px; ' + (cur === code ? '' : 'background:#1c1c1c; color:#fff; border:1px solid #444;') + '" onclick="coachSetUso(\'' + code + '\')">' + (cur === code ? '✔ ' : '') + label + '</button>'; };
+      m.innerHTML = '<div class="modal-inner"><div style="font-size:1rem; font-weight:900; color:var(--primary);">⚙️ ¿Qué usa ' + escHtml(st.clientName || 'este cliente') + '?</div>' +
+        '<div style="font-size:0.78rem; color:var(--muted); margin:4px 0 6px; line-height:1.4;">Con clases, el cliente verá una pestaña «🎓 Clases» y podrá elegir entre las clases que tengas habilitadas.</div>' +
+        opt('r', '🏋️ Solo rutina') + opt('rc', '🏋️ + 🎓 Rutina y clases') + opt('c', '🎓 Solo clases') +
+        '<div id="uso_msg" style="font-size:0.78rem; min-height:18px; margin:8px 0 0;"></div>' +
+        '<button type="button" onclick="closeModal(\'uso_modal\')" style="margin-top:6px; width:100%; background:transparent; color:#aaa; border:1px solid #444; border-radius:10px; padding:10px; font-weight:800; cursor:pointer;">Cancelar</button></div>';
+      openModal('uso_modal');
+    }
+    function coachSetUso(code) {
+      var st = athleteActiveState; if (!st || !isCoachView() || !athleteRoutineId || !COACH) return;
+      var msg = document.getElementById('uso_msg');
+      var cid = code === 'r' ? '' : clsLinkId();
+      if (code !== 'r' && !cid) { if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'Primero publica el link de clases en la pestaña «🎓 Clases y Retos» del constructor.'; } return; }
+      var old = JSON.stringify(st.configFeatures || {});
+      st.configFeatures = st.configFeatures || {}; st.configFeatures.uso = code; st.configFeatures.classId = cid;
+      var payloadText; try { payloadText = encodePayload(buildUltraCompactState(st)); } catch (e) { st.configFeatures = JSON.parse(old); if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo preparar el cambio.'; } return; }
+      if (msg) { msg.style.color = '#aaa'; msg.innerText = 'Guardando…'; }
+      postJson({ a: 'actualizar', id: athleteRoutineId, p: payloadText, pin: COACH.pin }).then(function(j) {
+        if (j && j.ok) {
+          coachCacheSet(athleteRoutineId, payloadText); closeModal('uso_modal');
+          var openIds = []; document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
+          renderAthleteApp(st); openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
+          showToastTop('✅ Listo: ' + (st.clientName || 'el cliente') + ' ahora usa ' + (code === 'c' ? 'solo clases' : (code === 'rc' ? 'rutina y clases' : 'solo rutina')) + '.');
+        } else {
+          st.configFeatures = JSON.parse(old);
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(j && j.error); }
+        }
+      }).catch(function(e) { st.configFeatures = JSON.parse(old); if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(e && e.message); } });
+    }
     function clsTab(k) { CLS_TAB = k; clsPaint(); }
     function clsPickSel(k, v) { CLS_SEL[k] = parseInt(v, 10) || 0; clsPaint(); }
     function clsCardHtml(c, kind, idx) {
@@ -7913,7 +7989,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function clsPaint() {
       var box = document.getElementById('cls_app'); if (!box) return;
       var d = CLS_SHOWN, tabs = [['hoy', 'Clase de hoy']]; if (d.ant.length) tabs.push(['ant', 'Clases anteriores']); if (d.ret.length) tabs.push(['ret', '🏆 Retos']);
-      var h = (CLS_PREVIEW ? '<button type="button" class="btn btn-secondary" style="margin-bottom:10px;" onclick="clsClosePreview()">← Volver al constructor</button>' : clsResumeBanner()) +
+      var h = (CLS_PREVIEW ? '<button type="button" class="btn btn-secondary" style="margin-bottom:10px;" onclick="clsClosePreview()">← Volver al constructor</button>' : (CLS_FROM_ROUTINE ? '<button type="button" class="btn btn-secondary" style="margin-bottom:10px;" onclick="clsBackToRoutine()">← Volver a mi rutina</button>' : '') + clsResumeBanner()) +
         '<div style="text-align:center; margin:6px 0 4px;"><div style="font-size:0.75rem; font-weight:800; letter-spacing:2px; color:var(--primary);">BENESSERE GYM</div>' +
         '<div style="font-size:1.45rem; font-weight:900; margin-top:4px;">🎓 ' + (d.hoy && CLS_TAB === 'hoy' ? '¡Bienvenido a la clase de hoy!' : 'Clases Benessere') + '</div></div>' +
         '<div style="display:flex; gap:6px; margin-top:12px;">' + tabs.map(function(t) {
@@ -8071,7 +8147,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-l';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-m';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
