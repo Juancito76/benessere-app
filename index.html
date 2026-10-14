@@ -7148,6 +7148,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div><div style="font-weight:800; color:#fff; font-size:0.95rem;">' + escHtml(g.name) + '</div>' +
           '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.list.length > 1 ? ' · ' + g.list.length + ' rutinas' : '') + '</div></div>' +
           '<div style="display:flex; gap:6px;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
+          '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
         if (g.list.length > 1) {
           html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">';
@@ -7402,6 +7403,34 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         showEditBanner('');
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
         window.scrollTo(0, 0);
+      }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
+    }
+    // Clonar: abre la rutina de un cliente como base para otro. Deja en blanco todo lo personal y crea un enlace NUEVO al enviarla (la original no se toca).
+    function cloneClientRoutine(id) {
+      if (!COACH) return;
+      var keepNutri = confirm('📋 Clonar esta rutina para otro cliente.\n\n¿Copiar también la alimentación (comidas y calorías)?\n\nAceptar = copiarla\nCancelar = clonar solo el entrenamiento');
+      var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Clonando rutina… puede tardar unos segundos';
+      fetchRoutine(id).then(function(j) {
+        var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
+        if (!state) { if (st) st.innerText = 'No se pudo abrir esa rutina.'; return; }
+        var origen = state.clientName || 'otro cliente';
+        applyRestoredState(state);
+        // Todo lo personal queda en blanco
+        ['clientName', 'clientPhone', 'coachMsgTitle', 'coachMsgBody'].forEach(function(k) { var el = document.getElementById(k); if (el) el.value = ''; });
+        var sd = document.getElementById('startDate'); if (sd) sd.value = todayIso();
+        Object.keys(getBuilderState().measures).forEach(function(k) { var el = document.getElementById(k); if (el) el.value = ''; });
+        measureLog = []; renderMeasureLog();
+        var mf = document.getElementById('m_fecha'); if (mf) mf.value = todayIso();
+        if (!keepNutri) {
+          document.getElementById('featureNutrition').checked = false;
+          routineDays.forEach(function(d) { d.diet = { desayuno: '', snack: '', almuerzo: '', cena: '' }; if (d.habits) d.habits.kcal = ''; });
+        }
+        renderDays(); updateModulesVisibility();
+        editingRoutine = null; showEditBanner('');   // es un cliente nuevo: al enviar se crea un enlace nuevo
+        closeModal('modal_clients');
+        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        window.scrollTo(0, 0);
+        showToastTop('📋 Clonada la rutina de ' + origen + '. Ponle el nombre del cliente nuevo y revisa medidas, nota del Coach y cargas.');
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
     function showEditBanner(done) {
@@ -8190,7 +8219,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-15-p';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-15-q';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
