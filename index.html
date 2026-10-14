@@ -7802,7 +7802,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function clsFind(id) { for (var i = 0; i < CLS.lista.length; i++) { if (CLS.lista[i].id === id) return CLS.lista[i]; } return null; }
     function clsSetToday(id) { var c = clsFind(id); if (!c || c.k !== 'c') return; CLS.hoy = id; CLS.hoyD = c.f > todayIso() ? c.f : todayIso(); clsSave(); clsRender(); clsAutoPublish(); }
-    function clsToggleVis(id) { var c = clsFind(id); if (!c) return; c.vis = !c.vis; clsSave(); clsRender(); }
+    function clsToggleVis(id) { var c = clsFind(id); if (!c) return; c.vis = !c.vis; clsSave(); clsRender(); if (clsLinkId() && COACH) clsPublish(true); }
     function clsDelete(id) {
       var c = clsFind(id); if (!c) return;
       if (!confirm('¿Borrar "' + c.t + '"?')) return;
