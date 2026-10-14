@@ -7797,12 +7797,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Al dejar lista la clase de hoy, se publica sola para quienes tienen las clases habilitadas (si ya existe el link y hay sesión de coach)
     function clsAutoPublish() {
       if (!clsLinkId()) { clsSetPubMsg('Todavía no hay link de clases: toca «Publicar y crear el link» para que tus clientes la vean.', '#ffd166'); return; }
-      if (!COACH) { clsSetPubMsg('Clase de hoy lista. Entra a «Mis clientes» con tu PIN y toca «Actualizar el link» para que tus clientes la vean.', '#ffd166'); return; }
-      clsPublish(true);
+      clsEnsureCoach(function(ok) {
+        if (ok) clsPublish(true);
+        else clsSetPubMsg('Lista. Para publicarla sola, entra una vez a «Mis clientes» con tu PIN y marca «Recordar»; mientras tanto toca «Actualizar el link».', '#ffd166');
+      });
+    }
+    // Si hay un PIN recordado en este dispositivo, entra en silencio (sin abrir «Mis clientes»)
+    function clsEnsureCoach(cb) {
+      if (COACH) { cb(true); return; }
+      var saved = ''; try { saved = localStorage.getItem(COACH_PIN_KEY) || ''; } catch (e) {}
+      if (!saved) { cb(false); return; }
+      postJson({ a: 'listar', pin: saved }).then(function(j) {
+        if (j && j.ok) { COACH = { pin: saved, name: j.coach, todos: !!j.todos }; cb(true); } else cb(false);
+      }).catch(function() { cb(false); });
     }
     function clsFind(id) { for (var i = 0; i < CLS.lista.length; i++) { if (CLS.lista[i].id === id) return CLS.lista[i]; } return null; }
     function clsSetToday(id) { var c = clsFind(id); if (!c || c.k !== 'c') return; CLS.hoy = id; CLS.hoyD = c.f > todayIso() ? c.f : todayIso(); clsSave(); clsRender(); clsAutoPublish(); }
-    function clsToggleVis(id) { var c = clsFind(id); if (!c) return; c.vis = !c.vis; clsSave(); clsRender(); if (clsLinkId() && COACH) clsPublish(true); }
+    function clsToggleVis(id) { var c = clsFind(id); if (!c) return; c.vis = !c.vis; clsSave(); clsRender(); if (clsLinkId()) clsAutoPublish(); }
     function clsDelete(id) {
       var c = clsFind(id); if (!c) return;
       if (!confirm('¿Borrar "' + c.t + '"?')) return;
@@ -7879,7 +7890,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function clsSetPubMsg(txt, col) { CLS_PUBMSG = txt ? '<span style="color:' + col + ';">' + txt + '</span>' : ''; var m = document.getElementById('clsPubMsg'); if (m) m.innerHTML = CLS_PUBMSG; }
     function clsPublish(auto) {
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      if (!COACH) { clsEnsureCoach(function(ok) { if (ok) clsPublish(auto); else { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); } }); return; }
       clsLoad();
       if (!clsHoyId() && !CLS.lista.some(function(c) { return c.vis; })) { if (!confirm('No hay clase de hoy ni clases/retos habilitados. ¿Publicar la portada vacía?')) return; }
       var payloadText = clsEncode(), id = clsLinkId(), btn = document.getElementById('clsPubBtn');
