@@ -248,6 +248,8 @@
     .exercise-card.gd-open .gd-head { animation: gdBlinkY 1s ease-in-out infinite; }
     .exercise-card.gd-open.gd-pend .gd-head { animation: gdBlinkO 1s ease-in-out infinite; }
     .exercise-card.gd-open .gd-pill { background: #000; color: #ffee00; }
+    @keyframes gdBlinkR { 0%,100% { border-color: #ff1744; box-shadow: 0 0 8px #ff1744, 0 0 22px rgba(255,23,68,.6); } 50% { border-color: rgba(255,23,68,.25); box-shadow: none; } }
+    .exercise-card.gd-open .btn-yt-demo { border: 2px solid #ff1744; animation: gdBlinkR 1s ease-in-out infinite; }
     .btn-timer.gd-btn-go { border: 2px solid #ffee00; animation: gdBlinkY 1s ease-in-out infinite; }
     .btn-timer.gd-btn-pend { border: 2px solid #ff7a00; animation: gdBlinkO 1s ease-in-out infinite; }
     .gd-pend .gd-head { animation: gdBlinkO 1s ease-in-out infinite; }
@@ -8233,7 +8235,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-19-d';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-19-e';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
