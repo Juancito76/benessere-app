@@ -5484,7 +5484,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!names.length) names = ['Estación 1'];
       var unis = c.unis || [];
       var repsArr = c.reps || [];
-      var phases = [{ t: 'ready', d: 5, st: names[0], r: 1, si: 0 }];
+      var phases = [{ t: 'ready', d: 15, st: names[0], r: 1, si: 0 }];   // 15 s para ver la demostración y prepararse
       if (c.hiit) {   // HIIT: trabajo y descanso alternados; el descanso va después de CADA intervalo (también el último), así el tiempo total cuadra (ej. 10 x 30/30 = 10 min)
         var wNote = [c.rpeT ? 'Esfuerzo ' + c.rpeT + '/10' : '', c.ajuste || ''].filter(Boolean).join(' · '), rNote = c.rpeD ? 'Esfuerzo ' + c.rpeD + '/10' : '';
         var wH = work || (c.works && c.works[0]) || 0;
@@ -5576,13 +5576,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!src) return;
       var c = {}; Object.keys(src).forEach(function(k) { c[k] = src[k]; });
       if (srId && SR[srId] && !SR[srId].noPick) c.descanso = SR[srId].rest + ' s';   // descanso elegido por el cliente
-      if (extra) c.rondas = '1';   // "1 serie más"
+      if (!extra && !guide && srId && SR[srId]) {   // bloque abandonado a medias: retoma desde la serie que sigue
+        var kk = gdKeyOf(srId), nn = kk ? (gdStore(kk.dayId).n[kk.key] || 0) : 0;
+        if (nn > 0 && nn < SR[srId].base) { extra = nn; try { wkToast('▶ Retomas desde la ' + (c.restMode === 'round' ? 'serie ' : 'ronda ') + (nn + 1)); } catch (e) {} }
+      }
+      if (extra) c.rondas = (typeof extra === 'number') ? String(Math.max(1, (parseInt(src.rondas, 10) || 1) - extra)) : '1';   // número = retomar; true = "1 serie más"
       var built = buildCircuitPhases(c);
       if (built.err) { alert(built.err); return; }
       tmrAudio();
       rtClose();
       CT.keys = c.keys || []; CT.acc = {};   // para anotar los segundos logrados en cada serie
-      CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? SR[srId].cur : 0;
+      CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? (typeof extra === 'number' ? extra : SR[srId].cur) : 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = c.nombre || 'Circuito';
       ctGuideClear(); CT.guide = guide || null; CT.cls = false;
       CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = !!built.hiit;
@@ -6153,7 +6157,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!CT.active || CT.done) return;
       var wasOpen = !!(CT.phases[CT.i] && CT.phases[CT.i].open);
       if (wasOpen) ctPhaseDone(CT.i);   // "Terminé": la serie por reps queda hecha
-      if (wasOpen && !CT.cls && !CT.guide && CT.srId && CT.i >= CT.phases.length - 1) { CT.i = CT.phases.length; ctFinish(); ctClose(); try { wkToast('✔ Bloque completado'); } catch (e) {} return; }   // última serie: cierra el contador y vuelve a los bloques
       CT.i++;
       if (CT.i >= CT.phases.length) { ctFinish(); return; }
       ctEnter(CT.phases[CT.i], Date.now()); CT.paused = false; CT.lastBeep = '';
@@ -6174,7 +6177,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         el('tm_station').innerText = CT.title + ' completado 💪'; el('tm_time').innerText = '✔'; el('tm_time').style.color = '#06d6a0';
         el('tm_bar').style.width = '100%'; el('tm_bar').style.background = '#06d6a0'; el('tm_next').innerText = '';
         el('tm_pause').style.display = 'none'; el('tm_skip').style.display = 'none'; el('tm_plus').style.display = 'none'; el('tm_stop').style.display = 'none'; el('tm_done').style.display = 'none'; if (el('tm_reps')) el('tm_reps').innerText = ''; if (el('tm_prog')) el('tm_prog').innerText = '';
-        ctSummaryShow(); el('tm_exit').innerText = CT.srId ? '✔ Completada · volver' : 'Cerrar';
+        ctSummaryShow(); el('tm_exit').innerText = CT.srId ? '✔ Salir' : 'Cerrar';
         if (CT.srId && SR[CT.srId]) {
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
           el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = CT.hiit ? 'none' : 'block';
@@ -6517,12 +6520,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Estado de cada bloque del día (completado / pendiente), guardado en el celular solo para hoy
     function gdStore(dayId) {
       var o = null; try { o = JSON.parse(localStorage.getItem(tk('gdst_' + dayId)) || 'null'); } catch (e) {}
-      if (!o || o.d !== todayIso()) o = { d: todayIso(), p: {}, c: {} };
+      if (!o || o.d !== todayIso()) o = { d: todayIso(), p: {}, c: {}, n: {} };
+      if (!o.n) o.n = {};
       return o;
     }
-    function gdMark(dayId, key, kind) {
+    function gdKeyOf(srId) {
+      var box = document.getElementById('sr_' + srId), el = box && box.closest('.exercise-variant'), day = box && box.closest('.view-screen');
+      return (el && day) ? { dayId: day.id, key: (el.getAttribute('data-slot') || '') + '_' + (el.getAttribute('data-vig-desde') || '') } : null;
+    }
+    function gdMark(dayId, key, kind, n) {
       var o = gdStore(dayId);
-      if (kind === 'c') { o.c[key] = 1; delete o.p[key]; } else if (!o.c[key]) o.p[key] = 1;
+      if (kind === 'c') { o.c[key] = 1; delete o.p[key]; delete o.n[key]; } else if (!o.c[key]) { o.p[key] = 1; if (n > 0) o.n[key] = Math.max(o.n[key] || 0, n); }
       try { localStorage.setItem(tk('gdst_' + dayId), JSON.stringify(o)); } catch (e) {}
     }
     function gdStatus(dayId, blocks) {
@@ -6552,10 +6560,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         el.classList.add('gd-' + s); if (i === goIdx && s !== 'pend') el.classList.add('gd-go');
         el.classList.toggle('gd-collapsed', collapsed);
         var names = [].map.call(el.querySelectorAll('.ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
-        var pill = s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? '⏳ PENDIENTE' : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
+        var nDone = gdStore(dayId).n[b.key] || 0, rr = SR[b.srId], pill = s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE') : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
         var head = document.createElement('div'); head.className = 'gd-head';
         head.innerHTML = (pill ? '<span class="gd-pill">' + pill + '</span>' : '') + '<span class="gd-names">' + escHtml(names) + '</span>' + (isHere ? '' : '<span class="gd-chev">' + (collapsed ? '▼' : '▲') + '</span>');
-        if (!isHere) head.onclick = function() { GD_OPEN[b.srId] = !GD_OPEN[b.srId]; guidePaint(dayId); };
+        var tb = el.querySelector('.sr-btn'); if (tb && s === 'pend' && nDone > 0 && /temporizador/i.test(tb.innerText)) tb.innerText = '⏱ Retomar desde la ' + (rr && rr.label ? rr.label.toLowerCase() : 'serie') + ' ' + (nDone + 1);
+        if (!isHere) head.onclick = function() { if (!collapsed && s !== 'done') gdMark(dayId, b.key, 'p'); GD_OPEN[b.srId] = !GD_OPEN[b.srId]; guidePaint(dayId); };   // abrir y cerrar sin hacerla la deja pendiente
         el.insertBefore(head, el.firstChild);
       });
     }
@@ -6821,11 +6830,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (navigator.mediaSession && navigator.mediaSession.setActionHandler) navigator.mediaSession.setActionHandler('enterpictureinpicture', null); } catch (e) {}
     }
     function ctClose() {
-      try {   // al salir del temporizador de un bloque: completada si hizo todas las series, si no queda pendiente
+      try {   // al salir del temporizador de un bloque: completada si hizo todas las series; si no, pendiente (con las series que llevaba)
         if (CT.active && !CT.cls && CT.srId && SR[CT.srId]) {
-          var gdDay = document.getElementById('sr_' + CT.srId); gdDay = gdDay && gdDay.closest('.view-screen');
-          var gdBlk = gdDay ? guideBlocks(gdDay.id).filter(function(b) { return b.srId === CT.srId; })[0] : null;
-          if (gdBlk) { var gdFull = SR[CT.srId].cur >= SR[CT.srId].base; gdMark(gdDay.id, gdBlk.key, gdFull ? 'c' : 'p'); if (gdFull) GD_OPEN[CT.srId] = false; else GD_OPEN[CT.srId] = false; }
+          var gk = gdKeyOf(CT.srId);
+          if (gk) {
+            var full = SR[CT.srId].cur >= SR[CT.srId].base, ph0 = CT.phases[CT.i], dn = 0;
+            if (!full && ph0 && !CT.done) dn = (CT.doneBefore || 0) + Math.max(0, (ph0.t === 'rest' && !CT.hiit) ? ph0.r : (ph0.t === 'ready' ? 0 : ph0.r - 1));
+            gdMark(gk.dayId, gk.key, full ? 'c' : 'p', dn); GD_OPEN[CT.srId] = false;
+          }
         }
       } catch (e) {}
       ctSaveResume(true);   // si sale a mitad del entreno, queda guardado para continuar
@@ -8206,7 +8218,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-19-a';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-19-b';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
