@@ -245,11 +245,14 @@
     .exercise-card:not(.gd-collapsed) .gd-head { background: var(--primary); border-color: var(--primary); }
     .exercise-card:not(.gd-collapsed) .gd-names, .exercise-card:not(.gd-collapsed) .gd-chev { color: #000; }
     .gd-go .gd-head { animation: gdBlinkY 1s ease-in-out infinite; }
-    .exercise-card.gd-open .gd-head { animation: gdBlinkY 1s ease-in-out infinite; }
-    .exercise-card.gd-open.gd-pend .gd-head { animation: gdBlinkO 1s ease-in-out infinite; }
+    .exercise-card.gd-quiet .gd-head { animation: none !important; }
     .exercise-card.gd-open .gd-pill { background: #000; color: #ffee00; }
     @keyframes gdBlinkR { 0%,100% { border-color: #ff1744; box-shadow: 0 0 8px #ff1744, 0 0 22px rgba(255,23,68,.6); } 50% { border-color: rgba(255,23,68,.25); box-shadow: none; } }
-    .exercise-card.gd-open .btn-yt-demo { border: 2px solid #ff1744; animation: gdBlinkR 1s ease-in-out infinite; }
+    .exercise-card.gd-demo-wait .btn-yt-demo { border: 2px solid #ff1744; animation: gdBlinkR 1s ease-in-out infinite; }
+    .gd-legend { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin: 4px 0 10px; text-align: center; }
+    .gd-guide { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 12px; margin: 8px 0 10px; text-align: left; font-size: 0.82rem; color: #eee; line-height: 1.5; }
+    .gd-guide b { color: #ffee00; }
+    .gd-guide button { width: 100%; margin-top: 8px; padding: 10px; border: none; border-radius: 10px; background: #ffee00; color: #2a2500; font-weight: 900; cursor: pointer; }
     .btn-timer.gd-btn-go { border: 2px solid #ffee00; animation: gdBlinkY 1s ease-in-out infinite; }
     .btn-timer.gd-btn-pend { border: 2px solid #ff7a00; animation: gdBlinkO 1s ease-in-out infinite; }
     .gd-pend .gd-head { animation: gdBlinkO 1s ease-in-out infinite; }
@@ -3604,6 +3607,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         toggleHeaderHtml +
         '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
           wkBarHtml(d.id) +
+          ((!isRest && (d.items || []).length) ? gdGuideHtml() + '<div class="gd-legend">🟡 Amarillo: empieza aquí · 🟠 Naranja: te falta terminar · ✔ Opaca: completada</div>' : '') +
           '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
           '<button type="button" class="btn-restore-all-day" style="margin-top:6px;" onclick="openSessionPicker(\'' + d.id + '\')">📅 Montar marcas de otra fecha</button>' +
           exercisesHtml +
@@ -6524,6 +6528,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- Marcos de neón y "Vas aquí": cada bloque muestra si está hecho, en curso o pendiente; los hechos se cierran -----
     var GD_OPEN = {};   // bloques que el cliente abrió o cerró a mano (srId -> true)
+    var GD_DEMO = {};   // bloques cuya demostración ya tocó el cliente (srId -> true)
+    var GD_GUIDE_KEY = 'benessere_gd_guide_v1';
+    function gdGuideHtml() {
+      try { if (localStorage.getItem(GD_GUIDE_KEY)) return ''; } catch (e) {}
+      return '<div class="gd-guide"><b>👋 Así funciona tu entreno</b><br>1. Toca la pestaña que parpadea.<br>2. Mira la demostración (botón rojo).<br>3. Toca «Iniciar temporizador» y a entrenar.<br>Si el equipo está ocupado, sal y sigue con otra: quedará pendiente.<button type="button" onclick="gdGuideOk()">Entendido</button></div>';
+    }
+    function gdGuideOk() { try { localStorage.setItem(GD_GUIDE_KEY, '1'); } catch (e) {} document.querySelectorAll('.gd-guide').forEach(function(n) { n.remove(); }); }
+    document.addEventListener('click', function(e) {   // al tocar la demostración, el parpadeo pasa al botón del temporizador
+      var a = e.target && e.target.closest ? e.target.closest('.btn-yt-demo') : null; if (!a) return;
+      var card = a.closest('.exercise-variant'), run = card && card.querySelector('.set-runner');
+      if (run) { GD_DEMO[parseInt(String(run.id).replace('sr_', ''), 10)] = true; setTimeout(function() { try { guidePaintAll(); } catch (e2) {} }, 400); }
+    }, true);
     // Estado de cada bloque del día (completado / pendiente), guardado en el celular solo para hoy
     function gdStore(dayId) {
       var o = null; try { o = JSON.parse(localStorage.getItem(tk('gdst_' + dayId)) || 'null'); } catch (e) {}
@@ -6556,17 +6572,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var sec = document.getElementById('sec_rutina_' + dayId); if (!sec) return;
       try { dcPaint(dayId); } catch (e) {}
       sec.querySelectorAll('.gd-head').forEach(function(n) { n.remove(); });
-      sec.querySelectorAll('.exercise-variant').forEach(function(el) { el.classList.remove('gd-done', 'gd-here', 'gd-next', 'gd-pend', 'gd-go', 'gd-open', 'gd-collapsed'); });
+      sec.querySelectorAll('.exercise-variant').forEach(function(el) { el.classList.remove('gd-done', 'gd-here', 'gd-next', 'gd-pend', 'gd-go', 'gd-open', 'gd-quiet', 'gd-demo-wait', 'gd-collapsed'); });
       var blocks = guideBlocks(dayId); if (!blocks.length) return;
       var st = gdStatus(dayId, blocks);
       var anyProgress = st.some(function(x) { return x !== 'next'; });
       var goIdx = st.indexOf('next'); if (goIdx < 0) goIdx = st.indexOf('pend');
+      var anyOpen = blocks.some(function(b2, i2) { return st[i2] !== 'done' && (st[i2] === 'here' || !!GD_OPEN[b2.srId]); });
       blocks.forEach(function(b, i) {
         var el = b.el; if (!el) return;
         var s = st[i], isHere = s === 'here', open = !!GD_OPEN[b.srId], collapsed = !isHere && !open;
         el.classList.add('gd-' + s); if (i === goIdx && s !== 'pend') el.classList.add('gd-go');
         el.classList.toggle('gd-collapsed', collapsed);
-        var inProc = !collapsed && s !== 'done'; if (inProc) el.classList.add('gd-open');   // pestaña abierta y sin completar: "en proceso", parpadeando
+        var inProc = !collapsed && s !== 'done'; if (inProc) el.classList.add('gd-open'); else if (anyOpen) el.classList.add('gd-quiet');
+        var demoWait = inProc && !!el.querySelector('.btn-yt-demo') && !GD_DEMO[b.srId]; if (demoWait) el.classList.add('gd-demo-wait');   // pestaña abierta y sin completar: "en proceso", parpadeando
         var names = [].map.call(el.querySelectorAll('.ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
         var nDone = gdStore(dayId).n[b.key] || 0, rr = SR[b.srId], pill = inProc ? '🔥 EN PROCESO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE') : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
         var head = document.createElement('div'); head.className = 'gd-head';
@@ -6578,8 +6596,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var base0 = tb.getAttribute('data-orig');
           if (s === 'pend' && nDone > 0) base0 = '⏱ Retomar desde la ' + (rr && rr.label ? rr.label.toLowerCase() : 'serie') + ' ' + (nDone + 1);
           tb.innerText = (!collapsed && i === goIdx && s === 'next') ? '👉 INICIA AQUÍ · ' + base0 : ((!collapsed && s === 'pend') ? '👉 ' + base0 : base0);
-          if (!collapsed && s === 'next' && i === goIdx) tb.classList.add('gd-btn-go');
-          else if (!collapsed && s === 'pend') tb.classList.add('gd-btn-pend');
+          if (!demoWait && !collapsed && s === 'next' && i === goIdx) tb.classList.add('gd-btn-go');
+          else if (!demoWait && !collapsed && s === 'pend') tb.classList.add('gd-btn-pend');
         }
         if (!isHere) head.onclick = function() { if (!collapsed && s !== 'done') gdMark(dayId, b.key, 'p'); GD_OPEN[b.srId] = !GD_OPEN[b.srId]; guidePaint(dayId); };   // abrir y cerrar sin hacerla la deja pendiente
         el.insertBefore(head, el.firstChild);
@@ -6854,6 +6872,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             var full = SR[CT.srId].cur >= SR[CT.srId].base, ph0 = CT.phases[CT.i], dn = 0;
             if (!full && ph0 && !CT.done) dn = (CT.doneBefore || 0) + Math.max(0, (ph0.t === 'rest' && !CT.hiit) ? ph0.r : (ph0.t === 'ready' ? 0 : ph0.r - 1));
             gdMark(gk.dayId, gk.key, full ? 'c' : 'p', dn); GD_OPEN[CT.srId] = false;
+            if (full) setTimeout(function() { try { var sec = document.getElementById('sec_rutina_' + gk.dayId), nx = sec && sec.querySelector('.gd-go .gd-head, .gd-pend .gd-head'); if (nx) nx.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e3) {} }, 450);
           }
         }
       } catch (e) {}
@@ -8235,7 +8254,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-19-e';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-19-f';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
