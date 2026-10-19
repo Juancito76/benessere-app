@@ -848,6 +848,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
   </div>
 
   <!-- Botón para volver a la lista mientras se entrena a un cliente (solo modo coach) -->
+  <button type="button" id="coach_reset_pill" onclick="coachResetRoutine()" style="display:none; position:fixed; top:50px; right:12px; z-index:90; background:#1b1b1b; color:#ffd60a; border:1.5px solid #ffd60a; border-radius:999px; padding:7px 12px; font-weight:800; font-size:0.75rem; box-shadow:0 2px 10px rgba(0,0,0,0.6); cursor:pointer;">↺ Reiniciar rutina</button>
   <button type="button" id="coach_mode_pill" onclick="exitClientRoutine()" style="display:none; position:fixed; top:12px; right:12px; z-index:90; background:var(--primary); color:#fff; border:none; border-radius:999px; padding:7px 12px; font-weight:800; font-size:0.75rem; box-shadow:0 2px 10px rgba(0,0,0,0.6); cursor:pointer;">👥 Clientes</button>
 
   <!-- ================= VENTANA: ENLACE LISTO PARA ENVIAR ================= -->
@@ -7213,16 +7214,45 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } catch (e) {}
     }
     // Muestra la rutina de un cliente en modo entrenamiento. Devuelve 'ok', 'bad' (datos dañados) o 'err'.
-    function coachShowRoutine(id, p) {
+    // Foto del estado de esta rutina en este celular (marcas, entrenos, bloques, cronómetro) para poder volver a ella con «Reiniciar rutina»
+    var COACH_SNAP = null;
+    function coachSnapKeys(state) {
+      var keys = [], sk = 'benessere_sess_' + String(state ? state.clientName : '').trim().toLowerCase().replace(/\s+/g, ' ');
+      for (var i = 0, n = localStorage.length; i < n; i++) {
+        var k = localStorage.key(i);
+        if (k && ((TRK_NS && k.indexOf(TRK_NS) === 0) || k === sk || k === RESUME_KEY)) keys.push(k);
+      }
+      return keys;
+    }
+    function coachSnapTake(id, state) {
+      try { var d = {}; coachSnapKeys(state).forEach(function(k) { d[k] = localStorage.getItem(k); }); COACH_SNAP = { id: id, ns: TRK_NS, state: state, data: d }; } catch (e) { COACH_SNAP = null; }
+    }
+    function coachResetRoutine() {
+      if (!isCoachView() || !COACH_SNAP || COACH_SNAP.id !== athleteRoutineId) { showToastTop('No hay nada que reiniciar.'); return; }
+      if (!confirm('↺ Reiniciar rutina\n\nLa rutina vuelve a como estaba cuando la abriste: se borran las marcas, los bloques completados y el cronómetro de esta sesión.\n\n(Lo que ya se haya enviado a la hoja del cliente no se borra desde aquí; para ensayar sin enviar nada usa 🧪 Prueba.)\n\n¿Reiniciar?')) return;
+      try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
+      try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
+      try {
+        coachSnapKeys(COACH_SNAP.state).forEach(function(k) { if (!(k in COACH_SNAP.data)) localStorage.removeItem(k); });
+        Object.keys(COACH_SNAP.data).forEach(function(k) { if (COACH_SNAP.data[k] != null) localStorage.setItem(k, COACH_SNAP.data[k]); });
+      } catch (e) {}
+      GD_OPEN = {}; GD_DEMO = {};
+      var id = athleteRoutineId, p = coachCacheGet(id), snap = COACH_SNAP;
+      if (p && coachShowRoutine(id, p, true) === 'ok') { COACH_SNAP = snap; showToastTop('↺ Rutina reiniciada.'); }
+      else showToastTop('No se pudo reiniciar; sal a «Clientes» y ábrela de nuevo.');
+    }
+    function coachShowRoutine(id, p, keepSnap) {
       var state = decodePayload('q', p);
       if (!state) return 'bad';
       TRK_NS = 'c:' + normName(state.clientName) + '|';
       athleteRoutineId = id;
+      if (!keepSnap) coachSnapTake(id, state);   // foto del estado tal como estaba al abrirla
       try {
         renderAthleteApp(state);   // no se guarda como "rutina de este celular"
       } catch (e) { console.error(e); TRK_NS = ''; athleteRoutineId = ''; return 'err'; }
       closeModal('modal_clients');
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'block';
+      var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'block';
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = 'none';
       window.scrollTo(0, 0);
       return 'ok';
@@ -7264,6 +7294,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function') ctClose(); } catch (e) {}
       TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null;
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'none';
+      var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'none'; COACH_SNAP = null;
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
       showBuilder();
       openCoachClients();
@@ -8254,7 +8285,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-19-f';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-19-g';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
