@@ -1181,7 +1181,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="med-panel"><div style="font-weight:800; font-size:0.9rem; margin-bottom:6px;">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</div>' +
         medChartSvg(series) +
         '<div class="med-sum">' + summary + '</div>' +
-        (hasOwn ? '<div class="med-sum">● medición del coach &nbsp;&nbsp; ○ tu medición</div>' : '') + '</div>';
+        (hasOwn ? '<div class="med-sum">● medición del coach &nbsp;&nbsp; ○ ' + (isCoachView() ? 'medición del cliente' : 'tu medición') + '</div>' : '') + '</div>';
     }
 
     // Tabla de mediciones (más reciente primero)
@@ -1305,7 +1305,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (added) coach[coach.length - 1] = { d: lastE.d, v: merged };
       }
       var list = coach.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
-      loadOwnMeasures(st.clientName).forEach(function(e) { list.push({ d: e.d, v: e.v, src: 'a' }); });
+      (isCoachView() ? remoteOwnMeasures() : loadOwnMeasures(st.clientName)).forEach(function(e) { list.push({ d: e.d, v: e.v, src: 'a' }); });
       list.sort(byDate);
       return list;
     }
@@ -1389,7 +1389,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try {   // en modo coach, la medición se guarda en la rutina del cliente (se conserva y se suma a la del inicio)
         var cvOn = coachMeasureOn(), t1 = document.getElementById('med_add_sum'), t2 = document.getElementById('med_add_note'), b1 = document.getElementById('med_btn_save'), b2 = document.getElementById('med_btn_wa');
         if (t1) t1.innerText = cvOn ? '➕ Agregar medición de seguimiento' : '➕ Agregar una medición';
-        if (t2) t2.innerText = cvOn ? 'Llena solo lo que mediste. Se guarda en la rutina de ' + (st.clientName || 'el cliente') + ' como medición del coach, junto a las anteriores (las del inicio no se borran), y ' + (st.clientName || 'el cliente') + ' la verá al abrir su rutina.' : 'Llena solo lo que te midas. Se guarda en este teléfono y se suma a tu gráfico.';
+        if (t2) t2.innerText = cvOn ? 'Llena solo lo que mediste. Se guarda en la rutina de ' + (st.clientName || 'el cliente') + ' como medición del coach, junto a las anteriores (las del inicio no se borran), y ' + (st.clientName || 'el cliente') + ' la verá al abrir su rutina.' : ('Llena solo lo que te midas. Se guarda en este teléfono y se suma a tu gráfico' + (athleteRoutineId ? '; tu coach también la verá.' : '.'));
         if (b1) { b1.innerText = cvOn ? 'Guardar en la rutina' : 'Guardar'; b1.setAttribute('onclick', cvOn ? 'coachSaveMeasure()' : 'saveOwnMeasure(false)'); }
         if (b2) b2.style.display = cvOn ? 'none' : '';
       } catch (e) {}
@@ -1414,7 +1414,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       body.innerHTML = '<div class="med-h">Última medición · ' + fmtDate(lastDate) + '</div><div class="metrics-grid">' + cards + '</div>' +
         last3Html(entries, keys) + '<div class="med-h">Evolución</div><div id="med_chart_box">' + medChartBlock(entries, athMedKey, 'selectMedMetric') + '</div>' +
         '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, coachMeasureOn() ? 'cv' : 'athlete') +
-        '<div class="med-sum">● = medición del coach &nbsp; 👤 = medición que anotaste tú</div>';
+        '<div class="med-sum">● = medición del coach &nbsp; 👤 = medición que anotó ' + (isCoachView() ? 'el cliente' : 'tú') + '</div>';
     }
     function saveOwnMeasure(sendToCoach) {
       var st = athleteActiveState;
@@ -1436,6 +1436,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('med_add').open = false;
       athMedKey = keys[0];
       renderAthleteMeasures();
+      measurePush();   // el coach la ve en su ficha sin que el cliente tenga que enviar nada
       if (sendToCoach) sendMeasureToCoach(st, d, v);
     }
     // ----- Modo coach: medición de seguimiento guardada en la rutina del cliente (hoja de Google) -----
@@ -1504,6 +1505,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!st || !confirm('¿Borrar tu medición del ' + fmtDate(d) + '?')) return;
       saveOwnMeasures(st.clientName, loadOwnMeasures(st.clientName).filter(function(e) { return e.d !== d; }));
       renderAthleteMeasures();
+      measurePush();
     }
 
     // ===== CATÁLOGO DE EJERCICIOS (Inventario Benessere) — para el selector Clasificación → Ejercicio =====
@@ -5500,6 +5502,29 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return best ? best.g : o;
     }
     // Las metas del día se envían a la hoja (una sola vez, 45 s después del último cambio o al salir de la app) para que el coach las vea
+    // Mediciones que el propio cliente anota: se suben a la hoja dentro de un registro 'meta' (campo md) para que el coach las vea en su ficha
+    function ownMeasuresPayload() {
+      var st = athleteActiveState; if (!st) return [];
+      return loadOwnMeasures(st.clientName).map(function(e) { return { d: e.d, v: e.v }; });
+    }
+    function measurePush() {
+      try {
+        if (!athleteRoutineId || !athleteActiveState || COACH) return;
+        var today = todayIso(), rec = dailyLocal(today);
+        var s = { d: today, t: new Date().toISOString(), k: 'meta', ex: [], md: ownMeasuresPayload() };
+        if (rec.pasos || rec.agua || rec.sueno) s.g = rec;   // sin metas del día no se pone "g" para no tapar las metas anteriores
+        var a = loadSessions().filter(function(x) { return !(isMetaSess(x) && x.d === today); });
+        a.push(s);
+        try { localStorage.setItem(sessKey(), JSON.stringify(a.slice(-300))); } catch (e) {}
+        pushSession(s);
+      } catch (e) {}
+    }
+    // Vista del coach: las mediciones del cliente = el último registro que las trae
+    function remoteOwnMeasures() {
+      var best = null;
+      loadSessions().forEach(function(x) { if (isMetaSess(x) && Array.isArray(x.md) && (!best || x.t > best.t)) best = x; });
+      return best ? normalizeMeasureLog(best.md) : [];
+    }
     var META_TIMER = null;
     function metaQueue() { clearTimeout(META_TIMER); META_TIMER = setTimeout(metaPush, 45000); }
     function metaPush() {
@@ -5511,7 +5536,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var sig = JSON.stringify(rec); if (localStorage.getItem(tk('metasig_' + today)) === sig) return;
         localStorage.setItem(tk('metasig_' + today), sig);
         var s = { d: today, t: new Date().toISOString(), k: 'meta', ex: [], g: rec };
-        if (COACH) s.o = COACH.name;
+        if (COACH) s.o = COACH.name; else s.md = ownMeasuresPayload();   // las mediciones propias del cliente viajan en el mismo registro (el coach las ve)
         var a = loadSessions().filter(function(x) { return !(isMetaSess(x) && x.d === today); });   // en el celular solo queda el último del día
         a.push(s);
         try { localStorage.setItem(sessKey(), JSON.stringify(a.slice(-300))); } catch (e) {}
@@ -7593,6 +7618,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var hm = document.getElementById('ath_modal_historial');
         if (added && hm && hm.classList.contains('active')) renderHistorial();
         if (added) wkWelcomeRefresh();
+        try { var mm = document.getElementById('ath_modal_medidas'); if (added && mm && mm.classList.contains('active')) renderAthleteMeasures(); } catch (e) {}
         coachSummaryRefresh();
         if (up) flushPending();
       }).catch(function() { /* sin internet: se queda lo que hay en el celular */ });
@@ -8909,7 +8935,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-o';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-p';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
