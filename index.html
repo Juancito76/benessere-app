@@ -5075,6 +5075,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:0.74rem; color:var(--muted); margin-bottom:10px;">' + nEx + ' ejercicio' + (nEx === 1 ? '' : 's') + ' en total. Solo repaso: el cronómetro no se inicia.</div>' +
         (rows || '<div style="font-size:0.85rem; color:#ccc;">No hay ejercicios para mostrar.</div>') +
         (hasN ? '<button type="button" class="nutri-hoy-link" style="margin-top:6px;" onclick="closeModal(\'day_review_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición de hoy</button>' : '') +
+        ((WK.start && WK.dayId === dayId) ? '' : '<button type="button" class="wk-btn" style="width:100%; margin:10px 0 6px; padding:14px; font-size:1rem;" onclick="closeModal(\'day_review_modal\'); wkStart(\'' + dayId + '\')">▶ Iniciar entreno</button>') +
         '<button type="button" class="btn-action-primary" onclick="closeModal(\'day_review_modal\')">Cerrar</button></div>';
       openModal('day_review_modal');
     }
@@ -8714,7 +8715,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-k';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-l';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
