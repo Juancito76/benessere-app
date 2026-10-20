@@ -925,6 +925,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
   <div id="modal_drafts" class="modal-overlay">
     <div class="modal-inner">
       <div style="font-weight:800; color:var(--primary); font-size:1.05rem; margin-bottom:10px;">📂 Borradores guardados en este dispositivo</div>
+      <input type="search" id="draftSearch" oninput="drawDraftList()" placeholder="Buscar borrador por nombre…" autocomplete="off" style="width:100%; padding:11px; border-radius:8px; border:1px solid var(--border); background:#111; color:#fff; font-size:0.95rem; margin-bottom:6px;">
+      <div id="draftCount" style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;"></div>
       <div id="draftListBody" style="max-height:340px; overflow-y:auto; margin-bottom:10px;"></div>
       <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_drafts')">Cerrar</button>
     </div>
@@ -2465,10 +2467,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     function openDraftList() {
-      var idx = getDraftsIndex();
+      var q0 = document.getElementById('draftSearch'); if (q0) q0.value = '';
+      drawDraftList();
+      openModal('modal_drafts');
+    }
+    function drawDraftList() {
+      var all = getDraftsIndex();
       var body = document.getElementById('draftListBody');
+      var qEl = document.getElementById('draftSearch'), q = normName(qEl ? qEl.value : '');
+      var idx = q ? all.filter(function(d) { return normName(d.label).indexOf(q) !== -1; }) : all;
+      var cnt = document.getElementById('draftCount');
+      if (cnt) cnt.innerText = all.length ? (q ? idx.length + ' de ' + all.length + ' borradores' : all.length + ' borrador' + (all.length === 1 ? '' : 'es')) : '';
       var auto = null;
-      try { auto = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch (e) {}
+      if (!q) { try { auto = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch (e) {} }   // el auto-guardado solo se muestra sin búsqueda
 
       var html = '';
       if (auto && auto.state) {
@@ -2478,7 +2489,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" class="btn btn-accent" style="width:100%; padding:8px;" onclick="loadAutosave()">Abrir este</button>' +
           '</div>';
       }
-      if (idx.length === 0 && !auto) {
+      if (q && idx.length === 0) {
+        html += '<p style="font-size:0.85rem; color:var(--muted);">Ningún borrador coincide con la búsqueda.</p>';
+      } else if (idx.length === 0 && !auto) {
         html += '<p style="font-size:0.85rem; color:var(--muted);">Todavía no hay borradores guardados en este dispositivo.</p>';
       } else if (idx.length === 0) {
         html += '<p style="font-size:0.85rem; color:var(--muted);">No hay borradores guardados con nombre todavía.</p>';
@@ -2495,7 +2508,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
       }
       body.innerHTML = html;
-      openModal('modal_drafts');
     }
 
     function loadDraft(id) {
@@ -2528,7 +2540,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       localStorage.removeItem(DRAFTS_PREFIX + id);
       var idx = getDraftsIndex().filter(function(d) { return d.id !== id; });
       setDraftsIndex(idx);
-      openDraftList();   // refresca la lista abierta
+      drawDraftList();   // refresca la lista abierta (conserva lo que se buscó)
     }
 
     // Descargar/cargar como archivo .json (para respaldo fuera del navegador o pasar a otra compu)
@@ -8984,7 +8996,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-t';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-u';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
