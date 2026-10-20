@@ -7843,7 +7843,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         coachCacheSet(id, j.p);
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
-    function exitClientRoutine() {
+    function exitClientRoutine(noList) {
       document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { el.classList.remove('active'); });
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function') ctClose(); } catch (e) {}
       TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null;
@@ -7851,8 +7851,36 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'none'; COACH_SNAP = null;
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
       showBuilder();
-      openCoachClients();
+      if (!noList) openCoachClients();
     }
+
+    // ----- Botón 🏠 Inicio del constructor: en cualquier pantalla interna del modo coach vuelve a la página principal (pestaña «Planificador de Rutina») -----
+    function coachGoHome() {
+      try { if (isCoachView()) exitClientRoutine(true); } catch (e) {}
+      document.querySelectorAll('.view-screen.active, .modal-overlay.active').forEach(function(el) { el.classList.remove('active'); });
+      try { switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]); } catch (e) {}
+      window.scrollTo(0, 0);
+      coachHomePaint();
+    }
+    function coachHomePaint() {
+      try {
+        var b = document.getElementById('coach_home_btn');
+        if (!b) {
+          b = document.createElement('button'); b.type = 'button'; b.id = 'coach_home_btn'; b.innerText = '🏠 Inicio';
+          b.style.cssText = 'display:none; position:fixed; right:12px; top:10px; z-index:100030; background:#1b1b1b; color:var(--primary); border:2px solid var(--primary); border-radius:999px; padding:7px 12px; font-weight:900; font-size:0.78rem; box-shadow:0 2px 12px rgba(0,0,0,0.7); cursor:pointer;';
+          b.onclick = coachGoHome; document.body.appendChild(b);
+        }
+        var bv = document.getElementById('coach_builder_view'), inBuilder = !!bv && bv.style.display !== 'none' && getComputedStyle(bv).display !== 'none';
+        var overlay = !!document.querySelector('.view-screen.active, .modal-overlay.active');
+        var tabOther = inBuilder && !!document.querySelector('.gen-view.active') && document.querySelector('.gen-view.active').id !== 'tab_builder';
+        var show = (inBuilder && (overlay || tabOther)) || isCoachView();
+        b.style.display = show ? 'block' : 'none';
+        // En pantallas internas va arriba a la derecha (junto a «← Volver»); en una pestaña del constructor, sobre la barra de acciones de abajo
+        if (overlay || isCoachView()) { b.style.top = '10px'; b.style.bottom = 'auto'; b.style.right = isCoachView() ? '112px' : '12px'; }
+        else { b.style.top = 'auto'; b.style.bottom = '108px'; b.style.right = '12px'; }
+      } catch (e) {}
+    }
+    setInterval(coachHomePaint, 500);
 
 
     // ----- Editar un ejercicio desde el modo entrenamiento (etapa 2) -----
@@ -8956,7 +8984,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-r';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-t';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
