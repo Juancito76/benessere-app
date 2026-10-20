@@ -471,6 +471,7 @@
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_class', this); clsRender();">🎓 Clases y Retos</button>
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
       <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
+      <button type="button" class="gen-tab-btn" onclick="openFraseEditor()">✨ Frase del día</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
     </div>
 
@@ -3468,6 +3469,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CLS_VIEW = false; var clsBox = document.getElementById('cls_app'); if (clsBox) clsBox.style.display = 'none';
       athleteActiveState = state;
       setTimeout(syncHistorial, 600);   // trae/une el historial de la hoja (si hay enlace corto)
+      setTimeout(frasesFetch, 900);   // frases del día programadas por el coach
       setTimeout(checkAnnouncements, 1200);   // anuncios vigentes para todos los clientes
       setTimeout(wkBubbleUpdate, 0);
       setTimeout(wkWelcomeShow, 700);   // pantalla de inicio: saluda, resume la semana y deja el botón "Iniciar entreno" a la vista
@@ -4997,7 +4999,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { t: 'La disciplina es hacerlo incluso cuando no hay ganas.', a: '' },
       { t: 'Cuida tu cuerpo: es el único lugar donde tienes que vivir.', a: '' }
     ];
+    var FR_KEY = 'benessere_frases_cache', FR_REMOTE = [];   // frases programadas por el coach (se bajan de la hoja y quedan guardadas en el celular)
+    try { var _fc = JSON.parse(localStorage.getItem(FR_KEY) || '[]'); if (Array.isArray(_fc)) FR_REMOTE = _fc; } catch (e) {}
     function fraseDelDia() {
+      var hoy = todayIso(), prog = FR_REMOTE.filter(function(f) { return f && f.d === hoy && f.t; })[0];
+      if (prog) return prog;   // la que el coach programó para hoy
       if (FRASE_DIA && FRASE_DIA.t) return FRASE_DIA;
       if (!FRASES_DIA.length) return null;
       var d = new Date(), n = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
@@ -7816,16 +7822,35 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Se guardan en la hoja como una rutina especial (atleta "__ANUNCIOS__"): el texto va en el mensaje del coach, en JSON.
     var ANN_KEY = 'benessere_ann_id', ANN_SEEN = 'benessere_ann_seen', ANN_LIST = [], ANN_CHECKED = false, ANN_ACTIVE = [];
     function annId() { var v = ANNOUNCE_ID; if (!v) { try { v = localStorage.getItem(ANN_KEY) || ''; } catch (e) {} } return v; }
-    function annEncode(list) {
+    // El mismo registro guarda anuncios y frases del día programadas: si no hay frases queda como lista simple (formato anterior); con frases, { v: 2, a: anuncios, f: frases }
+    var FR_LIST = [];
+    function annEncode(list, frases) {
+      var body = (frases && frases.length) ? JSON.stringify({ v: 2, a: list, f: frases }) : JSON.stringify(list);
       return encodePayload(buildUltraCompactState({
         clientName: 'ANUNCIOS', clientGender: 'o', startDate: '', durationWeeks: 1,
-        coachMsgTitle: 'Anuncios', coachMsgBody: JSON.stringify(list), coachName: COACH ? COACH.name : '',
+        coachMsgTitle: 'Anuncios', coachMsgBody: body, coachName: COACH ? COACH.name : '',
         configFeatures: { nutrition: false, demos: false }, measures: {}, measureLog: [], routineDays: []
       }));
     }
-    function annDecode(p) {
+    function annDecodeAll(p) {
       var st = decodePayload('q', p); if (!st) return null;
-      try { var a = JSON.parse(st.coachMsgBody || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+      try {
+        var a = JSON.parse(st.coachMsgBody || '[]');
+        if (Array.isArray(a)) return { a: a, f: [] };
+        if (a && typeof a === 'object') return { a: Array.isArray(a.a) ? a.a : [], f: Array.isArray(a.f) ? a.f : [] };
+        return { a: [], f: [] };
+      } catch (e) { return { a: [], f: [] }; }
+    }
+    function annDecode(p) { var all = annDecodeAll(p); return all ? all.a : null; }
+    // Cliente: baja las frases programadas y las guarda en el celular (así la de hoy aparece al instante y sin internet)
+    function frasesFetch() {
+      var id = annId(); if (!id) return;
+      fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 20000).then(function(j) {
+        var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null; if (!all) return;
+        FR_REMOTE = all.f || [];
+        try { localStorage.setItem(FR_KEY, JSON.stringify(FR_REMOTE)); } catch (e) {}
+        fraseDiaPaint(); wkWelcomeRefresh();
+      }).catch(function() { /* sin internet: queda la frase guardada */ });
     }
     function annIsActive(a, today) { return a && a.m && (!a.d || a.d <= today) && (!a.h || a.h >= today); }
     function annSeenList() { try { var a = JSON.parse(localStorage.getItem(ANN_SEEN) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
@@ -7879,16 +7904,90 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
       var m = document.getElementById('ann_edit_modal');
       if (!m) { m = document.createElement('div'); m.id = 'ann_edit_modal'; m.className = 'modal-overlay ex-edit-modal'; m.style.zIndex = '100004'; document.body.appendChild(m); }
-      ANN_LIST = [];
+      ANN_LIST = []; FR_LIST = [];
       renderAnnEditor('Cargando…');
       openModal('ann_edit_modal');
       var id = annId();
       if (!id) { renderAnnEditor('Todavía no hay anuncios publicados.'); return; }
       fetchRoutine(id).then(function(j) {
-        var list = (j && j.ok && j.p) ? annDecode(j.p) : null;
-        ANN_LIST = list || [];
-        renderAnnEditor(list ? '' : 'No se pudieron leer los anuncios actuales.');
+        var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null;
+        ANN_LIST = all ? all.a : []; FR_LIST = all ? all.f : [];
+        renderAnnEditor(all ? '' : 'No se pudieron leer los anuncios actuales.');
       }).catch(function() { renderAnnEditor('Sin conexión: no se pudieron leer los anuncios actuales.'); });
+    }
+
+    // ----- Constructor: frase del día programada (hoy + los próximos 13 días) -----
+    var FR_OK = false;
+    function frDays(n) {
+      var out = [], b = new Date();
+      for (var i = 0; i < n; i++) { var d = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i); out.push(d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())); }
+      return out;
+    }
+    function openFraseEditor() {
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      var m = document.getElementById('fr_edit_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'fr_edit_modal'; m.className = 'modal-overlay ex-edit-modal'; m.style.zIndex = '100004'; document.body.appendChild(m); }
+      ANN_LIST = []; FR_LIST = []; FR_OK = false;
+      renderFraseEditor('Cargando…');
+      openModal('fr_edit_modal');
+      var id = annId();
+      if (!id) { FR_OK = true; renderFraseEditor(''); return; }
+      fetchRoutine(id).then(function(j) {
+        var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null;
+        if (all) { ANN_LIST = all.a; FR_LIST = all.f; FR_OK = true; }
+        renderFraseEditor(all ? '' : 'No se pudieron leer las frases actuales. Revisa la conexión y ábrelo otra vez.');
+      }).catch(function() { renderFraseEditor('Sin conexión: no se pudieron leer las frases actuales.'); });
+    }
+    function frReadForm() {
+      var map = {}; FR_LIST.forEach(function(f) { if (f && f.d) map[f.d] = f; });
+      frDays(14).forEach(function(d, k) {
+        var el = document.getElementById('fr_t_' + k); if (!el) return;
+        var t = el.value.trim();
+        if (t) map[d] = { d: d, t: t }; else delete map[d];
+      });
+      var today = todayIso();
+      FR_LIST = Object.keys(map).filter(function(d) { return d >= today; }).sort().map(function(d) { return map[d]; });
+    }
+    function renderFraseEditor(status) {
+      var m = document.getElementById('fr_edit_modal'); if (!m) return;
+      var map = {}; FR_LIST.forEach(function(f) { if (f && f.d) map[f.d] = f.t || ''; });
+      var days = frDays(14), today = todayIso();
+      var h = '<div class="modal-inner"><div style="font-size:1rem; font-weight:900; color:var(--primary); margin-bottom:2px;">✨ Frase del día</div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">Escribe la frase de cada día (puedes dejar programados hasta 14 días). El día que no tenga frase, la app usa una de las frases de ejemplo. La ven todos los clientes en la pantalla principal y en la bienvenida.</div>';
+      days.forEach(function(d, k) {
+        var lbl = ''; try { lbl = new Date(d + 'T12:00:00').toLocaleDateString('es-CR', { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) {}
+        h += '<div style="margin-bottom:7px;"><label style="font-size:0.72rem; font-weight:800; color:' + (d === today ? 'var(--primary)' : 'var(--muted)') + ';">' + escHtml(lbl) + (d === today ? ' · Hoy' : '') + '</label>' +
+          '<input type="text" id="fr_t_' + k + '" maxlength="160" value="' + edxAttr(map[d] || '') + '" placeholder="Frase para este día (opcional)"></div>';
+      });
+      h += '<div id="fr_msg" style="font-size:0.78rem; color:var(--muted); min-height:18px; margin:6px 0;">' + escHtml(status || '') + '</div>' +
+        '<div style="display:flex; gap:8px;"><button type="button" class="btn-action-primary" id="fr_pub" style="flex:1;" onclick="frPublish()">📤 Publicar frases</button>' +
+        '<button type="button" onclick="closeModal(\'fr_edit_modal\')" style="background:#1c1c1c; color:#fff; border:1px solid #444; border-radius:10px; padding:0 16px; font-weight:800; cursor:pointer;">Cerrar</button></div></div>';
+      m.innerHTML = h;
+    }
+    function frPublish() {
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
+      var msg = document.getElementById('fr_msg'), btn = document.getElementById('fr_pub');
+      if (!FR_OK) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudieron leer las frases y anuncios actuales; ciérralo y ábrelo otra vez para no borrarlos.'; return; }
+      frReadForm();
+      var payloadText = annEncode(ANN_LIST, FR_LIST), id = annId();
+      btn.disabled = true; btn.innerText = 'Publicando…'; msg.style.color = ''; msg.innerText = '';
+      var p;
+      if (id) p = postJson({ a: 'actualizar', id: id, p: payloadText, pin: COACH.pin });
+      else p = fetchJson(SHARE_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: SHARE_KEY, p: payloadText, coach: COACH.name, atleta: '__ANUNCIOS__' }) }, 25000);
+      p.then(function(j) {
+        if (j && j.ok) {
+          var newId = id || j.id;
+          if (!id && newId) { try { localStorage.setItem(ANN_KEY, newId); } catch (e) {} }
+          renderFraseEditor('');
+          var mm = document.getElementById('fr_msg'); mm.style.color = '#06d6a0';
+          mm.innerHTML = '✅ Publicado (' + FR_LIST.length + ' frase' + (FR_LIST.length === 1 ? '' : 's') + ' programada' + (FR_LIST.length === 1 ? '' : 's') + ').' + (!ANNOUNCE_ID ? '<br><span style="color:#ffd166;">Primera vez: para que la vean TODOS los clientes hay que dejar este código en la app (ANNOUNCE_ID). Pásaselo a Claude: <b>' + escHtml(newId) + '</b></span>' : '');
+          try { FR_REMOTE = FR_LIST.slice(); localStorage.setItem(FR_KEY, JSON.stringify(FR_REMOTE)); fraseDiaPaint(); } catch (e) {}
+        } else {
+          btn.disabled = false; btn.innerText = '📤 Publicar frases';
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo publicar: ' + updateErrorText(j && j.error);
+        }
+      }).catch(function(e) { btn.disabled = false; btn.innerText = '📤 Publicar frases'; msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo publicar: ' + updateErrorText(e && e.message); });
     }
     function annReadForm() {
       ANN_LIST = ANN_LIST.map(function(a, k) {
@@ -7921,7 +8020,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var bad = ANN_LIST.filter(function(a) { return a.d && a.h && a.h < a.d; });
       var msg = document.getElementById('ann_msg'), btn = document.getElementById('ann_pub');
       if (bad.length) { msg.style.color = '#ff6b6b'; msg.innerText = 'Revisa las fechas: "Hasta" no puede ser antes de "Desde".'; return; }
-      var payloadText = annEncode(ANN_LIST), id = annId();
+      var payloadText = annEncode(ANN_LIST, FR_LIST), id = annId();
       btn.disabled = true; btn.innerText = 'Publicando…'; msg.style.color = ''; msg.innerText = '';
       var p;
       if (id) p = postJson({ a: 'actualizar', id: id, p: payloadText, pin: COACH.pin });
@@ -8563,7 +8662,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-f';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-g';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
