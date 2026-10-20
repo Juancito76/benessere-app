@@ -202,6 +202,14 @@
     .frase-dia .fd-lbl { font-size: 0.66rem; font-weight: 800; letter-spacing: .06em; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
     .frase-dia .fd-txt { font-size: 0.92rem; font-weight: 700; color: #f2f2f2; line-height: 1.4; }
     .frase-dia .fd-aut { font-size: 0.74rem; color: var(--muted); margin-top: 4px; }
+    @keyframes nutriBlink { 0%,100% { color: #06d6a0; text-shadow: 0 0 8px rgba(6,214,160,.8); } 50% { color: rgba(6,214,160,.35); text-shadow: none; } }
+    .nutri-hoy-link { display: block; width: 100%; background: none; border: none; text-align: center; font-size: 1rem; font-weight: 900; text-decoration: underline; cursor: pointer; padding: 6px 0 14px; color: #06d6a0; animation: nutriBlink 1s ease-in-out infinite; }
+    .nutri-hoy-link.seen { animation: none; }
+    .rep-row { background: #101010; border: 1px solid #2c2c2c; border-radius: 10px; padding: 9px 10px; margin-bottom: 7px; text-align: left; }
+    .rep-row .rp-b { font-size: 0.62rem; font-weight: 800; color: var(--accent); letter-spacing: .05em; }
+    .rep-row .rp-n { font-size: 0.92rem; font-weight: 800; color: #fff; margin-top: 2px; }
+    .rep-row .rp-t { font-size: 0.8rem; color: #ddd; margin-top: 2px; }
+    .rep-row a { display: inline-block; margin-top: 5px; font-size: 0.78rem; font-weight: 800; color: var(--primary); }
     .wk-link { background: none; border: none; color: var(--primary); font-size: 0.92rem; font-weight: 800; cursor: pointer; text-decoration: underline; padding: 8px 6px; }
     .capsule-btn { width: 100%; padding: 16px 20px; border-radius: 40px; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; border: none; cursor: pointer; color: #fff; transition: transform 0.1s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.6); }
     .capsule-btn:active { transform: scale(0.98); }
@@ -3617,9 +3625,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="progression-banner"><div class="prog-title">📈 Progresión Semanal</div><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></div>' +
         '<div class="security-card"><div class="sec-title">🛡️ Protocolo de Seguridad</div><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></div>' +
         '<div class="equipment-banner">🧰 No olvides regresar el equipo a su lugar después de completar tus repeticiones</div>' +
+        (isNutri ? '<button type="button" class="nutri-hoy-link" id="nutri_link_' + d.id + '" onclick="nutriHoyGo(\'' + d.id + '\')">🍽 Nutrición de hoy</button>' : '') +
         toggleHeaderHtml +
         '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
           wkBarHtml(d.id) +
+          ((!isRest && (d.items || []).length) ? '<button type="button" class="btn-restore-all-day" style="margin-bottom:8px;" onclick="dayReview(\'' + d.id + '\')">📋 Repaso: qué toca hoy</button>' : '') +
           ((!isRest && (d.items || []).length) ? gdGuideHtml() + '<div class="gd-legend">🟡 Amarillo: empieza aquí · 🟠 Naranja: te falta terminar · ✔ Opaca: completada</div>' : '') +
           '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
           '<button type="button" class="btn-restore-all-day" style="margin-top:6px;" onclick="openSessionPicker(\'' + d.id + '\')">📅 Montar marcas de otra fecha</button>' +
@@ -4963,6 +4973,42 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var h = fraseDiaHtml();
       box.innerHTML = h; box.style.display = h ? 'block' : 'none';
     }
+    // Lleva a la nutrición del día (la que armó el coach en el constructor); deja de parpadear una vez tocado
+    function nutriHoyGo(dayId) {
+      try { switchDaySection(dayId, 'nutricion'); } catch (e) {}
+      var b = document.getElementById('nutri_link_' + dayId); if (b) b.classList.add('seen');
+      var s = document.getElementById('sec_nutri_' + dayId); if (s && s.scrollIntoView) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    // Repaso breve del día: cada bloque con sus ejercicios, cuántas series/reps y el video de demostración (solo lo que toca esta semana)
+    function dayReview(dayId) {
+      var sec = document.getElementById('sec_rutina_' + dayId); if (!sec) return;
+      var rows = '', nEx = 0;
+      sec.querySelectorAll('.exercise-variant').forEach(function(el) {
+        if (el.style.display === 'none') return;
+        var badge = el.querySelector('.badge-type'), ct = el.querySelector('.circ-title');
+        var head = (badge ? badge.innerText.trim() : '') + (ct ? ' · ' + ct.innerText.trim() : '');
+        el.querySelectorAll('.exercise-item-box').forEach(function(bx, k) {
+          var nm = bx.querySelector('.ex-name'), tg = bx.querySelector('.ex-target'), nt = bx.querySelector('.ex-notes'), a = bx.querySelector('.btn-yt-demo');
+          var href = a ? a.getAttribute('href') : '', hasVid = href && !/^https?:\/\/(www\.)?youtube\.com\/?$/i.test(href);
+          nEx++;
+          rows += '<div class="rep-row">' + (k === 0 ? '<div class="rp-b">' + escHtml(head) + '</div>' : '') +
+            '<div class="rp-n">' + escHtml(nm ? nm.innerText.trim() : 'Ejercicio') + '</div>' +
+            (tg ? '<div class="rp-t">' + escHtml(tg.innerText.trim()) + '</div>' : '') +
+            (nt ? '<div class="rp-t" style="color:var(--muted);">' + escHtml(nt.innerText.trim()) + '</div>' : '') +
+            (hasVid ? '<a href="' + escHtml(href) + '" target="_blank" rel="noopener noreferrer">▶ Ver video ↗</a>' : '') + '</div>';
+        });
+      });
+      var m = document.getElementById('day_review_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'day_review_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100004'; document.body.appendChild(m); }
+      var hasN = !!document.getElementById('nutri_link_' + dayId);
+      m.innerHTML = '<div class="modal-inner" style="max-height:85vh; overflow-y:auto;">' +
+        '<div style="font-size:1.05rem; font-weight:900; color:var(--primary); margin-bottom:2px;">📋 Qué toca hoy</div>' +
+        '<div style="font-size:0.74rem; color:var(--muted); margin-bottom:10px;">' + nEx + ' ejercicio' + (nEx === 1 ? '' : 's') + ' en total. Solo repaso: el cronómetro no se inicia.</div>' +
+        (rows || '<div style="font-size:0.85rem; color:#ccc;">No hay ejercicios para mostrar.</div>') +
+        (hasN ? '<button type="button" class="nutri-hoy-link" style="margin-top:6px;" onclick="closeModal(\'day_review_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición de hoy</button>' : '') +
+        '<button type="button" class="btn-action-primary" onclick="closeModal(\'day_review_modal\')">Cerrar</button></div>';
+      openModal('day_review_modal');
+    }
     function openDay(dayId, review) {
       openModal(dayId);
       try { guidePaint(dayId); } catch (e) {}
@@ -5421,6 +5467,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!d) return;
       openDay(d.id, true);
       try { switchDaySection(d.id, 'rutina'); } catch (e) {}
+      try { dayReview(d.id); } catch (e) {}   // al repasar, abre de una vez el resumen de lo que toca
     }
     // Entrar a ver la nutrición del día elegido; desde ahí puede pasar a "Rutina del Día" con el selector de arriba
     function wkWelcomeNutri() {
@@ -8434,7 +8481,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-a';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-b';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
