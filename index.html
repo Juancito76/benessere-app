@@ -5042,6 +5042,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       box.innerHTML = h; box.style.display = h ? 'block' : 'none';
     }
     // Lleva a la nutrición del día (la que armó el coach en el constructor); deja de parpadear una vez tocado
+    function nutriOn() { return !!(athleteActiveState && athleteActiveState.configFeatures && athleteActiveState.configFeatures.nutrition === true); }
     function nutriHoyGo(dayId) {
       try { switchDaySection(dayId, 'nutricion'); } catch (e) {}
       var b = document.getElementById('nutri_link_' + dayId); if (b) b.classList.add('seen');
@@ -5095,7 +5096,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="font-size:1.05rem; color:var(--primary); font-weight:900; margin-bottom:8px;">¡Aún no has iniciado tu entreno!</div>' +
           '<div style="font-size:0.85rem; color:#f0f0f0; line-height:1.45; margin-bottom:16px;">Inícialo para que queden registrados tu tiempo y tus calorías estimadas.</div>' +
           '<button type="button" class="wk-btn" style="width:100%; padding:15px; font-size:1rem;" onclick="wkNagStart(\'' + dayId + '\')">▶ Iniciar entreno</button>' +
-          '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.78rem; margin-top:12px; cursor:pointer; text-decoration:underline;" onclick="closeModal(\'wk_nag_modal\')">Más tarde</button></div>';
+          '<div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">' +
+            '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); dayReview(\'' + dayId + '\')">📋 Qué toca hoy</button>' +
+            (nutriOn() ? '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición del día</button>' : '') +
+            '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.72rem; margin-top:4px; cursor:pointer; text-decoration:underline;" onclick="closeModal(\'wk_nag_modal\')">Cerrar</button>' +
+          '</div></div>';
         m.classList.add('active');
       } catch (e) {}
     }
@@ -8709,7 +8714,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-j';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-k';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
