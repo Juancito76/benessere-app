@@ -805,15 +805,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div class="metrics-grid" id="ath_metricsGrid"></div>
       <div id="ath_medBody"></div>
       <details class="med-panel" id="med_add" style="margin-top:14px;">
-        <summary style="cursor:pointer; font-weight:800; color:var(--accent); font-size:0.9rem;">➕ Agregar una medición</summary>
+        <summary id="med_add_sum" style="cursor:pointer; font-weight:800; color:var(--accent); font-size:0.9rem;">➕ Agregar una medición</summary>
         <div style="margin-top:10px;">
           <label class="med-lbl">Fecha</label>
           <input type="date" id="med_new_date" class="med-in">
           <div id="med_new_fields" class="med-form-grid"></div>
-          <p class="med-sum">Llena solo lo que te midas. Se guarda en este teléfono y se suma a tu gráfico.</p>
+          <p class="med-sum" id="med_add_note">Llena solo lo que te midas. Se guarda en este teléfono y se suma a tu gráfico.</p>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-            <button type="button" class="btn-action-primary" style="flex:1; min-width:120px;" onclick="saveOwnMeasure(false)">Guardar</button>
-            <button type="button" class="btn-action-wa" style="flex:1; min-width:150px;" onclick="saveOwnMeasure(true)">Guardar y enviar al coach</button>
+            <button type="button" id="med_btn_save" class="btn-action-primary" style="flex:1; min-width:120px;" onclick="saveOwnMeasure(false)">Guardar</button>
+            <button type="button" id="med_btn_wa" class="btn-action-wa" style="flex:1; min-width:150px;" onclick="saveOwnMeasure(true)">Guardar y enviar al coach</button>
           </div>
         </div>
       </details>
@@ -1127,7 +1127,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var margin = (hi - lo) * 0.18; lo -= margin; hi += margin;
       var t0 = dayNum(series[0].d), t1 = dayNum(series[n - 1].d), span = Math.max(t1 - t0, 1);
       var inset = 12, iw = W - pl - pr - 2 * inset, ih = H - pt - pb;   // los puntos no tocan el eje ni el borde
-      function X(d) { return n === 1 ? pl + inset + iw / 2 : pl + inset + (dayNum(d) - t0) / span * iw; }
+      // Con pocas mediciones, los puntos no se estiran de borde a borde: el gráfico reserva espacio (hasta ~90 días) para las próximas.
+      // Cuando hay más datos o más tiempo, se va ocupando todo el ancho. Nunca se juntan a menos de ~60 px entre sí.
+      var minGap = Infinity;
+      for (var gi = 1; gi < n; gi++) { var gdd = dayNum(series[gi].d) - dayNum(series[gi - 1].d); if (gdd > 0 && gdd < minGap) minGap = gdd; }
+      var horizon = span;
+      if (n > 1 && isFinite(minGap)) horizon = Math.max(span, Math.min(90, minGap * iw / 60));
+      function X(d) { return n === 1 ? pl + inset + iw / 2 : pl + inset + (dayNum(d) - t0) / horizon * iw; }
       function Y(v) { return pt + (hi - v) / (hi - lo) * ih; }
       var xs = series.map(function(s) { return X(s.d); });
       var valIdx = pickLabelIdx(xs, 36), dateIdx = pickLabelIdx(xs, 50);
@@ -1188,6 +1194,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var rows = entries.slice().sort(function(a, b) { return a.d < b.d ? 1 : (a.d > b.d ? -1 : 0); }).map(function(e) {
         var mark = e.src === 'a' ? ' 👤' : '';
         var del = (mode === 'athlete' && e.src === 'a') ? ' <button type="button" class="med-x" title="Borrar" onclick="deleteOwnMeasure(\'' + e.d + '\')">🗑</button>' : '';
+        if (mode === 'cv' && e.src === 'c' && e.d !== entries[0].d) del = ' <button type="button" class="med-x" title="Borrar esta medición de seguimiento" onclick="coachDeleteMeasure(\'' + e.d + '\')">🗑</button>';   // la medición del inicio no se puede borrar desde aquí
         var cells = keys.map(function(f) { return '<td>' + (e.v[f.k] != null ? fmtNum(e.v[f.k]) : '–') + '</td>'; }).join('');
         var acts = mode === 'coach'
           ? '<td><button type="button" class="med-x" title="Editar" onclick="editMeasureEntry(\'' + e.d + '\')">✏️</button><button type="button" class="med-x" title="Borrar" onclick="deleteMeasureEntry(\'' + e.d + '\')">🗑</button></td>'
@@ -1287,7 +1294,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!coach.length) { var base = legacyBaseline(st); if (base) coach = [base]; }
       // La ficha completa del enlace (st.measures) también cuenta: si la última medición del historial
       // no trae alguna medida que sí está en la ficha, se completa con ese valor para que no se pierda.
-      if (coach.length) {
+      if (coach.length === 1) {   // con varias mediciones no se rellena la última con valores viejos de la ficha
         var lastE = coach[coach.length - 1], fm = st.measures || {}, merged = {}, added = false;
         Object.keys(lastE.v).forEach(function(k) { merged[k] = lastE.v[k]; });
         MEASURE_FIELDS.forEach(function(f) {
@@ -1331,7 +1338,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (hi - lo < 2) { hi += 1; lo -= 1; }
       var mg = (hi - lo) * 0.15; lo -= mg; hi += mg;
       var W = 340, H = 190, pl = 44, pr = 16, pt = 14, pb = 30, n = dates.length;
-      var X = function(i) { return pl + 14 + (n === 1 ? 0 : i / (n - 1) * (W - pl - pr - 28)); };
+      var stepX = n > 1 ? Math.min((W - pl - pr - 28) / (n - 1), 110) : 0;   // con pocas fechas los puntos quedan cerca; no se estiran de borde a borde
+      var X = function(i) { return pl + 14 + i * stepX; };
       var Y = function(p) { return pt + (hi - p) / (hi - lo) * (H - pt - pb); };
       var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; height:auto;" role="img" aria-label="Cambio de todas las medidas">';
       niceTicks(lo, hi).forEach(function(t) {
@@ -1378,6 +1386,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var st = athleteActiveState, body = document.getElementById('ath_medBody');
       if (!st || !body) return;
       ensureAddForm();
+      try {   // en modo coach, la medición se guarda en la rutina del cliente (se conserva y se suma a la del inicio)
+        var cvOn = coachMeasureOn(), t1 = document.getElementById('med_add_sum'), t2 = document.getElementById('med_add_note'), b1 = document.getElementById('med_btn_save'), b2 = document.getElementById('med_btn_wa');
+        if (t1) t1.innerText = cvOn ? '➕ Agregar medición de seguimiento' : '➕ Agregar una medición';
+        if (t2) t2.innerText = cvOn ? 'Llena solo lo que mediste. Se guarda en la rutina de ' + (st.clientName || 'el cliente') + ' como medición del coach, junto a las anteriores (las del inicio no se borran), y ' + (st.clientName || 'el cliente') + ' la verá al abrir su rutina.' : 'Llena solo lo que te midas. Se guarda en este teléfono y se suma a tu gráfico.';
+        if (b1) { b1.innerText = cvOn ? 'Guardar en la rutina' : 'Guardar'; b1.setAttribute('onclick', cvOn ? 'coachSaveMeasure()' : 'saveOwnMeasure(false)'); }
+        if (b2) b2.style.display = cvOn ? 'none' : '';
+      } catch (e) {}
       var dEl = document.getElementById('med_new_date');
       if (dEl && !dEl.value) dEl.value = todayIso();
       var entries = athleteEntries(st);
@@ -1398,7 +1413,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).join('');
       body.innerHTML = '<div class="med-h">Última medición · ' + fmtDate(lastDate) + '</div><div class="metrics-grid">' + cards + '</div>' +
         last3Html(entries, keys) + '<div class="med-h">Evolución</div><div id="med_chart_box">' + medChartBlock(entries, athMedKey, 'selectMedMetric') + '</div>' +
-        '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, 'athlete') +
+        '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, coachMeasureOn() ? 'cv' : 'athlete') +
         '<div class="med-sum">● = medición del coach &nbsp; 👤 = medición que anotaste tú</div>';
     }
     function saveOwnMeasure(sendToCoach) {
@@ -1422,6 +1437,62 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       athMedKey = keys[0];
       renderAthleteMeasures();
       if (sendToCoach) sendMeasureToCoach(st, d, v);
+    }
+    // ----- Modo coach: medición de seguimiento guardada en la rutina del cliente (hoja de Google) -----
+    function coachMeasureOn() { return isCoachView() && !!COACH && !!athleteRoutineId; }
+    function coachMeasureBase(st) {   // historial del coach tal como lo ve el cliente (si solo hay ficha antigua, esa es la medición del inicio)
+      var base = normalizeMeasureLog(st.measureLog);
+      if (!base.length) { var b0 = legacyBaseline(st); if (b0) base = [b0]; }
+      return base.map(function(e) { return { d: e.d, v: JSON.parse(JSON.stringify(e.v)) }; });
+    }
+    function coachPersistMeasures(st, newLog, okMsg) {
+      var oldLog = st.measureLog;
+      st.measureLog = newLog;
+      var payloadText;
+      try { payloadText = encodePayload(buildUltraCompactState(st)); } catch (e) { st.measureLog = oldLog; alert('No se pudo preparar la medición.'); return; }
+      showToastTop('Guardando…');
+      postJson({ a: 'actualizar', id: athleteRoutineId, p: payloadText, pin: COACH.pin }).then(function(j) {
+        if (j && j.ok) {
+          coachCacheSet(athleteRoutineId, payloadText);
+          var openIds = []; document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
+          var scrollY = window.scrollY || 0;
+          renderAthleteApp(st);
+          openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
+          window.scrollTo(0, scrollY);
+          showToastTop(okMsg);
+        } else {
+          st.measureLog = oldLog;
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          alert('No se pudo guardar: ' + updateErrorText(j && j.error));
+        }
+      }).catch(function(e) { st.measureLog = oldLog; alert('No se pudo guardar: ' + updateErrorText(e && e.message)); });
+    }
+    function coachSaveMeasure() {
+      var st = athleteActiveState;
+      if (!st || !coachMeasureOn()) return;
+      var d = document.getElementById('med_new_date').value;
+      if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
+      var v = {};
+      MEASURE_FIELDS.forEach(function(f) { var n = parseNum(document.getElementById('med_new_' + f.k).value); if (n !== null) v[f.k] = n; });
+      if (!Object.keys(v).length) { alert('Escribe al menos una medida (por ejemplo el peso).'); return; }
+      var log = coachMeasureBase(st), i = indexOfDate(log, d);
+      if (i >= 0) {
+        if (!confirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Actualizarla con lo que escribiste? (lo que dejes en blanco se conserva)')) return;
+        Object.keys(v).forEach(function(k) { log[i].v[k] = v[k]; });
+      } else log.push({ d: d, v: v });
+      log.sort(byDate);
+      MEASURE_FIELDS.forEach(function(f) { document.getElementById('med_new_' + f.k).value = ''; });
+      var det = document.getElementById('med_add'); if (det) det.open = false;
+      athMedKey = Object.keys(v)[0];
+      coachPersistMeasures(st, log, '✅ Medición del ' + fmtDate(d) + ' guardada en la rutina de ' + (st.clientName || 'el cliente') + '.');
+    }
+    function coachDeleteMeasure(d) {
+      var st = athleteActiveState;
+      if (!st || !coachMeasureOn()) return;
+      var log = coachMeasureBase(st);
+      if (log.length && log[0].d === d) { alert('La medición del inicio no se borra desde aquí.'); return; }
+      if (!confirm('¿Borrar la medición de seguimiento del ' + fmtDate(d) + '? Se quita también de la rutina del cliente.')) return;
+      coachPersistMeasures(st, log.filter(function(e) { return e.d !== d; }), '🗑 Medición del ' + fmtDate(d) + ' borrada.');
     }
     function sendMeasureToCoach(st, d, v) {
       var lines = ['*Medidas - ' + st.clientName + '*', 'Coach: ' + athleteCoachName, 'Fecha: ' + fmtDate(d), ''];
@@ -8838,7 +8909,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-n';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-o';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
