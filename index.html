@@ -205,6 +205,8 @@
     @keyframes nutriBlink { 0%,100% { color: #06d6a0; text-shadow: 0 0 8px rgba(6,214,160,.8); } 50% { color: rgba(6,214,160,.35); text-shadow: none; } }
     .nutri-hoy-link { display: block; width: 100%; background: none; border: none; text-align: center; font-size: 1rem; font-weight: 900; text-decoration: underline; cursor: pointer; padding: 6px 0 14px; color: #06d6a0; animation: nutriBlink 1s ease-in-out infinite; }
     .nutri-hoy-link.seen { animation: none; }
+    @keyframes frLowBlink { 0%,100% { background: #ffd60a; color: #000; border-color: #ffd60a; box-shadow: 0 0 10px rgba(255,214,10,.8); } 50% { background: transparent; color: #ffd60a; border-color: rgba(255,214,10,.35); box-shadow: none; } }
+    .gen-tab-btn.fr-low { animation: frLowBlink 1.1s ease-in-out infinite; }
     .rep-row { background: #101010; border: 1px solid #2c2c2c; border-radius: 10px; padding: 9px 10px; margin-bottom: 7px; text-align: left; }
     .rep-row .rp-b { font-size: 0.62rem; font-weight: 800; color: var(--accent); letter-spacing: .05em; }
     .rep-row .rp-n { font-size: 0.92rem; font-weight: 800; color: #fff; margin-top: 2px; }
@@ -471,7 +473,7 @@
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_class', this); clsRender();">🎓 Clases y Retos</button>
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
       <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
-      <button type="button" class="gen-tab-btn" onclick="openFraseEditor()">✨ Frase del día</button>
+      <button type="button" class="gen-tab-btn" id="btn_frase_dia" onclick="openFraseEditor()">✨ Frase del día</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
     </div>
 
@@ -7849,7 +7851,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null; if (!all) return;
         FR_REMOTE = all.f || [];
         try { localStorage.setItem(FR_KEY, JSON.stringify(FR_REMOTE)); } catch (e) {}
-        fraseDiaPaint(); wkWelcomeRefresh();
+        fraseDiaPaint(); wkWelcomeRefresh(); frLowPaint();
       }).catch(function() { /* sin internet: queda la frase guardada */ });
     }
     function annIsActive(a, today) { return a && a.m && (!a.d || a.d <= today) && (!a.h || a.h >= today); }
@@ -7938,6 +7940,30 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         renderFraseEditor(all ? '' : 'No se pudieron leer las frases actuales. Revisa la conexión y ábrelo otra vez.');
       }).catch(function() { renderFraseEditor('Sin conexión: no se pudieron leer las frases actuales.'); });
     }
+    // Aviso en el botón "Frase del día": parpadea cuando quedan 4 días o menos de frases programadas (o ya no hay ninguna)
+    function frLowInfo() {
+      var last = '', today = todayIso();
+      FR_REMOTE.forEach(function(f) { if (f && f.t && f.d > last) last = f.d; });
+      if (!last || last < today) return { low: true, none: true, left: 0 };
+      var left = Math.round((new Date(last + 'T12:00:00') - new Date(today + 'T12:00:00')) / 86400000);
+      return { low: left <= 4, none: false, left: left };
+    }
+    function frLowPaint() {
+      var b = document.getElementById('btn_frase_dia'); if (!b) return;
+      var i = frLowInfo();
+      b.classList.toggle('fr-low', i.low);
+      b.innerText = '✨ Frase del día' + (i.low ? (i.none ? ' · sin programar' : ' · quedan ' + i.left + (i.left === 1 ? ' día' : ' días')) : '');
+      b.title = i.low ? 'Programa más frases para que los clientes no se queden con las de ejemplo' : 'Frases programadas al día';
+    }
+    var FR_FETCHED = false;
+    setInterval(function() {   // solo en el constructor: pinta el aviso con lo guardado y baja las frases de la hoja una vez
+      try {
+        var cb = document.getElementById('coach_builder_view');
+        if (!cb || cb.style.display === 'none' || getComputedStyle(cb).display === 'none') return;
+        frLowPaint();
+        if (!FR_FETCHED && annId()) { FR_FETCHED = true; frasesFetch(); }
+      } catch (e) {}
+    }, 4000);
     function frReadForm() {
       var map = {}; FR_LIST.forEach(function(f) { if (f && f.d) map[f.d] = f; });
       frDays(14).forEach(function(d, k) {
@@ -7981,7 +8007,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           renderFraseEditor('');
           var mm = document.getElementById('fr_msg'); mm.style.color = '#06d6a0';
           mm.innerHTML = '✅ Publicado (' + FR_LIST.length + ' frase' + (FR_LIST.length === 1 ? '' : 's') + ' programada' + (FR_LIST.length === 1 ? '' : 's') + ').' + (!ANNOUNCE_ID ? '<br><span style="color:#ffd166;">Primera vez: para que la vean TODOS los clientes hay que dejar este código en la app (ANNOUNCE_ID). Pásaselo a Claude: <b>' + escHtml(newId) + '</b></span>' : '');
-          try { FR_REMOTE = FR_LIST.slice(); localStorage.setItem(FR_KEY, JSON.stringify(FR_REMOTE)); fraseDiaPaint(); } catch (e) {}
+          try { FR_REMOTE = FR_LIST.slice(); localStorage.setItem(FR_KEY, JSON.stringify(FR_REMOTE)); fraseDiaPaint(); frLowPaint(); } catch (e) {}
         } else {
           btn.disabled = false; btn.innerText = '📤 Publicar frases';
           if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
@@ -8662,7 +8688,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-h';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-i';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
