@@ -4935,6 +4935,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         r.cur = 1; r.state = 'work'; r.t0 = Date.now(); srRender(id); srClockEnsure();
       } else if (r.state === 'work') {
         srFill(id, r.cur);   // confirma la serie recién terminada; las filas de registro se crean solas si hacen falta
+        try { if (!(WK.start && WK.dayId)) recordActivity(dayIdOfEl(srCard(id)), 0); } catch (e) {}   // una serie hecha con el temporizador = día entrenado
         if (r.cur >= r.sets) { r.state = 'choose'; tmrBeep(880, 300, 0); tmrBeep(1175, 500, 350); tmrVibrate([200, 80, 200]); srRender(id); equipReminder(); return; }
         r.state = 'rest'; srRender(id);
         startRestTimer(r.rest, function() { srNext(id); });   // al terminar el descanso, la serie siguiente arranca sola
@@ -5157,6 +5158,37 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Si el cliente entrena con el cronómetro pero no anota marcas, el día igual queda registrado (mínimo 10 min).
     // Si después guarda las marcas, esa sesión reemplaza a esta (sup) para no contar el entreno dos veces.
     var NM_PENDING = null;
+    // Día entrenado sin marcas: lo registra el cronómetro (10 min o más), "Guardar Día" sin pesos, o usar temporizadores de circuito/series.
+    // Hay una sola sesión "sin marcas" por día y fecha; las siguientes la reemplazan (sup) para que el entreno no cuente dos veces.
+    function nmTodayFor(dayId) {
+      try {
+        var t = localStorage.getItem(tk('wknm_' + dayId)); if (!t) return null;
+        var sn = loadSessions().filter(function(x) { return x.t === t; })[0];
+        return (sn && sessDateIso(sn) === todayIso()) ? sn : null;
+      } catch (e) { return null; }
+    }
+    function dayIdOfEl(el) { var d = el && el.closest ? el.closest('[data-day-title]') : null; return d ? d.id : ''; }
+    function recordActivity(dayId, secs) {
+      try {
+        if (!dayId || !athleteActiveState || isCoachView() && PRUEBA.on) return;
+        secs = parseInt(secs, 10) || 0;
+        var ex = nmTodayFor(dayId);
+        if (ex) {   // ya estaba registrado hoy: solo se le agrega el tiempo si ahora se sabe
+          if (secs > 0 && !ex.dur) { ex.dur = secs; ex.kc = kcalEstimate(secs); var all = loadSessions(); all.forEach(function(x) { if (x.t === ex.t) { x.dur = ex.dur; x.kc = ex.kc; } }); localStorage.setItem(sessKey(), JSON.stringify(all)); pushSession(ex); }
+          return;
+        }
+        if (daySavedToday(dayId)) return;   // ya guardó sus marcas hoy
+        var now = new Date(), dayEl = document.getElementById(dayId);
+        var hd = now.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+        var sess = { d: todayIso(), t: now.toISOString(), hd: hd, day: (dayEl && dayEl.getAttribute('data-day-title')) || '', ex: [], nm: 1 };
+        if (secs > 0) { sess.dur = secs; sess.kc = kcalEstimate(secs); }
+        if (COACH) sess.o = COACH.name;
+        addSession(sess);
+        localStorage.setItem(tk('wknm_' + dayId), sess.t);
+        pushSession(sess);
+        try { wkPaint(dayId); } catch (e) {}
+      } catch (e) {}
+    }
     function wkRecordNoMarks(dayId, secs, silent) {
       if (secs < 600 || !athleteActiveState) return;
       try {
@@ -5164,6 +5196,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var hd = now.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
         var sess = { d: todayIso(), t: now.toISOString(), hd: hd, day: (dayEl && dayEl.getAttribute('data-day-title')) || '', ex: [], nm: 1, dur: secs, kc: kcalEstimate(secs) };
         if (COACH) sess.o = COACH.name;
+        var prevNm = nmTodayFor(dayId); if (prevNm) sess.sup = prevNm.t;   // reemplaza al registro "sin marcas" que ya existía hoy
         addSession(sess);
         localStorage.setItem(tk('wknm_' + dayId), sess.t);
         if (silent) pushSession(sess); else NM_PENDING = sess;   // si abrió la ventana final, se sube al cerrarla (con lo que anote del reloj)
@@ -6499,6 +6532,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (CT.cls) { ctClsFinish(); return; }
       ctPipStop();
       CT.done = true;
+      try { var ck0 = (CT.keys || [])[0], ch0 = ck0 ? document.querySelector('.set-rows[data-key="' + ck0 + '"]') : null; if (!(WK.start && WK.dayId)) recordActivity(dayIdOfEl(ch0), 0); } catch (e) {}   // temporizador de circuito terminado = día entrenado
       ctVidSync(true);
       if (CT.tick) { clearInterval(CT.tick); CT.tick = null; }
       tmrBeep(880, 300, 0); tmrBeep(880, 300, 400); tmrBeep(1175, 700, 800);
@@ -6836,7 +6870,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function dayCloseSave(dayId) {
       CLOSE_PENDING = '';
       if (dayHasMarks(dayId)) archiveCurrentDay(dayId);
-      else { try { wkToast('✅ Entreno cerrado. Quedó registrado sin marcas.'); } catch (e) {} }
+      else { recordActivity(dayId, wkTakeDuration(dayId)); try { wkToast('✅ Entreno cerrado. Quedó registrado sin marcas.'); } catch (e) {} }
       setTimeout(function() { try { guidePaint(dayId); } catch (e) {} }, 400);
     }
     function dcPaint(dayId) {
@@ -8804,7 +8838,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-m';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-n';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
