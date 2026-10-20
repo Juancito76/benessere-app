@@ -8,6 +8,27 @@
   <meta name="apple-mobile-web-app-title" content="Benessere">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="theme-color" content="#0d0d0d">
+  <!-- Ícono de la app (pantalla de inicio / pestaña): mancuerna con BG -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <script>
+    // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
+    (function() {
+      try {
+        var base = new URL('./', location.href).href;
+        var m = { name: 'Benessere Gym', short_name: 'Benessere', start_url: location.href, scope: base, display: 'standalone', background_color: '#0d0d0d', theme_color: '#0d0d0d',
+          icons: [
+            { src: base + 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: base + 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: base + 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          ] };
+        var l = document.createElement('link'); l.rel = 'manifest';
+        l.href = URL.createObjectURL(new Blob([JSON.stringify(m)], { type: 'application/manifest+json' }));
+        document.head.appendChild(l);
+      } catch (e) {}
+    })();
+  </script>
   <!-- Abre la conexión con Google mientras se lee el resto de la página (ahorra tiempo en la primera carga) -->
   <link rel="preconnect" href="https://script.google.com" crossorigin>
   <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
@@ -8688,7 +8709,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-i';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-j';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
