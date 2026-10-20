@@ -3629,7 +3629,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         toggleHeaderHtml +
         '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
           wkBarHtml(d.id) +
-          ((!isRest && (d.items || []).length) ? '<button type="button" class="btn-restore-all-day" style="margin-bottom:8px;" onclick="dayReview(\'' + d.id + '\')">📋 Repaso: qué toca hoy</button>' : '') +
+          ((!isRest && (d.items || []).length) ? '<div style="text-align:center; margin:-4px 0 8px;"><button type="button" class="wk-link" onclick="dayReview(\'' + d.id + '\')">📋 Qué toca hoy</button></div>' : '') +
           ((!isRest && (d.items || []).length) ? gdGuideHtml() + '<div class="gd-legend">🟡 Amarillo: empieza aquí · 🟠 Naranja: te falta terminar · ✔ Opaca: completada</div>' : '') +
           '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
           '<button type="button" class="btn-restore-all-day" style="margin-top:6px;" onclick="openSessionPicker(\'' + d.id + '\')">📅 Montar marcas de otra fecha</button>' +
@@ -5466,9 +5466,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       closeModal('wk_welcome_modal');
       if (!d) return;
       openDay(d.id, true);
-      try { switchDaySection(d.id, 'rutina'); } catch (e) {}
-      try { dayReview(d.id); } catch (e) {}   // al repasar, abre de una vez el resumen de lo que toca
-    }
+      try { switchDaySection(d.id, 'rutina'); } catch (e) {}    }
     // Entrar a ver la nutrición del día elegido; desde ahí puede pasar a "Rutina del Día" con el selector de arriba
     function wkWelcomeNutri() {
       var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
@@ -8481,7 +8479,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
