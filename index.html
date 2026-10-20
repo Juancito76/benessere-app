@@ -1836,7 +1836,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var demos = document.getElementById('featureDemos');
       if (!demos || !demos.checked) { clearVideoMissingMarks(); return true; }
       var miss = missingVideos();
-      if (!miss.length) { clearVideoMissingMarks(); return true; }
+      if (!miss.length) { clearVideoMissingMarks(); return embedGuard(); }
       switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
       clearVideoMissingMarks();
       var first = null;
@@ -1847,6 +1847,43 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       var shown = miss.slice(0, 8).map(function(m) { return '• ' + m.label; }).join('\n');
       alert('🎥 Falta el video de ' + miss.length + ' ejercicio' + (miss.length > 1 ? 's' : '') + ' (las demostraciones en video están activadas):\n\n' + shown + (miss.length > 8 ? '\n• … y ' + (miss.length - 8) + ' más' : '') + '\n\nPega el link de cada uno (o usa "🎥 Elegir"). Si no quieres demostraciones, desactiva "Activar Demostraciones en Video" en Perfil del Coach.');
+      if (first) { try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
+      return false;
+    }
+    // ---- Guardia de incrustación: antes de enviar/actualizar avisa de videos que no se pueden mostrar en la app y lleva a ellos ----
+    // Usa la comprobación automática (se hace sola en segundo plano al cargar/escribir los videos). Si el coach decide enviar igual, se respeta.
+    function embedGuard() {
+      var bad = [], unknown = {}, markSel = [];
+      routineDays.forEach(function(d, di) {
+        if (d.rest) return;
+        (d.items || []).forEach(function(it, ii) {
+          (it.sub || []).forEach(function(sb, k) {
+            if (!sb) return;
+            var id = ytIdStrict(String(sb.video || '').trim()); if (!id) return;
+            var st = VID_CHK[id];
+            if (!st) { if (!VID_TRY[id]) unknown[id] = 1; return; }   // sin resultado y ya intentado (sin conexión): no bloquea
+            if (st === 'noembed' || st === 'missing') {
+              var pos = it.type === 'normal' ? '' : (it.type === 'circuito' ? ' · estación ' + (k + 1) : ' · ejercicio ' + 'ABC'.charAt(k));
+              bad.push({ st: st, label: (d.title || ('Día ' + (di + 1))) + ' · posición ' + slotNumOf(d.items, ii) + pos + (sb.name ? ' — ' + sb.name : '') });
+              markSel.push('input[oninput^="routineDays[' + di + '].items[' + ii + '].sub[' + k + '].video"]');
+            }
+          });
+        });
+      });
+      var unk = Object.keys(unknown);
+      if (unk.length) {
+        unk.forEach(function(id) { vidCheckQ(id); });
+        alert('⏳ Estoy comprobando ' + unk.length + ' video' + (unk.length > 1 ? 's' : '') + ' para saber si se pueden mostrar en la app.\n\nEspera unos segundos y vuelve a tocar el botón.');
+        return false;
+      }
+      if (!bad.length) { clearVideoMissingMarks(); return true; }
+      var first = null;
+      clearVideoMissingMarks();
+      markSel.forEach(function(sel) { var el = document.querySelector(sel); if (el) { el.classList.add('video-missing'); if (!first) first = el; } });
+      var shown = bad.slice(0, 8).map(function(m) { return '• ' + m.label + (m.st === 'missing' ? ' (privado, borrado o no existe)' : ' (no permite incrustación)'); }).join('\n');
+      var go = confirm('🎥 ' + bad.length + (bad.length > 1 ? ' videos no se podrán mostrar' : ' video no se podrá mostrar') + ' dentro de la app:\n\n' + shown + (bad.length > 8 ? '\n• … y ' + (bad.length - 8) + ' más' : '') + '\n\nAceptar = ir a corregirlos\nCancelar = enviar de todos modos (el cliente solo verá el botón "Ver demostración")');
+      if (!go) { clearVideoMissingMarks(); return true; }
+      switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
       if (first) { try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
       return false;
     }
@@ -6221,12 +6258,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       vidCheckQ(id).then(function(st) { show(st); });
     }
     // Comprobación en fila (un video a la vez, sin repetir los que ya se revisaron ni los que van en curso)
-    var VID_Q = Promise.resolve(), VID_INFL = {};
+    var VID_Q = Promise.resolve(), VID_INFL = {}, VID_TRY = {};   // VID_TRY: videos que ya se intentaron comprobar (aunque no hubo respuesta)
     function vidCheckQ(id) {
       if (VID_CHK[id]) return Promise.resolve(VID_CHK[id]);
       if (VID_INFL[id]) return VID_INFL[id];
       var p = VID_Q.then(function() { return vidCheckOne(id); }).then(function(st) {
         if (st !== 'timeout' && st !== 'error') VID_CHK[id] = st;
+        VID_TRY[id] = 1;
         delete VID_INFL[id]; return st;
       });
       VID_INFL[id] = p; VID_Q = p.catch(function() {});
@@ -6241,6 +6279,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
       } catch (e) {}
     }
+    // Al dibujar los días, los videos se comprueban solos en segundo plano (así al enviar ya hay resultado)
+    (function() {
+      var _rd = renderDays;
+      renderDays = function() { var r = _rd.apply(this, arguments); clearTimeout(window._vwT); window._vwT = setTimeout(vidBadgeAll, 700); return r; };
+    })();
     function vidStInfo(st, mot) {
       if (st === 'ok') return { c: '#06d6a0', t: /incrust/i.test(mot || '') ? '✅ Ahora sí se puede incrustar (puede que ya esté arreglado)' : '✅ Este video sí se puede incrustar (el problema pudo ser del celular del cliente)' };
       if (st === 'noembed') return { c: '#ff9a93', t: '❌ Confirmado: este video NO permite incrustación. Reemplázalo.' };
@@ -8520,7 +8563,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-e';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-f';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
