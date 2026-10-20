@@ -878,6 +878,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
         <span id="cl_who" style="font-size:0.78rem; color:var(--primary); font-weight:800;"></span>
         <span>
+          <button type="button" onclick="openCoachWeek()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📈 Esta semana</button>
           <button type="button" id="cl_prueba" onclick="pruebaToggle()" style="background:transparent; border:1px solid #ffd60a; color:#ffd60a; font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🧪 Prueba</button>
           <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
           <button type="button" onclick="coachLogout()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Cerrar sesión</button>
@@ -3423,7 +3424,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         note = 'Toca "Abrir WhatsApp" y envía el mensaje a ' + state.clientName + '.';
       } else if (reason) {
         title = 'Enlace largo listo';
-        note = 'No se pudo crear el enlace corto: ' + reason + ' Se usó el enlace largo, que funciona igual pero puede cortarse en WhatsApp. Si pasa, toca "Copiar mensaje" y pégalo en el chat.';
+        note = 'No se pudo crear el enlace corto: ' + reason + ' Se usó el enlace largo, que funciona igual pero puede cortarse en WhatsApp. Si pasa, toca "Copiar mensaje" y pégalo en el chat. 🔒 Ojo: este enlace lleva la rutina y las medidas del cliente dentro; envíalo solo a esa persona. Cuando el servicio responda, vuelve a enviar para obtener el enlace corto (más privado).';
       } else {
         title = 'Enlace listo';
         note = 'Toca "Abrir WhatsApp" y envía el mensaje a ' + state.clientName + '. Si el enlace se ve cortado, toca "Copiar mensaje" y pégalo en el chat.';
@@ -5660,6 +5661,94 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:12px 0 2px;">METAS DIARIAS (ÚLTIMOS 7 DÍAS)</div>' + (gl || '<div style="font-size:0.8rem; color:var(--muted);">Sin registros.</div>');
       h += '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="closeModal(\'coach_sum_modal\')">Cerrar</button></div>';
       coachSumEl().innerHTML = h;
+    }
+
+    // ----- Panel del coach: quién entrenó esta semana (todos los clientes de la lista) -----
+    // Usa el historial que cada cliente ya sube a la hoja; la meta de días sale de su rutina (si ya la abriste en este celular).
+    var CW = { run: 0, rows: [], total: 0, done: 0 };
+    function coachWeekEl() {
+      var m = document.getElementById('coach_week_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'coach_week_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100004'; document.body.appendChild(m); }
+      return m;
+    }
+    function cwGoalFor(id) {
+      try { var p = coachCacheGet(id); var st = p ? decodePayload('q', p) : null; if (st && st.routineDays) { var n = st.routineDays.filter(function(d) { return !d.rest; }).length; return n > 0 ? n : 0; } } catch (e) {}
+      return 0;
+    }
+    function cwStats(sesiones, goal) {
+      var r = weekRange(0), sup = {}, days = {}, last = '', secs = 0;
+      (sesiones || []).forEach(function(x) { if (x && x.sup) sup[x.sup] = true; });
+      (sesiones || []).forEach(function(x) {
+        if (!x || isMetaSess(x) || sup[x.t]) return;
+        var d = sessDateIso(x); if (!d) return;
+        if (d > last) last = d;
+        if (d >= r.from && d <= r.to) { days[d] = true; secs += parseInt(x.dur, 10) || 0; }
+      });
+      var today = todayIso();
+      var ago = last ? Math.round((new Date(today + 'T12:00:00') - new Date(last + 'T12:00:00')) / 86400000) : -1;
+      return { n: Object.keys(days).length, goal: goal, last: last, ago: ago, secs: secs };
+    }
+    function openCoachWeek() {
+      if (!COACH) return;
+      var run = ++CW.run;
+      var groups = {}, order = [], cut = new Date(); cut.setDate(cut.getDate() - 90);
+      var cutIso = isoOfDate(cut);
+      clientRows.forEach(function(r) {   // la más nueva de cada cliente; se ignoran rutinas de hace más de 90 días
+        var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__' || groups[k]) return;
+        groups[k] = r; if (String(r.f || '').slice(0, 10) >= cutIso) order.push(k);
+      });
+      CW.rows = order.map(function(k) { var r = groups[k]; return { name: r.atleta, id: r.id, goal: cwGoalFor(r.id), st: null, err: false }; });
+      CW.total = CW.rows.length; CW.done = 0;
+      renderCoachWeek(); openModal('coach_week_modal');
+      var i = 0;
+      function worker() {
+        if (run !== CW.run || i >= CW.rows.length) return Promise.resolve();
+        var row = CW.rows[i++];
+        return fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(row.id), { redirect: 'follow' }, 25000).then(function(j) {
+          if (j && j.ok && Array.isArray(j.sesiones)) row.st = cwStats(j.sesiones, row.goal); else row.err = true;
+        }).catch(function() { row.err = true; }).then(function() {
+          if (run !== CW.run) return;
+          CW.done++; renderCoachWeek(); return worker();
+        });
+      }
+      Promise.all([worker(), worker(), worker()]);   // 3 consultas a la vez
+    }
+    function renderCoachWeek() {
+      var rk = weekRange(0), rows = CW.rows.slice();
+      function rank(r) { if (!r.st) return 5; var s = r.st; if (s.n === 0 && (s.ago < 0 || s.ago >= 7)) return 0; if (s.n === 0) return 1; if (s.goal && s.n >= s.goal) return 3; return 2; }
+      rows.sort(function(a, b) { var d = rank(a) - rank(b); if (d) return d; var aa = a.st ? (a.st.ago < 0 ? 999 : a.st.ago) : 0, bb = b.st ? (b.st.ago < 0 ? 999 : b.st.ago) : 0; return bb - aa; });
+      var okN = 0, trainedN = 0, known = 0;
+      rows.forEach(function(r) { if (!r.st) return; known++; if (r.st.n > 0) trainedN++; if (r.st.goal && r.st.n >= r.st.goal) okN++; });
+      var h = '<div class="modal-inner" style="max-width:560px;">' +
+        '<div style="font-size:1.05rem; font-weight:900; color:var(--primary);">📈 Quién entrenó esta semana</div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 10px;">Del ' + fmtDateShort(rk.from) + ' al ' + fmtDateShort(rk.to) + ' (lunes a domingo) · clientes con rutina de los últimos 90 días.</div>';
+      h += '<div style="background:#102418; border:1px solid #1f6b3b; border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:10px;">' +
+        (CW.done < CW.total ? '⏳ Consultando… ' + CW.done + ' de ' + CW.total + '<br>' : '') +
+        '<b>' + trainedN + ' de ' + known + '</b> clientes ya entrenaron esta semana' + (okN ? ' · <b>' + okN + '</b> cumplieron su meta ✔' : '') + '.</div>';
+      if (!rows.length) h += '<div style="font-size:0.85rem; color:var(--muted); padding:12px 0;">No hay rutinas recientes para mostrar.</div>';
+      rows.forEach(function(r) {
+        var s = r.st, badge, line, col = '#555';
+        if (r.err) { badge = '⚠️'; line = 'No se pudo consultar. Toca «Actualizar» para reintentar.'; col = '#6b4a1e'; }
+        else if (!s) { badge = '⏳'; line = 'Consultando…'; }
+        else {
+          var when = s.ago < 0 ? 'Sin entrenos registrados' : (s.ago === 0 ? 'Último: hoy' : (s.ago === 1 ? 'Último: ayer' : 'Último: hace ' + s.ago + ' días'));
+          var meta = s.goal ? s.n + ' de ' + s.goal : String(s.n);
+          if (s.goal && s.n >= s.goal) { badge = '✅'; col = '#1f6b3b'; }
+          else if (s.n > 0) { badge = '🟡'; col = '#8a6d1a'; }
+          else if (s.ago < 0 || s.ago >= 7) { badge = '🔴'; col = '#a33'; }
+          else { badge = '⚪'; col = '#555'; }
+          line = '<b>' + meta + '</b> ' + (s.n === 1 ? 'día' : 'días') + ' esta semana' + (s.secs > 0 ? ' · ⏱ ' + wkHM(s.secs) : '') + ' · ' + when;
+        }
+        h += '<div style="display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
+          '<div style="font-size:1.1rem;">' + badge + '</div>' +
+          '<div style="flex:1; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.9rem;">' + escHtml(r.name) + '</div>' +
+          '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + line + '</div></div>' +
+          '<button type="button" onclick="closeModal(\'coach_week_modal\'); openClientRoutine(\'' + escHtml(r.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:6px 9px; font-weight:800; font-size:0.72rem; cursor:pointer;">Abrir</button></div>';
+      });
+      h += '<div style="font-size:0.68rem; color:var(--muted); margin-top:8px; line-height:1.5;">✅ meta cumplida · 🟡 entrenó pero le falta · ⚪ aún no entrena esta semana · 🔴 sin entrenar hace 7 días o más. La meta solo aparece si ya abriste la rutina del cliente en este celular.</div>';
+      h += '<button type="button" onclick="openCoachWeek()" style="width:100%; margin-top:12px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:11px; font-weight:800; cursor:pointer;">🔄 Actualizar</button>';
+      h += '<button type="button" class="btn-action-primary" style="margin-top:8px;" onclick="closeModal(\'coach_week_modal\')">Cerrar</button></div>';
+      coachWeekEl().innerHTML = h;
     }
 
     // ----- Temporizador de circuitos (pantalla completa) -----
@@ -8715,7 +8804,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-l';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-m';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
