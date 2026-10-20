@@ -198,6 +198,11 @@
     .client-title { font-size: 1.6rem; font-weight: 900; color: #fff; margin-top: 4px; }
     .week-tracker-pill { background: #181818; border: 1px solid var(--primary); border-radius: 20px; padding: 6px 16px; font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-bottom: 24px; }
     .capsule-group { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
+    .frase-dia { width: 100%; max-width: 380px; margin: 0 0 18px; padding: 12px 14px; border-radius: 12px; border: 1px solid #2c2c2c; border-left: 4px solid var(--accent); background: #141414; text-align: left; }
+    .frase-dia .fd-lbl { font-size: 0.66rem; font-weight: 800; letter-spacing: .06em; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
+    .frase-dia .fd-txt { font-size: 0.92rem; font-weight: 700; color: #f2f2f2; line-height: 1.4; }
+    .frase-dia .fd-aut { font-size: 0.74rem; color: var(--muted); margin-top: 4px; }
+    .wk-link { background: none; border: none; color: var(--primary); font-size: 0.92rem; font-weight: 800; cursor: pointer; text-decoration: underline; padding: 8px 6px; }
     .capsule-btn { width: 100%; padding: 16px 20px; border-radius: 40px; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; border: none; cursor: pointer; color: #fff; transition: transform 0.1s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.6); }
     .capsule-btn:active { transform: scale(0.98); }
     .btn-coach { background: #ff6d00; }
@@ -727,6 +732,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <div class="client-title" id="ath_clientTitle">Atleta Benessere</div>
       </div>
       <div class="week-tracker-pill" id="ath_weekDisplay">Semana 1</div>
+      <div class="frase-dia" id="ath_frase" style="display:none;"></div>
       <div class="capsule-group" id="ath_capsuleGroup"></div>
     </div>
 
@@ -3431,6 +3437,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       var welcomeWord = state.clientGender === 'a' ? 'Bienvenida' : 'Bienvenido';
       document.getElementById('ath_welcomeWord').innerText = welcomeWord;
+      try { fraseDiaPaint(); } catch (e) {}
       document.getElementById('ath_clientTitle').innerText = state.clientName;
       document.getElementById('ath_coachMsgTitle').innerText = state.coachMsgTitle || 'Nota del Coach';
       document.getElementById('ath_coachMsgBody').innerText = state.coachMsgBody || '';
@@ -4930,9 +4937,36 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Al abrir un día de entreno sin el cronómetro en marcha, se le recuerda iniciarlo (también en modo coach). Una vez por día y por apertura de la app.
     var WK_NAG = {};
-    function openDay(dayId) {
+    // ----- Frase del día: se muestra en la pantalla principal y en la bienvenida. Para cambiarla, edita FRASE_DIA (fija) o la lista FRASES_DIA (rota por fecha). -----
+    var FRASE_DIA = { t: '', a: '' };   // si "t" tiene texto, esa frase se muestra siempre (hasta que se cambie o se vacíe)
+    var FRASES_DIA = [
+      { t: 'No tienes que ser perfecto, solo constante.', a: '' },
+      { t: 'Hoy cuenta: lo que haces hoy te acerca a lo que quieres mañana.', a: '' },
+      { t: 'El cuerpo logra lo que la mente cree. ¡Vamos!', a: '' },
+      { t: 'Un entreno más es una promesa cumplida contigo.', a: '' },
+      { t: 'Sin prisa, sin pausa: cada serie suma.', a: '' },
+      { t: 'La disciplina es hacerlo incluso cuando no hay ganas.', a: '' },
+      { t: 'Cuida tu cuerpo: es el único lugar donde tienes que vivir.', a: '' }
+    ];
+    function fraseDelDia() {
+      if (FRASE_DIA && FRASE_DIA.t) return FRASE_DIA;
+      if (!FRASES_DIA.length) return null;
+      var d = new Date(), n = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+      return FRASES_DIA[n % FRASES_DIA.length];
+    }
+    function fraseDiaHtml() {
+      var f = fraseDelDia(); if (!f || !f.t) return '';
+      return '<div class="fd-lbl">✨ Frase del día</div><div class="fd-txt">' + escHtml(f.t) + '</div>' + (f.a ? '<div class="fd-aut">— ' + escHtml(f.a) + '</div>' : '');
+    }
+    function fraseDiaPaint() {
+      var box = document.getElementById('ath_frase'); if (!box) return;
+      var h = fraseDiaHtml();
+      box.innerHTML = h; box.style.display = h ? 'block' : 'none';
+    }
+    function openDay(dayId, review) {
       openModal(dayId);
       try { guidePaint(dayId); } catch (e) {}
+      if (review) return;   // modo repaso: se entra a ver el entreno (y usar temporizadores) sin avisar ni iniciar el cronómetro
       try {
         var d = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(function(x) { return x.id === dayId; })[0];
         if (!d || d.rest || WK.start || WK_NAG[dayId]) return;
@@ -5367,13 +5401,34 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           }).join('') + '</div>' +
           '<div style="font-size:0.68rem; color:var(--muted); margin-top:6px;">⭐ sugerido · ✓ ya lo hiciste esta semana</div>';
       }
+      var fh = fraseDiaHtml(), hasNutri = !!(st.configFeatures && st.configFeatures.nutrition === true);
       wkWelcomeEl().innerHTML = '<div class="modal-inner congrats-box">' +
         '<div style="font-size:2.6rem; margin-bottom:6px;">💪</div>' +
         '<div style="font-size:1.2rem; color:var(--primary); font-weight:900; margin-bottom:8px; line-height:1.25;">' + head + '</div>' +
-        '<div style="font-size:0.88rem; color:#f0f0f0; line-height:1.5;">' + line + '</div>' + chips +
+        '<div style="font-size:0.88rem; color:#f0f0f0; line-height:1.5;">' + line + '</div>' +
+        (fh ? '<div class="frase-dia" style="margin:14px auto 0;">' + fh + '</div>' : '') + chips +
         '<button type="button" class="wk-btn" style="width:100%; margin-top:18px; padding:16px; font-size:1.05rem;" onclick="wkWelcomeStart()">▶ Iniciar entreno</button>' +
-        '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.78rem; margin-top:12px; cursor:pointer; text-decoration:underline;" onclick="wkWelcomeClose()">Solo quiero ver mi rutina</button>' +
-        '</div>';
+        '<div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">' +
+          '<button type="button" class="wk-link" onclick="wkWelcomeReview()">👀 Repasar el entreno de hoy</button>' +
+          (hasNutri ? '<button type="button" class="wk-link" onclick="wkWelcomeNutri()">🍽 Nutrición de hoy</button>' : '') +
+          '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.74rem; margin-top:4px; cursor:pointer; text-decoration:underline;" onclick="wkWelcomeClose()">Ir a la pantalla principal</button>' +
+        '</div></div>';
+    }
+    // Entrar a ver el día elegido sin iniciar el entreno (los temporizadores y demostraciones funcionan igual)
+    function wkWelcomeReview() {
+      var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
+      closeModal('wk_welcome_modal');
+      if (!d) return;
+      openDay(d.id, true);
+      try { switchDaySection(d.id, 'rutina'); } catch (e) {}
+    }
+    // Entrar a ver la nutrición del día elegido; desde ahí puede pasar a "Rutina del Día" con el selector de arriba
+    function wkWelcomeNutri() {
+      var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
+      closeModal('wk_welcome_modal');
+      if (!d) return;
+      openDay(d.id, true);
+      try { switchDaySection(d.id, 'nutricion'); } catch (e) {}
     }
     function wkWelcomePick(i) { WKW.sel = i; wkWelcomeRender(); }
     function wkWelcomeClose() { closeModal('wk_welcome_modal'); }
@@ -8379,7 +8434,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-19-j';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-a';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
