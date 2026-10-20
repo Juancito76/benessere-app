@@ -271,6 +271,11 @@
     .dc-card.on .dc-b { background: #00ff9c; color: #00281a; }
     .gd-names { flex: 1; min-width: 0; font-size: 0.86rem; font-weight: 800; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .gd-chev { flex: none; color: #aaa; font-size: 0.8rem; }
+    .gd-ok { flex: none; background: #06d6a0; color: #000; border: none; border-radius: 20px; font-weight: 900; font-size: 0.72rem; padding: 8px 11px; cursor: pointer; white-space: nowrap; }
+    .bd-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .bd-n { flex: none; width: 28px; font-size: 0.8rem; font-weight: 800; color: #aaa; text-align: left; }
+    .bd-in { flex: 1; min-width: 0; height: 40px; text-align: center; background: #202020; border: 1px solid #333; color: #fff; border-radius: 8px; font-size: 1rem; }
+    .bd-in.pre { color: #777; }
     .gd-ban { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 10px 12px; margin: 8px 0; box-shadow: 0 0 8px rgba(255,238,0,.5), 0 0 20px rgba(255,238,0,.2); text-align: left; }
     .gd-ban .gd-t { font-size: 0.92rem; font-weight: 900; color: #ffee00; }
     .gd-ban .gd-s { font-size: 0.8rem; color: #ddd; margin: 3px 0 8px; line-height: 1.35; }
@@ -4189,7 +4194,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var boxes = dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .exercise-item-box');
       var ok = false;
       boxes.forEach(function(b) { if (readBoxSets(b).counted) ok = true; });
-      if (!ok) return alert('Anota al menos un peso o repetición hoy para guardar.');
+      if (!ok) { dayCloseNoMarks(dayId); return; }   // sin pesos anotados no se bloquea: el entreno se cierra igual (hay quien usa la rutina solo de guía)
 
       congratsCommit();   // si quedó una sesión anterior sin enviar, se envía primero
       var now = new Date();
@@ -5149,7 +5154,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<input type="number" inputmode="numeric" id="wke_cal" placeholder="Calorías" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
           '<input type="number" inputmode="numeric" id="wke_hr" placeholder="Pulso promedio" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
         '</div>' +
-        (closing ? '<div style="background:#0d2318; border:2px solid #00ff9c; border-radius:12px; padding:12px; margin-bottom:14px; font-size:0.88rem; font-weight:700; color:#d9ffe9; line-height:1.4;">💾 Al tocar <b>Listo</b> se guardan tus pesos y reps de hoy y queda cerrado el entreno.</div>' : '') +
+        (closing ? '<div style="background:#0d2318; border:2px solid #00ff9c; border-radius:12px; padding:12px; margin-bottom:14px; font-size:0.88rem; font-weight:700; color:#d9ffe9; line-height:1.4;">' + (dayHasMarks(dayId) ? '💾 Al tocar <b>Listo</b> se guardan tus pesos y reps de hoy y queda cerrado el entreno.' : '✅ Al tocar <b>Listo</b> queda cerrado el entreno.') + '</div>' : '') +
         '<div style="' + (closing ? 'display:none; ' : '') + 'background:#fff3cd; border:3px solid #ffb703; border-radius:12px; padding:14px 12px; margin-bottom:14px; text-align:center;">' +
           '<div style="font-size:1.6rem; line-height:1;">⚠️</div>' +
           '<div style="font-size:1.05rem; font-weight:900; color:#7a4b00; margin:4px 0; line-height:1.25;">¡No olvides actualizar tus pesos y reps!</div>' +
@@ -5686,7 +5691,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_plus').onclick = ctPlus5;
       document.getElementById('tm_rnd').onclick = clsAmrapPlus;
       document.getElementById('tm_stop').onclick = ctStop;
-      document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?')) ctClose(); };
+      document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?\n\nEl bloque queda pendiente. Si ya lo terminaste, toca «✅ Completado» en su pestaña.')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
       document.getElementById('tm_vtog').onclick = ctVidToggle; ctVidLabel(); ctPipInit();
       document.getElementById('tm_muinv').onclick = muOpenSheet;
@@ -6193,6 +6198,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (CT.srId && SR[CT.srId]) {
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
           el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = CT.hiit ? 'none' : 'block';
+          if (!CT.guide) { var dnB = el('tm_done'); dnB.innerText = '✅ Ya terminé'; dnB.style.display = ''; dnB.onclick = function() { bdOpen(CT.srId); }; }   // botón claro para cerrar el bloque: abre las cargas y lo da por completado
         }
       }
       tmrWakeOff();
@@ -6507,6 +6513,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }   // abre "¡Entreno terminado!"; al tocar "Listo" se guardan las marcas
       dayCloseSave(dayId);
     }
+    function dayCloseNoMarks(dayId) {   // "Guardar Día" sin ninguna marca anotada: cierra el cronómetro y el entreno quedan cerrados, sin pedir pesos
+      CLOSE_PENDING = dayId;
+      if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }
+      dayCloseSave(dayId);
+    }
     function dayCloseSave(dayId) {
       CLOSE_PENDING = '';
       if (dayHasMarks(dayId)) archiveCurrentDay(dayId);
@@ -6589,7 +6600,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var names = [].map.call(el.querySelectorAll('.ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
         var nDone = gdStore(dayId).n[b.key] || 0, rr = SR[b.srId], pill = inProc ? '🔥 EN PROCESO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE') : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
         var head = document.createElement('div'); head.className = 'gd-head';
-        head.innerHTML = (pill ? '<span class="gd-pill">' + pill + '</span>' : '') + '<span class="gd-names">' + escHtml(names) + '</span>' + (isHere ? '' : '<span class="gd-chev">' + (collapsed ? '▼' : '▲') + '</span>');
+        head.innerHTML = (pill ? '<span class="gd-pill">' + pill + '</span>' : '') + '<span class="gd-names">' + escHtml(names) + '</span>' + ((s === 'pend' && !isHere) ? '<button type="button" class="gd-ok">✅ Completado</button>' : '') + (isHere ? '' : '<span class="gd-chev">' + (collapsed ? '▼' : '▲') + '</span>');
+        var okBtn = head.querySelector('.gd-ok');   // bloque pendiente que en realidad ya hizo: lo marca completado (con ventanita de cargas si las hay)
+        if (okBtn) okBtn.onclick = function(ev) { ev.stopPropagation(); bdOpen(b.srId); };
         var tb = el.querySelector('.sr-btn');   // el botón del temporizador también parpadea cuando la pestaña está abierta, para que no se vuelva a tocar la pestaña
         if (tb && /temporizador|Retomar/i.test(tb.innerText)) {
           if (!tb.getAttribute('data-orig')) tb.setAttribute('data-orig', tb.innerText);
@@ -6685,6 +6698,56 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var G = CT.guide; ctGuideClear(); if (!G) return;
       if (G.cls) { clsGo(); return; }
       tmrAudio(); guideRun(G.dayId, G.blocks, G.pos + 1);
+    }
+
+    // ----- "Completado": ventanita con las cargas de todas las series (opcional) y cierre del bloque -----
+    // Se abre con "✅ Ya terminé" al acabar el temporizador, o con el botón "Completado" de una pestaña pendiente.
+    // Lo ya anotado aparece lleno; lo que quede vacío no bloquea nada: el bloque se da por completado igual.
+    var BD = { srId: 0 };
+    function bdOpen(srId) {
+      var r = SR[srId], card = srCard(srId); if (!r || !card) return;
+      var n = Math.max(r.base || 0, r.sets || 0, r.cur || 0, 1), html = '';
+      card.querySelectorAll('.set-rows').forEach(function(h) {
+        var key = h.getAttribute('data-key'), timed = h.getAttribute('data-timed') === '1';
+        ensureSetRows(key, n, true);
+        var hasW = !!h.querySelector('input[id^="pw_"]');
+        if (timed && !hasW) return;   // los segundos de los ejercicios por tiempo ya se anotan solos
+        var box = h.closest('.exercise-item-box'), nmEl = box && box.querySelector('.ex-name');
+        var nm = nmEl ? nmEl.innerText.replace(/^[A-C1-9]\s/, '').trim() : 'Ejercicio';
+        var rows = '';
+        for (var i = 0; i < n; i++) {
+          var w = document.getElementById('pw_' + key + '_' + i), rp = document.getElementById('pr_' + key + '_' + i);
+          if (!rp) continue;
+          var cell = function(inp, kind, ph) {
+            return '<input type="text" inputmode="decimal" class="bd-in' + (inp.classList.contains('prefilled') ? ' pre' : '') + '" data-k="' + escHtml(key) + '" data-i="' + i + '" data-kind="' + kind + '" value="' + escHtml(inp.value) + '" placeholder="' + ph + '" oninput="bdInput(this)">';
+          };
+          rows += '<div class="bd-row"><span class="bd-n">S' + (i + 1) + '</span>' + (w ? cell(w, 'pw', 'lbs') : '') + cell(rp, 'pr', timed ? 'seg' : 'reps') + '</div>';
+        }
+        if (rows) html += '<div style="margin-top:12px; text-align:left;"><div style="font-size:0.9rem; font-weight:800;">' + escHtml(nm) + '</div>' + rows + '</div>';
+      });
+      BD.srId = srId;
+      if (!html) { bdDone(); return; }   // nada que anotar (calentamiento, HIIT…): se completa directo
+      var m = document.getElementById('bd_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'bd_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100006'; document.body.appendChild(m); }
+      m.innerHTML = '<div class="modal-inner" style="text-align:center;">' +
+        '<div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📝 Anota tus cargas</div>' +
+        '<div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Anota lo que falte. Es opcional: si lo dejas vacío no pasa nada.</div>' + html +
+        '<button type="button" class="btn-action-primary" style="margin-top:16px;" onclick="bdDone()">✅ Completado</button>' +
+        '<button type="button" onclick="bdCancel()" style="margin-top:8px; width:100%; background:none; border:none; color:#aaa; font-size:0.85rem; padding:8px; cursor:pointer;">Volver</button></div>';
+      m.classList.add('active');
+    }
+    function bdInput(el) {
+      ctSheetSet(el.getAttribute('data-k'), parseInt(el.getAttribute('data-i'), 10), el.getAttribute('data-kind'), el.value);
+      el.classList.remove('pre');
+    }
+    function bdCancel() { var m = document.getElementById('bd_modal'); if (m) m.remove(); }
+    function bdDone() {
+      var srId = BD.srId; bdCancel();
+      try { saveTracker(); } catch (e) {}
+      var gk = gdKeyOf(srId);
+      if (gk) { gdMark(gk.dayId, gk.key, 'c'); GD_OPEN[srId] = false; }
+      if (CT.active && CT.srId === srId) ctClose(); else if (gk) { try { guidePaint(gk.dayId); } catch (e2) {} }
+      if (gk) setTimeout(function() { try { var sec = document.getElementById('sec_rutina_' + gk.dayId), nx = sec && sec.querySelector('.gd-go .gd-head, .gd-pend .gd-head'); if (nx) nx.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e3) {} }, 450);
     }
 
     // ----- Ventanita para anotar peso y reps sin salir del temporizador (no bloquea el descanso) -----
@@ -8285,7 +8348,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-19-g';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-19-h';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
