@@ -5000,9 +5000,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       var m = document.getElementById('day_review_modal');
       if (!m) { m = document.createElement('div'); m.id = 'day_review_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100004'; document.body.appendChild(m); }
-      var hasN = !!document.getElementById('nutri_link_' + dayId);
+      var hasN = !!document.getElementById('nutri_link_' + dayId), dEl = document.getElementById(dayId), dTitle = dEl ? (dEl.getAttribute('data-day-title') || '') : '';
       m.innerHTML = '<div class="modal-inner" style="max-height:85vh; overflow-y:auto;">' +
-        '<div style="font-size:1.05rem; font-weight:900; color:var(--primary); margin-bottom:2px;">📋 Qué toca hoy</div>' +
+        '<div style="font-size:1.05rem; font-weight:900; color:var(--primary); margin-bottom:2px;">📋 Qué toca hoy' + (dTitle ? ' · ' + escHtml(dTitle) : '') + '</div>' +
         '<div style="font-size:0.74rem; color:var(--muted); margin-bottom:10px;">' + nEx + ' ejercicio' + (nEx === 1 ? '' : 's') + ' en total. Solo repaso: el cronómetro no se inicia.</div>' +
         (rows || '<div style="font-size:0.85rem; color:#ccc;">No hay ejercicios para mostrar.</div>') +
         (hasN ? '<button type="button" class="nutri-hoy-link" style="margin-top:6px;" onclick="closeModal(\'day_review_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición de hoy</button>' : '') +
@@ -8479,7 +8479,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
