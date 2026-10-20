@@ -4066,8 +4066,29 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('input', function(e) {
       if (e.target && e.target.classList) e.target.classList.remove('prefilled');
       var h = e.target && e.target.closest && e.target.closest('.set-rows[data-key]');
-      if (h) refreshSetSummary(h.getAttribute('data-key'));
+      if (h) {
+        try { setAutoFill(e.target, h); } catch (err) {}
+        refreshSetSummary(h.getAttribute('data-key'));
+      }
     });
+    // Al llenar la serie 1 (peso o reps), las demás series se llenan solas con lo mismo; lo que el cliente corrija a mano en otra serie ya no se pisa.
+    function setAutoFill(inp, holder) {
+      var m = /^(pw|pr)_(.+)_(\d+)$/.exec(inp.id || ''); if (!m) return;
+      var idx = parseInt(m[3], 10);
+      if (idx > 0) { delete inp.dataset.auto; inp.dataset.man = '1'; return; }   // la tocó a mano: se respeta
+      var val = inp.value.trim(), changed = false;
+      holder.querySelectorAll('.set-rows-list .set-row').forEach(function(row, i) {
+        if (i === 0) return;
+        var o = row.querySelector('input[id^="' + m[1] + '_"]'); if (!o) return;
+        if (o.dataset.man === '1' && o.value.trim()) return;   // corregida a mano
+        if (!o.value.trim() || o.classList.contains('prefilled') || o.dataset.auto === '1') {
+          o.value = val; o.classList.remove('prefilled');
+          if (val) o.dataset.auto = '1'; else delete o.dataset.auto;
+          changed = true;
+        }
+      });
+      if (changed) saveTracker();
+    }
 
     function normName(s) { return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
     function cleanMark(v) { v = String(v == null ? '' : v).trim(); return v === '-' ? '' : v; }
@@ -8838,7 +8859,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-n';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-20-q';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
