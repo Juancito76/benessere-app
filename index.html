@@ -8572,7 +8572,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // con las mismas líneas "Circuito:" y "Estacion:" de las rutinas, más una línea inicial "Clase:" o "Reto:".
     var CLS_KEY = 'benessere_clases_v1';
     var CLS = { lista: [], hoy: '', hoyD: '', dirty: false };
-    var CLASS_ID = '';   // código del link único de clases (se pega aquí tras la primera publicación, como ANNOUNCE_ID)
+    var CLASS_ID = 'af2c58b9b2cec8e2';   // código del link único de clases (se pega aquí tras la primera publicación, como ANNOUNCE_ID)
     var CLS_ID_KEY = 'benessere_class_id', CLS_PAY_KEY = 'benessere_class_payload';
     var CLS_VIEW = false, CLS_PREVIEW = false, CLS_DATA = null, CLS_TAB = 'hoy', CLS_SEL = { ant: 0, ret: 0 }, CLS_SHOWN = { hoy: null, ant: [], ret: [] }, CLS_PUBMSG = '';
     function clsLinkId() { var v = CLASS_ID; if (!v) { try { v = localStorage.getItem(CLS_ID_KEY) || ''; } catch (e) {} } return v; }
@@ -9239,7 +9239,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-g';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-h';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
