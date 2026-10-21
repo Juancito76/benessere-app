@@ -3750,7 +3750,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ================= VISTA DEL ATLETA =================
     function renderAthleteApp(state) {
-      if (state && state.coachMsgTitle === '__CLASES__') { renderClassApp(state); return; }   // link único de clases: portada de clases
+      if (state && state.coachMsgTitle === '__CLASES__') { try { clsPing(athleteRoutineId); } catch (e) {} renderClassApp(state); return; }   // link único de clases: portada de clases
       CLS_VIEW = false; var clsBox = document.getElementById('cls_app'); if (clsBox) clsBox.style.display = 'none';
       athleteActiveState = state;
       setTimeout(syncHistorial, 600);   // trae/une el historial de la hoja (si hay enlace corto)
@@ -8859,15 +8859,51 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="btn btn-accent" id="clsPubBtn" style="flex:1; min-width:140px;" onclick="clsPublish()">📤 ' + (lid ? 'Actualizar el link' : 'Publicar y crear el link') + '</button>' +
         '<button type="button" class="btn btn-secondary" style="flex:1; min-width:120px;" onclick="clsPreviewPortada()">👁 Ver portada</button>' +
         (link ? '<button type="button" class="btn btn-secondary" style="flex:1; min-width:100px;" onclick="clsCopyLink()">📋 Copiar</button><button type="button" class="btn btn-export-wa" style="flex:1; min-width:110px;" onclick="clsShareWa()">📲 WhatsApp</button>' : '') +
-        '</div><div id="clsPubMsg" style="font-size:0.78rem; min-height:18px; margin-top:6px;">' + CLS_PUBMSG + '</div></div>' +
+        '</div><div id="clsPubMsg" style="font-size:0.78rem; min-height:18px; margin-top:6px;">' + CLS_PUBMSG + '</div>' +
+        (lid ? '<div id="clsStats" style="font-size:0.8rem; margin-top:6px; color:#9fe8c8;">' + clsStatsHtml() + '</div>' : '') + '</div>' +
         '<div class="med-h" style="margin-top:12px;">Clase de hoy</div>' + (today ? clsRowHtml(today, true) : '<div class="med-sum">Todavía no has elegido la clase de hoy.</div>');
       h += '<details style="margin-top:10px;"' + (clases.length && !today ? ' open' : '') + '><summary style="cursor:pointer; font-weight:800; color:var(--primary); font-size:0.88rem; padding:6px 0;">📅 Clases anteriores (' + clases.length + ')</summary>' +
         (clases.length ? clases.map(function(c) { return clsRowHtml(c, false); }).join('') : '<div class="med-sum">Aquí quedan las clases que ya no son la de hoy, con su fecha, para elegirlas de nuevo o habilitarlas.</div>') + '</details>';
       h += '<details style="margin-top:10px;"><summary style="cursor:pointer; font-weight:800; color:var(--primary); font-size:0.88rem; padding:6px 0;">🏆 Retos (' + retos.length + ')</summary>' +
         (retos.length ? retos.map(function(c) { return clsRowHtml(c, false); }).join('') : '<div class="med-sum">Escribe «Reto:» en la primera línea del texto para cargar un reto. Solo los que marques como visibles aparecerán en el link.</div>') + '</details>';
       box.innerHTML = h;
+      if (lid) clsStatsLoad(false);
     }
 
+
+    // ----- Contador de aperturas del link de clases -----
+    // Solo se cuenta CUÁNTAS veces se abre (un registro con la hora, sin nombre ni datos de la persona). Se cuenta una apertura por celular cada 30 minutos.
+    function clsPing(id) {
+      if (!id || COACH || (typeof PRUEBA !== 'undefined' && PRUEBA.on)) return;
+      var key = 'benessere_cls_ping_' + id, now = Date.now(), last = 0;
+      try { last = parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch (e) {}
+      if (now - last < 30 * 60 * 1000) return;
+      try { localStorage.setItem(key, String(now)); } catch (e) {}
+      postJson({ a: 'sesion', id: id, s: JSON.stringify({ k: 'open', t: now }) }).catch(function() { try { localStorage.removeItem(key); } catch (e) {} });
+    }
+    var CLS_STATS = { at: 0, n: null, hoy: 0, sem: 0, err: false, busy: false };
+    function clsStatsHtml() {
+      if (CLS_STATS.busy && CLS_STATS.n == null) return '👁 Aperturas del link: cargando…';
+      if (CLS_STATS.err && CLS_STATS.n == null) return '👁 Aperturas del link: no se pudo cargar. <a href="#" onclick="clsStatsLoad(true); return false;" style="color:var(--primary);">Reintentar</a>';
+      if (CLS_STATS.n == null) return '';
+      return '👁 Aperturas del link: <b>' + CLS_STATS.hoy + '</b> hoy · <b>' + CLS_STATS.sem + '</b> en 7 días · <b>' + CLS_STATS.n + '</b> en total <a href="#" onclick="clsStatsLoad(true); return false;" style="color:var(--primary); margin-left:6px;">🔄</a>';
+    }
+    function clsStatsLoad(force) {
+      var id = clsLinkId(); if (!id || CLS_STATS.busy) return;
+      if (!force && CLS_STATS.n != null && Date.now() - CLS_STATS.at < 60000) return;
+      CLS_STATS.busy = true; CLS_STATS.err = false;
+      var paint = function() { var el = document.getElementById('clsStats'); if (el) el.innerHTML = clsStatsHtml(); };
+      paint();
+      fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(j) {
+        if (!(j && j.ok && Array.isArray(j.sesiones))) throw new Error('sin datos');
+        var now = Date.now(), d0 = new Date(); d0.setHours(0, 0, 0, 0);
+        var opens = j.sesiones.filter(function(s) { return s && s.k === 'open' && s.t; });
+        CLS_STATS.n = opens.length;
+        CLS_STATS.hoy = opens.filter(function(s) { return s.t >= d0.getTime(); }).length;
+        CLS_STATS.sem = opens.filter(function(s) { return s.t >= now - 7 * 86400000; }).length;
+        CLS_STATS.at = now;
+      }).catch(function() { CLS_STATS.err = true; }).then(function() { CLS_STATS.busy = false; paint(); });
+    }
 
     // ----- Publicar: un solo link permanente para todas las clases (atleta especial "__CLASES__") -----
     function clsStrip(c) { return { id: c.id, k: c.k, f: c.f, t: c.t, m: c.m, items: c.items }; }
@@ -8953,6 +8989,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var cst = decodePayload('q', j.p);
         if (!cst || cst.coachMsgTitle !== '__CLASES__') throw new Error('formato');
         try { localStorage.setItem(CLS_CACHE_KEY + '_' + id, JSON.stringify({ coachMsgTitle: cst.coachMsgTitle, coachMsgBody: cst.coachMsgBody })); } catch (e) {}
+        if (!auto || !isCoachView()) { try { clsPing(id); } catch (e) {} }
         show(cst);
       }).catch(function() {
         var c = cached();
@@ -9202,7 +9239,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-f';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-g';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
