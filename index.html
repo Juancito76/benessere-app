@@ -1771,6 +1771,28 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
     }
 
+    // Descanso por ejercicio: al cambiarlo en una serie normal se aplica a todas las series normales con el mismo nombre (todos los días y versiones/vigencias)
+    function restNameKey(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+    function setItemRestSync(d, i, val) {
+      var src = routineDays[d] && routineDays[d].items && routineDays[d].items[i];
+      if (!src) return;
+      src.rest = val;
+      if (src.type !== 'normal') return;
+      var sub0 = (Array.isArray(src.sub) && src.sub[0]) || { name: src.name };
+      var key = restNameKey(sub0.name);
+      if (!key) return;
+      routineDays.forEach(function(day, di) {
+        (day.items || []).forEach(function(it, ii) {
+          if (it === src || it.type !== 'normal') return;
+          var s0 = (Array.isArray(it.sub) && it.sub[0]) || { name: it.name };
+          if (restNameKey(s0.name) !== key) return;
+          it.rest = val;
+          var inp = document.querySelector('input[data-rest-d="' + di + '"][data-rest-i="' + ii + '"]');
+          if (inp && inp.value !== val) inp.value = val;
+        });
+      });
+    }
+
     function renderDays() {
       var container = document.getElementById('daysList');
       if (!container) return;
@@ -1822,7 +1844,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
           if (item.type !== 'circuito') {
             subsHtml += '<div class="sub-box"><div class="form-grid"><div class="form-group" style="grid-column: span 2;"><label>Descanso entre series (opcional)</label>' +
-              '<input type="text" value="' + escHtml(item.rest || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].rest = this.value" placeholder="Ej: 90 s (pesados) o 30 s (accesorios). El cliente puede ajustarlo 30/60/90"></div></div></div>';
+              '<input type="text" data-rest-d="' + dayIndex + '" data-rest-i="' + itemIndex + '" value="' + escHtml(item.rest || '') + '" oninput="setItemRestSync(' + dayIndex + ',' + itemIndex + ',this.value)" placeholder="Ej: 90 s (pesados) o 30 s (accesorios). El cliente puede ajustarlo 30/60/90">' +
+              (isNormal ? '<div style="font-size:0.7rem; color:var(--muted); margin-top:3px;">Se aplica a todas las veces que este mismo ejercicio aparece en la rutina.</div>' : '') + '</div></div></div>';
           }
           if (item.type === 'circuito') subsHtml = circuitEditorHtml(dayIndex, itemIndex, item, showDemos);
           itemsHtml += '<div class="exercise-item ' + (item.type || 'normal') + '">' +
@@ -8996,7 +9019,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-20-u';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-a';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
