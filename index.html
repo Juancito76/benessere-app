@@ -1646,7 +1646,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var query = (searchEl ? searchEl.value : '').trim().toLowerCase();
       var lib = getVideoLibrary();
       var names = Object.keys(lib).sort(function(a, b) { return a.localeCompare(b, 'es'); });
-      if (query) names = names.filter(function(n) { return n.toLowerCase().indexOf(query) !== -1; });
+      if (query) names = vsSearch(names, query).names;
 
       if (names.length === 0) {
         body.innerHTML = '<p style="font-size:0.85rem; color:var(--muted); text-align:center; padding:20px 0;">' +
@@ -4155,15 +4155,31 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       setTimeout(vidBadgeAll, 150);   // el video elegido de la lista también se comprueba
     }
 
+    // Búsqueda tolerante de ejercicios: sin acentos ni mayúsculas, palabras en cualquier orden y singular/plural (compara las primeras letras de cada palabra)
+    function vsNorm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+    function vsStem(t) { return t.length > 5 ? t.slice(0, 5) : t; }
+    // Devuelve { names: [...], partial: bool }: primero los que contienen TODAS las palabras; si no hay, los que contienen alguna (los de más coincidencias arriba)
+    function vsSearch(names, query) {
+      var toks = vsNorm(query).split(' ').filter(function(t) { return t.length > 2 && ['con', 'del', 'las', 'los', 'para', 'sin', 'una', 'por'].indexOf(t) < 0; });
+      if (!toks.length) return { names: names.slice(), partial: false };
+      var scored = names.map(function(n) {
+        var nn = vsNorm(n), sc = 0;
+        toks.forEach(function(t) { if (nn.indexOf(vsStem(t)) !== -1) sc++; });
+        return { n: n, sc: sc };
+      });
+      var full = scored.filter(function(x) { return x.sc === toks.length; }).map(function(x) { return x.n; });
+      if (full.length) return { names: full, partial: false };
+      var part = scored.filter(function(x) { return x.sc > 0; }).sort(function(a, b) { return b.sc - a.sc || a.n.localeCompare(b.n, 'es'); }).map(function(x) { return x.n; });
+      return { names: part, partial: part.length > 0 };
+    }
+
     function renderPickVideo() {
       var body = document.getElementById('pickVideoBody');
       var searchEl = document.getElementById('pickVideoSearch');
       if (!body) return;
       var query = (searchEl ? searchEl.value : '').trim().toLowerCase();
       var lib = getVideoLibrary();
-      var names = Object.keys(lib).filter(function(n) {
-        return !query || n.toLowerCase().indexOf(query) !== -1;
-      }).sort(function(a, b) { return a.localeCompare(b, 'es'); });
+      var vs = vsSearch(Object.keys(lib).sort(function(a, b) { return a.localeCompare(b, 'es'); }), query), names = vs.names;
       // El video guardado bajo el mismo nombre del ejercicio que se está editando va fijo arriba,
       // para elegirlo (o probarlo) sin buscarlo en la lista
       var sameHtml = '';
@@ -4180,7 +4196,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '</div>';
         return;
       }
-      var html = '<div class="pick-ex-list">';
+      var html = (vs.partial ? '<div style="font-size:0.72rem; color:var(--muted); margin:0 0 6px;">No hay uno con todas esas palabras; estos se parecen:</div>' : '') + '<div class="pick-ex-list">';
       names.forEach(function(n) {
         html += '<button type="button" class="pick-ex-btn" onclick="pickVideoChoose(' + jsArg(lib[n]) + ')" title="' + escHtml(lib[n]) + '">' + escHtml(n) + '</button>';
       });
@@ -9186,7 +9202,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-e';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-f';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
