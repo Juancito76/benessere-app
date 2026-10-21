@@ -955,7 +955,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div style="display:flex; gap:8px; margin-bottom:8px;">
         <button type="button" class="btn btn-secondary" style="flex:1;" onclick="downloadVideoLibrary()">⬇️ Exportar</button>
         <button type="button" class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('videoLibFileInput').click()">📤 Importar</button>
+        <button type="button" class="btn btn-secondary" style="flex:1;" onclick="vidLibSync(true)">🔄 Sincronizar</button>
       </div>
+      <div id="videoLibStatus" style="font-size:0.74rem; color:var(--muted); margin-bottom:8px; line-height:1.4;"></div>
       <input type="file" id="videoLibFileInput" accept=".json" style="display:none;" onchange="loadVideoLibraryFromFile(this)">
       <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_video_library')">Cerrar</button>
     </div>
@@ -1580,13 +1582,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       video = String(video || '').trim();
       if (!name || !video) return;
       var lib = getVideoLibrary();
+      var changed = lib[name] !== video;
       lib[name] = video;
       setVideoLibrary(lib);
+      if (changed) { try { vidLibQueue(name, video); } catch (e) {} }
     }
     function forgetExerciseVideo(name) {
       var lib = getVideoLibrary();
       delete lib[name];
       setVideoLibrary(lib);
+      try { vidLibQueue(name, ''); } catch (e) {}
     }
     // Se llama al perder el foco un campo de nombre o de video de ejercicio: toma el par
     // actual desde el propio formulario (ya reflejado en routineDays por el oninput previo)
@@ -1632,6 +1637,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (s) s.value = '';
       renderVideoLibrary();
       openModal('modal_video_library');
+      vidLibSync(true);
     }
     function renderVideoLibrary() {
       var body = document.getElementById('videoLibBody');
@@ -1701,6 +1707,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (!cleanName || !video) return;
           if (lib.hasOwnProperty(cleanName)) { if (lib[cleanName] !== video) updated++; }
           else added++;
+          if (lib[cleanName] !== video) { try { vidLibQueue(cleanName, video); } catch (e) {} }
           lib[cleanName] = video;
         });
         setVideoLibrary(lib);
@@ -1710,6 +1717,96 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       };
       reader.readAsText(file);
     }
+
+
+    // ----- Biblioteca compartida entre coaches (se guarda en la hoja de Google como registro especial "__VIDEOS__") -----
+    // Cada coach conserva su copia en el navegador; los cambios (agregar, cambiar, quitar) se suben solos y al abrir se baja lo de los demás.
+    var VIDEOS_ID = '';   // código del registro compartido: se pega aquí tras la primera sincronización (como ANNOUNCE_ID)
+    var VID_ID_KEY = 'benessere_videolib_id', VID_OPS_KEY = 'benessere_videolib_ops';
+    var vidSyncing = false, vidSyncTimer = null;
+    function vidLibId() { var v = VIDEOS_ID; if (!v) { try { v = localStorage.getItem(VID_ID_KEY) || ''; } catch (e) {} } return v; }
+    function vidOpsGet() { try { var a = JSON.parse(localStorage.getItem(VID_OPS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+    function vidOpsSet(a) { try { localStorage.setItem(VID_OPS_KEY, JSON.stringify(a)); } catch (e) {} }
+    function vidIdHint(id) { return (!VIDEOS_ID && id) ? '<br><span style="color:#ffd166;">Para que los demás coaches y dispositivos usen esta misma biblioteca hay que pegar este código en la app (VIDEOS_ID): <b>' + escHtml(id) + '</b></span>' : ''; }
+    function vidLibStatus(txt, color) { var el = document.getElementById('videoLibStatus'); if (el) { el.style.color = color || ''; el.innerHTML = txt || ''; } }
+    function vidLibEncode(lib) {
+      return encodePayload(buildUltraCompactState({
+        clientName: 'VIDEOS', clientGender: 'o', startDate: '', durationWeeks: 1,
+        coachMsgTitle: '__VIDEOS__', coachMsgBody: JSON.stringify(lib), coachName: COACH ? COACH.name : '',
+        configFeatures: { nutrition: false, demos: false }, measures: {}, measureLog: [], routineDays: []
+      }));
+    }
+    function vidLibDecode(p) {
+      var st = decodePayload('q', p); if (!st) return null;
+      try { var o = JSON.parse(st.coachMsgBody || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : null; } catch (e) { return null; }
+    }
+    // Anota un cambio pendiente (video vacío = quitar) y programa la subida
+    function vidLibQueue(name, video) {
+      var k = normKey(name); if (!k) return;
+      var ops = vidOpsGet().filter(function(o) { return normKey(o.n) !== k; });
+      ops.push({ n: String(name).trim(), v: String(video || '').trim() });
+      vidOpsSet(ops);
+      if (vidSyncTimer) clearTimeout(vidSyncTimer);
+      vidSyncTimer = setTimeout(function() { vidLibSync(false); }, 2500);
+    }
+    // Baja la biblioteca compartida, le aplica los cambios pendientes de este coach, la combina con la local y la sube
+    function vidLibSync(manual) {
+      if (vidSyncing) return;
+      if (!COACH) {
+        if (typeof clsEnsureCoach !== 'function') return;
+        vidSyncing = true;
+        clsEnsureCoach(function(ok) { vidSyncing = false; if (ok) vidLibSync(manual); else if (manual) vidLibStatus('Para sincronizar entra una vez a «Mis clientes» con tu PIN (marca «Recordar»).', '#ffd166'); });
+        return;
+      }
+      var id = vidLibId();
+      if (!id && !manual) return;   // el registro compartido se crea solo desde el panel (botón o al abrirlo), para ver el código que hay que pegar
+      vidSyncing = true;
+      var sent = vidOpsGet();
+      vidLibStatus('Sincronizando…', '');
+      var getRemote = id ? fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(j) {
+        if (!(j && j.ok && j.p)) throw new Error('sin datos');
+        var r = vidLibDecode(j.p); if (!r) throw new Error('formato'); return r;
+      }) : Promise.resolve({});
+      getRemote.then(function(remote) {
+        var merged = {}, byKey = {};
+        Object.keys(remote).forEach(function(n) { merged[n] = remote[n]; byKey[normKey(n)] = n; });
+        var delKeys = {};
+        sent.forEach(function(o) {
+          var k = normKey(o.n), ex = byKey[k];
+          if (!o.v) { delKeys[k] = true; if (ex) { delete merged[ex]; delete byKey[k]; } }
+          else { if (ex && ex !== o.n) delete merged[ex]; merged[o.n] = o.v; byKey[k] = o.n; }
+        });
+        var local = getVideoLibrary();
+        Object.keys(local).forEach(function(n) { var k = normKey(n); if (!byKey[k] && !delKeys[k]) { merged[n] = local[n]; byKey[k] = n; } });
+        var same = Object.keys(merged).length === Object.keys(remote).length && Object.keys(merged).every(function(n) { return remote[n] === merged[n]; });
+        setVideoLibrary(merged);
+        var count = Object.keys(merged).length;
+        if (same && id) { vidSyncing = false; vidLibStatus('✅ Al día · ' + count + ' ejercicios en la biblioteca compartida.' + vidIdHint(id), '#06d6a0'); renderVideoLibrary(); return; }
+        var payloadText = vidLibEncode(merged);
+        if (payloadText.length > 45000) { vidSyncing = false; vidLibStatus('La biblioteca ya es demasiado grande para un solo registro (' + count + ' ejercicios). Avísale a Claude para dividirla.', '#ff6b6b'); return; }
+        var post = id ? postJson({ a: 'actualizar', id: id, p: payloadText, pin: COACH.pin })
+          : fetchJson(SHARE_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: SHARE_KEY, p: payloadText, coach: COACH.name, atleta: '__VIDEOS__' }) }, 25000);
+        return post.then(function(j) {
+          vidSyncing = false;
+          if (j && j.ok) {
+            var newId = id || j.id;
+            if (!id && newId) { try { localStorage.setItem(VID_ID_KEY, newId); } catch (e) {} }
+            var left = vidOpsGet().filter(function(o) { return !sent.some(function(s) { return s.n === o.n && s.v === o.v; }); });
+            vidOpsSet(left);
+            vidLibStatus('✅ Sincronizada · ' + count + ' ejercicios.' + vidIdHint(newId), '#06d6a0');
+            renderVideoLibrary();
+          } else {
+            if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+            vidLibStatus('No se pudo sincronizar: ' + updateErrorText(j && j.error) + '. Tus cambios quedan guardados y se reintentan.', '#ff6b6b');
+          }
+        });
+      }).catch(function(e) {
+        vidSyncing = false;
+        vidLibStatus('Sin conexión con la hoja (' + escHtml(e && e.message ? e.message : 'error') + '). Tus cambios quedan guardados y se reintentan.', '#ffd166');
+      });
+    }
+    // Al volver a abrir el constructor con un PIN recordado, se baja la biblioteca de los demás coaches
+    setTimeout(function() { try { vidLibSync(false); } catch (e) {} }, 4000);
 
     function loadCoachConfig() {
       var cfg = {};
@@ -5884,7 +5981,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var groups = {}, order = [], cut = new Date(); cut.setDate(cut.getDate() - 90);
       var cutIso = isoOfDate(cut);
       clientRows.forEach(function(r) {   // la más nueva de cada cliente; se ignoran rutinas de hace más de 90 días
-        var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__' || groups[k]) return;
+        var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__' || k === '__videos__' || groups[k]) return;
         groups[k] = r; if (String(r.f || '').slice(0, 10) >= cutIso) order.push(k);
       });
       CW.rows = order.map(function(k) { var r = groups[k]; return { name: r.atleta, id: r.id, goal: cwGoalFor(r.id), st: null, err: false }; });
@@ -7761,7 +7858,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var q = normName(document.getElementById('cl_search').value);
       var groups = {}, order = [];
       clientRows.forEach(function(r) {   // el servidor las entrega de la más nueva a la más vieja
-        var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__') return;
+        var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__' || k === '__videos__') return;
         if (!groups[k]) { groups[k] = { name: r.atleta, list: [] }; order.push(k); }
         groups[k].list.push(r);
       });
@@ -9038,7 +9135,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
