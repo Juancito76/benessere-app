@@ -1721,7 +1721,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- Biblioteca compartida entre coaches (se guarda en la hoja de Google como registro especial "__VIDEOS__") -----
     // Cada coach conserva su copia en el navegador; los cambios (agregar, cambiar, quitar) se suben solos y al abrir se baja lo de los demás.
-    var VIDEOS_ID = '';   // código del registro compartido: se pega aquí tras la primera sincronización (como ANNOUNCE_ID)
+    var VIDEOS_ID = '9244e99f1bd5c66b';   // código del registro compartido: se pega aquí tras la primera sincronización (como ANNOUNCE_ID)
     var VID_ID_KEY = 'benessere_videolib_id', VID_OPS_KEY = 'benessere_videolib_ops';
     var vidSyncing = false, vidSyncTimer = null;
     function vidLibId() { var v = VIDEOS_ID; if (!v) { try { v = localStorage.getItem(VID_ID_KEY) || ''; } catch (e) {} } return v; }
@@ -9135,7 +9135,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
