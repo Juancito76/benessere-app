@@ -370,6 +370,11 @@
     @keyframes pulseSave { 0% { box-shadow: 0 0 0 0 rgba(255,183,3,0.9); } 70% { box-shadow: 0 0 0 16px rgba(255,183,3,0); } 100% { box-shadow: 0 0 0 0 rgba(255,183,3,0); } }
     .pulse-save { animation: pulseSave 1.2s ease-out 7; outline: 3px solid #ffb703; }
     .video-missing { border: 2px solid #ff5252 !important; box-shadow: 0 0 0 3px rgba(255,82,82,0.25); }
+    /* Campos de link de video del constructor: rojo neón parpadeante si están vacíos, verde neón si ya tienen link */
+    @keyframes vidBlinkR { 0%,100% { border-color: #ff1744; box-shadow: 0 0 8px #ff1744, 0 0 20px rgba(255,23,68,.6); } 50% { border-color: rgba(255,23,68,.3); box-shadow: none; } }
+    @keyframes vidBlinkG { 0%,100% { border-color: #39ff14; box-shadow: 0 0 8px #39ff14, 0 0 20px rgba(57,255,20,.55); } 50% { border-color: rgba(57,255,20,.3); box-shadow: none; } }
+    input.vid-empty { border: 2px solid #ff1744 !important; animation: vidBlinkR 1s ease-in-out infinite; }
+    input.vid-filled { border: 2px solid #39ff14 !important; animation: vidBlinkG 1.6s ease-in-out infinite; }
     .pick-name-row { display: flex; gap: 6px; align-items: flex-end; }
     .pick-name-row input { flex: 1; }
     .pick-modal-inner { max-width: 420px; }
@@ -9019,7 +9024,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') checkUpdatesWhileOpen(); });
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
-    var APP_VERSION = '2026-10-21-a';   // se cambia en cada entrega
+    // Marca los campos de video: rojo parpadeante si falta el link, verde si ya está
+    function isVideoInput(t) { var oi = t.getAttribute('oninput') || ''; return /_video$/.test(t.id || '') || /^clsV_/.test(t.id || '') || /\.video\s*=/.test(oi); }
+    function refreshVideoMarks() {
+      document.querySelectorAll('.pick-name-row input[type="text"]').forEach(function(t) {
+        if (!isVideoInput(t)) return;
+        var empty = !t.value.trim();
+        if (t.classList.contains('vid-empty') !== empty) t.classList.toggle('vid-empty', empty);
+        if (t.classList.contains('vid-filled') === empty) t.classList.toggle('vid-filled', !empty);
+      });
+    }
+    document.addEventListener('input', refreshVideoMarks);
+    document.addEventListener('change', refreshVideoMarks);
+    setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
+
+    var APP_VERSION = '2026-10-21-b';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
