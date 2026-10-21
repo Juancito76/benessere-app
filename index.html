@@ -1729,16 +1729,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function vidOpsSet(a) { try { localStorage.setItem(VID_OPS_KEY, JSON.stringify(a)); } catch (e) {} }
     function vidIdHint(id) { return (!VIDEOS_ID && id) ? '<br><span style="color:#ffd166;">Para que los demás coaches y dispositivos usen esta misma biblioteca hay que pegar este código en la app (VIDEOS_ID): <b>' + escHtml(id) + '</b></span>' : ''; }
     function vidLibStatus(txt, color) { var el = document.getElementById('videoLibStatus'); if (el) { el.style.color = color || ''; el.innerHTML = txt || ''; } }
-    function vidLibEncode(lib) {
+    // La biblioteca se reparte en varios registros enlazados (cada uno con un tope de tamaño): el primero es VIDEOS_ID y cada uno apunta al siguiente ("n").
+    // Formato de un registro: { _v: 2, e: { ejercicio: link, ... }, n: 'id del siguiente' }. El formato anterior (objeto plano) se sigue leyendo.
+    var VID_CHUNK_RAW = 30000, VID_MAX_CHUNKS = 40;
+    function vidRecEncode(entries, next) {
       return encodePayload(buildUltraCompactState({
         clientName: 'VIDEOS', clientGender: 'o', startDate: '', durationWeeks: 1,
-        coachMsgTitle: '__VIDEOS__', coachMsgBody: JSON.stringify(lib), coachName: COACH ? COACH.name : '',
+        coachMsgTitle: '__VIDEOS__', coachMsgBody: JSON.stringify({ _v: 2, e: entries, n: next || '' }), coachName: COACH ? COACH.name : '',
         configFeatures: { nutrition: false, demos: false }, measures: {}, measureLog: [], routineDays: []
       }));
     }
-    function vidLibDecode(p) {
+    function vidRecDecode(p) {
       var st = decodePayload('q', p); if (!st) return null;
-      try { var o = JSON.parse(st.coachMsgBody || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : null; } catch (e) { return null; }
+      try {
+        var o = JSON.parse(st.coachMsgBody || '{}');
+        if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+        var src = (o._v === 2) ? (o.e || {}) : o, e = {};
+        Object.keys(src).forEach(function(k) { if (typeof src[k] === 'string') e[k] = src[k]; });
+        return { e: e, n: (o._v === 2 && typeof o.n === 'string') ? o.n : '' };
+      } catch (err) { return null; }
     }
     // Anota un cambio pendiente (video vacío = quitar) y programa la subida
     function vidLibQueue(name, video) {
@@ -1748,6 +1757,57 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       vidOpsSet(ops);
       if (vidSyncTimer) clearTimeout(vidSyncTimer);
       vidSyncTimer = setTimeout(function() { vidLibSync(false); }, 2500);
+    }
+    // Baja toda la cadena de registros (uno tras otro) y devuelve [{id, e, n}, ...]
+    function vidFetchChain(id) {
+      var recs = [], seen = {};
+      function step(cur) {
+        if (!cur || seen[cur] || recs.length >= VID_MAX_CHUNKS) return Promise.resolve(recs);
+        seen[cur] = true;
+        return fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(cur), { redirect: 'follow' }, 25000).then(function(j) {
+          if (!(j && j.ok && j.p)) throw new Error('sin datos');
+          var r = vidRecDecode(j.p); if (!r) throw new Error('formato');
+          recs.push({ id: cur, e: r.e, n: r.n });
+          return step(r.n);
+        });
+      }
+      return step(id);
+    }
+    // Reparte las entradas (ordenadas) en trozos que no pasen del tope de tamaño
+    function vidSplit(lib) {
+      var names = Object.keys(lib).sort(function(a, b) { return a.localeCompare(b, 'es'); });
+      var chunks = [{}], size = 0;
+      names.forEach(function(n) {
+        var add = n.length + String(lib[n]).length + 8;
+        if (size + add > VID_CHUNK_RAW && Object.keys(chunks[chunks.length - 1]).length) { chunks.push({}); size = 0; }
+        chunks[chunks.length - 1][n] = lib[n]; size += add;
+      });
+      return chunks;
+    }
+    // Escribe los trozos: primero crea los registros nuevos del final hacia el principio (para conocer su código), luego actualiza los existentes
+    function vidWriteChunks(chunks, recs) {
+      var k = chunks.length, ids = recs.map(function(r) { return r.id; }), created = {};
+      if (k > VID_MAX_CHUNKS) return Promise.reject(new Error('demasiados registros'));
+      function idOf(i) { return i < ids.length ? ids[i] : created[i]; }
+      function create(i) {
+        if (i < ids.length) return Promise.resolve();
+        var payloadText = vidRecEncode(chunks[i], i + 1 < k ? idOf(i + 1) : '');
+        return fetchJson(SHARE_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: SHARE_KEY, p: payloadText, coach: COACH.name, atleta: '__VIDEOS__' }) }, 25000).then(function(j) {
+          if (!(j && j.ok && j.id)) throw new Error((j && j.error) || 'no se pudo crear');
+          created[i] = j.id;
+          return create(i - 1);
+        });
+      }
+      function update(i) {
+        if (i >= Math.min(ids.length, k)) return Promise.resolve();
+        var next = i + 1 < k ? idOf(i + 1) : '', old = recs[i];
+        if (old && JSON.stringify(old.e) === JSON.stringify(chunks[i]) && (old.n || '') === next) return update(i + 1);
+        return postJson({ a: 'actualizar', id: ids[i], p: vidRecEncode(chunks[i], next), pin: COACH.pin }).then(function(j) {
+          if (!(j && j.ok)) { var er = new Error((j && j.error) || 'no se pudo actualizar'); er.code = j && j.error; throw er; }
+          return update(i + 1);
+        });
+      }
+      return create(k - 1).then(function() { return update(0); }).then(function() { return idOf(0); });
     }
     // Baja la biblioteca compartida, le aplica los cambios pendientes de este coach, la combina con la local y la sube
     function vidLibSync(manual) {
@@ -1763,11 +1823,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       vidSyncing = true;
       var sent = vidOpsGet();
       vidLibStatus('Sincronizando…', '');
-      var getRemote = id ? fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(j) {
-        if (!(j && j.ok && j.p)) throw new Error('sin datos');
-        var r = vidLibDecode(j.p); if (!r) throw new Error('formato'); return r;
-      }) : Promise.resolve({});
-      getRemote.then(function(remote) {
+      var getRemote = id ? vidFetchChain(id) : Promise.resolve([]);
+      getRemote.then(function(recs) {
+        var remote = {};
+        recs.forEach(function(r) { Object.keys(r.e).forEach(function(n) { remote[n] = r.e[n]; }); });
         var merged = {}, byKey = {};
         Object.keys(remote).forEach(function(n) { merged[n] = remote[n]; byKey[normKey(n)] = n; });
         var delKeys = {};
@@ -1782,27 +1841,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         setVideoLibrary(merged);
         var count = Object.keys(merged).length;
         if (same && id) { vidSyncing = false; vidLibStatus('✅ Al día · ' + count + ' ejercicios en la biblioteca compartida.' + vidIdHint(id), '#06d6a0'); renderVideoLibrary(); return; }
-        var payloadText = vidLibEncode(merged);
-        if (payloadText.length > 45000) { vidSyncing = false; vidLibStatus('La biblioteca ya es demasiado grande para un solo registro (' + count + ' ejercicios). Avísale a Claude para dividirla.', '#ff6b6b'); return; }
-        var post = id ? postJson({ a: 'actualizar', id: id, p: payloadText, pin: COACH.pin })
-          : fetchJson(SHARE_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ k: SHARE_KEY, p: payloadText, coach: COACH.name, atleta: '__VIDEOS__' }) }, 25000);
-        return post.then(function(j) {
+        return vidWriteChunks(vidSplit(merged), recs).then(function(headId) {
           vidSyncing = false;
-          if (j && j.ok) {
-            var newId = id || j.id;
-            if (!id && newId) { try { localStorage.setItem(VID_ID_KEY, newId); } catch (e) {} }
-            var left = vidOpsGet().filter(function(o) { return !sent.some(function(s) { return s.n === o.n && s.v === o.v; }); });
-            vidOpsSet(left);
-            vidLibStatus('✅ Sincronizada · ' + count + ' ejercicios.' + vidIdHint(newId), '#06d6a0');
-            renderVideoLibrary();
-          } else {
-            if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
-            vidLibStatus('No se pudo sincronizar: ' + updateErrorText(j && j.error) + '. Tus cambios quedan guardados y se reintentan.', '#ff6b6b');
-          }
+          if (!id && headId) { try { localStorage.setItem(VID_ID_KEY, headId); } catch (e) {} }
+          var left = vidOpsGet().filter(function(o) { return !sent.some(function(s) { return s.n === o.n && s.v === o.v; }); });
+          vidOpsSet(left);
+          vidLibStatus('✅ Sincronizada · ' + count + ' ejercicios.' + vidIdHint(id || headId), '#06d6a0');
+          renderVideoLibrary();
         });
       }).catch(function(e) {
         vidSyncing = false;
-        vidLibStatus('Sin conexión con la hoja (' + escHtml(e && e.message ? e.message : 'error') + '). Tus cambios quedan guardados y se reintentan.', '#ffd166');
+        if (e && e.code === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e2) {} }
+        var msg = (e && e.code) ? updateErrorText(e.code) : (e && e.message ? e.message : 'error');
+        vidLibStatus('No se pudo sincronizar (' + escHtml(msg) + '). Tus cambios quedan guardados y se reintentan.', '#ffd166');
       });
     }
     // Al volver a abrir el constructor con un PIN recordado, se baja la biblioteca de los demás coaches
@@ -9135,7 +9186,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-d';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-e';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
