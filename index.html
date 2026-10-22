@@ -6928,6 +6928,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= CLASES: REPRODUCTOR =================
     // Reutiliza el temporizador (CT) pero sin anotar nada: sin series, pesos, historial ni reportes. CT.cls = true.
     var CLS_GAP = 15;   // segundos entre un bloque y el siguiente
+    var CLS_PRE_DWELL = 8;   // segundos que se ve cada ejercicio en la previa y en las pausas (se repite en ciclo)
     var CLS_PRE = 120;  // previa de la clase: segundos antes del primer bloque, proyectando cada ejercicio con su video e instrucciones
     // Ejercicios de UN bloque (el que inicia o sigue) con sus reps e instrucciones, para proyectarlos en la previa y en las pausas
     function clsPreListBlock(it) {
@@ -6948,7 +6949,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function clsPreCur(ph, remain) {
       var L = ph.preList || [], N = L.length; if (!N) return null;
-      var el = Math.max(0, ph.d - remain), idx = Math.min(N - 1, Math.floor(el / Math.max(5, ph.d / N)));
+      var el = Math.max(0, ph.d - remain), idx = Math.floor(el / CLS_PRE_DWELL) % N;   // cada ejercicio unos segundos y vuelve a empezar hasta que se acabe el tiempo
       var o = L[idx]; o.i = idx; o.n = N; return o;
     }
     function clsRepsTxt(sub, rep) { return ctRepsText({ reps: rep != null ? rep : (sub ? sub.reps : '') }, false); }
@@ -9280,7 +9281,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-l';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-m';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
