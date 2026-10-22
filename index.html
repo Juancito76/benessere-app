@@ -5345,7 +5345,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Comida en bloques claros: "Orden: …; Porciones: …; Ejemplo: …" se muestra como Cómo comerlo / Cuánto / Ejemplo
     function nutriFmt(txt) {
       txt = String(txt || '').trim(); if (!txt) return '-';
-      var LB = { orden: '🥗 Cómo comerlo', porciones: '🤲 Cuánto', porcion: '🤲 Cuánto', ejemplo: '🍽️ Ejemplo' }, parts = txt.split(/;\s*(?=(?:Orden|Porciones?|Ejemplo)\s*:)/i), n = 0, h = '';
+      var LB = { orden: '🥗 Cómo comerlo', porciones: '🤲 Cantidad', porcion: '🤲 Cantidad', ejemplo: '🍽️ Ejemplo' }, parts = txt.split(/;\s*(?=(?:Orden|Porciones?|Ejemplo)\s*:)/i), n = 0, h = '';
       parts.forEach(function(sg) {
         var m = sg.match(/^\s*(Orden|Porciones?|Ejemplo)\s*:\s*([\s\S]*)$/i);
         if (m) { n++; var body = m[2].trim(); body = body.charAt(0).toUpperCase() + body.slice(1); h += '<div style="margin-top:' + (n > 1 ? '8' : '0') + 'px;"><div style="font-weight:800; color:#06d6a0; font-size:0.78rem;">' + LB[m[1].toLowerCase()] + '</div><div>' + escHtml(body) + '</div></div>'; }
@@ -9292,7 +9292,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-n';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-o';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
