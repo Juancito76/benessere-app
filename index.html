@@ -6485,8 +6485,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var di = ph.list ? (CT.listSel || 0) : ph.si;
         if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
         CT.demoUrl = (CT.videos && di >= 0 && CT.videos[di]) ? CT.videos[di] : '';
+        if (ph.pre) { var pcv = clsPreCur(ph, remain); CT.demoUrl = (pcv && pcv.video) || ''; }
         if (ph.nextVideo) CT.demoUrl = ph.nextVideo;   // pausa: se ve el primer ejercicio del siguiente bloque
-        CT.demoName = ph.nextVideo ? (ph.nextName || '') : ((CT.names && di >= 0 && CT.names[di]) || '');   // para el aviso "el video no se ve"
+        CT.demoName = ph.nextVideo ? (ph.nextName || '') : ((CT.names && di >= 0 && CT.names[di]) || '');
+        if (ph.pre) { var pcn = clsPreCur(ph, remain); CT.demoName = (pcn && pcn.name) || ''; }   // para el aviso "el video no se ve"
         ctVidSync(false);
         var vb = document.getElementById('tm_vid');
         demoBtn.style.display = (CT.demoUrl && !(vb && vb.style.display !== 'none')) ? 'block' : 'none';
@@ -6926,6 +6928,28 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= CLASES: REPRODUCTOR =================
     // Reutiliza el temporizador (CT) pero sin anotar nada: sin series, pesos, historial ni reportes. CT.cls = true.
     var CLS_GAP = 15;   // segundos entre un bloque y el siguiente
+    var CLS_PRE = 120;  // previa de la clase: segundos antes del primer bloque, proyectando cada ejercicio con su video e instrucciones
+    // Lista de ejercicios de toda la clase (sin repetir) para la previa
+    function clsPreList(clase) {
+      var out = [], seen = {}, nb = 0, tot = 0;
+      (clase.items || []).forEach(function(it) { if (it.circ && it.circ.tipo !== 'pausa') tot++; });
+      (clase.items || []).forEach(function(it) {
+        var c = it.circ || {}; if (c.tipo === 'pausa') return; nb++;
+        (it.sub || []).forEach(function(sb) {
+          var nm = String(sb.name || '').trim(); if (!nm) return;
+          var k = (typeof normExName === 'function' ? normExName(nm) : nm.toLowerCase());
+          if (seen[k]) return; seen[k] = 1;
+          var rp = isTimeText(sb.reps) ? String(sb.reps) : clsRepsTxt(sb);
+          out.push({ b: nb, nb: tot, bn: c.nombre || ('Bloque ' + nb), info: clsBlockInfo(c), notas: c.notas || '', name: nm, video: sb.video || '', reps: rp || '' });
+        });
+      });
+      return out;
+    }
+    function clsPreCur(ph, remain) {
+      var L = ph.preList || [], N = L.length; if (!N) return null;
+      var el = Math.max(0, ph.d - remain), idx = Math.min(N - 1, Math.floor(el / (ph.d / N)));
+      var o = L[idx]; o.i = idx; o.n = N; return o;
+    }
     function clsRepsTxt(sub, rep) { return ctRepsText({ reps: rep != null ? rep : (sub ? sub.reps : '') }, false); }
     // Convierte un bloque de la clase en las fases del temporizador (mismo formato que buildCircuitPhases)
     function buildClassPhases(it, nextIt) {
@@ -7006,6 +7030,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var built = buildClassPhases(it, G.clase.items[pos + 1]);
       if (built.err) { alert(built.err); return; }
       G.pos = pos;
+      if (pos === 0 && !resume && built.phases[0] && built.phases[0].t === 'ready') {   // previa de 2 min con todos los ejercicios de la clase
+        var pl = clsPreList(G.clase);
+        if (pl.length) built.phases[0] = { t: 'ready', d: CLS_PRE, st: 'Previa de la clase', r: 1, si: 0, pre: true, preList: pl };
+      }
       tmrAudio(); rtClose();
       CT.cls = true; CT.keys = []; CT.acc = {}; CT.videos = built.videos; CT.repsTxt = built.repsTxt; CT.ci = -1; CT.srId = 0; CT.doneBefore = 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = it.circ.nombre || 'Bloque';
@@ -7067,6 +7095,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } else {
         el('tm_list').style.display = 'none'; el('tm_station').style.display = ''; el('tm_rnd').style.display = 'none';
         if (!CT.phases[CT.i + 1]) el('tm_next').innerText = 'Último ejercicio del bloque';
+      }
+      if (ph.pre) {   // previa: ejercicio por ejercicio, con su video e instrucciones
+        var remP = Math.ceil((CT.paused ? (CT.remain || 0) : (CT.end - Date.now())) / 1000), pc = clsPreCur(ph, remP);
+        if (pc) {
+          el('tm_phase').innerText = '👀 PREVIA DE LA CLASE'; el('tm_phase').style.color = '#ffd60a';
+          el('tm_title').innerText = pc.bn; el('tm_title').style.display = ''; el('tm_head').style.justifyContent = 'center';
+          el('tm_station').innerText = pc.name; el('tm_reps').innerText = pc.reps;
+          el('tm_prog').innerHTML = pc.info + (pc.notas ? '<br><span style="color:#ffd60a;">' + escHtml(pc.notas) + '</span>' : ''); el('tm_prog').style.display = ''; el('tm_prog').style.color = '#ccc';
+          el('tm_next').innerText = 'Bloque ' + pc.b + ' de ' + pc.nb + ' · ejercicio ' + (pc.i + 1) + ' de ' + pc.n + ' · la clase inicia al llegar a 0:00';
+        }
       }
     }
     function clsFmtDur(sec) {
@@ -9239,7 +9277,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-h';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-i';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
