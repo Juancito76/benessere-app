@@ -3916,10 +3916,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var nutritionSectionHtml = isNutri ? (
           '<div id="sec_nutri_' + d.id + '" class="day-section' + (isRest ? ' active' : '') + '">' +
             '<div class="nutrition-accordion-list">' +
-              '<details class="nutri-accordion" open><summary>🍳 Desayuno</summary><div class="nutri-content">' + escHtml(d.diet.desayuno || '-').replace(/\n/g, '<br>') + '</div></details>' +
-              '<details class="nutri-accordion"><summary>🍏 Snacks</summary><div class="nutri-content">' + escHtml(d.diet.snack || '-').replace(/\n/g, '<br>') + '</div></details>' +
-              '<details class="nutri-accordion"><summary>🍗 Almuerzo</summary><div class="nutri-content">' + escHtml(d.diet.almuerzo || '-').replace(/\n/g, '<br>') + '</div></details>' +
-              '<details class="nutri-accordion"><summary>🐟 Cena</summary><div class="nutri-content">' + escHtml(d.diet.cena || '-').replace(/\n/g, '<br>') + '</div></details>' +
+              '<details class="nutri-accordion" open><summary>🍳 Desayuno</summary><div class="nutri-content">' + nutriFmt(d.diet.desayuno) + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🍏 Snacks</summary><div class="nutri-content">' + nutriFmt(d.diet.snack) + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🍗 Almuerzo</summary><div class="nutri-content">' + nutriFmt(d.diet.almuerzo) + '</div></details>' +
+              '<details class="nutri-accordion"><summary>🐟 Cena</summary><div class="nutri-content">' + nutriFmt(d.diet.cena) + '</div></details>' +
             '</div>' +
             '<button class="capsule-btn btn-intercambios" onclick="openModal(\'modal_intercambios\')">🔄 Intercambios (10 Opciones por Grupo)</button>' +
             '<div class="daily-goals-card">' +
@@ -5342,6 +5342,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       box.innerHTML = h; box.style.display = h ? 'block' : 'none';
     }
     // Lleva a la nutrición del día (la que armó el coach en el constructor); deja de parpadear una vez tocado
+    // Comida en bloques claros: "Orden: …; Porciones: …; Ejemplo: …" se muestra como Cómo comerlo / Cuánto / Ejemplo
+    function nutriFmt(txt) {
+      txt = String(txt || '').trim(); if (!txt) return '-';
+      var LB = { orden: '🥗 Cómo comerlo', porciones: '🤲 Cuánto', porcion: '🤲 Cuánto', ejemplo: '🍽️ Ejemplo' }, parts = txt.split(/;\s*(?=(?:Orden|Porciones?|Ejemplo)\s*:)/i), n = 0, h = '';
+      parts.forEach(function(sg) {
+        var m = sg.match(/^\s*(Orden|Porciones?|Ejemplo)\s*:\s*([\s\S]*)$/i);
+        if (m) { n++; var body = m[2].trim(); body = body.charAt(0).toUpperCase() + body.slice(1); h += '<div style="margin-top:' + (n > 1 ? '8' : '0') + 'px;"><div style="font-weight:800; color:#06d6a0; font-size:0.78rem;">' + LB[m[1].toLowerCase()] + '</div><div>' + escHtml(body) + '</div></div>'; }
+        else h += (h ? '<br>' : '') + escHtml(sg).replace(/\n/g, '<br>');
+      });
+      return h;
+    }
     function nutriOn() { return !!(athleteActiveState && athleteActiveState.configFeatures && athleteActiveState.configFeatures.nutrition === true); }
     function nutriHoyGo(dayId) {
       try { switchDaySection(dayId, 'nutricion'); } catch (e) {}
@@ -9281,7 +9292,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-m';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-n';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
