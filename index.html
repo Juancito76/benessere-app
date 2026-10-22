@@ -6935,7 +6935,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       (it && it.sub || []).forEach(function(sb) {
         var nm = String(sb.name || '').trim(); if (!nm) return;
         var rp = isTimeText(sb.reps) ? String(sb.reps) : clsRepsTxt(sb);
-        out.push({ bn: c.nombre || 'Bloque', info: clsBlockInfo(c), notas: c.notas || '', name: nm, video: sb.video || '', reps: rp || '' });
+        out.push({ bn: c.nombre || 'Bloque', info: clsBlockInfo(c), notas: c.notas || '', name: nm, video: sb.video || '', reps: rp || '', nota: sb.notes || '' });
       });
       return out;
     }
@@ -7096,7 +7096,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (pc) {
           el('tm_phase').innerText = ph.pre ? '👀 PREVIA DE LA CLASE' : '😮‍💨 PAUSA · LO QUE SIGUE'; el('tm_phase').style.color = ph.pre ? '#ffd60a' : '#4d8bff';
           el('tm_title').innerText = pc.bn; el('tm_title').style.display = ''; el('tm_head').style.justifyContent = 'center';
-          el('tm_station').innerText = pc.name; el('tm_reps').innerText = pc.reps;
+          el('tm_station').innerText = pc.name; el('tm_reps').innerText = pc.reps + (pc.nota ? (pc.reps ? ' · ' : '') + pc.nota : '');
           el('tm_prog').innerHTML = pc.info + (pc.notas ? '<br><span style="color:#ffd60a;">' + escHtml(pc.notas) + '</span>' : ''); el('tm_prog').style.display = ''; el('tm_prog').style.color = '#ccc';
           el('tm_next').innerText = (ph.pre ? 'Inicia: ' : 'Sigue: ') + pc.bn + ' · ejercicio ' + (pc.i + 1) + ' de ' + pc.n;
         }
@@ -7134,7 +7134,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (document.getElementById('tm_gpct')) document.getElementById('tm_gpct').innerText = Math.round(((nums.cur + 1) / nums.n) * 100) + '%';
       box.innerHTML = '<div style="font-size:0.8rem; color:#9fe8c8;">Bloque ' + (nums.cur + 1) + ' de ' + nums.n + ' listo ✔</div>' +
         '<div style="font-size:1rem; font-weight:800; margin-top:6px;">' + (isP ? 'Sigue: Pausa de ' + escHtml(next.circ.total) : 'Sigue: ' + escHtml(next.circ.nombre)) + '</div>' +
-        ((!isP && first) ? '<div style="font-size:0.85rem; color:#ccc;">' + escHtml(clsBlockInfoPlain(next.circ)) + '</div><div style="font-size:0.85rem; color:#ddd; text-align:left; margin-top:4px;">' + (next.sub || []).map(function(sb, i) { var r = isTimeText(sb.reps) ? sb.reps : clsRepsTxt(sb); return (i + 1) + '. ' + escHtml(ctShort(sb.name)) + (r ? ' · <span style="color:#ffd60a;">' + escHtml(r) + '</span>' : ''); }).join('<br>') + '</div>' : '') +
+        ((!isP && first) ? '<div style="font-size:0.85rem; color:#ccc;">' + escHtml(clsBlockInfoPlain(next.circ)) + '</div><div style="font-size:0.85rem; color:#ddd; text-align:left; margin-top:4px;">' + (next.sub || []).map(function(sb, i) { var r = isTimeText(sb.reps) ? sb.reps : clsRepsTxt(sb); return (i + 1) + '. ' + escHtml(ctShort(sb.name)) + (r ? ' · <span style="color:#ffd60a;">' + escHtml(r) + '</span>' : '') + (sb.notes ? ' <span style="color:#aaa;">(' + escHtml(sb.notes) + ')</span>' : ''); }).join('<br>') + '</div>' : '') +
         '<div id="tm_gnum" style="font-size:2.2rem; font-weight:900; font-variant-numeric:tabular-nums; margin:4px 0;"></div>' +
         '<div style="display:flex; gap:8px;"><button type="button" class="tm-btn" style="background:#06d6a0; border-color:#06d6a0; color:#000;" onclick="clsGo()">▶ Iniciar ya</button><button type="button" class="tm-btn" id="tm_gpause" onclick="ctGapPause()">⏸ Pausar</button><button type="button" class="tm-btn" onclick="ctGuidePlus()">+15 s</button></div>';
       box.style.display = 'block';
@@ -9272,7 +9272,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-j';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-k';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
