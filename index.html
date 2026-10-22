@@ -4639,7 +4639,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { var a = JSON.parse(localStorage.getItem(sessKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
     }
     // Los registros del historial pueden ser entrenos con marcas, entrenos sin marcas (nm) o metas diarias (k:'meta').
-    function isMetaSess(s) { return !!(s && (s.k === 'meta' || s.k === 'rep')); }   // 'rep' = aviso de video que no se ve (no es un entreno)
+    function isMetaSess(s) { return !!(s && (s.k === 'meta' || s.k === 'rep' || s.k === 'vis')); }   // 'rep' = aviso de video que no se ve; 'vis' = abrió su rutina (ninguno es un entreno)
     function loadWorkouts() {   // solo entrenos; si un entreno con marcas reemplaza a uno "sin marcas" (sup), queda el de las marcas
       var all = loadSessions(), sup = {};
       all.forEach(function(x) { if (x && x.sup) sup[x.sup] = true; });
@@ -5390,8 +5390,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="btn-action-primary" onclick="closeModal(\'day_review_modal\')">Cerrar</button></div>';
       openModal('day_review_modal');
     }
+    // Registra (una vez al día por día de rutina) que el cliente abrió su rutina; el coach lo ve como 👁 aparte de «entrenó»
+    function visPing(dayId) {
+      try {
+        if (!athleteRoutineId || isCoachView() || !athleteActiveState || (typeof PRUEBA !== 'undefined' && PRUEBA.on)) return;
+        var d = (athleteActiveState.routineDays || []).filter(function(x) { return x.id === dayId; })[0]; if (!d || d.rest) return;
+        var today = todayIso(), key = 'benessere_vis_' + athleteRoutineId + '_' + dayId + '_' + today;
+        if (localStorage.getItem(key)) return; localStorage.setItem(key, '1');
+        pushSession({ k: 'vis', d: today, t: new Date().toISOString(), day: d.title || '', ex: [], o: 'atleta' });
+      } catch (e) {}
+    }
     function openDay(dayId, review) {
       openModal(dayId);
+      visPing(dayId);
       try { guidePaint(dayId); } catch (e) {}
       if (review) return;   // modo repaso: se entra a ver el entreno (y usar temporizadores) sin avisar ni iniciar el cronómetro
       try {
@@ -6043,6 +6054,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function cwStats(sesiones, goal) {
       var r = weekRange(0), sup = {}, days = {}, last = '', secs = 0;
       (sesiones || []).forEach(function(x) { if (x && x.sup) sup[x.sup] = true; });
+      var visLast = '', visDay = '';
+      (sesiones || []).forEach(function(x) { if (x && x.k === 'vis') { var vd = sessDateIso(x); if (vd && vd >= visLast) { visLast = vd; visDay = x.day || ''; } } });
       (sesiones || []).forEach(function(x) {
         if (!x || isMetaSess(x) || sup[x.t]) return;
         var d = sessDateIso(x); if (!d) return;
@@ -6051,7 +6064,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       var today = todayIso();
       var ago = last ? Math.round((new Date(today + 'T12:00:00') - new Date(last + 'T12:00:00')) / 86400000) : -1;
-      return { n: Object.keys(days).length, goal: goal, last: last, ago: ago, secs: secs };
+      return { n: Object.keys(days).length, goal: goal, last: last, ago: ago, secs: secs, vis: visLast, visDay: visDay };
     }
     function openCoachWeek() {
       if (!COACH) return;
@@ -6122,7 +6135,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           else if (s.n > 0) { badge = '🟡'; col = '#8a6d1a'; }
           else if (s.ago < 0 || s.ago >= 7) { badge = '🔴'; col = '#a33'; }
           else { badge = '⚪'; col = '#555'; }
-          line = '<b>' + meta + '</b> ' + (s.n === 1 ? 'día' : 'días') + ' esta semana' + (s.secs > 0 ? ' · ⏱ ' + wkHM(s.secs) : '') + ' · ' + when;
+          var visTxt = '';
+          if (s.vis && s.vis >= rk.from) {
+            var visToday = s.vis === todayIso();
+            visTxt = ' · 👁 abrió su rutina ' + (visToday ? 'hoy' : fmtDateShort(s.vis)) + (s.visDay ? ' (' + escHtml(ctShort(s.visDay).slice(0, 28)) + ')' : '');
+            if (visToday && s.n === 0) { badge = '👁'; col = '#4d8bff'; }
+          }
+          line = '<b>' + meta + '</b> ' + (s.n === 1 ? 'día' : 'días') + ' esta semana' + (s.secs > 0 ? ' · ⏱ ' + wkHM(s.secs) : '') + ' · ' + when + visTxt;
         }
         h += '<div style="display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
           '<div style="font-size:1.1rem;">' + badge + '</div>' +
@@ -6133,7 +6152,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             '<button type="button" onclick="cwMark(\'' + escHtml(r.id) + '\', -1)" style="background:transparent; color:#06d6a0; border:1px solid #06d6a0; border-radius:8px; padding:5px 10px; font-weight:800; font-size:0.72rem; cursor:pointer;">Ayer</button></div>' : '') + '</div>' +
           '<button type="button" onclick="closeModal(\'coach_week_modal\'); openClientRoutine(\'' + escHtml(r.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:6px 9px; font-weight:800; font-size:0.72rem; cursor:pointer;">Abrir</button></div>';
       });
-      h += '<div style="font-size:0.68rem; color:var(--muted); margin-top:8px; line-height:1.5;">✅ meta cumplida · 🟡 entrenó pero le falta · ⚪ aún no entrena esta semana · 🔴 sin entrenar hace 7 días o más. La meta solo aparece si ya abriste la rutina del cliente en este celular.</div>';
+      h += '<div style="font-size:0.68rem; color:var(--muted); margin-top:8px; line-height:1.5;">✅ meta cumplida · 🟡 entrenó pero le falta · ⚪ aún no entrena esta semana · 🔴 sin entrenar hace 7 días o más · 👁 abrió su rutina hoy pero no registró entreno (puede que haya ido; márcalo tú con «✔ Hoy»). La meta solo aparece si ya abriste la rutina del cliente en este celular.</div>';
       h += '<button type="button" onclick="openCoachWeek()" style="width:100%; margin-top:12px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:11px; font-weight:800; cursor:pointer;">🔄 Actualizar</button>';
       h += '<button type="button" class="btn-action-primary" style="margin-top:8px;" onclick="closeModal(\'coach_week_modal\')">Cerrar</button></div>';
       coachWeekEl().innerHTML = h;
@@ -7259,6 +7278,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }   // abre "¡Entreno terminado!"; al tocar "Listo" se guardan las marcas
       dayCloseSave(dayId);
     }
+    function dayQuickDone(dayId) {   // un toque: «entrené hoy» sin anotar nada ni contestar preguntas
+      try { recordActivity(dayId, (WK.start && WK.dayId === dayId) ? 0 : wkTakeDuration(dayId)); wkToast('✅ Listo, quedó registrado que entrenaste hoy.'); } catch (e) {}
+      setTimeout(function() { try { dcPaint(dayId); } catch (e) {} }, 300);
+    }
     function dayCloseNoMarks(dayId) {   // "Guardar Día" sin ninguna marca anotada: cierra el cronómetro y el entreno quedan cerrados, sin pedir pesos
       CLOSE_PENDING = dayId;
       if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }
@@ -7277,10 +7300,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var running = !!(WK.start && WK.dayId === dayId), marks = dayHasMarks(dayId), saved = daySavedToday(dayId) && !marks;
       var timeTxt = running ? '▶ corriendo · ' + wkFmt((Date.now() - WK.start) / 1000) : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0 ? '✔ terminado' : (saved ? '✔ terminado' : 'sin iniciar'));
       var all = nDone >= N;
+      if (!saved && !marks && !running && nmTodayFor(dayId)) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Quedó registrado que entrenaste hoy</div><div class="dc-l">Tu coach ya lo puede ver. ¡Buen trabajo! 💪</div></div>'; return; }
       if (saved) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div></div>'; return; }
       box.innerHTML = '<div class="dc-card' + (all ? ' on' : '') + '"><div class="dc-t">🏁 ' + (all ? '¡Terminaste! Cierra tu entreno' : 'Al terminar, cierra tu entreno') + '</div>' +
         '<div class="dc-l">📋 Bloques: <b>' + nDone + ' de ' + N + '</b><br>⏱ Cronómetro: <b>' + timeTxt + '</b><br>💾 Marcas: <b>' + (marks ? 'anotadas, falta guardar' : 'sin anotar') + '</b></div>' +
         '<button type="button" class="dc-b" onclick="dayClose(\'' + dayId + '\')">🏁 Cerrar entreno</button>' +
+        '<button type="button" onclick="dayQuickDone(\'' + dayId + '\')" style="width:100%; margin-top:8px; background:transparent; color:#06d6a0; border:1.5px solid #06d6a0; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">✅ Ya entrené hoy (solo avisar)</button>' +
         '<div style="font-size:0.7rem; color:#8a8a8a; margin-top:6px;">Termina el cronómetro, te pregunta lo de tu reloj y guarda tus pesos y reps.</div></div>';
     }
 
@@ -9324,7 +9349,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-q';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-r';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
