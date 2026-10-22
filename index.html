@@ -7896,10 +7896,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function flushPending() {
       if (flushing) return Promise.resolve();
       flushing = true;
+      var skipped = {}, failed = 0;   // los envíos que fallan en esta vuelta se saltan para no bloquear a los demás
       function next() {
         var q = loadPending();
         var idx = -1;
-        for (var i = 0; i < q.length; i++) { if (!q[i].c || COACH) { idx = i; break; } }
+        for (var i = 0; i < q.length; i++) { if ((!q[i].c || COACH) && !skipped[q[i].id + '|' + q[i].s]) { idx = i; break; } }
         if (idx < 0) { flushing = false; return Promise.resolve(); }
         var it = q[idx];
         var body = { a: 'sesion', id: it.id, s: it.s };
@@ -7910,8 +7911,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             var q2 = loadPending(); q2.splice(findPending(q2, it), 1); savePending(q2);
             return next();
           }
-          flushing = false;   // pin/bloqueado/servidor: se deja en cola
-        }).catch(function() { flushing = false; });
+          // pin/bloqueado/servidor: ese envío se queda en la cola, pero se sigue con los demás
+          skipped[it.id + '|' + it.s] = true; failed++;
+          if (failed >= 3) { flushing = false; return; }   // si fallan varios seguidos, se asume problema de conexión/servidor y se reintenta luego
+          return next();
+        }).catch(function() { flushing = false; });   // sin internet: se reintenta luego
       }
       return next();
     }
@@ -9349,7 +9353,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-r';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-s';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
