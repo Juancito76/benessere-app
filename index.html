@@ -6482,13 +6482,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
       var stationTxt = ctShort(ph.st);
       if (ph.t === 'rest' && CT.hiit) stationTxt = ph.nextName ? (ph.multi ? 'Sigue: ' + ctShort(ph.nextName) : ctShort(ph.nextName)) : 'Vuelta a la calma';
-      else if (ph.t === 'rest' && CT.cls) stationTxt = ph.nextName ? 'Sigue: ' + ctShort(ph.nextName) : 'Descanso';
-      else if (ph.t === 'rest') { var nwR = ctNextWork(); stationTxt = nwR ? 'Sigue: ' + ctShort(nwR.st) : 'Descanso'; }   // el descanso siempre dice qué viene (también con un solo ejercicio)
+      else if (ph.t === 'rest' && CT.cls) stationTxt = (ph.msg ? 'Muy bien, descansa · ' : '') + (ph.nextName ? 'Sigue: ' + ctShort(ph.nextName) : 'Descanso');
+      else if (ph.t === 'rest') { var nwR = ctNextWork(); stationTxt = (ph.msg ? 'Muy bien, descansa · ' : '') + (nwR ? 'Sigue: ' + ctShort(nwR.st) : 'Descanso'); }   // el descanso siempre dice qué viene (también con un solo ejercicio)
       else if (ph.t === 'trans') stationTxt = (ph.kind === 'side' ? 'Cambia de lado ↔' : 'Prepara: ' + ctShort(ph.st));
       else if (ph.side) stationTxt = ctShort(ph.st) + ' · Lado ' + ph.side + ' de 2';
       var seqStep = null, seqDone = false;
       if (ph.seq) {
-        seqDone = CT.seqI >= ph.steps.length; seqStep = ph.steps[Math.min(CT.seqI, ph.steps.length - 1)];
+        seqDone = !ph.open && CT.seqI >= ph.steps.length; seqStep = ph.steps[Math.min(CT.seqI, ph.steps.length - 1)];
         stationTxt = seqDone ? '✅ Muy bien, descansa hasta que ' + (ph.r >= CT.rounds ? 'termine el bloque' : 'inicia el tiempo de nuevo') : ctShort(seqStep.n);
         if (seqDone) { el('tm_phase').style.color = '#4d8bff'; el('tm_phase').innerText = 'DESCANSA'; }
       }
@@ -6573,7 +6573,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (ph.seq) {   // qué sigue dentro del intervalo
         var sq = ph.steps[CT.seqI + 1];
         if (sq) el('tm_next').innerText = 'Sigue: ' + ctShort(sq.n) + (sq.reps ? ' · ' + sq.reps : '');
-        else if (!seqDone) el('tm_next').innerText = 'Último ejercicio del intervalo';
+        else if (!seqDone) el('tm_next').innerText = (ph.open ? 'Último ejercicio de la ronda' : 'Último ejercicio del intervalo');
         else el('tm_next').innerText = CT.phases[CT.i + 1] ? 'Sigue: ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' ' + (ph.r + 1) + ' de ' + CT.rounds + ' · ' + ctShort(CT.phases[CT.i + 1].steps[0].n) + ' ' + CT.phases[CT.i + 1].steps[0].reps : 'Último intervalo del bloque';
       }
       if (PIP.prep) ctPipDraw(col, labels[ph.t], stationTxt, el('tm_time').innerText, el('tm_round').innerText, repsStr, isOpen ? 0 : Math.max(0, Math.min(1, 1 - remain / ph.d)));
@@ -6922,7 +6922,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function ctSkip() {
       if (!CT.active || CT.done) return;
-      if (CT.phases[CT.i] && CT.phases[CT.i].seq) { ctSeqNext(); return; }
+      var cps = CT.phases[CT.i];
+      if (cps && cps.seq && !(cps.open && CT.seqI >= cps.steps.length - 1)) { ctSeqNext(); return; }
       var wasOpen = !!(CT.phases[CT.i] && CT.phases[CT.i].open);
       if (wasOpen) ctPhaseDone(CT.i);   // "Terminé": la serie por reps queda hecha
       CT.i++;
@@ -7069,6 +7070,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (k < N - 1) phases.push({ t: 'rest', d: tr, st: 'Descanso', r: k + 1, si: -1, nextName: names[sn], note: repsTxt[sn] });
         }
         rounds = N; label = 'Intervalo'; return pack();
+      }
+      if (c.seq && tp !== 'emom') {   // Rondas en secuencia (calentamiento): ejercicios con "Siguiente ejercicio", cronómetro que sube, y pausa fija al terminar cada ronda
+        var pauseS = clsSecs(c.descanso) || 30, RS = parseInt(c.rondas, 10) || 1;
+        var rlS = String(c.repsList || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+        for (var rs = 0; rs < RS; rs++) {
+          var stepsS = subs.map(function(sb, k) {
+            var v = rlS.length ? rlS[Math.min(rs, rlS.length - 1)] : String(sb.reps || '').trim();
+            return { n: names[k], reps: clsSeqReps(v, sb.uni) };
+          });
+          phases.push({ t: 'work', d: 0, open: true, st: names[0], r: rs + 1, si: 0, seq: true, steps: stepsS, note: stepsS[0].reps });
+          if (rs < RS - 1) phases.push({ t: 'rest', d: pauseS, st: 'Descanso', r: rs + 1, si: -1, nextName: names[0], msg: true });
+        }
+        rounds = RS; label = 'Ronda'; return pack();
       }
       if (tp === 'emom' && c.seq) {   // EMOM con todos los ejercicios en cada intervalo: el tiempo corre y el botón "Siguiente ejercicio" avanza dentro del intervalo
         var cadaQ = clsSecs(c.cada) || 60, ttQ = clsSecs(c.total), MQ = ttQ ? Math.max(1, Math.floor(ttQ / cadaQ)) : (parseInt(c.rondas, 10) || 1);
@@ -8766,7 +8780,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var rondas = p.rondas || p.ronda || '';
       var rl = String(p.reps || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
       if (!rondas) rondas = tp === 'escalera' && rl.length ? String(rl.length) : (clsListSecs(p.trabajo).length > 1 ? String(clsListSecs(p.trabajo).length) : (tp === 'tabata' ? '' : '1'));
-      return { type: 'circuito', slot: slot, vigenciaDesde: 1, vigenciaHasta: null, circ: { nombre: nombre, rondas: rondas, trabajo: p.trabajo || '', descanso: /^(0|sin|no|ninguno|ninguna|-)(\s|$)/i.test(p.descanso || '') ? '' : (p.descanso || ''), cambio: p.cambio || p.transicion || '', entre: p.entre || p.intercalar || '', notas: p.notas || p.nota || '', tipo: tp, total: hasTotal ? (p.tiempo || p.total || p.duracion || firstTxt || '') : '', cada: p.cada || '', limite: p.limite || p.tope || '', seq: (tp === 'emom' && /^(s[ií]|todos|true|1)/i.test(String(p.secuencia || p.todos || ''))), repsList: (tp === 'escalera' || (tp === 'emom' && /^(s[ií]|todos|true|1)/i.test(String(p.secuencia || p.todos || '')))) ? (p.reps || '') : '' }, sub: [] };
+      return { type: 'circuito', slot: slot, vigenciaDesde: 1, vigenciaHasta: null, circ: { nombre: nombre, rondas: rondas, trabajo: p.trabajo || '', descanso: /^(0|sin|no|ninguno|ninguna|-)(\s|$)/i.test(p.descanso || '') ? '' : (p.descanso || ''), cambio: p.cambio || p.transicion || '', entre: p.entre || p.intercalar || '', notas: p.notas || p.nota || '', tipo: tp, total: hasTotal ? (p.tiempo || p.total || p.duracion || firstTxt || '') : '', cada: p.cada || '', limite: p.limite || p.tope || '', seq: ((tp === 'emom' || tp === 'hiit' || tp === '') && /^(s[ií]|todos|true|1)/i.test(String(p.secuencia || p.todos || ''))), repsList: (tp === 'escalera' || ((tp === 'emom' || tp === 'hiit' || tp === '') && /^(s[ií]|todos|true|1)/i.test(String(p.secuencia || p.todos || '')))) ? (p.reps || '') : '' }, sub: [] };
     }
     function clsSecs(t) { var n = parseSecs(t); return (n && n > 0) ? n : 0; }
     // Duración aproximada en segundos de una lista de bloques
@@ -9461,7 +9475,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-22-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-22-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
