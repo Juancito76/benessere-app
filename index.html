@@ -8725,6 +8725,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var CLS = { lista: [], hoy: '', hoyD: '', dirty: false };
     var CLASS_ID = 'af2c58b9b2cec8e2';   // código del link único de clases (se pega aquí tras la primera publicación, como ANNOUNCE_ID)
     var CLS_ID_KEY = 'benessere_class_id', CLS_PAY_KEY = 'benessere_class_payload';
+    var CLS_ME = '';   // código del cliente que está viendo las clases desde su rutina ('' = link público)
     var CLS_VIEW = false, CLS_PREVIEW = false, CLS_DATA = null, CLS_TAB = 'hoy', CLS_SEL = { ant: 0, ret: 0 }, CLS_SHOWN = { hoy: null, ant: [], ret: [] }, CLS_PUBMSG = '';
     function clsLinkId() { var v = CLASS_ID; if (!v) { try { v = localStorage.getItem(CLS_ID_KEY) || ''; } catch (e) {} } return v; }
     function clsHoyId() { return (CLS.hoy && (!CLS.hoyD || CLS.hoyD >= todayIso())) ? CLS.hoy : ''; }   // pasado el día, la clase de hoy cae a la lista
@@ -8854,7 +8855,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var r = parseClassText(raw);
       if (!r) { msg.style.color = '#ff6b6b'; msg.innerText = 'No encontré bloques con ejercicios. Cada bloque empieza con "Circuito:" y sus ejercicios con "Estacion:".'; return; }
       r.clase.src = raw;
-      if (CLS_EDIT_ID) r.clase.id = CLS_EDIT_ID;
+      if (CLS_EDIT_ID) { r.clase.id = CLS_EDIT_ID; var prevC = clsFind(CLS_EDIT_ID); if (prevC) { r.clase.para = prevC.para || []; r.clase.prog = !!prevC.prog; } }   // al reeditar el texto se conservan sus destinatarios y su programación
       r.clase.items.forEach(function(it) { it.sub.forEach(function(sb) { if (!sb.video) sb.video = clsLibVideo(sb.name); }); });   // videos ya guardados en la biblioteca
       CLS_WORK = r.clase;
       msg.style.color = r.warns.length ? '#ffd166' : '#06d6a0';
@@ -8877,6 +8878,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<label>Título</label><input type="text" id="clsT" value="' + edxAttr(c.t) + '" oninput="clsReadHead()">' +
         '<label>Músculos trabajados (se muestran al terminar)</label><input type="text" id="clsM" value="' + edxAttr(c.m) + '" oninput="clsReadHead()" placeholder="Ej: Glúteos, piernas, abdomen">' +
         '<div style="font-size:0.78rem; color:#ddd; margin-top:8px;">⏱ Duración aproximada: <strong>' + (clsHasOpen(c.items) ? ((clsFmtMin(dur) ? clsFmtMin(dur) + ' + ' : '') + 'ejercicios por repeticiones') : (clsFmtMin(dur) || '—')) + '</strong> · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + '</div></div>';
+      h += clsAudienceHtml(c);
       var falta = clsMissingVideos(c);
       h += '<div style="font-size:0.78rem; margin:8px 0; color:' + (falta.length ? '#ffd166' : '#06d6a0') + ';">' + (falta.length ? ('🎥 Faltan videos (' + falta.length + '): ' + escHtml(falta.join(', '))) : '🎥 Todos los ejercicios tienen video') + '</div>' +
         '<button type="button" class="btn btn-secondary" style="width:100%; margin-bottom:8px;" onclick="openVideoLibrary()">📚 Ver biblioteca de videos</button>';
@@ -8897,6 +8899,43 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       h += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"><button type="button" class="btn btn-accent" style="flex:1; min-width:130px;" onclick="clsStore(false)">💾 Guardar</button>' +
         (c.k === 'c' ? '<button type="button" class="btn btn-export-wa" style="flex:1; min-width:150px;" onclick="clsStore(true)">⭐ Guardar como clase de hoy</button>' : '') + '</div>';
       box.innerHTML = h;
+    }
+    // ¿Quién la ve? y programación por fecha
+    function clsClientNames() {
+      var seen = {}, out = [];
+      (clientRows || []).forEach(function(r) { var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__' || k === '__videos__' || seen[k]) return; seen[k] = 1; out.push(r.atleta); });
+      return out.sort(function(a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
+    }
+    function clsAudienceHtml(c) {
+      var para = c.para || [], names = clsClientNames(), todos = !para.length;
+      var h = '<div class="edx-sub" style="margin-top:10px;"><div style="font-size:0.82rem; font-weight:800; color:var(--primary); margin-bottom:6px;">👥 ¿Quién la ve?</div>' +
+        '<label style="display:flex; gap:6px; align-items:center; font-size:0.82rem; color:#ddd; text-transform:none;"><input type="radio" name="clsAud" ' + (todos ? 'checked ' : '') + 'onchange="clsParaAll()"> Todos los clientes con clases</label>' +
+        '<label style="display:flex; gap:6px; align-items:center; font-size:0.82rem; color:#ddd; text-transform:none; margin-top:4px;"><input type="radio" name="clsAud" ' + (todos ? '' : 'checked ') + 'onchange="clsParaSome()"> Solo estos clientes</label>';
+      if (!todos || c._pick) {
+        if (!names.length) h += '<button type="button" class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="clsLoadClients()">👥 Cargar mis clientes</button>';
+        else h += '<div style="max-height:190px; overflow:auto; margin-top:8px; border:1px solid #2c2c2c; border-radius:8px; padding:6px;">' + names.map(function(n) {
+          var on = para.some(function(x) { return normName(x) === normName(n); });
+          return '<label style="display:flex; gap:6px; align-items:center; font-size:0.82rem; color:#fff; padding:3px 2px; text-transform:none;"><input type="checkbox" ' + (on ? 'checked ' : '') + 'onchange="clsSetPara(' + jsArg(n) + ', this.checked)"> ' + escHtml(n) + '</label>';
+        }).join('') + '</div>';
+        h += '<div style="font-size:0.72rem; color:var(--muted); margin-top:4px;">Se ve solo con el link de la rutina del cliente (tiene que tener las clases activadas).</div>';
+      }
+      h += '<label style="display:flex; gap:6px; align-items:center; font-size:0.82rem; color:#ddd; text-transform:none; margin-top:10px;"><input type="checkbox" ' + (c.prog ? 'checked ' : '') + 'onchange="clsToggleProg(this.checked)"> 📅 Programar: aparece sola como «Clase de hoy» el día de la fecha</label></div>';
+      return h;
+    }
+    function clsReadHeadSafe() { if (document.getElementById('clsK') && document.getElementById('clsF')) clsReadHead(); }
+    function clsParaAll() { if (!CLS_WORK) return; clsReadHeadSafe(); CLS_WORK.para = []; CLS_WORK._pick = false; clsRenderPreview(); }
+    function clsParaSome() { if (!CLS_WORK) return; clsReadHeadSafe(); CLS_WORK._pick = true; if (!clsClientNames().length) clsLoadClients(); else clsRenderPreview(); }
+    function clsSetPara(name, on) {
+      if (!CLS_WORK) return; clsReadHeadSafe(); var k = normName(name), l = (CLS_WORK.para || []).filter(function(x) { return normName(x) !== k; });
+      if (on) l.push(name); CLS_WORK.para = l; if (!l.length) CLS_WORK._pick = true;
+    }
+    function clsToggleProg(on) { if (!CLS_WORK) return; clsReadHeadSafe(); CLS_WORK.prog = !!on; }
+    function clsLoadClients() {
+      var msg = document.getElementById('clsMsg');
+      clsEnsureCoach(function(ok) {
+        if (!ok) { if (msg) { msg.style.color = '#ffd166'; msg.innerText = 'Para elegir clientes entra una vez a «Mis clientes» con tu PIN (marca «Recordar») y vuelve aquí.'; } return; }
+        postJson({ a: 'listar', pin: COACH.pin }).then(function(j) { if (j && j.ok) { clientRows = j.rutinas || []; clsRenderPreview(); } else if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo cargar la lista de clientes.'; } }).catch(function() { if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo cargar la lista de clientes.'; } });
+      });
     }
     // Ejercicios (sin repetir) que todavía no tienen video
     function clsMissingVideos(c) {
@@ -8931,7 +8970,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!c.t.trim()) { alert('Ponle un título.'); return; }
       var fv = clsMissingVideos(c);
       if (fv.length && !confirm('Faltan videos en: ' + fv.join(', ') + '.\n\n¿Guardar la clase de todos modos?')) return;
-      var rec = JSON.parse(JSON.stringify(c));
+      var rec = JSON.parse(JSON.stringify(c)); delete rec._pick;
+      if (rec.para && !rec.para.length) delete rec.para;
+      if (c._pick && !(rec.para && rec.para.length) && !confirm('Marcaste «Solo estos clientes» pero no elegiste ninguno: la clase la verán todos. ¿Guardar así?')) return;
       if (!rec.id) rec.id = 'c' + Date.now().toString(36);
       var i = -1; CLS.lista.forEach(function(x, k) { if (x.id === rec.id) i = k; });
       if (i >= 0) { rec.vis = CLS.lista[i].vis; CLS.lista[i] = rec; } else CLS.lista.push(rec);
@@ -8941,7 +8982,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('clsMsg').style.color = '#06d6a0';
       document.getElementById('clsMsg').innerText = '✅ Guardada: ' + rec.t + (CLS.hoy === rec.id ? ' (clase de hoy)' : '') + '.';
       clsClearForm(); clsRender();
-      if (asToday) clsAutoPublish();
+      if (asToday || rec.prog || (rec.para && rec.para.length)) clsAutoPublish();
     }
     // Al dejar lista la clase de hoy, se publica sola para quienes tienen las clases habilitadas (si ya existe el link y hay sesión de coach)
     function clsAutoPublish() {
@@ -8990,6 +9031,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var dur = clsHasOpen(c.items) ? '' : clsFmtMin(clsDuration(c.items));
       return '<div style="background:#161616; border:1px solid #2c2c2c; border-left:4px solid ' + (isToday ? '#06d6a0' : '#444') + '; border-radius:10px; padding:10px; margin-bottom:8px;">' +
         '<div style="font-weight:800; font-size:0.9rem; color:#fff;">' + escHtml(c.t) + '</div>' +
+        ((c.prog || (c.para && c.para.length)) ? '<div style="font-size:0.72rem; color:#9fe8c8; margin-top:2px;">' + (c.prog ? '📅 Programada para ' + fmtDate(c.f) : '') + (c.prog && c.para && c.para.length ? ' · ' : '') + (c.para && c.para.length ? '👤 Solo: ' + escHtml(c.para.join(', ')) : '') + '</div>' : '') +
         '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 8px;">📅 ' + fmtDate(c.f) + (dur ? ' · ⏱ ' + dur : '') + ' · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + (c.m ? ' · 💪 ' + escHtml(c.m) : '') + '</div>' +
         '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
         '<button type="button" class="btn btn-secondary" style="padding:7px 10px; font-size:0.74rem;" onclick="clsPlay(clsFind(\'' + c.id + '\'))">▶ Probar</button>' +
@@ -9066,13 +9108,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     // ----- Publicar: un solo link permanente para todas las clases (atleta especial "__CLASES__") -----
-    function clsStrip(c) { return { id: c.id, k: c.k, f: c.f, t: c.t, m: c.m, items: c.items }; }
+    // Código corto (no reversible a simple vista) de un cliente: así el link de clases no lleva los nombres de los clientes
+    function clsHash(name) {
+      var t = normName(name), h = 5381; if (!t) return '';
+      for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+      return h.toString(36);
+    }
+    function clsStrip(c) {
+      var o = { id: c.id, k: c.k, f: c.f, t: c.t, m: c.m, items: c.items };
+      if (c.para && c.para.length) o.p = c.para.map(clsHash).filter(Boolean);   // solo estos clientes la ven
+      return o;
+    }
+    function clsDaysAgoIso(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
     function clsPayloadObj() {
       var hoyId = clsHoyId(), byDate = function(a, b) { return a.f < b.f ? 1 : (a.f > b.f ? -1 : 0); };
       return {
         v: 1, hd: hoyId ? CLS.hoyD : '', hoy: hoyId ? clsStrip(clsFind(hoyId)) : null,
         ant: CLS.lista.filter(function(c) { return c.k === 'c' && c.vis && c.id !== hoyId; }).sort(byDate).map(clsStrip),
-        ret: CLS.lista.filter(function(c) { return c.k === 'r' && c.vis; }).sort(byDate).map(clsStrip)
+        ret: CLS.lista.filter(function(c) { return c.k === 'r' && c.vis; }).sort(byDate).map(clsStrip),
+        pg: CLS.lista.filter(function(c) { return c.k === 'c' && c.prog && c.f >= clsDaysAgoIso(14); }).sort(byDate).map(clsStrip)   // programadas: cada una aparece sola el día de su fecha
       };
     }
     function clsEncode() {
@@ -9086,7 +9140,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function clsPublish(auto) {
       if (!COACH) { clsEnsureCoach(function(ok) { if (ok) clsPublish(auto); else { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); } }); return; }
       clsLoad();
-      if (!clsHoyId() && !CLS.lista.some(function(c) { return c.vis; })) { if (!confirm('No hay clase de hoy ni clases/retos habilitados. ¿Publicar la portada vacía?')) return; }
+      if (!clsHoyId() && !CLS.lista.some(function(c) { return c.vis || c.prog; })) { if (!confirm('No hay clase de hoy ni clases/retos habilitados. ¿Publicar la portada vacía?')) return; }
       var payloadText = clsEncode(), id = clsLinkId(), btn = document.getElementById('clsPubBtn');
       if (payloadText.length > 45000) { clsSetPubMsg('Son demasiadas clases habilitadas para un solo link. Deshabilita algunas anteriores.', '#ff6b6b'); return; }
       if (btn) { btn.disabled = true; btn.innerText = 'Publicando…'; }
@@ -9130,7 +9184,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!box) { box = document.createElement('div'); box.id = 'cls_app'; box.style.cssText = 'max-width:640px; margin:0 auto; padding:16px 14px calc(30px + env(safe-area-inset-bottom));'; document.body.appendChild(box); }
       box.style.display = 'block';
       var t = todayIso(), hoyOk = !!(obj.hoy && (!obj.hd || obj.hd >= t));
-      CLS_SHOWN = { hoy: hoyOk ? obj.hoy : null, ant: obj.ant || [], ret: obj.ret || [] };
+      var okFor = function(c) { return !!c && (preview || !c.p || !c.p.length || (!!CLS_ME && c.p.indexOf(CLS_ME) >= 0)); };   // clases asignadas a ciertos clientes
+      var pgAll = (obj.pg || []).filter(okFor), pgHoy = pgAll.filter(function(c) { return c.f === t; });
+      var mine = null, gen = null; pgHoy.forEach(function(c) { if (c.p && c.p.length) { if (!mine) mine = c; } else if (!gen) gen = c; });
+      var hoyC = mine || (hoyOk && okFor(obj.hoy) ? obj.hoy : null) || gen;
+      var antMap = {}, antL = [];
+      (obj.ant || []).concat(pgAll.filter(function(c) { return c.f < t; })).forEach(function(c) { if (!okFor(c) || antMap[c.id] || (hoyC && hoyC.id === c.id)) return; antMap[c.id] = 1; antL.push(c); });
+      antL.sort(function(a, b) { return a.f < b.f ? 1 : (a.f > b.f ? -1 : 0); });
+      CLS_SHOWN = { hoy: hoyC, ant: antL, ret: (obj.ret || []).filter(okFor) };
       if (CLS_TAB === 'ant' && !CLS_SHOWN.ant.length) CLS_TAB = 'hoy';
       if (CLS_TAB === 'ret' && !CLS_SHOWN.ret.length) CLS_TAB = 'hoy';
       clsPaint();
@@ -9140,6 +9201,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function openClasesTab(auto) {
       var st = athleteActiveState, cf = (st && st.configFeatures) || {}, id = cf.classId || (isCoachView() ? clsLinkId() : '');   // en modo coach, si al cliente le falta el código, se usa el link de clases del coach
       var onlyCls = cf.uso === 'c';
+      CLS_ME = clsHash(st && st.clientName);
       var show = function(cst) { CLS_FROM_ROUTINE = !onlyCls; renderClassApp(cst); window.scrollTo(0, 0); };
       var cached = function() { try { return JSON.parse(localStorage.getItem(CLS_CACHE_KEY + '_' + id) || 'null'); } catch (e) { return null; } };
       if (!id) { if (!auto) wkToast('Las clases todavía no están disponibles. Pregúntale a tu coach.'); return; }
@@ -9399,7 +9461,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-22-a';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-22-b';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
