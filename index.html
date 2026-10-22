@@ -6937,6 +6937,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var rp = isTimeText(sb.reps) ? String(sb.reps) : clsRepsTxt(sb);
         out.push({ bn: c.nombre || 'Bloque', info: clsBlockInfo(c), notas: c.notas || '', name: nm, video: sb.video || '', reps: rp || '', nota: sb.notes || '' });
       });
+      out.forEach(function(o, k) { o.k = k + 1; o.kn = out.length; });
+      return out;
+    }
+    // Todos los bloques que vienen después de 'pos' hasta la siguiente pausa (una pausa puede cubrir varios bloques)
+    function clsPreGroup(items, pos) {
+      var out = [];
+      for (var q = pos; q < items.length; q++) { if (items[q].circ.tipo === 'pausa') break; out = out.concat(clsPreListBlock(items[q])); }
       return out;
     }
     function clsPreCur(ph, remain) {
@@ -7026,9 +7033,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (built.err) { alert(built.err); return; }
       G.pos = pos;
       if (pos === 0 && !resume && built.phases[0] && built.phases[0].t === 'ready') {   // previa de 2 min con todos los ejercicios de la clase
-        var pl = clsPreListBlock(it);
+        var pl = clsPreGroup(G.clase.items, 0);
         if (pl.length) built.phases[0] = { t: 'ready', d: CLS_PRE, st: 'Previa de la clase', r: 1, si: 0, pre: true, preList: pl };
       }
+      if (built.phases[0] && built.phases[0].pausa) { var pg = clsPreGroup(G.clase.items, pos + 1); built.phases[0].preList = pg.length ? pg : null; }
       tmrAudio(); rtClose();
       CT.cls = true; CT.keys = []; CT.acc = {}; CT.videos = built.videos; CT.repsTxt = built.repsTxt; CT.ci = -1; CT.srId = 0; CT.doneBefore = 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = it.circ.nombre || 'Bloque';
@@ -7098,7 +7106,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           el('tm_title').innerText = pc.bn; el('tm_title').style.display = ''; el('tm_head').style.justifyContent = 'center';
           el('tm_station').innerText = pc.name; el('tm_reps').innerText = pc.reps + (pc.nota ? (pc.reps ? ' · ' : '') + pc.nota : '');
           el('tm_prog').innerHTML = pc.info + (pc.notas ? '<br><span style="color:#ffd60a;">' + escHtml(pc.notas) + '</span>' : ''); el('tm_prog').style.display = ''; el('tm_prog').style.color = '#ccc';
-          el('tm_next').innerText = (ph.pre ? 'Inicia: ' : 'Sigue: ') + pc.bn + ' · ejercicio ' + (pc.i + 1) + ' de ' + pc.n;
+          el('tm_next').innerText = (ph.pre ? 'Inicia: ' : 'Sigue: ') + pc.bn + ' · ejercicio ' + pc.k + ' de ' + pc.kn;
         }
       }
     }
@@ -9272,7 +9280,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-k';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-l';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
