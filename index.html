@@ -8926,20 +8926,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- Contador de aperturas del link de clases -----
     // Solo se cuenta CUÁNTAS veces se abre (un registro con la hora, sin nombre ni datos de la persona). Se cuenta una apertura por celular cada 30 minutos.
-    function clsPing(id) {
+    function clsPing(id, who) {
       if (!id || COACH || (typeof PRUEBA !== 'undefined' && PRUEBA.on)) return;
       var key = 'benessere_cls_ping_' + id, now = Date.now(), last = 0;
       try { last = parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch (e) {}
       if (now - last < 30 * 60 * 1000) return;
       try { localStorage.setItem(key, String(now)); } catch (e) {}
-      postJson({ a: 'sesion', id: id, s: JSON.stringify({ k: 'open', t: now }) }).catch(function() { try { localStorage.removeItem(key); } catch (e) {} });
+      postJson({ a: 'sesion', id: id, s: JSON.stringify(who && who.n ? { k: 'open', t: now, r: who.r || '', n: String(who.n).slice(0, 60) } : { k: 'open', t: now }) }).catch(function() { try { localStorage.removeItem(key); } catch (e) {} });
     }
-    var CLS_STATS = { at: 0, n: null, hoy: 0, sem: 0, err: false, busy: false };
+    var CLS_STATS = { at: 0, n: null, hoy: 0, sem: 0, err: false, busy: false, who: [] };
     function clsStatsHtml() {
       if (CLS_STATS.busy && CLS_STATS.n == null) return '👁 Aperturas del link: cargando…';
       if (CLS_STATS.err && CLS_STATS.n == null) return '👁 Aperturas del link: no se pudo cargar. <a href="#" onclick="clsStatsLoad(true); return false;" style="color:var(--primary);">Reintentar</a>';
       if (CLS_STATS.n == null) return '';
-      return '👁 Aperturas del link: <b>' + CLS_STATS.hoy + '</b> hoy · <b>' + CLS_STATS.sem + '</b> en 7 días · <b>' + CLS_STATS.n + '</b> en total <a href="#" onclick="clsStatsLoad(true); return false;" style="color:var(--primary); margin-left:6px;">🔄</a>';
+      var wh = CLS_STATS.who || [], whH = '';
+      if (wh.length) {   // quién entró (solo los que abren desde su propia rutina), lo más reciente arriba
+        var d0 = new Date(); d0.setHours(0, 0, 0, 0);
+        var line = function(w) { var dt = new Date(w.t), hh = dt.getHours(), mm = ('0' + dt.getMinutes()).slice(-2), ap = hh >= 12 ? 'pm' : 'am', h12 = hh % 12 || 12, day = w.t >= d0.getTime() ? 'hoy' : fmtDate(dt.getFullYear() + '-' + ('0' + (dt.getMonth() + 1)).slice(-2) + '-' + ('0' + dt.getDate()).slice(-2)); return '<div style="margin-top:2px;">' + escHtml(w.n) + ' · ' + day + ' ' + h12 + ':' + mm + ' ' + ap + (w.c > 1 ? ' · ' + w.c + ' veces' : '') + '</div>'; };
+        whH = '<details style="margin-top:6px;"><summary style="cursor:pointer; color:var(--primary);">👤 Quién entró (7 días): ' + wh.length + '</summary>' + wh.map(line).join('') + '<div style="margin-top:4px; color:var(--muted);">Solo aparecen los que entran desde la pestaña Clases de su rutina.</div></details>';
+      }
+      return '👁 Aperturas del link: <b>' + CLS_STATS.hoy + '</b> hoy · <b>' + CLS_STATS.sem + '</b> en 7 días · <b>' + CLS_STATS.n + '</b> en total <a href="#" onclick="clsStatsLoad(true); return false;" style="color:var(--primary); margin-left:6px;">🔄</a>' + whH;
     }
     function clsStatsLoad(force) {
       var id = clsLinkId(); if (!id || CLS_STATS.busy) return;
@@ -8954,6 +8960,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         CLS_STATS.n = opens.length;
         CLS_STATS.hoy = opens.filter(function(s) { return s.t >= d0.getTime(); }).length;
         CLS_STATS.sem = opens.filter(function(s) { return s.t >= now - 7 * 86400000; }).length;
+        var by = {};
+        opens.forEach(function(o) { if (!o.n || o.t < now - 7 * 86400000) return; var k = String(o.n).toLowerCase(); if (!by[k]) by[k] = { n: o.n, t: o.t, c: 0 }; by[k].c++; if (o.t > by[k].t) by[k].t = o.t; });
+        CLS_STATS.who = Object.keys(by).map(function(k) { return by[k]; }).sort(function(a, b) { return b.t - a.t; });
         CLS_STATS.at = now;
       }).catch(function() { CLS_STATS.err = true; }).then(function() { CLS_STATS.busy = false; paint(); });
     }
@@ -9042,7 +9051,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var cst = decodePayload('q', j.p);
         if (!cst || cst.coachMsgTitle !== '__CLASES__') throw new Error('formato');
         try { localStorage.setItem(CLS_CACHE_KEY + '_' + id, JSON.stringify({ coachMsgTitle: cst.coachMsgTitle, coachMsgBody: cst.coachMsgBody })); } catch (e) {}
-        if (!auto || !isCoachView()) { try { clsPing(id); } catch (e) {} }
+        if (!auto || !isCoachView()) { try { clsPing(id, { r: athleteRoutineId, n: st && st.clientName }); } catch (e) {} }   // desde la rutina del cliente se sabe quién abrió
         show(cst);
       }).catch(function() {
         var c = cached();
@@ -9292,7 +9301,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-o';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-p';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
