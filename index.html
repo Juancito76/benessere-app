@@ -6574,7 +6574,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var sq = ph.steps[CT.seqI + 1];
         if (sq) el('tm_next').innerText = 'Sigue: ' + ctShort(sq.n) + (sq.reps ? ' · ' + sq.reps : '');
         else if (!seqDone) el('tm_next').innerText = 'Último ejercicio del intervalo';
-        else el('tm_next').innerText = CT.phases[CT.i + 1] ? 'Sigue: escalón ' + (ph.r + 1) + ' de ' + CT.rounds + ' · ' + ctShort(CT.phases[CT.i + 1].steps[0].n) + ' ' + CT.phases[CT.i + 1].steps[0].reps : 'Último intervalo del bloque';
+        else el('tm_next').innerText = CT.phases[CT.i + 1] ? 'Sigue: ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' ' + (ph.r + 1) + ' de ' + CT.rounds + ' · ' + ctShort(CT.phases[CT.i + 1].steps[0].n) + ' ' + CT.phases[CT.i + 1].steps[0].reps : 'Último intervalo del bloque';
       }
       if (PIP.prep) ctPipDraw(col, labels[ph.t], stationTxt, el('tm_time').innerText, el('tm_round').innerText, repsStr, isOpen ? 0 : Math.max(0, Math.min(1, 1 - remain / ph.d)));
     }
@@ -7080,7 +7080,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           });
           phases.push({ t: 'work', d: cadaQ, st: names[0], r: mq + 1, si: 0, seq: true, steps: stepsQ, note: stepsQ[0].reps });
         }
-        rounds = MQ; label = 'Escalón'; return pack();
+        rounds = MQ; label = rlQ.length ? 'Escalón' : 'Ronda'; return pack();
       }
       if (tp === 'emom') {
         var cada = clsSecs(c.cada) || 60, tt = clsSecs(c.total), M = tt ? Math.max(1, Math.floor(tt / cada)) : n * rounds;
@@ -9461,7 +9461,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-22-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-22-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
