@@ -6078,6 +6078,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       Promise.all([worker(), worker(), worker()]);   // 3 consultas a la vez
     }
+    // El coach marca a mano que un cliente entrenó (cuando fue al gym pero la app no registró nada)
+    function cwMark(id, off) {
+      if (!COACH) return;
+      var row = null; CW.rows.forEach(function(r) { if (r.id === id) row = r; }); if (!row) return;
+      var dt = new Date(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + (off || 0));
+      var d = isoOfDate(dt);
+      if (row.st && row.st.last === d) { showToastTop('Ya figura como entrenado ' + (off ? 'ayer' : 'hoy') + '.'); return; }
+      if (!confirm('¿Marcar que ' + row.name + ' entrenó ' + (off ? 'ayer' : 'hoy') + '?\n\nQueda registrado como entrenamiento sin marcas.')) return;
+      var now = new Date(), tIso = off ? dt.toISOString() : now.toISOString();
+      var hd = dt.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + (off ? '' : now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' }));
+      var sess = { d: d, t: tIso, hd: hd.trim(), day: 'Marcado por el coach', ex: [], nm: 1, o: COACH.name, man: 1 };
+      showToastTop('Guardando…');
+      postJson({ a: 'sesion', id: id, s: JSON.stringify(sess), pin: COACH.pin }).then(function(j) {
+        if (!(j && j.ok)) { showToastTop('No se pudo guardar: ' + (j && j.error ? j.error : 'revisa tu conexión')); return; }
+        return fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(h) {
+          if (h && h.ok && Array.isArray(h.sesiones)) row.st = cwStats(h.sesiones, row.goal);
+          showToastTop('✅ ' + row.name + ' quedó marcado como entrenado.'); renderCoachWeek();
+        });
+      }).catch(function() { showToastTop('No se pudo guardar. Revisa tu conexión.'); });
+    }
     function renderCoachWeek() {
       var rk = weekRange(0), rows = CW.rows.slice();
       function rank(r) { if (!r.st) return 5; var s = r.st; if (s.n === 0 && (s.ago < 0 || s.ago >= 7)) return 0; if (s.n === 0) return 1; if (s.goal && s.n >= s.goal) return 3; return 2; }
@@ -6107,7 +6127,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         h += '<div style="display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
           '<div style="font-size:1.1rem;">' + badge + '</div>' +
           '<div style="flex:1; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.9rem;">' + escHtml(r.name) + '</div>' +
-          '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + line + '</div></div>' +
+          '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + line + '</div>' +
+          (r.st ? '<div style="margin-top:6px; display:flex; gap:6px; align-items:center;"><span style="font-size:0.7rem; color:#9fe8c8; font-weight:800;">Marcar que entrenó:</span>' +
+            '<button type="button" onclick="cwMark(\'' + escHtml(r.id) + '\', 0)" style="background:#06d6a0; color:#000; border:none; border-radius:8px; padding:5px 10px; font-weight:900; font-size:0.72rem; cursor:pointer;">✔ Hoy</button>' +
+            '<button type="button" onclick="cwMark(\'' + escHtml(r.id) + '\', -1)" style="background:transparent; color:#06d6a0; border:1px solid #06d6a0; border-radius:8px; padding:5px 10px; font-weight:800; font-size:0.72rem; cursor:pointer;">Ayer</button></div>' : '') + '</div>' +
           '<button type="button" onclick="closeModal(\'coach_week_modal\'); openClientRoutine(\'' + escHtml(r.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:6px 9px; font-weight:800; font-size:0.72rem; cursor:pointer;">Abrir</button></div>';
       });
       h += '<div style="font-size:0.68rem; color:var(--muted); margin-top:8px; line-height:1.5;">✅ meta cumplida · 🟡 entrenó pero le falta · ⚪ aún no entrena esta semana · 🔴 sin entrenar hace 7 días o más. La meta solo aparece si ya abriste la rutina del cliente en este celular.</div>';
@@ -9301,7 +9324,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-21-p';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-21-q';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
