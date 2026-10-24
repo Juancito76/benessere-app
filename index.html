@@ -6533,6 +6533,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="tm-btn tm-sm" id="tm_vtog"></button>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_snd" style="display:none;"></button>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_pip" style="display:none;">🪟 Ventana flotante</button>' +
+        '<button type="button" class="tm-btn tm-sm" id="tm_blk" style="display:none; background:#2f6bff; border-color:#2f6bff; color:#fff;">⏭ Saltar este bloque</button>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_extra_x" style="background:#2a2a2a;">Cerrar</button></div>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_exit">✖ Salir</button>' +
         '</div>' +
@@ -6564,6 +6565,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_vrep').onclick = ctVrepClick;
       if (tmrSndVisible()) { var sndB = document.getElementById('tm_snd'); sndB.style.display = ''; sndB.onclick = tmrToggleMode; tmrModeLabel(); }
       document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId, gd = CT.guide; startCircuitTimer(ci, sid, true, gd); };
+      document.getElementById('tm_blk').onclick = clsSkipBlock;
     }
 
     function ctPhaseSound(ph) {
@@ -6740,7 +6742,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else nxTxt = 'Sigue: ' + ctShort(nx.st) + (nx.side ? ' · lado ' + nx.side : '') + (nx.open && nx.reps ? ' · ' + nx.reps : '');
       }
       el('tm_next').innerText = nxTxt;
-      if (CT.cls) ctClsRender(ph);
+      if (CT.cls) ctClsRender(ph); else if (el('tm_blk')) el('tm_blk').style.display = 'none';
       if (ph.seq) {   // qué sigue dentro del intervalo
         var sq = ph.steps[CT.seqI + 1];
         if (sq) el('tm_next').innerText = 'Sigue: ' + ctShort(sq.n) + (sq.reps ? ' · ' + sq.reps : '');
@@ -7345,7 +7347,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return '<div style="background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; margin-top:12px;"><div style="font-weight:800;">▶ Dejaste una clase a medias</div>' +
         '<div style="font-size:0.8rem; color:#ccc; margin:2px 0 8px;">' + escHtml(rs.clase.t) + ' · bloque ' + (rs.pos + 1) + ' de ' + rs.clase.items.length + '</div>' +
         '<div style="display:flex; gap:8px;"><button type="button" class="btn-action-primary" style="flex:2;" onclick="clsResume()">Continuar donde iba</button>' +
-        '<button type="button" class="btn btn-secondary" style="flex:1;" onclick="resumeClear(); clsPaint();">Descartar</button></div></div>';
+        '<button type="button" class="btn btn-secondary" style="flex:1;" onclick="resumeClear(); clsPaint();">Descartar</button></div>' +
+        '<div style="display:flex; gap:8px; margin-top:8px; align-items:center;"><select id="cls_rs_pos" style="flex:2; padding:9px; border-radius:8px; font-size:0.85rem;">' +
+        rs.clase.items.map(function(it, i) { return '<option value="' + i + '"' + (i === Math.min(rs.pos + 1, rs.clase.items.length - 1) ? ' selected' : '') + '>' + (i + 1) + '. ' + escHtml(it.circ.nombre || ('Bloque ' + (i + 1))) + '</option>'; }).join('') +
+        '</select><button type="button" class="btn btn-secondary" style="flex:1;" onclick="clsResumeAt()">Ir a este bloque</button></div></div>';
+    }
+    function clsSkipBlock() {   // salta el bloque en curso y arranca el siguiente
+      var G = CT.guide; if (!G || !G.cls) return;
+      if (!G.clase.items[G.pos + 1]) { try { wkToast('Es el último bloque'); } catch (e) {} return; }
+      if (!confirm('¿Saltar este bloque y pasar al siguiente?')) return;
+      var ex = document.getElementById('tm_extra'); if (ex) ex.classList.remove('on'); document.body.classList.remove('tm-extra-open');
+      clsRunBlock(G, G.pos + 1);
+    }
+    function clsResumeAt() {   // desde el aviso "Continuar": empezar en el bloque que se elija (ej. saltar el calentamiento ya hecho)
+      var rs = resumeLoad('c'), sel = document.getElementById('cls_rs_pos'); if (!rs || !sel) return;
+      var pos = parseInt(sel.value, 10); if (!(pos >= 0) || !rs.clase.items[pos]) return;
+      var G = { cls: true, clase: rs.clase, blocks: rs.clase.items.map(function(it, i) { return { name: it.circ.nombre || ('Bloque ' + (i + 1)), tipo: it.circ.tipo }; }), pos: pos, t0: rs.t0 || Date.now(), results: rs.res || [] };
+      clsRunBlock(G, pos);
     }
     function clsResume() {
       var rs = resumeLoad('c'); if (!rs) return;
@@ -7381,6 +7399,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctClsRender(ph) {
       var el = function(id) { return document.getElementById(id); };
       if (!el('tm_list')) return;
+      if (el('tm_blk')) el('tm_blk').style.display = '';   // en clases y retos: se puede saltar el bloque (ej. calentamiento ya hecho)
       if (ph.t === 'ready' || ph.list || ph.pausa) el('tm_round').innerText = '';
       if (ph.t === 'trans' && ph.lbl) el('tm_phase').innerText = ph.lbl.toUpperCase();
       if (ph.list && ph.t === 'work') {
@@ -9726,7 +9745,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-24-b';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-24-c';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
