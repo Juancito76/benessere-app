@@ -9805,10 +9805,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-24-f';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-24-g';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
-    function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
+    // Recarga con una dirección siempre nueva (_t) para que el navegador o la red no entreguen la copia vieja; conserva el resto del enlace (?r=…, #i=…)
+    function appReloadTo(ver) {
+      var qs = String(window.location.search || '').replace(/^\?/, '').split('&').filter(function(x) { return x && !/^(_v|_t|_chk)=/.test(x); });
+      qs.push('_v=' + encodeURIComponent(ver), '_t=' + Date.now());
+      window.location.replace(window.location.pathname + '?' + qs.join('&') + window.location.hash);
+    }
     function hideAppButton() { var el = document.getElementById('app_pill'); if (el) el.remove(); }
     function showAppButton(ver) {
       if (document.getElementById('app_pill')) return;
@@ -9818,7 +9823,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" id="app_pill_ok" style="background:#2f69ff; color:#fff; border:none;">Actualizar</button>' +
         '<button type="button" id="app_pill_later" style="background:#1c1c1c; color:#fff; border:1px solid #444;">Después</button>';
       document.body.appendChild(el);
-      document.getElementById('app_pill_ok').onclick = function() { try { localStorage.removeItem(APP_PENDING_KEY); } catch (e) {} appReloadTo(ver); };
+      document.getElementById('app_pill_ok').onclick = function() {
+        try { localStorage.removeItem(APP_PENDING_KEY); } catch (e) {}
+        var txt = el.firstChild, ok = document.getElementById('app_pill_ok'), lt = document.getElementById('app_pill_later');
+        if (txt) txt.innerText = '⏳ Actualizando…'; ok.disabled = true; lt.disabled = true;   // respuesta inmediata al tocar
+        appReloadTo(ver);
+        setTimeout(function() {   // si en 8 s la pantalla no se recargó, se avisa y se puede reintentar
+          if (!document.getElementById('app_pill')) return;
+          if (txt) txt.innerText = '⚠️ Todavía no se pudo. Revisa tu internet e inténtalo de nuevo en un minuto.';
+          ok.disabled = false; lt.disabled = false;
+        }, 8000);
+      };
       document.getElementById('app_pill_later').onclick = function() {
         APP_DISMISSED = ver; hideAppButton();
         try { localStorage.setItem(APP_PENDING_KEY, ver); } catch (e) {}   // se actualiza la próxima vez que abra la app
