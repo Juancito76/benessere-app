@@ -13,6 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
+    var APP_VERSION = '2026-10-24-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9765,7 +9766,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       UPD_BUSY = true; if (btn) { btn.disabled = true; btn.innerText = '⏳ Buscando…'; } say('');
       var done = function(t, col) { UPD_BUSY = false; if (btn) { btn.disabled = false; btn.innerText = '🔄 Actualizar'; } say(t, col); };
       var appCheck = /^https?:$/.test(window.location.protocol)
-        ? fetch(window.location.pathname + '?_chk=' + Date.now(), { cache: 'no-store' }).then(function(r) { return r.ok ? r.text() : ''; }).then(function(t) { var m = String(t).match(/var APP_VERSION = '([^']+)'/); return (m && m[1] !== APP_VERSION) ? m[1] : ''; }).catch(function() { return ''; })
+        ? fetch(window.location.pathname + '?_chk=' + Date.now(), { cache: 'no-store' }).then(function(r) { return r.ok ? r.text() : ''; }).then(function(t) { var nv = appVersionFrom(t); return (nv && nv !== APP_VERSION) ? nv : ''; }).catch(function() { return ''; })
         : Promise.resolve('');
       appCheck.then(function(newVer) {
         if (newVer) { say('Instalando la versión nueva…', '#06d6a0'); try { localStorage.removeItem(APP_PENDING_KEY); } catch (e) {} appReloadTo(newVer); return; }
@@ -9805,7 +9806,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-24-g';   // se cambia en cada entrega
+    // Lee la versión del index.html publicado (la primera declaración del archivo). El patrón se arma por partes para que ese texto no aparezca literal en otro lado.
+    function appVersionFrom(t) { var m = String(t).match(new RegExp('var APP_' + 'VERSION = ' + String.fromCharCode(39) + '([^' + String.fromCharCode(39) + ']+)' + String.fromCharCode(39))); return m ? m[1] : ''; }
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     // Recarga con una dirección siempre nueva (_t) para que el navegador o la red no entreguen la copia vieja; conserva el resto del enlace (?r=…, #i=…)
@@ -9844,8 +9846,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       fetch(window.location.pathname + '?_chk=' + Date.now(), { cache: 'no-store' })
         .then(function(r) { return r.ok ? r.text() : ''; })
         .then(function(t) {
-          var m = String(t).match(/var APP_VERSION = '([^']+)'/);
-          if (m && m[1] !== APP_VERSION && m[1] !== APP_DISMISSED) showAppButton(m[1]);
+          var nv = appVersionFrom(t);
+          if (nv && nv !== APP_VERSION && nv !== APP_DISMISSED) showAppButton(nv);
         })
         .catch(function() { /* sin internet: se sigue con la versión que hay */ });
     }
