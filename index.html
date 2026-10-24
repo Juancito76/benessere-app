@@ -6405,7 +6405,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var now = Date.now(); if (!force && CT.rsAt && now - CT.rsAt < 2000) return; CT.rsAt = now;
       var ph = CT.phases[CT.i], G = CT.guide, o = { t: now, i: CT.i, pos: G.pos, rr: ph.r, rt: CT.rounds, rl: CT.roundLabel || 'Serie', pt: ph.t, sn: ctShort(ph.st || '') };
       if (ph.open) o.oe = CT.paused ? (CT.openElapsed || 0) : now - CT.openStart; else o.rm = CT.paused ? (CT.remain || 0) : Math.max(0, CT.end - now);
-      if (G.cls) { o.k = 'c'; o.clase = G.clase; o.t0 = G.t0; o.res = G.results; o.am = CT.amrapN || 0; }
+      if (G.cls) { o.k = 'c'; o.clase = G.clase; o.t0 = G.t0; o.res = G.results; o.am = CT.amrapN || 0; o.ls = CT.listSel || 0; }
       else { o.k = 'g'; o.dayId = G.dayId; o.ci = CT.ci; }
       resumeStore(o);
     }
@@ -6419,6 +6419,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctApplyResume(resume) {
       if (!resume || !(resume.i > 0) || resume.i >= CT.phases.length) return;
       var rph = CT.phases[CT.i = resume.i];
+      if (resume.ls != null) { CT.listSel = resume.ls; CT.listKey = ''; }   // retos: retoma en el ejercicio donde iba
       CT.paused = true; CT.lastBeep = '';
       if (rph.open) { CT.openElapsed = resume.oe || 0; CT.openStart = Date.now() - CT.openElapsed; CT.end = Infinity; }
       else { CT.remain = resume.rm != null ? resume.rm : rph.d * 1000; CT.end = Date.now() + CT.remain; }
@@ -6695,7 +6696,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var nxp = CT.phases[CT.i + 1], nextWork = ctNextWork();
       if (isOpen && el('tm_done')) {   // leyenda del botón según lo que sigue: descanso, otro ejercicio o fin (en entreno guiado, el siguiente bloque)
         var nextBlk = !!(CT.guide && !CT.cls && CT.guide.blocks && CT.guide.blocks[CT.guide.pos + 1]);
-        el('tm_done').innerText = !nxp ? (nextBlk ? '⏭ Siguiente ejercicio' : '✔ Terminé') : (nxp.t === 'rest' ? '😮‍💨 DESCANSAR' : '⏭ Siguiente ejercicio');
+        var lblS = (CT.cls && clsIsReto() && ph.si >= 0 && !ph.list) ? '✔ ' + clsStepLabel(ph.si) : '';   // retos: el botón dice qué ejercicio terminaste
+        el('tm_done').innerText = !nxp ? (lblS || (nextBlk ? '⏭ Siguiente ejercicio' : '✔ Terminé')) : (nxp.t === 'rest' ? '😮‍💨 DESCANSAR' : (lblS || '⏭ Siguiente ejercicio'));
         var toRest = !!(nxp && nxp.t === 'rest');
         el('tm_done').style.background = toRest ? '#2f6bff' : '#06d6a0'; el('tm_done').style.borderColor = toRest ? '#2f6bff' : '#06d6a0'; el('tm_done').style.color = toRest ? '#fff' : '#000';
       }
@@ -7092,6 +7094,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!CT.active || CT.done) return;
       var cps = CT.phases[CT.i];
       if (cps && cps.seq && !(cps.open && CT.seqI >= cps.steps.length - 1)) { ctSeqNext(); return; }
+      if (cps && cps.list && cps.t === 'work' && clsIsReto() && clsRetoStep(cps)) return;   // reto: "Terminé de correr" -> pasa al ejercicio que sigue
       var wasOpen = !!(CT.phases[CT.i] && CT.phases[CT.i].open);
       if (wasOpen) ctPhaseDone(CT.i);   // "Terminé": la serie por reps queda hecha
       CT.i++;
@@ -7358,6 +7361,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.amrapN = (CT.amrapN || 0) + 1; tmrBeep(900, 90, 0); tmrVibrate(60); ctTick();
     }
     function clsListPick(i) { CT.listSel = i; CT.listKey = ''; ctTick(); }
+    // ----- Retos: el botón recorre los ejercicios del bloque uno por uno (correr -> 40 goblet -> correr -> press militar...) -----
+    function clsIsReto() { return !!(CT.guide && CT.guide.clase && CT.guide.clase.k === 'r'); }
+    function clsStepLabel(i) {   // "Terminé de correr" / "Terminé los 40 Goblet" / "Terminé Press militar"
+      var nm = ctShort((CT.names && CT.names[i]) || ''), rp = (CT.repsTxt && CT.repsTxt[i]) || '', m = String(rp).match(/^(\d+)/);
+      if (/^correr/i.test(nm)) return 'Terminé de correr';
+      if (m) return 'Terminé los ' + m[1] + ' ' + nm;
+      return 'Terminé ' + nm;
+    }
+    function clsRetoStep(ph) {   // true = el toque ya se atendió (pasó al siguiente ejercicio o contó una ronda); false = era el último de un "por tiempo": cierra el bloque
+      if (CT.paused) return true;
+      var n = (CT.names || []).length, cur = Math.min(CT.listSel || 0, n - 1);
+      if (cur < n - 1) { CT.listSel = cur + 1; tmrBeep(660, 120, 0); }
+      else if (ph.amrap) { CT.amrapN = (CT.amrapN || 0) + 1; CT.listSel = 0; tmrBeep(900, 90, 0); }   // última del AMRAP: ronda completa y vuelve al primero
+      else return false;
+      CT.listKey = ''; tmrVibrate(60); ctTick(); ctSaveResume(true); return true;
+    }
     function ctClsRender(ph) {
       var el = function(id) { return document.getElementById(id); };
       if (!el('tm_list')) return;
@@ -7377,6 +7396,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (ph.amrap) el('tm_reps').innerText = 'Rondas: ' + (CT.amrapN || 0);
         else if (ph.cap) el('tm_reps').innerText = 'Límite ' + tmrFmt(ph.cap);
         el('tm_next').innerText = '';
+        if (clsIsReto() && CT.names && CT.names.length) {   // reto: se muestra el ejercicio de turno (con su video y reps) y un botón que dice cuál terminaste
+          var cur = Math.min(CT.listSel || 0, CT.names.length - 1), nxI = cur + 1 < CT.names.length ? cur + 1 : (ph.amrap ? 0 : -1);
+          var curReps = (CT.repsTxt && CT.repsTxt[cur]) || '', nxReps = nxI >= 0 ? ((CT.repsTxt && CT.repsTxt[nxI]) || '') : '';
+          el('tm_station').style.display = ''; el('tm_station').innerText = ctShort(CT.names[cur]);
+          el('tm_rnd').style.display = 'none';   // la ronda del AMRAP se cuenta sola al terminar el último ejercicio
+          el('tm_reps').innerText = [ph.amrap ? 'Rondas: ' + (CT.amrapN || 0) : (ph.cap ? 'Límite ' + tmrFmt(ph.cap) : ''), curReps].filter(Boolean).join(' · ');
+          el('tm_next').innerText = nxI >= 0 ? 'Sigue: ' + ctShort(CT.names[nxI]) + (nxReps ? ' · ' + nxReps : '') : 'Último ejercicio del reto';
+          var dnR = el('tm_done'); dnR.style.display = ''; dnR.innerText = '✔ ' + clsStepLabel(cur);
+          dnR.style.background = '#06d6a0'; dnR.style.borderColor = '#06d6a0'; dnR.style.color = '#000';
+        }
       } else {
         el('tm_list').style.display = 'none'; el('tm_station').style.display = ''; el('tm_rnd').style.display = 'none';
         if (!CT.phases[CT.i + 1]) el('tm_next').innerText = 'Último ejercicio del bloque';
@@ -9696,7 +9725,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-23-a';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-24-a';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
