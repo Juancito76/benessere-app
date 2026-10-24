@@ -6534,6 +6534,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="tm-btn tm-sm" id="tm_snd" style="display:none;"></button>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_pip" style="display:none;">🪟 Ventana flotante</button>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_blk" style="display:none; background:#2f6bff; border-color:#2f6bff; color:#fff;">⏭ Saltar este bloque</button>' +
+        '<button type="button" class="tm-btn tm-sm" id="tm_posb" style="display:none; background:#06d6a0; border-color:#06d6a0; color:#000;">📍 Ir a otro ejercicio</button>' +
+        '<div id="tm_posl" style="display:none; flex-direction:column; gap:6px;"></div>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_extra_x" style="background:#2a2a2a;">Cerrar</button></div>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_exit">✖ Salir</button>' +
         '</div>' +
@@ -6566,6 +6568,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (tmrSndVisible()) { var sndB = document.getElementById('tm_snd'); sndB.style.display = ''; sndB.onclick = tmrToggleMode; tmrModeLabel(); }
       document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId, gd = CT.guide; startCircuitTimer(ci, sid, true, gd); };
       document.getElementById('tm_blk').onclick = clsSkipBlock;
+      document.getElementById('tm_posb').onclick = clsPosOpen;
     }
 
     function ctPhaseSound(ph) {
@@ -6742,7 +6745,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else nxTxt = 'Sigue: ' + ctShort(nx.st) + (nx.side ? ' · lado ' + nx.side : '') + (nx.open && nx.reps ? ' · ' + nx.reps : '');
       }
       el('tm_next').innerText = nxTxt;
-      if (CT.cls) ctClsRender(ph); else if (el('tm_blk')) el('tm_blk').style.display = 'none';
+      if (CT.cls) ctClsRender(ph); else { if (el('tm_blk')) el('tm_blk').style.display = 'none'; if (el('tm_posb')) el('tm_posb').style.display = 'none'; }
       if (ph.seq) {   // qué sigue dentro del intervalo
         var sq = ph.steps[CT.seqI + 1];
         if (sq) el('tm_next').innerText = 'Sigue: ' + ctShort(sq.n) + (sq.reps ? ' · ' + sq.reps : '');
@@ -7352,6 +7355,34 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         rs.clase.items.map(function(it, i) { return '<option value="' + i + '"' + (i === Math.min(rs.pos + 1, rs.clase.items.length - 1) ? ' selected' : '') + '>' + (i + 1) + '. ' + escHtml(it.circ.nombre || ('Bloque ' + (i + 1))) + '</option>'; }).join('') +
         '</select><button type="button" class="btn btn-secondary" style="flex:1;" onclick="clsResumeAt()">Ir a este bloque</button></div></div>';
     }
+    // Ir a otro ejercicio del bloque (ej. ya hice correr y el primer ejercicio y quiero ubicarme donde voy de verdad)
+    function clsPosOpen() {
+      var box = document.getElementById('tm_posl'); if (!box || !CT.cls) return;
+      if (box.style.display === 'flex') { box.style.display = 'none'; return; }
+      var ph = CT.phases[CT.i] || {}, cur = ph.list ? (CT.listSel || 0) : (ph.seq ? (CT.seqI || 0) : ph.si);
+      box.innerHTML = CT.names.map(function(nm, i) {
+        var rt = (CT.repsTxt && CT.repsTxt[i]) || '';
+        return '<button type="button" class="tm-btn tm-sm" style="' + (i === cur ? 'background:#0d2318; border-color:#06d6a0;' : '') + ' text-align:left;" onclick="clsGoStep(' + i + ')">' + (i + 1) + '. ' + escHtml(ctShort(nm)) + (rt ? ' · ' + escHtml(rt) : '') + '</button>';
+      }).join('');
+      box.style.display = 'flex';
+    }
+    function clsGoStep(i) {
+      if (!CT.active || CT.done || !CT.cls) return;
+      var ph = CT.phases[CT.i];
+      if (ph && ph.list) { CT.listSel = i; CT.listKey = ''; }
+      else if (ph && ph.seq) { CT.seqI = Math.min(i, ph.steps.length - 1); }
+      else {
+        var tgt = -1, curR = ph ? ph.r : 1, q, p;
+        for (q = 0; q < CT.phases.length; q++) { p = CT.phases[q]; if (p.t === 'work' && p.si === i && p.r === curR) { tgt = q; break; } }
+        if (tgt < 0) for (q = 0; q < CT.phases.length; q++) { p = CT.phases[q]; if (p.t === 'work' && p.si === i) { tgt = q; break; } }
+        if (tgt < 0) return;
+        CT.i = tgt; ctEnter(CT.phases[tgt], Date.now()); CT.paused = false; CT.lastBeep = '';
+        var pb = document.getElementById('tm_pause'); if (pb) pb.innerText = '⏸ Pausar';
+      }
+      var ex = document.getElementById('tm_extra'); if (ex) ex.classList.remove('on'); document.body.classList.remove('tm-extra-open');
+      var bx = document.getElementById('tm_posl'); if (bx) bx.style.display = 'none';
+      tmrBeep(660, 120, 0); tmrVibrate(60); ctTick(); ctSaveResume(true);
+    }
     function clsSkipBlock() {   // salta el bloque en curso y arranca el siguiente
       var G = CT.guide; if (!G || !G.cls) return;
       if (!G.clase.items[G.pos + 1]) { try { wkToast('Es el último bloque'); } catch (e) {} return; }
@@ -7399,6 +7430,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctClsRender(ph) {
       var el = function(id) { return document.getElementById(id); };
       if (!el('tm_list')) return;
+      if (el('tm_posb')) el('tm_posb').style.display = (CT.names && CT.names.length > 1 && !ph.pausa) ? '' : 'none';
       if (el('tm_blk')) el('tm_blk').style.display = '';   // en clases y retos: se puede saltar el bloque (ej. calentamiento ya hecho)
       if (ph.t === 'ready' || ph.list || ph.pausa) el('tm_round').innerText = '';
       if (ph.t === 'trans' && ph.lbl) el('tm_phase').innerText = ph.lbl.toUpperCase();
@@ -9745,7 +9777,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('change', refreshVideoMarks);
     setInterval(refreshVideoMarks, 500);   // cubre links que se cargan solos (biblioteca, "Elegir", importación)
 
-    var APP_VERSION = '2026-10-24-c';   // se cambia en cada entrega
+    var APP_VERSION = '2026-10-24-d';   // se cambia en cada entrega
     var APP_PENDING_KEY = 'benessere_pending_app';
     var APP_DISMISSED = '';
     function appReloadTo(ver) { window.location.replace(window.location.pathname + '?_v=' + encodeURIComponent(ver) + window.location.hash); }
