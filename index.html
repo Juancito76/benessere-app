@@ -6933,7 +6933,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Los datos se comparten por un script de Google aparte (REC_URL_DEFAULT o la dirección pegada en la pestaña); sin él, todo queda en este dispositivo.
     var REC_URL_DEFAULT = '';   // dirección del script de Recepción (termina en /exec)
     var REC_KEY = 'bn_rec_v1', REC_PIN_KEY = 'bn_rec_pin', REC_URL_KEY = 'bn_rec_url';
-    var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [] };
+    var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [], checked: {}, force: 'auto', queue: null };
     var REC_TIPOS = { falta: '🔴 Hace días que no viene', poco: '🟡 Viene poco', felicitacion: '🟢 Felicitación por asistencia', cumple: '🎂 Cumpleaños', otro: '💬 Otro' };
     var REC_DEF_TPLS = [
       { id: 'd1', tipo: 'falta', titulo: 'Te extrañamos', texto: 'Hola {nombre} 👋 Soy {quien} de Benessere Gym. Hace {dias} días que no te vemos por el gym y queríamos saber cómo estás. ¿Pasó algo con tu horario? Aquí estamos para ayudarte a retomar, ¡tu espacio te está esperando! 💪' },
@@ -7136,6 +7136,55 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (u) localStorage.setItem(REC_URL_KEY, u); else localStorage.removeItem(REC_URL_KEY); } catch (e) {}
       REC.rol = ''; REC.pin = ''; openReception(REC.only);
     }
+    // ---- envío a varios (casillas): WhatsApp abre un chat a la vez ----
+    function recCheck(i, on) { var o = REC.list[i]; if (!o) return; if (on) REC.checked[o.k] = 1; else delete REC.checked[o.k]; recRender(); }
+    function recCheckAll(on) { REC.list.forEach(function(o) { if (on) REC.checked[o.k] = 1; else delete REC.checked[o.k]; }); recRender(); }
+    function recForce(v) { REC.force = v; recRender(); }
+    function recQueueStart() {
+      var sel = recBuildList().all.filter(function(o) { return REC.checked[o.k]; }), items = [], nophone = [];
+      sel.forEach(function(o) {
+        var c = REC.contacts[o.k] || {}, ph = cleanPhone(c.t);
+        if (ph.length < 10) { nophone.push(o.p.n); return; }
+        var tipo = REC.force !== 'auto' ? REC.force : (REC.sel[o.k] || recDefaultType(o.kd)), tpl = REC.tpls.filter(function(t) { return t.tipo === tipo; })[0];
+        var txt = (REC.force === 'auto' && REC.msgs[o.k] != null) ? REC.msgs[o.k] : (tpl ? recFill(tpl.texto, recMsgCtx(o.p, o.st)) : '');
+        if (!txt) { nophone.push(o.p.n + ' (no hay mensaje de ese tipo)'); return; }
+        items.push({ k: o.k, name: o.p.n, ph: ph, tipo: tipo, txt: txt });
+      });
+      if (!items.length) { showToastTop(sel.length ? 'Ninguno de los marcados tiene teléfono o mensaje.' : 'Marca primero a quién enviar.'); return; }
+      REC.queue = { items: items, i: 0, nophone: nophone };
+      recQueueNext();
+    }
+    function recQueueNext() {
+      var q = REC.queue; if (!q || q.i >= q.items.length) return;
+      var it = q.items[q.i];
+      window.open('https://wa.me/' + it.ph + '?text=' + encodeURIComponent(it.txt), '_blank');
+      REC.sent[it.k] = { f: new Date().toISOString(), tipo: it.tipo, quien: REC.quien || '' }; recSaveLocal(); delete REC.checked[it.k];
+      if (recUrl() && REC.pin) recPost({ a: 'rec_enviado', pin: REC.pin, k: it.k, tipo: it.tipo, quien: REC.quien || '' }).catch(function() {});
+      q.i++;
+      if (q.i >= q.items.length) { showToastTop('✅ Listo: se abrieron ' + q.items.length + ' chats.'); if (!q.nophone.length) REC.queue = null; else q.done = true; }
+      recRender();
+    }
+    function recQueueCancel() { REC.queue = null; recRender(); }
+    function recSendBarHtml() {
+      var n = Object.keys(REC.checked).length, q = REC.queue, h = '';
+      if (q) {
+        var left = q.items.length - q.i;
+        h += '<div style="position:sticky; bottom:8px; background:#102418; border:1px solid #25d366; border-radius:12px; padding:10px; margin-top:8px; box-shadow:0 4px 16px rgba(0,0,0,.5);">' +
+          (left > 0 ? '<div style="font-size:0.82rem; margin-bottom:6px;">📲 Se abrió el chat de <b>' + escHtml(q.items[q.i - 1].name) + '</b>. Envía el mensaje en WhatsApp, vuelve aquí y toca el botón. Quedan <b>' + left + '</b>.</div>' +
+            '<div style="display:flex; gap:6px;"><button type="button" onclick="recQueueNext()" style="flex:2; background:#25d366; color:#000; border:none; border-radius:8px; padding:10px; font-weight:900; font-size:0.82rem; cursor:pointer;">Abrir siguiente: ' + escHtml(q.items[q.i].name) + '</button>' +
+            '<button type="button" onclick="recQueueCancel()" style="flex:1; background:transparent; color:#aaa; border:1px solid #555; border-radius:8px; padding:10px; font-size:0.78rem; cursor:pointer;">Terminar</button></div>'
+            : '<div style="font-size:0.82rem;">✅ Se abrieron todos los chats.</div><button type="button" onclick="recQueueCancel()" style="margin-top:6px; background:transparent; color:#aaa; border:1px solid #555; border-radius:8px; padding:8px; cursor:pointer;">Cerrar</button>') +
+          (q.nophone.length ? '<div style="font-size:0.7rem; color:#ffd166; margin-top:6px;">Sin teléfono o sin mensaje (no se enviaron): ' + escHtml(q.nophone.slice(0, 12).join(', ')) + (q.nophone.length > 12 ? '… y ' + (q.nophone.length - 12) + ' más' : '') + '</div>' : '') + '</div>';
+        return h;
+      }
+      if (!n) return '';
+      return '<div style="position:sticky; bottom:8px; background:#14202e; border:1px solid var(--primary); border-radius:12px; padding:10px; margin-top:8px; box-shadow:0 4px 16px rgba(0,0,0,.5);">' +
+        '<div style="font-size:0.82rem; margin-bottom:6px;"><b>' + n + '</b> marcado' + (n === 1 ? '' : 's') + '. Mensaje: ' +
+        '<select onchange="recForce(this.value)" style="background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:5px; font-size:0.76rem;"><option value="auto"' + (REC.force === 'auto' ? ' selected' : '') + '>Según su situación</option>' +
+        Object.keys(REC_TIPOS).map(function(t) { return '<option value="' + t + '"' + (REC.force === t ? ' selected' : '') + '>' + REC_TIPOS[t] + '</option>'; }).join('') + '</select></div>' +
+        '<div style="display:flex; gap:6px;"><button type="button" onclick="recQueueStart()" style="flex:2; background:#25d366; color:#000; border:none; border-radius:8px; padding:10px; font-weight:900; font-size:0.84rem; cursor:pointer;">📲 Enviar por WhatsApp (' + n + ')</button>' +
+        '<button type="button" onclick="REC.checked={}; recRender();" style="flex:1; background:transparent; color:#aaa; border:1px solid #555; border-radius:8px; padding:10px; font-size:0.78rem; cursor:pointer;">Quitar marcas</button></div></div>';
+    }
     function recSetFilter(f) { REC.filt = f; REC.lim = 60; REC.open = ''; recRender(); }
     function recMore() { REC.lim += 60; recRender(); }
     function recSearch(v) { REC.q = v; REC.lim = 60; recRender(); var e = document.getElementById('rec_q'); if (e) { e.focus(); try { e.setSelectionRange(v.length, v.length); } catch (x) {} } }
@@ -7170,7 +7219,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (REC.note) h += '<div style="background:#3a2a10; border:1px solid #8a6d1a; border-radius:10px; padding:8px 10px; font-size:0.76rem; margin-bottom:8px;">' + escHtml(REC.note) + '</div>';
       var up = REC.meta.up, ageD = up ? Math.floor((Date.now() - new Date(up).getTime()) / 86400000) : -1;
       h += '<div style="background:' + (!up || ageD >= 3 ? '#3a2a10' : '#102418') + '; border:1px solid ' + (!up || ageD >= 3 ? '#8a6d1a' : '#1f6b3b') + '; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">' +
-        (up ? '📅 <b>Última carga del Excel:</b> ' + escHtml(recFmtDT(up)) + (REC.meta.by ? ' · ' + escHtml(REC.meta.by) : '') + '<br><span style="color:var(--muted); font-size:0.74rem;">El reporte cubre del ' + fmtDate(REC.meta.from) + ' al ' + fmtDate(REC.meta.to) + (ageD >= 3 ? ' · <b style="color:#ffd166;">hace ' + ageD + ' días: carga uno nuevo</b>' : '') + '</span>' : '⚠️ Todavía no se ha cargado ningún Excel de accesos.') + '</div>';
+        (up ? '📅 <b>Última carga del Excel:</b> ' + escHtml(recFmtDT(up)) + '<br><span style="color:var(--muted); font-size:0.74rem;">El reporte cubre del ' + fmtDate(REC.meta.from) + ' al ' + fmtDate(REC.meta.to) + (ageD >= 3 ? ' · <b style="color:#ffd166;">hace ' + ageD + ' días: carga uno nuevo</b>' : '') + '</span>' : '⚠️ Todavía no se ha cargado ningún Excel de accesos.') + '</div>';
       h += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">' +
         '<label style="flex:1; min-width:140px; text-align:center; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">📁 Cargar Excel de accesos<input type="file" accept=".xlsx,.csv,.xls,.txt" style="display:none;" onchange="recPickFile(this)"></label>' +
         '<button type="button" onclick="REC.impOpen=!REC.impOpen; recRender();" style="flex:1; min-width:140px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">📞 Cargar teléfonos</button>' +
@@ -7204,8 +7253,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
         h += '</div><input type="search" id="rec_q" value="' + escHtml(REC.q) + '" oninput="recSearch(this.value)" placeholder="Buscar por nombre…" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:8px;">';
         if (!items.length) h += '<div style="font-size:0.82rem; color:var(--muted); padding:12px 2px;">No hay nadie en esta lista.</div>';
+        else h += '<div style="display:flex; gap:6px; margin-bottom:8px;"><button type="button" onclick="recCheckAll(true)" style="background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:8px; padding:6px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">☑ Marcar a los ' + items.length + ' de esta lista</button></div>';
         items.slice(0, REC.lim).forEach(function(o, i) { h += recRowHtml(o, i); });
         if (items.length > REC.lim) h += '<button type="button" onclick="recMore()" style="width:100%; margin:6px 0; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; cursor:pointer;">Ver más (' + (items.length - REC.lim) + ')</button>';
+        h += recSendBarHtml();
         h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:10px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Solo aparece quien entró al menos una vez en los reportes cargados. «Sin venir» = 7 a 29 días desde su última entrada; «Impecable» = 3 días o más en los últimos 7. Reporte calculado al ' + fmtDate(ref) + '.</div>';
       }
       h += '</div>';
@@ -7218,8 +7269,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var info = st.ago < 0 && !o.p.d.length ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : '<b>' + st.w7 + '</b> ' + (st.w7 === 1 ? 'día' : 'días') + ' en 7') + (o.p.d.length ? ' · <b>' + st.month + '</b> en el mes' : '');
       var bday = kd.bd === 0 ? ' · <b style="color:#ff8fd1;">🎂 HOY</b>' : (kd.bd <= 7 ? ' · 🎂 en ' + kd.bd + ' d' : '');
       var h = '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
-        '<div onclick="recToggle(' + i + ')" style="cursor:pointer;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
-        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + (o.p.d.length ? attStrip(st, (REC.meta.to && REC.meta.to > (REC.meta.rep || '') ? REC.meta.to : (REC.meta.rep || REC.meta.to))) : '') + '</div>';
+        '<div style="display:flex; gap:8px; align-items:flex-start;"><input type="checkbox" ' + (REC.checked[k] ? 'checked ' : '') + 'onchange="recCheck(' + i + ',this.checked)" style="width:20px; height:20px; margin-top:2px; flex-shrink:0;"><div onclick="recToggle(' + i + ')" style="cursor:pointer; flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
+        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + (o.p.d.length ? attStrip(st, (REC.meta.to && REC.meta.to > (REC.meta.rep || '') ? REC.meta.to : (REC.meta.rep || REC.meta.to))) : '') + '</div></div>';
       if (REC.open === k) {
         var tipo = REC.sel[k] || recDefaultType(kd), tps = REC.tpls.filter(function(t) { return t.tipo === tipo; }), tid = REC.tsel[k] || (tps[0] && tps[0].id) || '', tpl = REC.tpls.filter(function(t) { return t.id === tid; })[0] || tps[0];
         var txt = REC.msgs[k] != null ? REC.msgs[k] : (tpl ? recFill(tpl.texto, recMsgCtx(o.p, st)) : '');
