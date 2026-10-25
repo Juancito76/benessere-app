@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -7124,6 +7124,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recTplSet(i, field, val) { if (REC.tpls[i]) REC.tpls[i][field] = val; }
     function recTplAdd() { REC.tpls.push({ id: 't' + Date.now().toString(36), tipo: 'otro', titulo: 'Nuevo mensaje', texto: 'Hola {nombre} 👋 ' }); REC.tplOpen = true; recRender(); }
     function recTplDel(i) { if (!confirm('¿Borrar este mensaje?')) return; REC.tpls.splice(i, 1); recRender(); }
+    function recTplClose() {   // cierra sin guardar: se descartan los cambios no guardados
+      try { var o = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (o && o.tpls && o.tpls.length) REC.tpls = o.tpls; else REC.tpls = REC_DEF_TPLS.map(function(t) { return Object.assign({}, t); }); } catch (e) {}
+      REC.tplOpen = false; recRender(); window.scrollTo(0, 0); var v = document.getElementById('rec_view'); if (v) v.scrollTop = 0;
+    }
     function recTplSave() {
       REC.tpls = REC.tpls.filter(function(t) { return String(t.texto || '').trim(); }); recSaveLocal();
       if (recUrl() && REC.pin) recPost({ a: 'rec_plantillas', pin: REC.pin, items: REC.tpls }).then(function(j) { showToastTop(j && j.ok ? '✅ Mensajes guardados para todos.' : 'No se pudieron guardar en el servicio.'); }).catch(function() { showToastTop('Sin conexión: los mensajes quedaron solo en este dispositivo.'); });
@@ -7249,14 +7253,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" onclick="REC.impOpen=!REC.impOpen; recRender();" style="flex:1; min-width:140px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">📞 Cargar teléfonos</button>' +
         '<button type="button" onclick="REC.tplOpen=!REC.tplOpen; recRender();" style="flex:1; min-width:140px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">✏️ Mis mensajes</button></div>';
       if (REC.impOpen) {
-        h += '<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;"><div style="font-size:0.8rem; font-weight:800; margin-bottom:4px;">📞 Cargar teléfonos y cumpleaños</div>' +
+        h += '<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;"><div style="font-size:0.8rem; font-weight:800;">📞 Cargar teléfonos y cumpleaños</div><button type="button" onclick="REC.impOpen=false; recRender();" style="background:transparent; border:1px solid #888; color:#ddd; border-radius:8px; padding:5px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✕ Cerrar</button></div>' +
           '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:6px;">Pega una lista, una persona por línea: nombre, teléfono y (opcional) cumpleaños día/mes. Ej: <i>María Pérez 8888 1234 15/03</i>. También puedes subir un Excel o CSV con esas columnas. Si prefieres, escribe el teléfono directo en cada cliente.</div>' +
           '<textarea id="rec_imp_ta" rows="6" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:0.8rem; font-family:inherit;"></textarea>' +
           '<div style="display:flex; gap:6px; margin-top:6px;"><button type="button" class="btn-action-primary" style="flex:1; margin:0;" onclick="recImportPaste()">Importar lista</button>' +
           '<label style="flex:1; text-align:center; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">Subir Excel/CSV<input type="file" accept=".xlsx,.csv,.txt" style="display:none;" onchange="recImportFile(this)"></label></div></div>';
       }
       if (REC.tplOpen) {
-        h += '<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;"><div style="font-size:0.8rem; font-weight:800; margin-bottom:2px;">✏️ Mensajes guardados</div>' +
+        h += '<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:0.8rem; font-weight:800;">✏️ Mensajes guardados</div><button type="button" onclick="recTplClose()" style="background:transparent; border:1px solid #888; color:#ddd; border-radius:8px; padding:5px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✕ Cerrar</button></div>' +
           '<div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">Puedes usar: {nombre} {nombre_completo} {dias} (días sin venir) {veces} (veces en 7 días) {mes} (días en el mes) {quien} (tu nombre).</div>';
         REC.tpls.forEach(function(t, i) {
           h += '<div style="border:1px solid var(--border); border-radius:8px; padding:8px; margin-bottom:6px;"><div style="display:flex; gap:6px; margin-bottom:6px;">' +
@@ -7266,7 +7270,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             '<textarea rows="4" oninput="recTplSet(' + i + ',\'texto\',this.value)" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:0.8rem; font-family:inherit;">' + escHtml(t.texto || '') + '</textarea></div>';
         });
         h += '<div style="display:flex; gap:6px;"><button type="button" onclick="recTplAdd()" style="flex:1; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:9px; font-weight:800; font-size:0.78rem; cursor:pointer;">➕ Nuevo mensaje</button>' +
-          '<button type="button" class="btn-action-primary" style="flex:1; margin:0;" onclick="recTplSave()">Guardar mensajes</button></div></div>';
+          '<button type="button" class="btn-action-primary" style="flex:1; margin:0;" onclick="recTplSave()">Guardar mensajes</button></div>' +
+          '<button type="button" onclick="recTplClose()" style="width:100%; margin-top:6px; background:transparent; border:1px solid #888; color:#ddd; border-radius:10px; padding:9px; font-weight:800; font-size:0.78rem; cursor:pointer;">✕ Cerrar sin guardar y volver a la lista</button></div>';
       }
       if (!hasData) {
         h += '<div style="font-size:0.85rem; color:var(--muted); padding:14px 2px; line-height:1.5;">Carga el Excel de accesos para ver quién viene, quién empezó a faltar y a quién felicitar.</div>';
