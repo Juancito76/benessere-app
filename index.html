@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -7108,18 +7108,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function recWeekLabel(mon) { var a = new Date(mon + 'T12:00:00'), b = new Date(a.getTime()); b.setDate(b.getDate() + 6); var mm = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return a.getDate() + (a.getMonth() === b.getMonth() ? '' : ' ' + mm[a.getMonth()]) + ' al ' + b.getDate() + ' ' + mm[b.getMonth()]; }
     function recSetWeek(v) { REC.week = v; recRender(); }
-    function recWeekStrip(p, mon) {   // 7 casillas L K M J V S D: verde = vino, rojo = acceso denegado
-      var h = '<div style="display:flex; gap:3px; margin-top:6px;">', from = REC.meta.from || '', to = recRefDate(), today = todayIso();
-      var came = {}, den = {}; (p.d || []).forEach(function(x) { came[x] = 1; }); (p.x || []).forEach(function(x) { den[x] = 1; });
-      for (var i = 0; i < 7; i++) {
-        var d = new Date(mon + 'T12:00:00'); d.setDate(d.getDate() + i); var iso = isoOfDate(d), st, ttl = REC_DN[i] + ' ' + fmtDateShort(iso);
-        if (came[iso] && den[iso]) { st = 'background:#06d6a0; color:#000; box-shadow:inset 0 0 0 2px #ff4d4d;'; ttl += ': vino (y un intento denegado)'; }
-        else if (came[iso]) { st = 'background:#06d6a0; color:#000;'; ttl += ': vino'; }
-        else if (den[iso]) { st = 'background:#4a1414; color:#ff9a9a; box-shadow:inset 0 0 0 2px #ff4d4d;'; ttl += ': acceso DENEGADO'; }
-        else if ((from && iso < from) || iso > to || iso > today) { st = 'background:transparent; color:#4a4f5a; box-shadow:inset 0 0 0 1px #2c3340;'; ttl += ': sin datos'; }
-        else { st = 'background:#2c3340; color:#8a8f98;'; ttl += ': no vino'; }
-        h += '<span title="' + ttl + '" style="flex:1; height:30px; border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; font-size:0.82rem; line-height:1; ' + st + '">' + REC_DL[i] + '<span style="font-size:0.5rem; font-weight:700; opacity:.75; margin-top:2px;">' + d.getDate() + '</span></span>';
-      }
+    function recWeekStrip(p) {   // grupos de 7 casillas pequeñas (L K M J V S D), uno por semana del reporte; verde = vino, rojo = acceso denegado
+      var from = REC.meta.from || '', to = recRefDate(), today = todayIso(), came = {}, den = {};
+      (p.d || []).forEach(function(x) { came[x] = 1; }); (p.x || []).forEach(function(x) { den[x] = 1; });
+      var h = '<div style="display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:6px;">';
+      recWeeks().forEach(function(mon) {
+        var n = 0, cells = '';
+        for (var i = 0; i < 7; i++) {
+          var d = new Date(mon + 'T12:00:00'); d.setDate(d.getDate() + i); var iso = isoOfDate(d), st, ttl = REC_DN[i] + ' ' + fmtDateShort(iso);
+          if (came[iso] && den[iso]) { st = 'background:#06d6a0; color:#000; box-shadow:inset 0 0 0 1.5px #ff4d4d;'; ttl += ': vino (y un intento denegado)'; n++; }
+          else if (came[iso]) { st = 'background:#06d6a0; color:#000;'; ttl += ': vino'; n++; }
+          else if (den[iso]) { st = 'background:#4a1414; color:#ff9a9a; box-shadow:inset 0 0 0 1.5px #ff4d4d;'; ttl += ': acceso DENEGADO'; }
+          else if ((from && iso < from) || iso > to || iso > today) { st = 'background:transparent; color:#4a4f5a; box-shadow:inset 0 0 0 1px #2c3340;'; ttl += ': sin datos'; }
+          else { st = 'background:#2c3340; color:#7a8190;'; ttl += ': no vino'; }
+          cells += '<span title="' + ttl + '" style="width:15px; height:19px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.58rem; ' + st + '">' + REC_DL[i] + '</span>';
+        }
+        h += '<div><div style="display:flex; gap:2px;">' + cells + '</div><div style="font-size:0.58rem; color:var(--muted); margin-top:2px; white-space:nowrap;">' + recWeekLabel(mon) + ' · <b style="color:' + (n ? '#06d6a0' : '#8a8f98') + ';">' + n + '</b></div></div>';
+      });
       return h + '</div>';
     }
     function recToday() { var t = todayIso(); return { iso: t, md: t.slice(5) }; }
@@ -7332,10 +7337,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!hasData) {
         h += '<div style="font-size:0.85rem; color:var(--muted); padding:14px 2px; line-height:1.5;">Carga el Excel de accesos para ver quién viene, quién empezó a faltar y a quién felicitar.</div>';
       } else {
-        var wks = recWeeks(), curW = REC.week || wks[0];
-        h += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><span style="font-size:0.78rem; color:var(--muted);">📆 Semana:</span><select onchange="recSetWeek(this.value)" style="flex:1; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:7px; font-size:0.82rem;">' +
-          wks.map(function(w, ix) { return '<option value="' + w + '"' + (w === curW ? ' selected' : '') + '>' + recWeekLabel(w) + (ix === 0 ? ' (la más reciente)' : '') + '</option>'; }).join('') + '</select></div>' +
-          '<div style="font-size:0.66rem; color:var(--muted); margin:-2px 0 8px;">Cada casilla es un día (L K M J V S D). <span style="color:#06d6a0; font-weight:800;">Verde</span> = vino · <span style="color:#ff8a8a; font-weight:800;">rojo</span> = acceso denegado · gris = no vino · con borde = sin datos.</div>';
+        h += '<div style="font-size:0.66rem; color:var(--muted); margin:-2px 0 8px;">Cada grupo de 7 casillas es una semana (L K M J V S D) y el número es cuántos días vino. <span style="color:#06d6a0; font-weight:800;">Verde</span> = vino · <span style="color:#ff8a8a; font-weight:800;">rojo</span> = acceso denegado · gris = no vino · con borde = sin datos.</div>';
         h += '<div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px;">';
         [['todos', 'Todos', all.length - cnt.gone], ['out', '🔴 Sin venir', cnt.out], ['low', '🟡 Poco', cnt.low], ['great', '🟢 Impecable', cnt.great], ['cumple', '🎂 Cumple', cnt.cumple], ['denied', '🚫 Denegados', cnt.denied], ['sintel', '📵 Sin teléfono', cnt.sintel], ['gone', '💤 30+ días', cnt.gone]].forEach(function(x) {
           h += '<button type="button" onclick="recSetFilter(\'' + x[0] + '\')" style="border-radius:999px; padding:6px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; border:1px solid ' + (f === x[0] ? 'var(--primary)' : '#444') + '; background:' + (f === x[0] ? 'var(--primary)' : 'transparent') + '; color:' + (f === x[0] ? '#000' : '#ccc') + ';">' + x[1] + ' · ' + x[2] + '</button>';
@@ -7355,12 +7357,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var k = o.k, st = o.st, kd = o.kd, c = REC.contacts[k] || {}, ref = (REC.meta.to || todayIso()), col = kd.base === 'out' || kd.base === 'gone' ? '#a33' : (kd.base === 'low' ? '#8a6d1a' : '#1f6b3b');
       var sent = REC.sent[k], sentTxt = '';
       if (sent) { var sd = Math.floor((Date.now() - new Date(sent.f).getTime()) / 86400000); sentTxt = ' · <span style="color:#9fe8c8;">✔ ' + (REC_TIPOS[sent.tipo] ? REC_TIPOS[sent.tipo].replace(/^\S+\s/, '') : 'enviado') + (sd <= 0 ? ' hoy' : ' hace ' + sd + ' d') + '</span>'; }
-      var wk = REC.week || recWeeks()[0], wkEnd = new Date(wk + 'T12:00:00'); wkEnd.setDate(wkEnd.getDate() + 6); var wkTo = isoOfDate(wkEnd), wkN = (o.p.d || []).filter(function(x) { return x >= wk && x <= wkTo; }).length;
-      var info = st.ago < 0 && !o.p.d.length ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : (st.ago === 0 ? 'Vino hoy' : 'Última vez: hace ' + st.ago + ' d')) + (o.p.d.length ? ' · semana: <b>' + wkN + '</b> · mes: <b>' + st.month + '</b>' : '') + (kd.denied ? ' · <b style="color:#ff8a8a;">🚫 acceso denegado ' + fmtDateShort(kd.lastX) + '</b>' : '');
+      var info = st.ago < 0 && !o.p.d.length ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : (st.ago === 0 ? 'Vino hoy' : 'Última vez: hace ' + st.ago + ' d')) + (o.p.d.length ? ' · mes: <b>' + st.month + '</b>' : '') + (kd.denied ? ' · <b style="color:#ff8a8a;">🚫 acceso denegado ' + fmtDateShort(kd.lastX) + '</b>' : '');
       var bday = kd.bd === 0 ? ' · <b style="color:#ff8fd1;">🎂 HOY</b>' : (kd.bd <= 7 ? ' · 🎂 en ' + kd.bd + ' d' : '');
       var h = '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
         '<div style="display:flex; gap:8px; align-items:flex-start;"><input type="checkbox" ' + (REC.checked[k] ? 'checked ' : '') + 'onchange="recCheck(' + i + ',this.checked)" style="width:20px; height:20px; margin-top:2px; flex-shrink:0;"><div onclick="recToggle(' + i + ')" style="cursor:pointer; flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
-        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + recWeekStrip(o.p, wk) + '</div></div>';
+        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + recWeekStrip(o.p) + '</div></div>';
       if (REC.open === k) {
         var tipo = REC.sel[k] || recDefaultType(kd), tps = REC.tpls.filter(function(t) { return t.tipo === tipo; }), tid = REC.tsel[k] || (tps[0] && tps[0].id) || '', tpl = REC.tpls.filter(function(t) { return t.id === tid; })[0] || tps[0];
         var txt = REC.msgs[k] != null ? REC.msgs[k] : (tpl ? recFill(tpl.texto, recMsgCtx(o.p, st)) : '');
