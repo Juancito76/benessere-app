@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6717,7 +6717,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var isWork = ph.t === 'work';   // por tiempo: Pausar, +5 s y Parar; por reps: Pausar y Terminé; en descanso/transición: Pausar y Saltar
       el('tm_plus').style.display = (isWork && !isOpen && !ph.seq) ? '' : 'none';
       el('tm_stop').style.display = (isWork && !isOpen && !CT.cls) ? '' : 'none';
-      el('tm_done').style.display = isOpen ? '' : 'none';
+      el('tm_done').style.display = (isOpen || (CT.cls && isWork && !ph.list && !ph.seq && !ph.pausa)) ? '' : 'none';   // en clases, también en los tiempos con cuenta regresiva
       if (ph.seq) {   // botón "Siguiente ejercicio": avanza dentro del intervalo sin detener el tiempo
         el('tm_done').style.display = seqDone ? 'none' : '';
         el('tm_done').innerText = (CT.seqI < ph.steps.length - 1) ? '⏭ Siguiente ejercicio' : '✔ Terminé';
@@ -7103,6 +7103,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (cps && CT.cls && cps.list && cps.t === 'work' && clsRetoStep(cps)) return;   // clases y retos: el botón pasa al ejercicio que sigue
       var wasOpen = !!(CT.phases[CT.i] && CT.phases[CT.i].open);
       if (wasOpen) ctPhaseDone(CT.i);   // "Terminé": la serie por reps queda hecha
+      if (cps && CT.cls && cps.t === 'work' && !cps.open && !cps.list && !cps.seq && !cps.pausa) {   // tiempo con cuenta regresiva: salta directo al próximo ejercicio
+        if (CT.paused) return;
+        clsLogStep(CT.names[cps.si], clsStepElapsed());
+        var nq = clsNextWorkIdx();
+        if (nq < 0) { CT.i = CT.phases.length; ctFinish(); return; }
+        CT.i = nq; ctEnter(CT.phases[CT.i], Date.now()); CT.paused = false; CT.lastBeep = '';
+        ctPhaseSound(CT.phases[CT.i]); ctTick(); ctSaveResume(true); return;
+      }
       CT.i++;
       if (CT.i >= CT.phases.length) { ctFinish(); return; }
       ctEnter(CT.phases[CT.i], Date.now()); CT.paused = false; CT.lastBeep = '';
@@ -7458,11 +7466,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
     }
     // Botón único de clases y retos: el ejercicio de turno en grande y, debajo, qué pasa al tocarlo
+    function clsNextWorkIdx() { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') return q; } return -1; }
     function ctClsDoneBtn(ph) {
       var dn = document.getElementById('tm_done'); if (!dn || ph.t !== 'work' || dn.style.display === 'none' || !CT.names || !CT.names.length) return;
       var ci = ph.list ? Math.min(CT.listSel || 0, CT.names.length - 1) : (ph.seq ? Math.min(CT.seqI, ph.steps.length - 1) : ph.si), nxp2 = CT.phases[CT.i + 1], sub, toRest = false;
       if (ph.list) sub = (ci < CT.names.length - 1 || ph.amrap) ? 'Siguiente ejercicio' : 'Terminar';
       else if (ph.seq) sub = CT.seqI < ph.steps.length - 1 ? 'Siguiente ejercicio' : 'Terminar';
+      else if (!ph.open) { sub = clsNextWorkIdx() < 0 ? 'Terminar' : 'Siguiente ejercicio'; }   // tiempo con cuenta regresiva: salta al próximo ejercicio
       else { sub = !nxp2 ? 'Terminar' : (nxp2.t === 'rest' ? 'Descansar' : 'Siguiente ejercicio'); toRest = !!(nxp2 && nxp2.t === 'rest'); }
       dn.innerHTML = '<span style="font-weight:900;">' + escHtml(ctShort(CT.names[ci] || '')) + '</span><br><span style="font-size:0.75em; opacity:0.85;">' + sub + '</span>';
       dn.style.background = toRest ? '#2f6bff' : '#06d6a0'; dn.style.borderColor = toRest ? '#2f6bff' : '#06d6a0'; dn.style.color = toRest ? '#fff' : '#000';
