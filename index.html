@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-t';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-u';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -568,6 +568,18 @@
     .cls-card .cls-block:nth-child(3) { animation-delay: .04s; } .cls-card .cls-block:nth-child(4) { animation-delay: .08s; } .cls-card .cls-block:nth-child(5) { animation-delay: .12s; } .cls-card .cls-block:nth-child(n+6) { animation-delay: .16s; }
     #tm_overlay #tm_gbar { transition: width .5s ease; }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+    /* ===== Inicio del cliente: opciones como tarjetas con ícono ===== */
+    .capsule-group { gap: 12px; }
+    .capsule-btn.cap-card { display: flex; align-items: center; gap: 14px; text-align: left; text-transform: none; letter-spacing: 0; font-weight: 800; padding: 13px 16px 13px 13px; border-radius: 18px; color: #fff; border: 1px solid #2b2b2b; border-left: 4px solid var(--c); background: linear-gradient(180deg, #1d1d1d, #161616); box-shadow: var(--shadow-card); }
+    .capsule-btn.cap-card:active { background: linear-gradient(180deg, #232323, #1b1b1b); }
+    .cap-ic { flex: none; width: 46px; height: 46px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; background: color-mix(in srgb, var(--c) 18%, #111); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent); }
+    .cap-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .cap-t { font-size: 1rem; font-weight: 800; line-height: 1.2; }
+    .cap-s { font-size: .74rem; font-weight: 500; color: var(--muted); line-height: 1.25; }
+    .cap-ch { flex: none; font-size: 1.6rem; font-weight: 300; color: var(--c); line-height: 1; }
+    .capsule-group .cap-card { animation: vsIn .3s ease-out backwards; }
+    .capsule-group .cap-card:nth-child(2) { animation-delay: .04s; } .capsule-group .cap-card:nth-child(3) { animation-delay: .08s; } .capsule-group .cap-card:nth-child(4) { animation-delay: .12s; } .capsule-group .cap-card:nth-child(n+5) { animation-delay: .16s; }
   </style>
 </head>
 <body>
@@ -3974,17 +3986,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var isDemos = state.configFeatures ? (state.configFeatures.demos === true) : false;
 
       var dayColors = ['#2f69ff', '#8338ec', '#00b4d8', '#06d6a0', '#ef476f'];
-      var capsuleHtml = '<button class="capsule-btn btn-coach" onclick="openModal(\'ath_modal_coach\')">Nota del Coach</button>';
+      var capsuleHtml = capCard('#ff6d00', '💬', 'Nota del Coach', 'Un mensaje para ti', "openModal('ath_modal_coach')");
       state.routineDays.forEach(function(d, i) {
-        var bgCol = dayColors[i % dayColors.length];
-        capsuleHtml += '<button class="capsule-btn" style="background:' + bgCol + ';" onclick="openDay(\'' + d.id + '\')">' + (d.rest ? '🌙 Día ' : 'Día ') + (i + 1) + '</button>';
+        capsuleHtml += capCard(dayColors[i % dayColors.length], d.rest ? '🌙' : '💪', 'Día ' + (i + 1), d.rest ? 'Descanso' : 'Tu entrenamiento', "openDay('" + d.id + "')");
       });
       var usoCli = (state.configFeatures && state.configFeatures.uso) || 'r';
-      if (usoCli === 'rc' || usoCli === 'c') capsuleHtml += '<button class="capsule-btn" style="background:#b388ff; color:#1a0f33;" onclick="openClasesTab()">🎓 Clases</button>';
-      capsuleHtml += '<button class="capsule-btn btn-historial" onclick="openHistorialModal()">📋 Historial de Cargas</button>';
-      if (isCoachView()) capsuleHtml += '<button class="capsule-btn" style="background:#2a1d47; color:#d9c7ff; border:1px solid #b388ff;" onclick="coachUsoOpen()">⚙️ Qué usa: ' + (usoCli === 'c' ? 'Clases' : (usoCli === 'rc' ? 'Rutina y clases' : 'Rutina')) + '</button>';
-      if (isCoachView()) capsuleHtml += '<button class="capsule-btn" style="background:#ffb703; color:#000;" onclick="openCoachSummary()">📊 Resumen del cliente</button>';
-      capsuleHtml += '<button class="capsule-btn btn-medidas" onclick="openModal(\'ath_modal_medidas\')">Ficha Antropométrica</button>';
+      if (usoCli === 'rc' || usoCli === 'c') capsuleHtml += capCard('#b388ff', '🎓', 'Clases', 'Clase de hoy, anteriores y retos', 'openClasesTab()');
+      capsuleHtml += capCard('#00e5ff', '📋', 'Historial de Cargas', 'Tus pesos y marcas anteriores', 'openHistorialModal()');
+      if (isCoachView()) capsuleHtml += capCard('#b388ff', '⚙️', 'Qué usa: ' + (usoCli === 'c' ? 'Clases' : (usoCli === 'rc' ? 'Rutina y clases' : 'Rutina')), 'Solo lo ve el coach', 'coachUsoOpen()');
+      if (isCoachView()) capsuleHtml += capCard('#ffb703', '📊', 'Resumen del cliente', 'Solo lo ve el coach', 'openCoachSummary()');
+      capsuleHtml += capCard('#8d99ae', '📏', 'Ficha Antropométrica', 'Tus medidas y objetivo', "openModal('ath_modal_medidas')");
       document.getElementById('ath_capsuleGroup').innerHTML = capsuleHtml;
       if (usoCli === 'c' && !isCoachView()) setTimeout(function() { openClasesTab(true); }, 400);   // solo clases: entra directo a la portada de clases
 
@@ -8985,7 +8996,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var g = document.getElementById('ath_capsuleGroup');
       if (!g || !ANN_ACTIVE.length || document.getElementById('ann_capsule')) return;
       var b = document.createElement('button');
-      b.id = 'ann_capsule'; b.className = 'capsule-btn'; b.style.background = '#8338ec'; b.innerText = '📢 Avisos';
+      b.id = 'ann_capsule'; b.type = 'button'; b.className = 'capsule-btn cap-card'; b.style.setProperty('--c', '#8338ec');
+      b.innerHTML = '<span class="cap-ic">📢</span><span class="cap-tx"><span class="cap-t">Avisos</span><span class="cap-s">' + ANN_ACTIVE.length + ' novedad' + (ANN_ACTIVE.length === 1 ? '' : 'es') + ' del gym</span></span><span class="cap-ch">›</span>';
       b.onclick = function() { showAnnouncements(ANN_ACTIVE); };
       g.insertBefore(b, g.firstChild);
     }
@@ -9792,6 +9804,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(j && j.error); }
         }
       }).catch(function(e) { st.configFeatures = JSON.parse(old); if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(e && e.message); } });
+    }
+    function capCard(color, icon, title, sub, onclick) {   // botón de la pantalla de inicio del cliente: tarjeta con ícono
+      return '<button type="button" class="capsule-btn cap-card" style="--c:' + color + ';" onclick="' + onclick + '"><span class="cap-ic">' + icon + '</span><span class="cap-tx"><span class="cap-t">' + escHtml(title) + '</span>' + (sub ? '<span class="cap-s">' + escHtml(sub) + '</span>' : '') + '</span><span class="cap-ch">›</span></button>';
     }
     function clsTab(k) { CLS_TAB = k; clsPaint(); }
     // Retos: una pestaña por reto, hacia abajo, ordenadas por fecha. Todas cerradas al entrar; al tocar una se despliega (solo una a la vez) y al tocarla otra vez se cierra
