@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6411,7 +6411,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var now = Date.now(); if (!force && CT.rsAt && now - CT.rsAt < 2000) return; CT.rsAt = now;
       var ph = CT.phases[CT.i], G = CT.guide, o = { t: now, i: CT.i, pos: G.pos, rr: ph.r, rt: CT.rounds, rl: CT.roundLabel || 'Serie', pt: ph.t, sn: ctShort(ph.st || '') };
       if (ph.open) o.oe = CT.paused ? (CT.openElapsed || 0) : now - CT.openStart; else o.rm = CT.paused ? (CT.remain || 0) : Math.max(0, CT.end - now);
-      if (G.cls) { o.k = 'c'; o.clase = G.clase; o.t0 = G.t0; o.res = G.results; o.am = CT.amrapN || 0; o.ls = CT.listSel || 0; o.sq = CT.seqI || 0; o.tm = G.times || []; var tbS = G.times && G.times[G.pos]; o.bt = tbS ? now - tbS.t0 : 0; }
+      if (G.cls) { o.k = 'c'; o.clase = G.clase; o.t0 = G.t0; o.res = G.results; o.am = CT.amrapN || 0; o.nr = CT.noReady ? 1 : 0; o.ls = CT.listSel || 0; o.sq = CT.seqI || 0; o.tm = G.times || []; var tbS = G.times && G.times[G.pos]; o.bt = tbS ? now - tbS.t0 : 0; }
       else { o.k = 'g'; o.dayId = G.dayId; o.ci = CT.ci; }
       resumeStore(o);
     }
@@ -7329,11 +7329,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var G = { cls: true, clase: clase, blocks: clase.items.map(function(it, i) { return { name: it.circ.nombre || ('Bloque ' + (i + 1)), tipo: it.circ.tipo }; }), pos: 0, t0: Date.now(), results: [], times: [] };
       clsRunBlock(G, pos);
     }
-    function clsGo() { var G = CT.guide; ctGuideClear(); if (!G || !G.cls) return; clsRunBlock(G, G.pos + 1); }
-    function clsRunBlock(G, pos, resume) {
+    function clsGo() { var G = CT.guide; ctGuideClear(); if (!G || !G.cls) return; clsRunBlock(G, G.pos + 1, null, true); }   // viene de la pantalla de «Bloque listo»: sin el «Prepárate» de 5 s
+    function clsRunBlock(G, pos, resume, noReady) {
       var it = G.clase.items[pos]; if (!it) return;
       var built = buildClassPhases(it, G.clase.items[pos + 1]);
       if (built.err) { alert(built.err); return; }
+      var skipReady = resume ? !!resume.nr : !!noReady;   // al retomar se conserva la misma forma del bloque
+      if (skipReady && built.phases.length > 1 && built.phases[0].t === 'ready') built.phases.shift();
+      CT.noReady = skipReady;
       G.pos = pos;
       if (it.circ.tipo !== 'pausa') {   // reloj del bloque para el resumen de tiempos
         G.times = G.times || []; var tb0 = G.times[pos];
