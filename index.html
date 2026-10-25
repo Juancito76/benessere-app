@@ -7141,41 +7141,65 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recCheckAll(on) { REC.list.forEach(function(o) { if (on) REC.checked[o.k] = 1; else delete REC.checked[o.k]; }); recRender(); }
     function recForce(v) { REC.force = v; recRender(); }
     function recQueueStart() {
-      var sel = recBuildList().all.filter(function(o) { return REC.checked[o.k]; }), items = [], nophone = [];
+      var sel = recBuildList().all.filter(function(o) { return REC.checked[o.k]; }), items = [], nomsg = [];
       sel.forEach(function(o) {
-        var c = REC.contacts[o.k] || {}, ph = cleanPhone(c.t);
-        if (ph.length < 10) { nophone.push(o.p.n); return; }
+        var c = REC.contacts[o.k] || {}, ph = cleanPhone(c.t); if (ph.length < 10) ph = '';
         var tipo = REC.force !== 'auto' ? REC.force : (REC.sel[o.k] || recDefaultType(o.kd)), tpl = REC.tpls.filter(function(t) { return t.tipo === tipo; })[0];
         var txt = (REC.force === 'auto' && REC.msgs[o.k] != null) ? REC.msgs[o.k] : (tpl ? recFill(tpl.texto, recMsgCtx(o.p, o.st)) : '');
-        if (!txt) { nophone.push(o.p.n + ' (no hay mensaje de ese tipo)'); return; }
+        if (!txt) { nomsg.push(o.p.n); return; }
         items.push({ k: o.k, name: o.p.n, ph: ph, tipo: tipo, txt: txt });
       });
-      if (!items.length) { showToastTop(sel.length ? 'Ninguno de los marcados tiene teléfono o mensaje.' : 'Marca primero a quién enviar.'); return; }
-      REC.queue = { items: items, i: 0, nophone: nophone };
+      if (!items.length) { showToastTop(sel.length ? 'No hay mensaje de ese tipo para los marcados. Crea uno en «✏️ Mis mensajes».' : 'Marca primero a quién enviar.'); return; }
+      REC.queue = { items: items, i: 0, nomsg: nomsg, ask: false, sentN: 0, skipN: 0 };
       recQueueNext();
     }
+    function recQueueFinish() {
+      var q = REC.queue; if (!q) return;
+      q.done = true; q.ask = false; showToastTop('✅ Listo: ' + q.sentN + ' chat' + (q.sentN === 1 ? '' : 's') + ' abierto' + (q.sentN === 1 ? '' : 's') + (q.skipN ? ' · ' + q.skipN + ' saltado' + (q.skipN === 1 ? '' : 's') : '') + '.');
+    }
     function recQueueNext() {
-      var q = REC.queue; if (!q || q.i >= q.items.length) return;
+      var q = REC.queue; if (!q) return;
+      if (q.i >= q.items.length) { recQueueFinish(); recRender(); return; }
       var it = q.items[q.i];
+      if (!it.ph) { q.ask = true; recRender(); setTimeout(function() { var e = document.getElementById('rec_askph'); if (e) e.focus(); }, 80); return; }
       window.open('https://wa.me/' + it.ph + '?text=' + encodeURIComponent(it.txt), '_blank');
       REC.sent[it.k] = { f: new Date().toISOString(), tipo: it.tipo, quien: REC.quien || '' }; recSaveLocal(); delete REC.checked[it.k];
       if (recUrl() && REC.pin) recPost({ a: 'rec_enviado', pin: REC.pin, k: it.k, tipo: it.tipo, quien: REC.quien || '' }).catch(function() {});
-      q.i++;
-      if (q.i >= q.items.length) { showToastTop('✅ Listo: se abrieron ' + q.items.length + ' chats.'); if (!q.nophone.length) REC.queue = null; else q.done = true; }
+      q.i++; q.sentN++; q.last = it.name; q.ask = false;
+      if (q.i >= q.items.length) recQueueFinish();
       recRender();
     }
+    function recQueueAsk() {   // guarda el número que escribió y abre el chat
+      var q = REC.queue, e = document.getElementById('rec_askph'); if (!q || !e) return;
+      var ph = cleanPhone(e.value); if (ph.length < 10) { showToastTop('Escribe el número completo, por ejemplo 8888 1234.'); return; }
+      var it = q.items[q.i], c = REC.contacts[it.k] || (REC.contacts[it.k] = { n: it.name, t: '', b: '' });
+      c.t = e.value.trim(); recSaveLocal(); recSendContact(it.k); it.ph = ph; q.ask = false;
+      recQueueNext();
+    }
+    function recQueueSkip() { var q = REC.queue; if (!q) return; q.skipN++; q.i++; q.ask = false; recQueueNext(); }
     function recQueueCancel() { REC.queue = null; recRender(); }
     function recSendBarHtml() {
       var n = Object.keys(REC.checked).length, q = REC.queue, h = '';
       if (q) {
-        var left = q.items.length - q.i;
-        h += '<div style="position:sticky; bottom:8px; background:#102418; border:1px solid #25d366; border-radius:12px; padding:10px; margin-top:8px; box-shadow:0 4px 16px rgba(0,0,0,.5);">' +
-          (left > 0 ? '<div style="font-size:0.82rem; margin-bottom:6px;">📲 Se abrió el chat de <b>' + escHtml(q.items[q.i - 1].name) + '</b>. Envía el mensaje en WhatsApp, vuelve aquí y toca el botón. Quedan <b>' + left + '</b>.</div>' +
-            '<div style="display:flex; gap:6px;"><button type="button" onclick="recQueueNext()" style="flex:2; background:#25d366; color:#000; border:none; border-radius:8px; padding:10px; font-weight:900; font-size:0.82rem; cursor:pointer;">Abrir siguiente: ' + escHtml(q.items[q.i].name) + '</button>' +
-            '<button type="button" onclick="recQueueCancel()" style="flex:1; background:transparent; color:#aaa; border:1px solid #555; border-radius:8px; padding:10px; font-size:0.78rem; cursor:pointer;">Terminar</button></div>'
-            : '<div style="font-size:0.82rem;">✅ Se abrieron todos los chats.</div><button type="button" onclick="recQueueCancel()" style="margin-top:6px; background:transparent; color:#aaa; border:1px solid #555; border-radius:8px; padding:8px; cursor:pointer;">Cerrar</button>') +
-          (q.nophone.length ? '<div style="font-size:0.7rem; color:#ffd166; margin-top:6px;">Sin teléfono o sin mensaje (no se enviaron): ' + escHtml(q.nophone.slice(0, 12).join(', ')) + (q.nophone.length > 12 ? '… y ' + (q.nophone.length - 12) + ' más' : '') + '</div>' : '') + '</div>';
-        return h;
+        var left = q.items.length - q.i, btn = 'border-radius:8px; padding:10px; font-size:0.8rem; cursor:pointer;';
+        h += '<div style="position:sticky; bottom:8px; background:#102418; border:1px solid #25d366; border-radius:12px; padding:10px; margin-top:8px; box-shadow:0 4px 16px rgba(0,0,0,.5);">';
+        if (q.ask) {
+          var it = q.items[q.i];
+          h += '<div style="font-size:0.84rem; margin-bottom:6px;">📞 <b>' + escHtml(it.name) + '</b> no tiene teléfono. Agrégalo para abrir su chat <span style="color:var(--muted);">(quedan ' + left + ')</span>:</div>' +
+            '<input type="tel" id="rec_askph" placeholder="8888 1234" onkeydown="if(event.key===\'Enter\')recQueueAsk()" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:0.95rem; margin-bottom:6px;">' +
+            '<div style="display:flex; gap:6px;"><button type="button" onclick="recQueueAsk()" style="flex:2; background:#25d366; color:#000; border:none; font-weight:900; ' + btn + '">Guardar y abrir WhatsApp</button>' +
+            '<button type="button" onclick="recQueueSkip()" style="flex:1; background:transparent; color:#ddd; border:1px solid #666; ' + btn + '">Saltar</button>' +
+            '<button type="button" onclick="recQueueCancel()" style="background:transparent; color:#aaa; border:1px solid #555; ' + btn + '">✕</button></div>';
+        } else if (left > 0) {
+          var nx = q.items[q.i];
+          h += '<div style="font-size:0.82rem; margin-bottom:6px;">📲 Se abrió el chat de <b>' + escHtml(q.last || '') + '</b>. Envía el mensaje en WhatsApp, vuelve aquí y toca el botón. Quedan <b>' + left + '</b>.</div>' +
+            '<div style="display:flex; gap:6px;"><button type="button" onclick="recQueueNext()" style="flex:2; background:#25d366; color:#000; border:none; font-weight:900; ' + btn + '">' + (nx.ph ? 'Abrir siguiente: ' : 'Siguiente (agregar número): ') + escHtml(nx.name) + '</button>' +
+            '<button type="button" onclick="recQueueCancel()" style="flex:1; background:transparent; color:#aaa; border:1px solid #555; ' + btn + '">Terminar</button></div>';
+        } else {
+          h += '<div style="font-size:0.82rem;">✅ Listo: ' + q.sentN + ' chat' + (q.sentN === 1 ? '' : 's') + ' abierto' + (q.sentN === 1 ? '' : 's') + (q.skipN ? ', ' + q.skipN + ' saltado' + (q.skipN === 1 ? '' : 's') : '') + '.</div><button type="button" onclick="recQueueCancel()" style="margin-top:6px; background:transparent; color:#aaa; border:1px solid #555; ' + btn + '">Cerrar</button>';
+        }
+        if (q.nomsg && q.nomsg.length) h += '<div style="font-size:0.7rem; color:#ffd166; margin-top:6px;">Sin mensaje de ese tipo (no se enviaron): ' + escHtml(q.nomsg.slice(0, 12).join(', ')) + '</div>';
+        return h + '</div>';
       }
       if (!n) return '';
       return '<div style="position:sticky; bottom:8px; background:#14202e; border:1px solid var(--primary); border-radius:12px; padding:10px; margin-top:8px; box-shadow:0 4px 16px rgba(0,0,0,.5);">' +
