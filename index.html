@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -287,7 +287,11 @@
     .exercise-card.gd-quiet .gd-head { animation: none !important; }
     .exercise-card.gd-open .gd-pill { background: #000; color: #ffee00; }
     @keyframes gdBlinkR { 0%,100% { border-color: #ff1744; box-shadow: 0 0 8px #ff1744, 0 0 22px rgba(255,23,68,.6); } 50% { border-color: rgba(255,23,68,.25); box-shadow: none; } }
-    .exercise-card.gd-demo-wait .btn-yt-demo { border: 2px solid #ff1744; animation: gdBlinkR 1s ease-in-out infinite; }
+    .btn-yt-demo.gd-demo-wait { border: 2px solid #ff1744; animation: gdBlinkR 1s ease-in-out infinite; }
+    .btn-yt-demo.gd-demo-seen { opacity: .45; }   /* cada demostración que el cliente ya tocó se opaca sola; las demás del bloque siguen parpadeando */
+    /* Día que el cliente ya completó hoy: su tarjeta de la pantalla principal queda opaca con la nota «Completado» */
+    .capsule-btn.cap-card.day-done { opacity: .55; }
+    .capsule-btn.cap-card.day-done .cap-s { color: #06d6a0; font-weight: 900; }
     .gd-legend { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin: 4px 0 10px; text-align: center; }
     .gd-guide { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 12px; margin: 8px 0 10px; text-align: left; font-size: 0.82rem; color: #eee; line-height: 1.5; }
     .gd-guide b { color: #ffee00; }
@@ -1042,7 +1046,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <span id="cl_who" style="font-size:0.78rem; color:var(--primary); font-weight:800;"></span>
         <span>
           <button type="button" onclick="openCoachWeek()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📈 Esta semana</button>
-          <button type="button" id="cl_prueba" onclick="pruebaToggle()" style="background:transparent; border:1px solid #ffd60a; color:#ffd60a; font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🧪 Prueba</button>
           <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
           <button type="button" onclick="coachLogout()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Cerrar sesión</button>
         </span>
@@ -3961,6 +3964,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         location.reload();   // la app vuelve a arrancar con lo real, tal como estaba antes de la prueba
       }
     }
+    // Botón «🧪 Probar» del perfil de cada cliente: activa el modo prueba (si no lo estaba) y abre ese perfil; nada se guarda ni se envía.
+    // Para cerrar la prueba y dejar todo como estaba: «Salir ✖» (abajo a la izquierda).
+    function pruebaClient(id) {
+      if (!COACH) return;
+      if (!PRUEBA.on) {
+        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar el modo prueba.'); return; }
+        PRUEBA.on = true; pruebaBanner();
+        showToastTop('🧪 Modo prueba: nada se guarda ni se envía. Para salir toca «Salir ✖» abajo a la izquierda.');
+      }
+      openClientRoutine(id);
+    }
     function pruebaLabel() { var b = document.getElementById('cl_prueba'); if (b) { b.innerText = PRUEBA.on ? '🧪 Prueba: ACTIVA' : '🧪 Prueba'; b.style.background = PRUEBA.on ? '#ffd60a' : 'transparent'; b.style.color = PRUEBA.on ? '#000' : '#ffd60a'; } }
 
     function fetchJson(url, opts, ms) {
@@ -4128,7 +4142,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var dayColors = ['#2f69ff', '#8338ec', '#00b4d8', '#06d6a0', '#ef476f'];
       var capsuleHtml = capCard('#ff6d00', '💬', 'Nota del Coach', 'Un mensaje para ti', "openModal('ath_modal_coach')");
       state.routineDays.forEach(function(d, i) {
-        capsuleHtml += capCard(dayColors[i % dayColors.length], d.rest ? '🌙' : '💪', 'Día ' + (i + 1), d.rest ? 'Descanso' : 'Tu entrenamiento', "openDay('" + d.id + "')");
+        capsuleHtml += capCard(dayColors[i % dayColors.length], d.rest ? '🌙' : '💪', 'Día ' + (i + 1), d.rest ? 'Descanso' : 'Tu entrenamiento', "openDay('" + d.id + "')", d.rest ? '' : d.id);
       });
       var usoCli = (state.configFeatures && state.configFeatures.uso) || 'r';
       if (usoCli === 'rc' || usoCli === 'c') capsuleHtml += capCard('#b388ff', '🎓', 'Clases', 'Clase de hoy, anteriores y retos', 'openClasesTab()');
@@ -7918,7 +7932,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- Marcos de neón y "Vas aquí": cada bloque muestra si está hecho, en curso o pendiente; los hechos se cierran -----
     var GD_OPEN = {};   // bloques que el cliente abrió o cerró a mano (srId -> true)
-    var GD_DEMO = {};   // bloques cuya demostración ya tocó el cliente (srId -> true)
+    var GD_DEMO = {};   // demostraciones que ya tocó el cliente, una por ejercicio ('b:' + id de la caja del ejercicio -> true)
     var GD_GUIDE_KEY = 'benessere_gd_guide_v1';
     function gdGuideHtml() {
       try { if (localStorage.getItem(GD_GUIDE_KEY)) return ''; } catch (e) {}
@@ -7927,8 +7941,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function gdGuideOk() { try { localStorage.setItem(GD_GUIDE_KEY, '1'); } catch (e) {} document.querySelectorAll('.gd-guide').forEach(function(n) { n.remove(); }); }
     document.addEventListener('click', function(e) {   // al tocar la demostración, el parpadeo pasa al botón del temporizador
       var a = e.target && e.target.closest ? e.target.closest('.btn-yt-demo') : null; if (!a) return;
-      var card = a.closest('.exercise-variant'), run = card && card.querySelector('.set-runner');
-      if (run) { GD_DEMO[parseInt(String(run.id).replace('sr_', ''), 10)] = true; setTimeout(function() { try { guidePaintAll(); } catch (e2) {} }, 400); }
+      var bx = a.closest('.exercise-item-box');   // solo se marca el ejercicio cuya demostración se tocó, no todo el bloque
+      if (bx && bx.id) { GD_DEMO['b:' + bx.id] = true; a.classList.add('gd-demo-seen'); a.classList.remove('gd-demo-wait'); setTimeout(function() { try { guidePaintAll(); } catch (e2) {} }, 400); }
     }, true);
     // Estado de cada bloque del día (completado / pendiente), guardado en el celular solo para hoy
     function gdStore(dayId) {
@@ -7967,10 +7981,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function guidePaintAll() {
       ((athleteActiveState && athleteActiveState.routineDays) || []).forEach(function(d) { if (!d.rest) guidePaint(d.id); });
     }
+    // Tarjeta del día en la pantalla principal: si el día ya quedó completo hoy (entreno cerrado con sus marcas o todos los bloques hechos)
+    // se opaca y su subtítulo pasa a «✔ Completado hoy».
+    function dayCardPaint(dayId) {
+      var card = document.querySelector('#ath_capsuleGroup .cap-card[data-day="' + dayId + '"]'); if (!card) return;
+      var done = false;
+      try { done = daySavedToday(dayId); } catch (e) {}
+      if (!done) { try { var bl = guideBlocks(dayId); done = bl.length > 0 && gdStatus(dayId, bl).every(function(x) { return x === 'done'; }); } catch (e) {} }
+      card.classList.toggle('day-done', done);
+      var sub = card.querySelector('.cap-s');
+      if (sub) { if (!sub.getAttribute('data-o')) sub.setAttribute('data-o', sub.innerText); sub.innerText = done ? '✔ Completado hoy' : sub.getAttribute('data-o'); }
+    }
     function guidePaint(dayId) {
       var sec = document.getElementById('sec_rutina_' + dayId); if (!sec) return;
       try { dcPaint(dayId); } catch (e) {}
+      try { dayCardPaint(dayId); } catch (e) {}
       sec.querySelectorAll('.gd-head').forEach(function(n) { n.remove(); });
+      sec.querySelectorAll('.btn-yt-demo').forEach(function(a) { a.classList.remove('gd-demo-wait', 'gd-demo-seen'); });
       sec.querySelectorAll('.exercise-variant').forEach(function(el) { el.classList.remove('gd-done', 'gd-here', 'gd-next', 'gd-pend', 'gd-go', 'gd-open', 'gd-quiet', 'gd-demo-wait', 'gd-collapsed'); });
       var blocks = guideBlocks(dayId); if (!blocks.length) return;
       var st = gdStatus(dayId, blocks);
@@ -7983,7 +8010,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         el.classList.add('gd-' + s); if (i === goIdx && s !== 'pend') el.classList.add('gd-go');
         el.classList.toggle('gd-collapsed', collapsed);
         var inProc = !collapsed && s !== 'done'; if (inProc) el.classList.add('gd-open'); else if (anyOpen) el.classList.add('gd-quiet');
-        var demoWait = inProc && !!el.querySelector('.btn-yt-demo') && !GD_DEMO[b.srId]; if (demoWait) el.classList.add('gd-demo-wait');   // pestaña abierta y sin completar: "en proceso", parpadeando
+        // Pestaña abierta y sin completar: cada demostración parpadea en rojo hasta que se toca; la tocada se opaca y las otras del bloque siguen parpadeando
+        var demoWait = false;
+        el.querySelectorAll('.exercise-item-box:not(.alt-off) .btn-yt-demo').forEach(function(a) {
+          var bx = a.closest('.exercise-item-box'), seen = !!(bx && GD_DEMO['b:' + bx.id]);
+          if (seen) a.classList.add('gd-demo-seen');
+          else if (inProc) { a.classList.add('gd-demo-wait'); demoWait = true; }
+        });
+        if (demoWait) el.classList.add('gd-demo-wait');
         var names = [].map.call(el.querySelectorAll('.ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
         var gst = gdStore(dayId), nDone = gst.n[b.key] || 0, stK = gst.s[b.key] || 0, rr = SR[b.srId];
         var pill = inProc ? '🔥 EN PROCESO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
@@ -8656,6 +8690,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.list.length > 1 ? ' · ' + g.list.length + ' rutinas' : '') + '</div>' + (isOff ? '<div style="margin-top:4px; font-size:0.7rem; font-weight:700; color:#ffb347;">🔌 Desconectado: ya no ve la rutina ni las actualizaciones</div>' : '') + '</div>' +
           '<div style="display:flex; gap:6px;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
+          '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:#ffd60a; border:1px solid #ffd60a; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
         html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="clientExportText(\'' + escHtml(last.id) + '\', ' + jsArg(g.name) + ')" title="Sacar todo lo guardado de este cliente como texto para corregirlo y volver a subirlo" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📤 Exportar a texto plano</button><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button></div>';
         if (g.list.length > 1) {
@@ -8745,7 +8780,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function coachResetRoutine() {
       if (!isCoachView() || !COACH_SNAP || COACH_SNAP.id !== athleteRoutineId) { showToastTop('No hay nada que reiniciar.'); return; }
-      if (!confirm('↺ Reiniciar rutina\n\nLa rutina vuelve a como estaba cuando la abriste: se borran las marcas, los bloques completados y el cronómetro de esta sesión.\n\n(Lo que ya se haya enviado a la hoja del cliente no se borra desde aquí; para ensayar sin enviar nada usa 🧪 Prueba.)\n\n¿Reiniciar?')) return;
+      if (!confirm('↺ Reiniciar rutina\n\nLa rutina vuelve a como estaba cuando la abriste: se borran las marcas, los bloques completados y el cronómetro de esta sesión.\n\n(Lo que ya se haya enviado a la hoja del cliente no se borra desde aquí; para ensayar sin enviar nada usa 🧪 Probar en el perfil del cliente.)\n\n¿Reiniciar?')) return;
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
       try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
       try {
@@ -9959,8 +9994,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         }
       }).catch(function(e) { st.configFeatures = JSON.parse(old); if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(e && e.message); } });
     }
-    function capCard(color, icon, title, sub, onclick) {   // botón de la pantalla de inicio del cliente: tarjeta con ícono
-      return '<button type="button" class="capsule-btn cap-card" style="--c:' + color + ';" onclick="' + onclick + '"><span class="cap-ic">' + icon + '</span><span class="cap-tx"><span class="cap-t">' + escHtml(title) + '</span>' + (sub ? '<span class="cap-s">' + escHtml(sub) + '</span>' : '') + '</span><span class="cap-ch">›</span></button>';
+    function capCard(color, icon, title, sub, onclick, dayId) {   // botón de la pantalla de inicio del cliente: tarjeta con ícono (dayId: tarjeta de un día de entreno)
+      return '<button type="button" class="capsule-btn cap-card" style="--c:' + color + ';"' + (dayId ? ' data-day="' + escHtml(dayId) + '"' : '') + ' onclick="' + onclick + '"><span class="cap-ic">' + icon + '</span><span class="cap-tx"><span class="cap-t">' + escHtml(title) + '</span>' + (sub ? '<span class="cap-s">' + escHtml(sub) + '</span>' : '') + '</span><span class="cap-ch">›</span></button>';
     }
     function clsTab(k) { CLS_TAB = k; clsPaint(); }
     // Retos: una pestaña por reto, hacia abajo, ordenadas por fecha. Todas cerradas al entrar; al tocar una se despliega (solo una a la vez) y al tocarla otra vez se cierra
