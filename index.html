@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -730,7 +730,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
       <section class="section-box">
         <div class="section-title">🎓 Clases y Retos <span class="badge">Grupal</span></div>
         <p style="font-size:0.8rem; color:var(--muted); line-height:1.5; margin-bottom:10px;">
-          Pega el texto de la clase (o del reto), toca <strong>Leer</strong>, pon los videos y guárdala. La clase de hoy y los retos que habilites se verán en el mismo link para todos.
+          Pega el texto de la clase (o del reto), toca <strong>Leer</strong>, pon los videos y guárdala. También puedes pegar <strong>varias de golpe</strong> (cada una empieza con «Clase:» o «Reto:» y puede tener fecha pasada): las guardas todas juntas y marcas con una casilla cuáles quedan activas. La clase de hoy y las que habilites se verán en el mismo link para todos.
         </p>
         <textarea id="clsText" rows="9" placeholder="Clase: GAP | Fecha: 2026-10-15 | Musculos: Glúteos, piernas, abdomen
 Circuito: Calentamiento | Rondas: 1 | Trabajo: 40 s | Descanso: 20 s | Cambio: 10 s
@@ -9202,9 +9202,76 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       for (var k in lib) { if (normExName(k) === key) return lib[k]; }
       return '';
     }
+    // ----- Cargar varias clases y retos de golpe -----
+    var CLS_BATCH = null;
+    function clsSplitClasses(raw) {   // parte el texto en una clase por cada línea «Clase:» / «Reto:»
+      var lines = String(raw || '').split('\n'), groups = [], cur = null;
+      lines.forEach(function(l) {
+        if (/^\s*(clase|reto)\s*:/i.test(l)) { cur = []; groups.push(cur); }
+        if (cur) cur.push(l);
+      });
+      return groups.map(function(g) { return g.join('\n'); });
+    }
+    function clsReadBatch(groups) {
+      var msg = document.getElementById('clsMsg'), list = [], bad = [];
+      groups.forEach(function(g, n) {
+        var r = parseClassText(g);
+        if (!r) { bad.push(n + 1); return; }
+        r.clase.src = g;
+        r.clase.items.forEach(function(it) { it.sub.forEach(function(sb) { if (!sb.video) sb.video = clsLibVideo(sb.name); }); });   // videos ya guardados en la biblioteca
+        r.on = !r.clase.prog && r.clase.f <= todayIso();   // con fecha de hoy o pasada, activa por defecto
+        list.push(r);
+      });
+      CLS_WORK = null; CLS_EDIT_ID = '';
+      if (!list.length) { CLS_BATCH = null; msg.style.color = '#ff6b6b'; msg.innerText = 'No encontré bloques con ejercicios en ninguna de las ' + groups.length + ' partes.'; document.getElementById('clsPreview').innerHTML = ''; return; }
+      CLS_BATCH = list;
+      msg.style.color = bad.length ? '#ffd166' : '#06d6a0';
+      msg.innerText = '✅ Encontré ' + list.length + ' clases/retos.' + (bad.length ? ' No pude leer la parte ' + bad.join(', ') + ' (sin ejercicios).' : '') + ' Marca cuáles quedan activas y toca «Guardar todas».';
+      clsRenderBatch();
+    }
+    function clsBatchOn(i, v) { if (CLS_BATCH && CLS_BATCH[i]) CLS_BATCH[i].on = !!v; clsRenderBatch(); }
+    function clsBatchAll(v) { (CLS_BATCH || []).forEach(function(r) { r.on = !!v; }); clsRenderBatch(); }
+    function clsRenderBatch() {
+      var box = document.getElementById('clsPreview'); if (!box) return;
+      if (!CLS_BATCH) { box.innerHTML = ''; return; }
+      var nOn = CLS_BATCH.filter(function(r) { return r.on; }).length;
+      var h = '<div class="edx-sub" style="margin-top:12px;"><div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
+        '<button type="button" class="btn btn-secondary" style="padding:6px 10px; font-size:0.74rem;" onclick="clsBatchAll(true)">✅ Activar todas</button>' +
+        '<button type="button" class="btn btn-secondary" style="padding:6px 10px; font-size:0.74rem;" onclick="clsBatchAll(false)">⬜ Ninguna</button></div>';
+      CLS_BATCH.forEach(function(r, i) {
+        var c = r.clase, falta = clsMissingVideos(c).length;
+        h += '<div style="background:#161616; border:1px solid #2c2c2c; border-left:4px solid ' + (r.on ? '#06d6a0' : '#444') + '; border-radius:10px; padding:10px; margin-bottom:8px;">' +
+          '<div style="font-weight:800; font-size:0.9rem; color:#fff;">' + (c.k === 'r' ? '🏆 ' : '🎓 ') + escHtml(c.t) + '</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 6px;">📅 ' + fmtDate(c.f) + ' · ' + c.items.length + ' bloque' + (c.items.length === 1 ? '' : 's') + (falta ? ' · <span style="color:#ffd166;">🎥 faltan ' + falta + ' videos</span>' : ' · 🎥 con todos los videos') + (r.warns.length ? ' · <span style="color:#ffd166;">⚠️ ' + r.warns.length + ' aviso' + (r.warns.length === 1 ? '' : 's') + '</span>' : '') + '</div>' +
+          '<label style="font-size:0.78rem; color:#ddd; display:inline-flex; gap:6px; align-items:center;"><input type="checkbox"' + (r.on ? ' checked' : '') + ' onchange="clsBatchOn(' + i + ', this.checked)"> Activa para los clientes</label></div>';
+      });
+      h += '<button type="button" class="btn btn-accent" style="width:100%; margin-top:4px;" onclick="clsBatchSave()">💾 Guardar todas (' + CLS_BATCH.length + ')' + (nOn ? ' · ' + nOn + ' activa' + (nOn === 1 ? '' : 's') : '') + '</button></div>';
+      box.innerHTML = h;
+    }
+    function clsBatchSave() {
+      if (!CLS_BATCH || !CLS_BATCH.length) return;
+      clsLoad();
+      var nuevas = 0, actual = 0, activas = 0, stamp = Date.now().toString(36);
+      CLS_BATCH.forEach(function(r, i) {
+        var rec = JSON.parse(JSON.stringify(r.clase)); delete rec._pick;
+        var ex = null; CLS.lista.forEach(function(x) { if (x.k === rec.k && x.f === rec.f && x.t === rec.t) ex = x; });   // misma clase/reto y fecha: se actualiza, no se duplica
+        rec.vis = !!r.on; if (rec.vis) activas++;
+        if (ex) { rec.id = ex.id; if (ex.para && ex.para.length) rec.para = ex.para; CLS.lista[CLS.lista.indexOf(ex)] = rec; actual++; }
+        else { rec.id = 'c' + stamp + i; CLS.lista.push(rec); nuevas++; }
+      });
+      clsSave();
+      var n = CLS_BATCH.length;
+      clsClearForm(); clsRender();
+      var m = document.getElementById('clsMsg');
+      if (m) { m.style.color = '#06d6a0'; m.innerText = '✅ Guardadas ' + n + ' (' + nuevas + ' nuevas' + (actual ? ', ' + actual + ' actualizadas' : '') + '). ' + activas + ' quedaron activas y ordenadas por su fecha.'; }
+      if (activas && clsLinkId()) clsAutoPublish();
+    }
     function clsRead() {
       var raw = document.getElementById('clsText').value, msg = document.getElementById('clsMsg');
       if (!raw.trim()) { msg.style.color = '#ff6b6b'; msg.innerText = 'Pega primero el texto de la clase.'; return; }
+      var grp = clsSplitClasses(raw);
+      if (grp.length > 1) { clsReadBatch(grp); return; }   // varias clases/retos pegados juntos
+      CLS_BATCH = null;
       var r = parseClassText(raw);
       if (!r) { msg.style.color = '#ff6b6b'; msg.innerText = 'No encontré bloques con ejercicios. Cada bloque empieza con "Circuito:" y sus ejercicios con "Estacion:".'; return; }
       r.clase.src = raw;
@@ -9217,7 +9284,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function clsClearForm() {
       document.getElementById('clsText').value = ''; document.getElementById('clsMsg').innerText = ''; document.getElementById('clsPreview').innerHTML = '';
-      CLS_WORK = null; CLS_EDIT_ID = '';
+      CLS_WORK = null; CLS_EDIT_ID = ''; CLS_BATCH = null;
     }
     function clsHasOpen(items) { return (items || []).some(function(it) { var c = it.circ || {}; if (c.tipo === 'portiempo' || c.tipo === 'escalera') return true; if (/^(amrap|emom|tabata|pausa)$/.test(c.tipo)) return false; return it.sub.some(function(sb) { return !isTimeText(sb.reps) && !clsListSecs(c.trabajo).length; }); }); }
     function clsFmtMin(sec) { var m = Math.round(sec / 60); return m <= 0 ? '' : m + ' min'; }
