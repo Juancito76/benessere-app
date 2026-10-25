@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6706,7 +6706,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var nxp = CT.phases[CT.i + 1], nextWork = ctNextWork();
       if (isOpen && el('tm_done')) {   // leyenda del botón según lo que sigue: descanso, otro ejercicio o fin (en entreno guiado, el siguiente bloque)
         var nextBlk = !!(CT.guide && !CT.cls && CT.guide.blocks && CT.guide.blocks[CT.guide.pos + 1]);
-        el('tm_done').innerText = !nxp ? (nextBlk ? '⏭ Siguiente ejercicio' : '✔ Terminé') : (nxp.t === 'rest' ? '😮‍💨 DESCANSAR' : '⏭ Siguiente ejercicio');
+        if (!CT.cls) el('tm_done').innerText = !nxp ? (nextBlk ? '⏭ Siguiente ejercicio' : '✔ Terminé') : (nxp.t === 'rest' ? '😮‍💨 DESCANSAR' : '⏭ Siguiente ejercicio');
         var toRest = !!(nxp && nxp.t === 'rest');
         el('tm_done').style.background = toRest ? '#2f6bff' : '#06d6a0'; el('tm_done').style.borderColor = toRest ? '#2f6bff' : '#06d6a0'; el('tm_done').style.color = toRest ? '#fff' : '#000';
       }
@@ -6723,7 +6723,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       el('tm_done').style.display = (isOpen || (CT.cls && isWork && !ph.list && !ph.seq && !ph.pausa)) ? '' : 'none';   // en clases, también en los tiempos con cuenta regresiva
       if (ph.seq) {   // botón "Siguiente ejercicio": avanza dentro del intervalo sin detener el tiempo
         el('tm_done').style.display = seqDone ? 'none' : '';
-        el('tm_done').innerText = (CT.seqI < ph.steps.length - 1) ? '⏭ Siguiente ejercicio' : '✔ Terminé';
+        if (!CT.cls) el('tm_done').innerText = (CT.seqI < ph.steps.length - 1) ? '⏭ Siguiente ejercicio' : '✔ Terminé';
         el('tm_done').style.background = '#06d6a0'; el('tm_done').style.borderColor = '#06d6a0'; el('tm_done').style.color = '#000';
       }
       el('tm_skip').style.display = isWork ? 'none' : '';
@@ -7502,7 +7502,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else if (ph.seq) sub = CT.seqI < ph.steps.length - 1 ? 'Siguiente ejercicio' : 'Terminar';
       else if (!ph.open) { sub = clsNextWorkIdx() < 0 ? 'Terminar' : 'Siguiente ejercicio'; }   // tiempo con cuenta regresiva: salta al próximo ejercicio
       else { sub = !nxp2 ? 'Terminar' : (nxp2.t === 'rest' ? 'Descansar' : 'Siguiente ejercicio'); toRest = !!(nxp2 && nxp2.t === 'rest'); }
-      dn.innerHTML = '<span style="font-weight:900;">' + escHtml(ctShort(CT.names[ci] || '')) + '</span><br><span style="font-size:0.75em; opacity:0.85;">' + sub + '</span>';
+      var hh = '<span style="font-weight:900; pointer-events:none;">' + escHtml(ctShort(CT.names[ci] || '')) + '</span><br><span style="font-size:0.75em; opacity:0.85; pointer-events:none;">' + sub + '</span>';
+      if (dn._h !== hh || !dn.querySelector('span')) { dn.innerHTML = hh; dn._h = hh; }   // solo se reescribe si cambió: reescribirlo a cada rato hacía que el toque se perdiera
       dn.style.background = toRest ? '#2f6bff' : '#06d6a0'; dn.style.borderColor = toRest ? '#2f6bff' : '#06d6a0'; dn.style.color = toRest ? '#fff' : '#000';
     }
     function clsFmtDur(sec) {
