@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9328,14 +9328,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (c._pick && !(rec.para && rec.para.length) && !confirm('Marcaste «Solo estos clientes» pero no elegiste ninguno: la clase la verán todos. ¿Guardar así?')) return;
       if (!rec.id) rec.id = 'c' + Date.now().toString(36);
       var i = -1; CLS.lista.forEach(function(x, k) { if (x.id === rec.id) i = k; });
-      if (i >= 0) { rec.vis = CLS.lista[i].vis; CLS.lista[i] = rec; } else CLS.lista.push(rec);
+      var isNew = i < 0;
+      if (i >= 0) { rec.vis = CLS.lista[i].vis; CLS.lista[i] = rec; }
+      else { rec.vis = !rec.prog && rec.f <= todayIso(); CLS.lista.push(rec); }   // clase o reto nuevo con fecha de hoy o pasada: queda disponible para los clientes (se oculta desde la casilla)
       if (asToday && rec.k === 'c') { CLS.hoy = rec.id; CLS.hoyD = rec.f > todayIso() ? rec.f : todayIso(); }
       if (CLS.hoy === rec.id && rec.k !== 'c') CLS.hoy = '';
       clsSave();
       document.getElementById('clsMsg').style.color = '#06d6a0';
-      document.getElementById('clsMsg').innerText = '✅ Guardada: ' + rec.t + (CLS.hoy === rec.id ? ' (clase de hoy)' : '') + '.';
+      document.getElementById('clsMsg').innerText = '✅ Guardada: ' + rec.t + (CLS.hoy === rec.id ? ' (clase de hoy)' : (rec.vis ? ' (ya está disponible para tus clientes, ordenada por su fecha)' : '')) + '.';
       clsClearForm(); clsRender();
-      if (asToday || rec.prog || (rec.para && rec.para.length)) clsAutoPublish();
+      if (asToday || rec.prog || (rec.para && rec.para.length) || (isNew && rec.vis)) clsAutoPublish();
     }
     // Al dejar lista la clase de hoy, se publica sola para quienes tienen las clases habilitadas (si ya existe el link y hay sesión de coach)
     function clsAutoPublish() {
@@ -9416,7 +9418,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       h += '<div class="med-h" style="margin-top:12px;">🏆 Retos (' + retos.length + ')</div>' + (retos.length ?
         '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + retos.map(function(c, k) {
           var on = k === ri;
-          return '<button type="button" onclick="clsRetoSel(' + k + ')" style="padding:8px 12px; border-radius:999px; font-weight:800; font-size:0.78rem; cursor:pointer; border:1px solid ' + (on ? '#ff9f1c' : '#333') + '; background:' + (on ? '#ff9f1c' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';">' + escHtml(c.t) + (c.vis ? ' ✅' : '') + '</button>';
+          return '<button type="button" onclick="clsRetoSel(' + k + ')" style="padding:8px 12px; border-radius:999px; font-weight:800; font-size:0.78rem; cursor:pointer; border:1px solid ' + (on ? '#ff9f1c' : '#333') + '; background:' + (on ? '#ff9f1c' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';">' + escHtml(c.t) + ' · ' + fmtDate(c.f).slice(0, 5) + (c.vis ? ' ✅' : '') + '</button>';
         }).join('') + '</div>' + clsRowHtml(retos[ri], false)
         : '<div class="med-sum">Escribe «Reto:» en la primera línea del texto para cargar un reto. Solo los que marques como visibles aparecerán en el link.</div>');
       box.innerHTML = h;
@@ -9627,7 +9629,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var i = Math.min(CLS_SEL.ret, list.length - 1);
       return '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px;">' + list.map(function(c, k) {
         var on = k === i;
-        return '<button type="button" onclick="clsPickSel(\'ret\',' + k + ')" style="padding:9px 14px; border-radius:999px; font-weight:800; font-size:0.82rem; cursor:pointer; border:1px solid ' + (on ? '#ff9f1c' : '#333') + '; background:' + (on ? '#ff9f1c' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';">🏆 ' + escHtml(c.t) + '</button>';
+        return '<button type="button" onclick="clsPickSel(\'ret\',' + k + ')" style="padding:9px 14px; border-radius:999px; font-weight:800; font-size:0.82rem; cursor:pointer; border:1px solid ' + (on ? '#ff9f1c' : '#333') + '; background:' + (on ? '#ff9f1c' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';">🏆 ' + escHtml(c.t) + ' · ' + fmtDate(c.f).slice(0, 5) + '</button>';
       }).join('') + '</div>' + clsCardHtml(list[i], 'ret', i);
     }
     function clsPickSel(k, v) { CLS_SEL[k] = parseInt(v, 10) || 0; clsPaint(); }
