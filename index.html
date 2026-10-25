@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6501,6 +6501,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function openCoachWeek() {
       if (!COACH) return;
+      attLoad(); attFromServer(function() { try { renderCoachWeek(); } catch (e) {} });
       var run = ++CW.run;
       var groups = {}, order = [], cut = new Date(); cut.setDate(cut.getDate() - 90);
       var cutIso = isoOfDate(cut);
@@ -6697,13 +6698,39 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     var ATT = { data: null, open: '', msgs: {}, mc: {}, cl: [], busy: false };
+    var ATT_LINKS_KEY = 'bn_att_links';
     function attLoad() {
-      try { var s = localStorage.getItem(ATT_KEY); ATT.data = s ? JSON.parse(s) : null; } catch (e) { ATT.data = null; }
-      if (ATT.data && (!ATT.data.p || typeof ATT.data.p !== 'object')) ATT.data = null;
-      if (ATT.data && !ATT.data.links) ATT.data.links = {};
+      var old = null, links = {};
+      try { var s0 = localStorage.getItem(ATT_KEY); old = s0 ? JSON.parse(s0) : null; } catch (e) {}
+      if (old && old.links) links = old.links;
+      try { var l2 = JSON.parse(localStorage.getItem(ATT_LINKS_KEY) || 'null'); if (l2) Object.keys(l2).forEach(function(k) { links[k] = l2[k]; }); } catch (e) {}
+      if (!Object.keys(REC.people).length) { try { recLoadLocal(); } catch (e) {} }
+      if (Object.keys(REC.people).length && REC.meta && REC.meta.to) {   // la asistencia sale de Recepción: una sola carga para todo
+        var pp = {}; Object.keys(REC.people).forEach(function(k) { var q = REC.people[k]; if (q.d && q.d.length) pp[k] = { n: q.n, d: q.d }; });
+        ATT.data = { p: pp, from: REC.meta.from || REC.meta.to, to: REC.meta.to, rep: REC.meta.rep || '', up: REC.meta.up || '', links: links, rec: true };
+      } else {
+        ATT.data = old;
+        if (ATT.data && (!ATT.data.p || typeof ATT.data.p !== 'object')) ATT.data = null;
+        if (ATT.data) ATT.data.links = links;
+      }
       ATT.mc = {};
     }
-    function attSave() { ATT.mc = {}; try { localStorage.setItem(ATT_KEY, JSON.stringify(ATT.data)); } catch (e) { showToastTop('No se pudo guardar en este dispositivo.'); } }
+    function attSave() {
+      ATT.mc = {};
+      try {
+        if (ATT.data) localStorage.setItem(ATT_LINKS_KEY, JSON.stringify(ATT.data.links || {}));
+        if (ATT.data && !ATT.data.rec) localStorage.setItem(ATT_KEY, JSON.stringify(ATT.data));
+      } catch (e) { showToastTop('No se pudo guardar en este dispositivo.'); }
+    }
+    // Trae de Recepción (hoja de Google) los datos más nuevos, con el PIN del coach o el guardado en Recepción
+    function attFromServer(done) {
+      if (!recUrl() || ATT.recBusy) { if (done) done(); return; }
+      var pin = REC.pin || ''; if (!pin) { try { pin = localStorage.getItem(REC_PIN_KEY) || ''; } catch (e) {} }
+      if (!pin && COACH) pin = COACH.pin;
+      if (!pin) { if (done) done(); return; }
+      ATT.recBusy = true;
+      recPost({ a: 'rec_leer', pin: pin }).then(function(j) { ATT.recBusy = false; if (j && j.ok) { recApplyServer(j); attLoad(); } if (done) done(); }).catch(function() { ATT.recBusy = false; if (done) done(); });
+    }
     function attRef() { return ATT.data ? (ATT.data.to > (ATT.data.rep || '') ? ATT.data.to : (ATT.data.rep || ATT.data.to || '')) : ''; }
     function attWeekOf(iso) {
       var dt = new Date(iso + 'T12:00:00'); dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
@@ -6793,9 +6820,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function openAttendance(openKey) {
       if (!COACH) return;
-      if (!ATT.data) attLoad();
+      attLoad();
       if (typeof openKey === 'string') ATT.open = openKey;
       renderAttendance(); openModal('att_modal');
+      attFromServer(function() { try { renderAttendance(); } catch (e) {} });
       if (ATT.open) setTimeout(function() { var t = document.getElementById('att_ta'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center' }); }, 60);
     }
     function attPickFile(inp) {
@@ -6854,14 +6882,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function renderAttendance() {
       var D = ATT.data, h = '<div class="modal-inner" style="max-width:560px;">' +
         '<div style="font-size:1.05rem; font-weight:900; color:var(--primary);">🚪 Asistencia al gym</div>' +
-        '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 10px;">Carga el Excel de accesos del app de ingreso y verás cuánto viene cada cliente con rutina. Los datos se guardan solo en este dispositivo.</div>';
-      h += '<label style="display:block; background:transparent; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:12px; text-align:center; font-weight:800; font-size:0.85rem; cursor:pointer;">📁 ' + (D ? 'Cargar otro reporte (se suma al actual)' : 'Cargar Excel de accesos') +
+        '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 10px;">Carga el Excel de accesos del app de ingreso y verás cuánto viene cada cliente con rutina. ' + (recUrl() ? 'Los datos son los mismos de Recepción (compartidos).' : 'Los datos se guardan solo en este dispositivo.') + '</div>';
+      if (recUrl()) h += '<button type="button" onclick="closeModal(\'att_modal\'); closeModal(\'coach_week_modal\'); openReception(false);" style="width:100%; background:transparent; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:12px; text-align:center; font-weight:800; font-size:0.85rem; cursor:pointer;">🚪 Cargar o actualizar el Excel en Recepción</button>' +
+        '<div style="font-size:0.68rem; color:var(--muted); margin-top:4px;">Una sola carga sirve para Recepción y para estas pantallas.</div>';
+      else h += '<label style="display:block; background:transparent; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:12px; text-align:center; font-weight:800; font-size:0.85rem; cursor:pointer;">📁 ' + (D ? 'Cargar otro reporte (se suma al actual)' : 'Cargar Excel de accesos') +
         '<input type="file" accept=".xlsx,.csv,.xls,.txt" style="display:none;" onchange="attPickFile(this)"></label>';
       if (!D) {
-        h += '<div style="font-size:0.8rem; color:var(--muted); padding:12px 2px; line-height:1.5;">Aún no has cargado ningún reporte. Exporta el «Reporte Accesos» desde el app de ingreso (.xlsx) y súbelo aquí.</div>';
+        h += '<div style="font-size:0.8rem; color:var(--muted); padding:12px 2px; line-height:1.5;">Aún no hay ningún reporte cargado. Exporta el «Reporte Accesos» desde el app de ingreso (.xlsx) y cárgalo (en Recepción si está conectada, o aquí).</div>';
       } else {
         var ref = attRef(), today = todayIso(), stale = dayNum(today) - dayNum(ref);
-        h += '<div style="font-size:0.72rem; color:var(--muted); margin:8px 0;">Reporte del ' + fmtDate(D.from) + ' al ' + fmtDate(D.to) + ' · cargado el ' + fmtDate(D.up) + (stale >= 2 ? '' : '') + '</div>';
+        h += '<div style="font-size:0.72rem; color:var(--muted); margin:8px 0;">Reporte del ' + fmtDate(D.from) + ' al ' + fmtDate(D.to) + ' · cargado el ' + (D.rec ? escHtml(recFmtDT(D.up)) : fmtDate(D.up)) + '</div>';
         if (stale >= 2) h += '<div style="background:#3a2a10; border:1px solid #8a6d1a; border-radius:10px; padding:8px 10px; font-size:0.76rem; margin-bottom:8px;">⚠️ El reporte llega hasta hace ' + stale + ' días. Los cálculos son a esa fecha; sube uno nuevo para tenerlos al día.</div>';
         var cl = attClients(); ATT.cl = cl;
         var out = [], low = [], ok = [], miss = [], off = [];
@@ -6903,7 +6933,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           h += '</details>';
         }
         h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:6px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Se ignoran «Desconocido», accesos deshabilitados y registros sin nombre. Barra del mes: cada casilla es un día, verde = fue al gym.</div>';
-        h += '<button type="button" onclick="attClear()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #555; color:#aaa; border-radius:10px; padding:9px; font-weight:700; font-size:0.78rem; cursor:pointer;">🗑 Borrar reporte cargado</button>';
+        if (!D.rec) h += '<button type="button" onclick="attClear()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #555; color:#aaa; border-radius:10px; padding:9px; font-weight:700; font-size:0.78rem; cursor:pointer;">🗑 Borrar reporte cargado</button>';
       }
       h += '<button type="button" class="btn-action-primary" style="margin-top:8px;" onclick="closeModal(\'att_modal\')">Cerrar</button></div>';
       var box = attEl(), oldIn = box.querySelector('.modal-inner'), keep = oldIn ? oldIn.scrollTop : 0;
@@ -6928,7 +6958,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       attClients().forEach(function(c) { var m = attMatch(c); if (m && m.p) n[attStats(m.p, ref).kind]++; });
       return '<div style="background:#14202e; border:1px solid #2b4a6b; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">🚪 <b>Gym</b> (reporte al ' + fmtDate(ref) + '): <b style="color:#ff8a8a;">' + n.out + '</b> sin ir 7+ días · <b style="color:#ffd166;">' + n.low + '</b> viniendo poco · <b style="color:#06d6a0;">' + n.ok + '</b> al día · <a href="#" onclick="openAttendance(); return false;" style="color:var(--primary); font-weight:800;">Ver lista y mensajes</a></div>';
     }
-    attLoad();
 
     // ----- Pestaña Recepción: todos los clientes del gym, asistencia, teléfonos, cumpleaños y mensajes por WhatsApp -----
     // Los datos se comparten por un script de Google aparte (REC_URL_DEFAULT o la dirección pegada en la pestaña); sin él, todo queda en este dispositivo.
