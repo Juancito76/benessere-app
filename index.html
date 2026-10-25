@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1045,6 +1045,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
         <span id="cl_who" style="font-size:0.78rem; color:var(--primary); font-weight:800;"></span>
         <span>
+          <button type="button" onclick="openAttendance()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🚪 Asistencia</button>
           <button type="button" onclick="openCoachWeek()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📈 Esta semana</button>
           <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
           <button type="button" onclick="coachLogout()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Cerrar sesión</button>
@@ -6554,6 +6555,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       h += '<div style="background:#102418; border:1px solid #1f6b3b; border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:10px;">' +
         (CW.done < CW.total ? '⏳ Consultando… ' + CW.done + ' de ' + CW.total + '<br>' : '') +
         '<b>' + trainedN + ' de ' + known + '</b> clientes ya entrenaron esta semana' + (okN ? ' · <b>' + okN + '</b> cumplieron su meta ✔' : '') + '.</div>';
+      h += attWeekSummary();
       if (!rows.length) h += '<div style="font-size:0.85rem; color:var(--muted); padding:12px 0;">No hay rutinas recientes para mostrar.</div>';
       rows.forEach(function(r) {
         var s = r.st, badge, line, col = '#555';
@@ -6577,7 +6579,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         h += '<div style="display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
           '<div style="font-size:1.1rem;">' + badge + '</div>' +
           '<div style="flex:1; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.9rem;">' + escHtml(r.name) + '</div>' +
-          '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + line + '</div>' +
+          '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + line + '</div>' + attWeekLine(r) +
           (r.st ? '<div style="margin-top:6px; display:flex; gap:6px; align-items:center;"><span style="font-size:0.7rem; color:#9fe8c8; font-weight:800;">Marcar que entrenó:</span>' +
             '<button type="button" onclick="cwMark(\'' + escHtml(r.id) + '\', 0)" style="background:#06d6a0; color:#000; border:none; border-radius:8px; padding:5px 10px; font-weight:900; font-size:0.72rem; cursor:pointer;">✔ Hoy</button>' +
             '<button type="button" onclick="cwMark(\'' + escHtml(r.id) + '\', -1)" style="background:transparent; color:#06d6a0; border:1px solid #06d6a0; border-radius:8px; padding:5px 10px; font-weight:800; font-size:0.72rem; cursor:pointer;">Ayer</button></div>' : '') + '</div>' +
@@ -6590,6 +6592,341 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       cwBox.innerHTML = h;
       var newIn = cwBox.querySelector('.modal-inner'); if (newIn && keepTop) newIn.scrollTop = keepTop;   // no volver al inicio de la lista al marcar o al llegar datos
     }
+
+    // ----- Asistencia al gym (Excel del app de ingreso) -----
+    // Solo se guarda en este dispositivo: por persona, los días en que entró (sin correo, sin pin).
+    var ATT_KEY = 'bn_att_v1';
+    function attXmlDec(s) { return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, function(m, n) { return String.fromCharCode(parseInt(n, 10)); }).replace(/&amp;/g, '&'); }
+    function attUnzip(u8) {   // lector mínimo de .zip (el .xlsx es un zip): devuelve función get(nombre) -> Uint8Array | null
+      var dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), end = -1, i;
+      for (i = u8.length - 22; i >= Math.max(0, u8.length - 65600); i--) { if (dv.getUint32(i, true) === 0x06054b50) { end = i; break; } }
+      if (end < 0) throw new Error('zip');
+      var n = dv.getUint16(end + 10, true), off = dv.getUint32(end + 16, true), ents = {};
+      for (i = 0; i < n; i++) {
+        if (dv.getUint32(off, true) !== 0x02014b50) break;
+        var method = dv.getUint16(off + 10, true), csz = dv.getUint32(off + 20, true), nl = dv.getUint16(off + 28, true), el = dv.getUint16(off + 30, true), cl = dv.getUint16(off + 32, true), lo = dv.getUint32(off + 42, true);
+        var name = fflate.strFromU8(u8.subarray(off + 46, off + 46 + nl));
+        ents[name] = { m: method, c: csz, o: lo };
+        off += 46 + nl + el + cl;
+      }
+      return function(name) {
+        var e = ents[name]; if (!e) return null;
+        var ds = e.o + 30 + dv.getUint16(e.o + 26, true) + dv.getUint16(e.o + 28, true);
+        var raw = u8.subarray(ds, ds + e.c);
+        return e.m === 0 ? raw : fflate.inflateSync(raw);
+      };
+    }
+    function attColIdx(ref) { var s = String(ref).replace(/\d+/g, ''), n = 0; for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64); return n - 1; }
+    function attReadXlsx(u8) {   // -> filas (arreglos de texto/número)
+      var get = attUnzip(u8), td = function(b) { return b ? fflate.strFromU8(b) : ''; };
+      var shared = [], sx = td(get('xl/sharedStrings.xml'));
+      sx.replace(/<si>([\s\S]*?)<\/si>/g, function(m, body) {
+        body = body.replace(/<rPh[\s\S]*?<\/rPh>/g, '');
+        var t = ''; body.replace(/<t[^>]*>([\s\S]*?)<\/t>/g, function(mm, x) { t += attXmlDec(x); return ''; });
+        shared.push(t); return '';
+      });
+      var sheet = 'xl/worksheets/sheet1.xml';
+      if (!get(sheet)) { for (var k = 2; k < 20; k++) if (get('xl/worksheets/sheet' + k + '.xml')) { sheet = 'xl/worksheets/sheet' + k + '.xml'; break; } }
+      var xml = td(get(sheet)); if (!xml) throw new Error('hoja');
+      var rows = [];
+      xml.replace(/<row\b[^>]*?(?:\/>|>([\s\S]*?)<\/row>)/g, function(m, body) {
+        var arr = [];
+        (body || '').replace(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, function(mc, attrs, inner) {
+          var r = /\br="([A-Z]+\d+)"/.exec(attrs), t = /\bt="(\w+)"/.exec(attrs); if (!r) return '';
+          var v = '', iv = /<v>([\s\S]*?)<\/v>/.exec(inner || '');
+          if (t && t[1] === 'inlineStr') { (inner || '').replace(/<t[^>]*>([\s\S]*?)<\/t>/g, function(a, x) { v += attXmlDec(x); return ''; }); }
+          else if (iv) { v = t && t[1] === 's' ? (shared[parseInt(iv[1], 10)] || '') : (t && t[1] === 'str' ? attXmlDec(iv[1]) : (isNaN(Number(iv[1])) ? attXmlDec(iv[1]) : Number(iv[1]))); }
+          arr[attColIdx(r[1])] = v; return '';
+        });
+        rows.push(arr); return '';
+      });
+      return rows;
+    }
+    function attReadCsv(text) {
+      var lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(function(l) { return l.trim(); });
+      var head = lines.slice(0, 8).join('\n'), cnt = function(c) { return head.split(c).length; }, sep = (cnt(';') > cnt(',') && cnt(';') >= cnt('\t')) ? ';' : (cnt('\t') > cnt(',') ? '\t' : ',');
+      return lines.map(function(l) {
+        var out = [], cur = '', q = false;
+        for (var i = 0; i < l.length; i++) { var ch = l[i]; if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; } else if (ch === sep && !q) { out.push(cur); cur = ''; } else cur += ch; }
+        out.push(cur); return out;
+      });
+    }
+    function attParseDate(v) {   // 'dd/mm/yyyy hh:mm' | número de Excel -> 'YYYY-MM-DD'
+      if (typeof v === 'number' && v > 30000) { var d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000); return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()); }
+      var m = /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/.exec(String(v == null ? '' : v));
+      if (m) { var dd = +m[1], mm = +m[2]; if (mm > 12 && dd <= 12) { var t = dd; dd = mm; mm = t; } return m[3] + '-' + pad2(mm) + '-' + pad2(dd); }
+      m = /(\d{4})-(\d{2})-(\d{2})/.exec(String(v == null ? '' : v));
+      return m ? m[0] : '';
+    }
+    function attKey(s) { return normName(String(s || '').replace(/[^\p{L}\p{N}\s]/gu, ' ')); }
+    // filas -> { people: {key:{n, d:[iso...]}}, rep:'YYYY-MM-DD', from, to, ignored }
+    function attParseRows(rows) {
+      var hi = -1, col = {}, i, j;
+      for (i = 0; i < Math.min(rows.length, 30) && hi < 0; i++) {
+        var r = rows[i] || [], tmp = {};
+        for (j = 0; j < r.length; j++) {
+          var h = normName(r[j]);
+          if (h === 'nombre') tmp.n = j; else if (h === 'apellido') tmp.a = j; else if (h === 'correo') tmp.c = j;
+          else if (h.indexOf('estado') === 0) tmp.s = j; else if (h.indexOf('fecha') === 0) tmp.f = j;
+        }
+        if (tmp.n != null && tmp.f != null) { hi = i; col = tmp; }
+      }
+      if (hi < 0) throw new Error('cabecera');
+      var rep = '';
+      for (i = 0; i < hi; i++) { (rows[i] || []).forEach(function(c) { var d = attParseDate(c); if (d && /\d{1,2}\/\d{1,2}\/\d{4}/.test(String(c)) && !rep) rep = d; }); }
+      var people = {}, from = '', to = '', ignored = 0, used = 0;
+      for (i = hi + 1; i < rows.length; i++) {
+        var row = rows[i] || [], d = attParseDate(row[col.f]); if (!d) continue;
+        var nm = ((row[col.n] || '') + ' ' + (col.a != null ? (row[col.a] || '') : '')).replace(/\s+/g, ' ').trim();
+        var mail = col.c != null ? String(row[col.c] || '').toLowerCase() : '', st = col.s != null ? normName(row[col.s]) : '';
+        if (!nm || normName(nm).indexOf('desconocido') === 0 || mail === 'descon@desc.com' || st === 'deshabilitado') { ignored++; continue; }
+        var k = attKey(nm); if (!k) { ignored++; continue; }
+        var p = people[k] || (people[k] = { n: nm, d: {} });
+        p.d[d] = 1; used++;
+        if (!from || d < from) from = d; if (!to || d > to) to = d;
+      }
+      Object.keys(people).forEach(function(k) { people[k].d = Object.keys(people[k].d).sort(); });
+      return { people: people, rep: rep, from: from, to: to, ignored: ignored, used: used };
+    }
+    function attParseFile(u8, fname) {
+      if (u8.length > 4 && u8[0] === 0x50 && u8[1] === 0x4b) return attParseRows(attReadXlsx(u8));
+      if (u8.length > 4 && u8[0] === 0xd0 && u8[1] === 0xcf) throw new Error('xls');
+      return attParseRows(attReadCsv(fflate.strFromU8(u8)));
+    }
+
+    var ATT = { data: null, open: '', msgs: {}, mc: {}, cl: [], busy: false };
+    function attLoad() {
+      try { var s = localStorage.getItem(ATT_KEY); ATT.data = s ? JSON.parse(s) : null; } catch (e) { ATT.data = null; }
+      if (ATT.data && (!ATT.data.p || typeof ATT.data.p !== 'object')) ATT.data = null;
+      if (ATT.data && !ATT.data.links) ATT.data.links = {};
+      ATT.mc = {};
+    }
+    function attSave() { ATT.mc = {}; try { localStorage.setItem(ATT_KEY, JSON.stringify(ATT.data)); } catch (e) { showToastTop('No se pudo guardar en este dispositivo.'); } }
+    function attRef() { return ATT.data ? (ATT.data.to > (ATT.data.rep || '') ? ATT.data.to : (ATT.data.rep || ATT.data.to || '')) : ''; }
+    function attWeekOf(iso) {
+      var dt = new Date(iso + 'T12:00:00'); dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+      var a = isoOfDate(dt); dt.setDate(dt.getDate() + 6); return { from: a, to: isoOfDate(dt) };
+    }
+    function attMerge(parsed) {
+      var D = ATT.data || { p: {}, links: {} };
+      Object.keys(parsed.people).forEach(function(k) {
+        var cur = D.p[k], set = {};
+        (cur ? cur.d : []).concat(parsed.people[k].d).forEach(function(x) { set[x] = 1; });
+        D.p[k] = { n: parsed.people[k].n, d: Object.keys(set).sort() };
+      });
+      D.from = (!D.from || (parsed.from && parsed.from < D.from)) ? parsed.from : D.from;
+      D.to = (!D.to || parsed.to > D.to) ? parsed.to : D.to;
+      D.rep = (!D.rep || parsed.rep > D.rep) ? parsed.rep : D.rep;
+      D.up = todayIso();
+      var ref = D.to > (D.rep || '') ? D.to : D.rep, cut = new Date(ref + 'T12:00:00'); cut.setDate(cut.getDate() - 62);
+      var cutIso = isoOfDate(cut);
+      Object.keys(D.p).forEach(function(k) { D.p[k].d = D.p[k].d.filter(function(x) { return x >= cutIso; }); if (!D.p[k].d.length) delete D.p[k]; });
+      ATT.data = D; attSave();
+    }
+    function attClients() {   // mismos clientes que en «Esta semana»: la rutina más nueva de cada uno, de los últimos 90 días
+      var groups = {}, out = [], cut = new Date(); cut.setDate(cut.getDate() - 90); var cutIso = isoOfDate(cut);
+      (clientRows || []).forEach(function(r) {
+        var k = normName(r.atleta); if (!k || k === '__anuncios__' || k === '__clases__' || k === '__videos__' || groups[k]) return;
+        groups[k] = r; if (String(r.f || '').slice(0, 10) >= cutIso) out.push({ key: k, name: r.atleta, id: r.id });
+      });
+      return out;
+    }
+    // Busca a la persona del reporte que corresponde a un cliente (por nombre; si hay duda, queda para vincular a mano)
+    function attMatch(c) {
+      var D = ATT.data; if (!D) return null;
+      if (ATT.mc[c.key]) return ATT.mc[c.key];
+      var res, lk = D.links[c.key];
+      if (lk === '-') res = { off: true };
+      else if (lk && D.p[lk]) res = { k: lk, p: D.p[lk], manual: true };
+      else {
+        var ct = attKey(c.name).split(' ').filter(function(t) { return t.length > 1; }), cands = [];
+        if (ct.length) Object.keys(D.p).forEach(function(pk) {
+          var pt = pk.split(' '), inter = ct.filter(function(t) { return pt.indexOf(t) >= 0; }).length, sc = 0;
+          if (inter === ct.length && ct.length >= 2) sc = 100 + inter - Math.abs(pt.length - ct.length) * 0.1;
+          else if (inter === pt.length && pt.length >= 2) sc = 90 + inter;
+          else if (inter === ct.length) sc = 10 + inter;
+          else if (inter >= 2) sc = 50 + inter;
+          if (sc) cands.push({ k: pk, sc: sc });
+        });
+        cands.sort(function(a, b) { return b.sc - a.sc; });
+        if (cands.length && cands[0].sc >= 90 && (cands.length === 1 || cands[1].sc < cands[0].sc)) res = { k: cands[0].k, p: D.p[cands[0].k] };
+        else res = { cands: cands.slice(0, 5) };
+      }
+      ATT.mc[c.key] = res; return res;
+    }
+    function attStats(p, ref) {
+      var last = '', w7 = 0, month = 0, wk = 0, wr = attWeekOf(ref), ym = ref.slice(0, 7), set = {};
+      (p ? p.d : []).forEach(function(x) {
+        if (x > ref) return; set[x] = 1; if (x > last) last = x;
+        if (dayNum(ref) - dayNum(x) <= 6) w7++;
+        if (x.slice(0, 7) === ym) month++;
+        if (x >= wr.from && x <= wr.to) wk++;
+      });
+      var ago = last ? dayNum(ref) - dayNum(last) : -1;
+      return { last: last, ago: ago, w7: w7, month: month, wk: wk, set: set, kind: (ago < 0 || ago >= 7) ? 'out' : (w7 <= 2 ? 'low' : 'ok') };
+    }
+    function attStrip(st, ref) {   // una casilla por día del mes: verde = fue al gym
+      var y = +ref.slice(0, 4), mo = +ref.slice(5, 7), total = new Date(y, mo, 0).getDate(), today = +ref.slice(8, 10), h = '<div style="display:flex; gap:1px; margin-top:5px;" title="Días del mes en que entró al gym">';
+      for (var d = 1; d <= total; d++) {
+        var iso = ref.slice(0, 8) + pad2(d), on = st.set[iso];
+        h += '<span style="flex:1; height:8px; border-radius:2px; background:' + (on ? '#06d6a0' : (d <= today ? '#2c3340' : '#171b22')) + ';"></span>';
+      }
+      return h + '</div>';
+    }
+    var ATT_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    function attFirst(name) { var f = String(name || '').trim().split(/\s+/)[0] || ''; return f ? f.charAt(0).toUpperCase() + f.slice(1).toLowerCase() : ''; }
+    function attMsgText(c, st) {
+      var goal = cwGoalFor(c.id), coach = (COACH && COACH.name) ? COACH.name : 'tu coach';
+      var hi = 'Hola ' + attFirst(c.name) + ' 👋 Soy ' + coach + ' de Benessere Gym. ';
+      if (st.kind === 'out') {
+        var t = st.ago < 0 ? 'No he visto tus ingresos al gym en las últimas semanas' : 'Hace ' + st.ago + ' días que no te veo por el gym';
+        return hi + t + ' y quería saber cómo estás. ¿Pasó algo con tu horario o con la rutina? Si quieres, la ajustamos para que te quede cómoda esta semana. ¡Aquí estoy para ayudarte, tu espacio te está esperando! 💪';
+      }
+      return hi + 'Vi que en los últimos 7 días has venido ' + (st.w7 === 1 ? '1 vez' : st.w7 + ' veces') + (goal ? ' y tu rutina está pensada para ' + goal + ' días' : '') + '. ¡Qué bueno que sigues en esto! Quería preguntarte si hay algo que te dificulta venir más seguido (horario, cansancio, la rutina…). Lo vemos juntos y lo adaptamos. ¡Vamos por un día más esta semana! 💪';
+    }
+    function attEl() {
+      var m = document.getElementById('att_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'att_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100005'; document.body.appendChild(m); }
+      return m;
+    }
+    function openAttendance(openKey) {
+      if (!COACH) return;
+      if (!ATT.data) attLoad();
+      if (typeof openKey === 'string') ATT.open = openKey;
+      renderAttendance(); openModal('att_modal');
+      if (ATT.open) setTimeout(function() { var t = document.getElementById('att_ta'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center' }); }, 60);
+    }
+    function attPickFile(inp) {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      var fr = new FileReader();
+      showToastTop('Leyendo el reporte…');
+      fr.onload = function() {
+        try {
+          var parsed = attParseFile(new Uint8Array(fr.result), f.name);
+          if (!parsed.used) { showToastTop('No encontré asistencias válidas en ese archivo.'); inp.value = ''; return; }
+          attMerge(parsed);
+          showToastTop('✅ Reporte cargado: ' + Object.keys(parsed.people).length + ' personas, del ' + fmtDateShort(parsed.from) + ' al ' + fmtDateShort(parsed.to) + '.');
+          renderAttendance(); try { renderCoachWeek(); } catch (e) {}
+        } catch (e) {
+          showToastTop(e && e.message === 'xls' ? 'Ese es un .xls viejo. Ábrelo en Excel y guárdalo como .xlsx (o CSV) y súbelo de nuevo.' : 'No pude leer ese archivo. Sube el Excel (.xlsx) o CSV tal como lo emite el app de ingreso.');
+        }
+        inp.value = '';
+      };
+      fr.onerror = function() { showToastTop('No se pudo abrir el archivo.'); };
+      fr.readAsArrayBuffer(f);
+    }
+    function attClear() {
+      if (!confirm('¿Borrar el reporte de asistencias cargado en este dispositivo? Los clientes y rutinas no se tocan.')) return;
+      try { localStorage.removeItem(ATT_KEY); } catch (e) {}
+      ATT.data = null; ATT.mc = {}; ATT.open = ''; renderAttendance(); try { renderCoachWeek(); } catch (e) {}
+    }
+    function attOpenMsg(i) { var c = ATT.cl[i]; if (!c) return; ATT.open = ATT.open === c.key ? '' : c.key; renderAttendance(); if (ATT.open) setTimeout(function() { var t = document.getElementById('att_ta'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center' }); }, 60); }
+    function attMsgNow() { var t = document.getElementById('att_ta'); return t ? t.value : ''; }
+    function attCopyMsg() { copyTextSilently(attMsgNow()); showToastTop('✅ Mensaje copiado.'); }
+    function attWaMsg() { window.open('https://wa.me/?text=' + encodeURIComponent(attMsgNow()), '_blank'); }
+    function attLinkKey(i, pk) { var c = ATT.cl[i]; if (!c || !ATT.data) return; ATT.data.links[c.key] = pk; attSave(); renderAttendance(); try { renderCoachWeek(); } catch (e) {} }
+    function attLinkTyped(i, val) {
+      var pk = attKey(val); if (!pk) return;
+      if (!ATT.data.p[pk]) { showToastTop('No encontré ese nombre en el reporte. Elige uno de la lista.'); return; }
+      attLinkKey(i, pk);
+    }
+    function attUnlink(key) { if (ATT.data) { delete ATT.data.links[key]; attSave(); renderAttendance(); try { renderCoachWeek(); } catch (e) {} } }
+    function attRowHtml(c, i, st, tag) {
+      var col = st.kind === 'out' ? '#a33' : (st.kind === 'low' ? '#8a6d1a' : '#1f6b3b'), ref = attRef();
+      var info = st.kind === 'out'
+        ? (st.ago < 0 ? 'Sin entradas en todo el reporte' : '<b>' + st.ago + ' días</b> sin ir · última: ' + fmtDate(st.last))
+        : '<b>' + st.w7 + '</b> ' + (st.w7 === 1 ? 'día' : 'días') + ' en los últimos 7 · última: ' + (st.ago === 0 ? 'hoy' : (st.ago === 1 ? 'ayer' : 'hace ' + st.ago + ' días'));
+      var h = '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
+        '<div style="display:flex; gap:8px; align-items:center;"><div style="flex:1; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(c.name) + '</div>' +
+        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + ' · <b>' + st.month + '</b> en ' + ATT_MESES[+ref.slice(5, 7) - 1] + '</div></div>' +
+        (st.kind !== 'ok' ? '<button type="button" onclick="attOpenMsg(' + i + ')" style="background:#06d6a0; color:#000; border:none; border-radius:8px; padding:6px 10px; font-weight:900; font-size:0.72rem; cursor:pointer;">📲 Mensaje</button>' : '') + '</div>' + attStrip(st, ref);
+      if (ATT.open === c.key && st.kind !== 'ok') {
+        var txt = ATT.msgs[c.key] != null ? ATT.msgs[c.key] : attMsgText(c, st);
+        h += '<textarea id="att_ta" oninput="ATT.msgs[' + jsArg(c.key) + ']=this.value" rows="6" style="width:100%; box-sizing:border-box; margin-top:8px; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:0.8rem; font-family:inherit;">' + escHtml(txt) + '</textarea>' +
+          '<div style="display:flex; gap:6px; margin-top:6px;"><button type="button" onclick="attCopyMsg()" style="flex:1; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:8px; font-weight:800; font-size:0.78rem; cursor:pointer;">📋 Copiar</button>' +
+          '<button type="button" onclick="attWaMsg()" style="flex:1; background:#25d366; color:#000; border:none; border-radius:8px; padding:8px; font-weight:900; font-size:0.78rem; cursor:pointer;">WhatsApp</button></div>' +
+          '<div style="font-size:0.66rem; color:var(--muted); margin-top:4px;">WhatsApp se abre con el texto listo; ahí eliges el contacto. Puedes editar el mensaje antes.</div>';
+      }
+      return h + '</div>';
+    }
+    function renderAttendance() {
+      var D = ATT.data, h = '<div class="modal-inner" style="max-width:560px;">' +
+        '<div style="font-size:1.05rem; font-weight:900; color:var(--primary);">🚪 Asistencia al gym</div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 10px;">Carga el Excel de accesos del app de ingreso y verás cuánto viene cada cliente con rutina. Los datos se guardan solo en este dispositivo.</div>';
+      h += '<label style="display:block; background:transparent; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:12px; text-align:center; font-weight:800; font-size:0.85rem; cursor:pointer;">📁 ' + (D ? 'Cargar otro reporte (se suma al actual)' : 'Cargar Excel de accesos') +
+        '<input type="file" accept=".xlsx,.csv,.xls,.txt" style="display:none;" onchange="attPickFile(this)"></label>';
+      if (!D) {
+        h += '<div style="font-size:0.8rem; color:var(--muted); padding:12px 2px; line-height:1.5;">Aún no has cargado ningún reporte. Exporta el «Reporte Accesos» desde el app de ingreso (.xlsx) y súbelo aquí.</div>';
+      } else {
+        var ref = attRef(), today = todayIso(), stale = dayNum(today) - dayNum(ref);
+        h += '<div style="font-size:0.72rem; color:var(--muted); margin:8px 0;">Reporte del ' + fmtDate(D.from) + ' al ' + fmtDate(D.to) + ' · cargado el ' + fmtDate(D.up) + (stale >= 2 ? '' : '') + '</div>';
+        if (stale >= 2) h += '<div style="background:#3a2a10; border:1px solid #8a6d1a; border-radius:10px; padding:8px 10px; font-size:0.76rem; margin-bottom:8px;">⚠️ El reporte llega hasta hace ' + stale + ' días. Los cálculos son a esa fecha; sube uno nuevo para tenerlos al día.</div>';
+        var cl = attClients(); ATT.cl = cl;
+        var out = [], low = [], ok = [], miss = [], off = [];
+        cl.forEach(function(c, i) {
+          var m = attMatch(c);
+          if (m.off) { off.push(i); return; }
+          if (!m.p) { miss.push(i); return; }
+          var st = attStats(m.p, ref); var o = { c: c, i: i, st: st };
+          (st.kind === 'out' ? out : (st.kind === 'low' ? low : ok)).push(o);
+        });
+        out.sort(function(a, b) { return (b.st.ago < 0 ? 999 : b.st.ago) - (a.st.ago < 0 ? 999 : a.st.ago); });
+        low.sort(function(a, b) { return a.st.w7 - b.st.w7 || b.st.ago - a.st.ago; });
+        ok.sort(function(a, b) { return b.st.month - a.st.month; });
+        h += '<div style="background:#102418; border:1px solid #1f6b3b; border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:10px;">' +
+          '<b>' + (out.length + low.length + ok.length) + '</b> clientes con rutina encontrados en el reporte: <b style="color:#ff8a8a;">' + out.length + '</b> sin ir hace 7 días o más · <b style="color:#ffd166;">' + low.length + '</b> viniendo poco (2 días o menos en 7) · <b style="color:#06d6a0;">' + ok.length + '</b> al día.' +
+          (miss.length ? '<br><span style="color:var(--muted); font-size:0.78rem;">' + miss.length + ' sin vincular (abajo).</span>' : '') + '</div>';
+        function sect(title, arr, tag, open) {
+          if (!arr.length) return '';
+          var s = '<details' + (open ? ' open' : '') + ' style="margin-bottom:8px;"><summary style="cursor:pointer; font-weight:900; font-size:0.85rem; padding:6px 0; color:#fff;">' + title + ' (' + arr.length + ')</summary>';
+          arr.forEach(function(o) { s += attRowHtml(o.c, o.i, o.st, tag); });
+          return s + '</details>';
+        }
+        h += sect('🔴 7 días o más sin asistir', out, 'out', true) + sect('🟡 Asistiendo poco (2 días o menos en 7)', low, 'low', true) + sect('🟢 Asistiendo bien', ok, 'ok', false);
+        if (miss.length) {
+          h += '<details open style="margin-bottom:8px;"><summary style="cursor:pointer; font-weight:900; font-size:0.85rem; padding:6px 0; color:#fff;">❓ Sin vincular con el reporte (' + miss.length + ')</summary>' +
+            '<div style="font-size:0.7rem; color:var(--muted); margin-bottom:6px;">No pude saber quién es en el Excel (nombre distinto o varias coincidencias). Vincúlalo una vez y queda guardado.</div>';
+          miss.forEach(function(i) {
+            var c = cl[i], m = attMatch(c), s = '<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin-bottom:6px;"><div style="font-weight:800; color:#fff; font-size:0.85rem;">' + escHtml(c.name) + '</div>';
+            if (m.cands && m.cands.length) { s += '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;">'; m.cands.forEach(function(x) { s += '<button type="button" onclick="attLinkKey(' + i + ',' + jsArg(x.k) + ')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:5px 8px; font-size:0.72rem; font-weight:700; cursor:pointer;">Es ' + escHtml(D.p[x.k].n) + '</button>'; }); s += '</div>'; }
+            s += '<div style="display:flex; gap:6px; margin-top:6px;"><input list="att_dl" placeholder="Escribe su nombre en el reporte" onchange="attLinkTyped(' + i + ',this.value)" style="flex:1; min-width:0; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:6px 8px; font-size:0.78rem;">' +
+              '<button type="button" onclick="attLinkKey(' + i + ',\'-\')" style="background:transparent; color:#aaa; border:1px solid #555; border-radius:8px; padding:5px 8px; font-size:0.7rem; cursor:pointer;">No va al gym</button></div></div>';
+            h += s;
+          });
+          h += '<datalist id="att_dl">' + Object.keys(D.p).sort().map(function(k) { return '<option value="' + escHtml(D.p[k].n) + '">'; }).join('') + '</datalist></details>';
+        }
+        if (off.length) {
+          h += '<details style="margin-bottom:8px;"><summary style="cursor:pointer; font-size:0.78rem; color:var(--muted); padding:6px 0;">🏠 Marcados como «no va al gym» (' + off.length + ')</summary>';
+          off.forEach(function(i) { h += '<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 2px;"><span>' + escHtml(cl[i].name) + '</span><button type="button" onclick="attUnlink(' + jsArg(cl[i].key) + ')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:3px 8px; font-size:0.7rem; cursor:pointer;">Deshacer</button></div>'; });
+          h += '</details>';
+        }
+        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:6px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Se ignoran «Desconocido», accesos deshabilitados y registros sin nombre. Barra del mes: cada casilla es un día, verde = fue al gym.</div>';
+        h += '<button type="button" onclick="attClear()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #555; color:#aaa; border-radius:10px; padding:9px; font-weight:700; font-size:0.78rem; cursor:pointer;">🗑 Borrar reporte cargado</button>';
+      }
+      h += '<button type="button" class="btn-action-primary" style="margin-top:8px;" onclick="closeModal(\'att_modal\')">Cerrar</button></div>';
+      var box = attEl(), oldIn = box.querySelector('.modal-inner'), keep = oldIn ? oldIn.scrollTop : 0;
+      box.innerHTML = h;
+      var nin = box.querySelector('.modal-inner'); if (nin && keep) nin.scrollTop = keep;
+    }
+    // Línea de asistencia dentro de «Esta semana» (una por cliente)
+    function attWeekLine(r) {
+      if (!ATT.data) return '';
+      var c = { key: normName(r.name), name: r.name, id: r.id }, m = attMatch(c);
+      if (!m || m.off) return '';
+      if (!m.p) return '<div style="font-size:0.7rem; color:#8a8f98; margin-top:3px;">🚪 Gym: sin vincular al reporte · <a href="#" onclick="openAttendance(); return false;" style="color:var(--primary);">vincular</a></div>';
+      var ref = attRef(), st = attStats(m.p, ref), tag = '';
+      if (st.kind === 'out') tag = ' · <b style="color:#ff8a8a;">' + (st.ago < 0 ? 'sin entradas' : st.ago + ' días sin ir') + '</b>';
+      else if (st.kind === 'low') tag = ' · <b style="color:#ffd166;">viene poco</b>';
+      return '<div style="font-size:0.72rem; color:var(--muted); margin-top:4px;">🚪 Gym: <b>' + st.wk + '</b> ' + (st.wk === 1 ? 'día' : 'días') + ' esta semana · <b>' + st.month + '</b> en ' + ATT_MESES[+ref.slice(5, 7) - 1] + tag +
+        (st.kind !== 'ok' ? ' · <a href="#" onclick="openAttendance(' + jsArg(c.key) + '); return false;" style="color:#06d6a0; font-weight:800;">📲 mensaje</a>' : '') + '</div>' + attStrip(st, ref);
+    }
+    function attWeekSummary() {
+      if (!ATT.data) return '<button type="button" onclick="openAttendance()" style="width:100%; margin-bottom:10px; background:transparent; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:9px; font-weight:800; font-size:0.78rem; cursor:pointer;">🚪 Cargar asistencias del gym (Excel)</button>';
+      var ref = attRef(), n = { out: 0, low: 0, ok: 0 };
+      attClients().forEach(function(c) { var m = attMatch(c); if (m && m.p) n[attStats(m.p, ref).kind]++; });
+      return '<div style="background:#14202e; border:1px solid #2b4a6b; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">🚪 <b>Gym</b> (reporte al ' + fmtDate(ref) + '): <b style="color:#ff8a8a;">' + n.out + '</b> sin ir 7+ días · <b style="color:#ffd166;">' + n.low + '</b> viniendo poco · <b style="color:#06d6a0;">' + n.ok + '</b> al día · <a href="#" onclick="openAttendance(); return false;" style="color:var(--primary); font-weight:800;">Ver lista y mensajes</a></div>';
+    }
+    attLoad();
 
     // ----- Temporizador de circuitos (pantalla completa) -----
     var TRANS_SECS = 15;   // transición para preparar el siguiente ejercicio
