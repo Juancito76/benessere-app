@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6963,7 +6963,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Los datos se comparten por un script de Google aparte (REC_URL_DEFAULT o la dirección pegada en la pestaña); sin él, todo queda en este dispositivo.
     var REC_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzHwQspUXtKP90BTtcjzOlDpiHQNJJv2O-eq_tsRMRnyzEzVc9bqaVFa8rIE_bBPk1Y/exec';   // dirección del script de Recepción (termina en /exec)
     var REC_KEY = 'bn_rec_v1', REC_PIN_KEY = 'bn_rec_pin', REC_URL_KEY = 'bn_rec_url';
-    var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [], checked: {}, force: 'auto', queue: null, week: '' };
+    var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [], checked: {}, force: 'auto', queue: null, week: '', sentLog: {} };
+    var REC_COLORS = { falta: '#ff4d4d', poco: '#ffd166', felicitacion: '#06d6a0', cumple: '#ff8fd1', renovar: '#ff9f43', otro: '#9aa4b2' };   // color del punto de «mensaje enviado» según el tipo
+    function recLogSent(k, tipo) {   // anota un envío (fecha + tipo) en el historial de ese cliente
+      var rec = { f: new Date().toISOString(), tipo: tipo, quien: REC.quien || '' };
+      REC.sent[k] = rec; (REC.sentLog[k] = REC.sentLog[k] || []).push({ f: rec.f, tipo: tipo }); recSaveLocal(); return rec;
+    }
     var REC_TIPOS = { falta: '🔴 Hace días que no viene', renovar: '🚫 Acceso denegado', poco: '🟡 Viene poco', felicitacion: '🟢 Felicitación por asistencia', cumple: '🎂 Cumpleaños', otro: '💬 Otro' };
     var REC_DEF_TPLS = [
       { id: 'd1', tipo: 'falta', titulo: 'Te extrañamos', texto: 'Hola {nombre} 👋 Soy {quien} de Benessere Gym. Hace {dias} días que no te vemos por el gym y queríamos saber cómo estás. ¿Pasó algo con tu horario? Aquí estamos para ayudarte a retomar, ¡tu espacio te está esperando! 💪' },
@@ -6975,14 +6980,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recUrl() { var u = REC_URL_DEFAULT; if (!u) { try { u = localStorage.getItem(REC_URL_KEY) || ''; } catch (e) {} } return /^https:\/\/script\.google\.com\//.test(u) ? u : ''; }
     function recPost(body) { return fetchJson(recUrl(), { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }, 40000); }
     function recLoadLocal() {
-      try { var o = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (o) { REC.people = o.people || {}; REC.contacts = o.contacts || {}; REC.tpls = o.tpls || []; REC.sent = o.sent || {}; REC.meta = o.meta || {}; } } catch (e) {}
+      try { var o = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (o) { REC.people = o.people || {}; REC.contacts = o.contacts || {}; REC.tpls = o.tpls || []; REC.sent = o.sent || {}; REC.sentLog = o.sentLog || {}; REC.meta = o.meta || {}; } } catch (e) {}
       recEnsureTpls();
     }
     function recEnsureTpls() {   // siempre debe haber al menos un mensaje de cada tipo básico
       if (!REC.tpls || !REC.tpls.length) REC.tpls = [];
       REC_DEF_TPLS.forEach(function(d) { if (!REC.tpls.some(function(t) { return t.tipo === d.tipo; })) REC.tpls.push(Object.assign({}, d)); });
     }
-    function recSaveLocal() { try { localStorage.setItem(REC_KEY, JSON.stringify({ people: REC.people, contacts: REC.contacts, tpls: REC.tpls, sent: REC.sent, meta: REC.meta })); } catch (e) {} }
+    function recSaveLocal() { try { localStorage.setItem(REC_KEY, JSON.stringify({ people: REC.people, contacts: REC.contacts, tpls: REC.tpls, sent: REC.sent, sentLog: REC.sentLog, meta: REC.meta })); } catch (e) {} }
     function recEl() {
       var m = document.getElementById('rec_view');
       if (!m) { m = document.createElement('div'); m.id = 'rec_view'; m.className = 'view-screen'; m.style.zIndex = '100010'; document.body.appendChild(m); }
@@ -7015,7 +7020,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recApplyServer(j) {
       var ppl = {}; (j.personas || []).forEach(function(x) { if (x && x.k) ppl[x.k] = { n: x.n, d: String(x.d || '').split(',').filter(Boolean), x: String(x.x || '').split(',').filter(Boolean) }; });
       var con = {}; (j.contactos || []).forEach(function(x) { if (x && x.k) con[x.k] = { n: x.n, t: x.t || '', b: x.b || '' }; });
-      var snt = {}; (j.envios || []).forEach(function(x) { if (x && x.k) snt[x.k] = { f: x.f, tipo: x.tipo, quien: x.quien }; });
+      var snt = {}, slog = {}; (j.envios || []).forEach(function(x) { if (x && x.k) { (slog[x.k] = slog[x.k] || []).push({ f: x.f, tipo: x.tipo }); if (!snt[x.k] || x.f > snt[x.k].f) snt[x.k] = { f: x.f, tipo: x.tipo, quien: x.quien }; } });
+      Object.keys(REC.sentLog || {}).forEach(function(k) { REC.sentLog[k].forEach(function(e) { var arr = slog[k] = slog[k] || []; if (!arr.some(function(y) { return y.f.slice(0, 16) === String(e.f).slice(0, 16) && y.tipo === e.tipo; })) { arr.push(e); if (!snt[k] || e.f > snt[k].f) snt[k] = { f: e.f, tipo: e.tipo, quien: '' }; } }); });   // se conservan los envíos locales que aún no llegaron al servidor
+      REC.sentLog = slog;
       var pend = []; Object.keys(REC.contacts || {}).forEach(function(k) { var c = REC.contacts[k]; if (c && (c.t || c.b) && !con[k]) { con[k] = c; pend.push(k); } });   // no se pierden los contactos que quedaron sin enviar
       REC.people = ppl; REC.contacts = con; REC.sent = snt; REC.meta = j.meta || {};
       if (pend.length && recUrl() && REC.pin) setTimeout(function() { pend.forEach(recSendContact); }, 300);
@@ -7137,9 +7144,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function recWeekLabel(mon) { var a = new Date(mon + 'T12:00:00'), b = new Date(a.getTime()); b.setDate(b.getDate() + 6); var mm = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return a.getDate() + (a.getMonth() === b.getMonth() ? '' : ' ' + mm[a.getMonth()]) + ' al ' + b.getDate() + ' ' + mm[b.getMonth()]; }
     function recSetWeek(v) { REC.week = v; recRender(); }
-    function recWeekStrip(p) {   // grupos de 7 casillas pequeñas (L K M J V S D), uno por semana del reporte; verde = vino, rojo = acceso denegado
+    function recWeekStrip(p, k) {   // grupos de 7 casillas pequeñas (L K M J V S D), uno por semana del reporte; verde = vino, rojo = acceso denegado
       var from = REC.meta.from || '', to = recRefDate(), today = todayIso(), came = {}, den = {};
       (p.d || []).forEach(function(x) { came[x] = 1; }); (p.x || []).forEach(function(x) { den[x] = 1; });
+      var msgs = {}; ((REC.sentLog && REC.sentLog[k]) || []).forEach(function(e) { var di = isoOfDate(new Date(e.f)); (msgs[di] = msgs[di] || []).push(e.tipo); });
       var h = '<div style="display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:6px;">';
       recWeeks().slice().reverse().forEach(function(mon) {
         var n = 0, cells = '';
@@ -7150,7 +7158,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           else if (den[iso]) { st = 'background:#4a1414; color:#ff9a9a; box-shadow:inset 0 0 0 1.5px #ff4d4d;'; ttl += ': acceso DENEGADO'; }
           else if ((from && iso < from) || iso > to || iso > today) { st = 'background:transparent; color:#4a4f5a; box-shadow:inset 0 0 0 1px #2c3340;'; ttl += ': sin datos'; }
           else { st = 'background:#2c3340; color:#7a8190;'; ttl += ': no vino'; }
-          cells += '<span title="' + ttl + '" style="width:15px; height:19px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.58rem; ' + st + '">' + REC_DL[i] + '</span>';
+          var dot = '', mt = msgs[iso];
+          if (mt) { var lt = mt[mt.length - 1]; dot = '<i style="position:absolute; top:-3px; right:-3px; width:8px; height:8px; border-radius:50%; background:' + (REC_COLORS[lt] || '#9aa4b2') + '; border:1.5px solid #0f1217;"></i>'; ttl += ' · ✉ mensaje enviado (' + mt.map(function(t) { return (REC_TIPOS[t] || t).replace(/^\S+\s/, ''); }).join(', ') + ')'; }
+          cells += '<span title="' + ttl + '" style="position:relative; width:15px; height:19px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.58rem; ' + st + '">' + REC_DL[i] + dot + '</span>';
         }
         h += '<div><div style="display:flex; gap:2px;">' + cells + '</div><div style="font-size:0.58rem; color:var(--muted); margin-top:2px; white-space:nowrap;">' + recWeekLabel(mon) + ' · <b style="color:' + (n ? '#06d6a0' : '#8a8f98') + ';">' + n + '</b></div></div>';
       });
@@ -7186,7 +7196,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (ph.length < 10) { showToastTop('Primero escribe el teléfono de este cliente.'); return; }
       var tipo = REC.sel[o.k] || recDefaultType(o.kd);
       window.open('https://wa.me/' + ph + '?text=' + encodeURIComponent(recMsgNow()), '_blank');
-      var rec = { f: new Date().toISOString(), tipo: tipo, quien: REC.quien || '' }; REC.sent[o.k] = rec; recSaveLocal();
+      recLogSent(o.k, tipo);
       if (recUrl() && REC.pin) recPost({ a: 'rec_enviado', pin: REC.pin, k: o.k, tipo: tipo, quien: REC.quien || '' }).catch(function() {});
       setTimeout(recRender, 400);
     }
@@ -7256,7 +7266,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var it = q.items[q.i];
       if (!it.ph) { q.ask = true; recRender(); setTimeout(function() { var e = document.getElementById('rec_askph'); if (e) e.focus(); }, 80); return; }
       window.open('https://wa.me/' + it.ph + '?text=' + encodeURIComponent(it.txt), '_blank');
-      REC.sent[it.k] = { f: new Date().toISOString(), tipo: it.tipo, quien: REC.quien || '' }; recSaveLocal(); delete REC.checked[it.k];
+      recLogSent(it.k, it.tipo); delete REC.checked[it.k];
       if (recUrl() && REC.pin) recPost({ a: 'rec_enviado', pin: REC.pin, k: it.k, tipo: it.tipo, quien: REC.quien || '' }).catch(function() {});
       q.i++; q.sentN++; q.last = it.name; q.ask = false;
       if (q.i >= q.items.length) recQueueFinish();
@@ -7269,6 +7279,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       c.t = e.value.trim(); recSaveLocal(); recSendContact(it.k); it.ph = ph; q.ask = false;
       recQueueNext();
     }
+    function recQueueFind() {   // sin número: copia el nombre y abre WhatsApp con el mensaje listo para elegir el contacto en su agenda
+      var q = REC.queue; if (!q) return; var it = q.items[q.i];
+      copyTextSilently(it.name);
+      window.open('https://wa.me/?text=' + encodeURIComponent(it.txt), '_blank');
+      showToastTop('Nombre copiado: pégalo en el buscador de WhatsApp y elige el contacto.');
+      recLogSent(it.k, it.tipo); delete REC.checked[it.k];
+      if (recUrl() && REC.pin) recPost({ a: 'rec_enviado', pin: REC.pin, k: it.k, tipo: it.tipo, quien: REC.quien || '' }).catch(function() {});
+      q.i++; q.sentN++; q.last = it.name; q.ask = false;
+      if (q.i >= q.items.length) recQueueFinish();
+      recRender();
+    }
     function recQueueSkip() { var q = REC.queue; if (!q) return; q.skipN++; q.i++; q.ask = false; recQueueNext(); }
     function recQueueCancel() { REC.queue = null; recRender(); }
     function recSendBarHtml() {
@@ -7280,6 +7301,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var it = q.items[q.i];
           h += '<div style="font-size:0.84rem; margin-bottom:6px;">📞 <b>' + escHtml(it.name) + '</b> no tiene teléfono. Agrégalo para abrir su chat <span style="color:var(--muted);">(quedan ' + left + ')</span>:</div>' +
             '<input type="tel" id="rec_askph" placeholder="8888 1234" onkeydown="if(event.key===\'Enter\')recQueueAsk()" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:0.95rem; margin-bottom:6px;">' +
+            '<button type="button" onclick="recQueueFind()" style="width:100%; background:transparent; color:#9fe8c8; border:1px solid #25d366; margin-bottom:6px; ' + btn + '">🔎 Buscarlo en WhatsApp por nombre (sin número)</button>' +
             '<div style="display:flex; gap:6px;"><button type="button" onclick="recQueueAsk()" style="flex:2; background:#25d366; color:#000; border:none; font-weight:900; ' + btn + '">Guardar y abrir WhatsApp</button>' +
             '<button type="button" onclick="recQueueSkip()" style="flex:1; background:transparent; color:#ddd; border:1px solid #666; ' + btn + '">Saltar</button>' +
             '<button type="button" onclick="recQueueCancel()" style="background:transparent; color:#aaa; border:1px solid #555; ' + btn + '">✕</button></div>';
@@ -7367,7 +7389,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!hasData) {
         h += '<div style="font-size:0.85rem; color:var(--muted); padding:14px 2px; line-height:1.5;">Carga el Excel de accesos para ver quién viene, quién empezó a faltar y a quién felicitar.</div>';
       } else {
-        h += '<div style="font-size:0.66rem; color:var(--muted); margin:-2px 0 8px;">Cada grupo de 7 casillas es una semana (L K M J V S D), de la más antigua a la más reciente, y el número es cuántos días vino. <span style="color:#06d6a0; font-weight:800;">Verde</span> = vino · <span style="color:#ff8a8a; font-weight:800;">rojo</span> = acceso denegado · gris = no vino · con borde = sin datos.</div>';
+        h += '<div style="font-size:0.66rem; color:var(--muted); margin:-2px 0 8px;">Cada grupo de 7 casillas es una semana (L K M J V S D), de la más antigua a la más reciente, y el número es cuántos días vino. El <b>punto de color</b> sobre un día es un mensaje enviado ese día: <span style="color:#ff4d4d;">●</span> falta · <span style="color:#ffd166;">●</span> poco · <span style="color:#06d6a0;">●</span> felicitación · <span style="color:#ff8fd1;">●</span> cumpleaños · <span style="color:#ff9f43;">●</span> acceso denegado. <span style="color:#06d6a0; font-weight:800;">Verde</span> = vino · <span style="color:#ff8a8a; font-weight:800;">rojo</span> = acceso denegado · gris = no vino · con borde = sin datos.</div>';
         h += '<div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px;">';
         [['todos', 'Todos', all.length - cnt.gone], ['out', '🔴 Sin venir', cnt.out], ['low', '🟡 Poco (1)', cnt.low], ['mid', '🔵 Normal (2)', cnt.mid], ['great', '🟢 Impecable (3+)', cnt.great], ['cumple', '🎂 Cumple', cnt.cumple], ['denied', '🚫 Denegados', cnt.denied], ['sintel', '📵 Sin teléfono', cnt.sintel], ['gone', '💤 30+ días', cnt.gone]].forEach(function(x) {
           h += '<button type="button" onclick="recSetFilter(\'' + x[0] + '\')" style="border-radius:999px; padding:6px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; border:1px solid ' + (f === x[0] ? 'var(--primary)' : '#444') + '; background:' + (f === x[0] ? 'var(--primary)' : 'transparent') + '; color:' + (f === x[0] ? '#000' : '#ccc') + ';">' + x[1] + ' · ' + x[2] + '</button>';
@@ -7394,12 +7416,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recRowHtml(o, i) {
       var k = o.k, st = o.st, kd = o.kd, c = REC.contacts[k] || {}, ref = (REC.meta.to || todayIso()), col = kd.base === 'out' || kd.base === 'gone' ? '#a33' : (kd.base === 'low' ? '#8a6d1a' : (kd.base === 'mid' ? '#2b6cb0' : '#1f6b3b'));
       var sent = REC.sent[k], sentTxt = '';
-      if (sent) { var sd = Math.floor((Date.now() - new Date(sent.f).getTime()) / 86400000); sentTxt = ' · <span style="color:#9fe8c8;">✔ ' + (REC_TIPOS[sent.tipo] ? REC_TIPOS[sent.tipo].replace(/^\S+\s/, '') : 'enviado') + (sd <= 0 ? ' hoy' : ' hace ' + sd + ' d') + '</span>'; }
+      if (sent) { var sdt = isoOfDate(new Date(sent.f)), sc = REC_COLORS[sent.tipo] || '#9aa4b2'; sentTxt = ' · <span style="color:' + sc + '; font-weight:800;">● ✉ ' + fmtDateShort(sdt) + '</span> <span style="color:var(--muted);">(' + (REC_TIPOS[sent.tipo] ? REC_TIPOS[sent.tipo].replace(/^\S+\s/, '') : 'mensaje') + ')</span>'; }
       var info = st.ago < 0 && !o.p.d.length ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : (st.ago === 0 ? 'Vino hoy' : 'Última vez: hace ' + st.ago + ' d')) + (o.p.d.length ? ' · mes: <b>' + st.month + '</b>' : '') + (kd.denied ? ' · <b style="color:#ff8a8a;">🚫 acceso denegado ' + fmtDateShort(kd.lastX) + '</b>' : '');
       var bday = kd.bd === 0 ? ' · <b style="color:#ff8fd1;">🎂 HOY</b>' : (kd.bd <= 7 ? ' · 🎂 en ' + kd.bd + ' d' : '');
       var h = '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
         '<div style="display:flex; gap:8px; align-items:flex-start;"><input type="checkbox" ' + (REC.checked[k] ? 'checked ' : '') + 'onchange="recCheck(' + i + ',this.checked)" style="width:20px; height:20px; margin-top:2px; flex-shrink:0;"><div onclick="recToggle(' + i + ')" style="cursor:pointer; flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
-        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + recWeekStrip(o.p) + '</div></div>';
+        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + recWeekStrip(o.p, o.k) + '</div></div>';
       if (REC.open === k) {
         var tipo = REC.sel[k] || recDefaultType(kd), tps = REC.tpls.filter(function(t) { return t.tipo === tipo; }), tid = REC.tsel[k] || (tps[0] && tps[0].id) || '', tpl = REC.tpls.filter(function(t) { return t.id === tid; })[0] || tps[0];
         var txt = REC.msgs[k] != null ? REC.msgs[k] : (tpl ? recFill(tpl.texto, recMsgCtx(o.p, st)) : '');
