@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9079,7 +9079,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var CLASS_ID = 'af2c58b9b2cec8e2';   // código del link único de clases (se pega aquí tras la primera publicación, como ANNOUNCE_ID)
     var CLS_ID_KEY = 'benessere_class_id', CLS_PAY_KEY = 'benessere_class_payload';
     var CLS_ME = '';   // código del cliente que está viendo las clases desde su rutina ('' = link público)
-    var CLS_VIEW = false, CLS_PREVIEW = false, CLS_DATA = null, CLS_TAB = 'hoy', CLS_SEL = { ant: 0, ret: -1 }, CLS_SHOWN = { hoy: null, ant: [], ret: [] }, CLS_PUBMSG = '';
+    var CLS_VIEW = false, CLS_PREVIEW = false, CLS_DATA = null, CLS_TAB = 'hoy', CLS_SEL = { ant: -1, ret: -1 }, CLS_SHOWN = { hoy: null, ant: [], ret: [] }, CLS_PUBMSG = '';
     function clsLinkId() { var v = CLASS_ID; if (!v) { try { v = localStorage.getItem(CLS_ID_KEY) || ''; } catch (e) {} } return v; }
     function clsHoyId() { return (CLS.hoy && (!CLS.hoyD || CLS.hoyD >= todayIso())) ? CLS.hoy : ''; }   // pasado el día, la clase de hoy cae a la lista
     var CLS_WORK = null;      // clase leída que se está revisando (aún sin guardar)
@@ -9691,15 +9691,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function clsTab(k) { CLS_TAB = k; clsPaint(); }
     // Retos: una pestaña por reto, hacia abajo, ordenadas por fecha. Todas cerradas al entrar; al tocar una se despliega (solo una a la vez) y al tocarla otra vez se cierra
-    function clsRetoToggle(k) { CLS_SEL.ret = CLS_SEL.ret === k ? -1 : k; clsPaint(); }
-    function clsRetoTabs() {
-      var list = CLS_SHOWN.ret; if (!list.length) return '';
-      var open = CLS_SEL.ret, yr = todayIso().slice(0, 4);
+    function clsAccToggle(kind, k) { CLS_SEL[kind] = CLS_SEL[kind] === k ? -1 : k; clsPaint(); }
+    function clsAccordion(kind, icon) {
+      var list = CLS_SHOWN[kind]; if (!list.length) return '';
+      var open = CLS_SEL[kind], yr = todayIso().slice(0, 4);
       return '<div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">' + list.map(function(c, k) {
         var on = k === open, fd = c.f.slice(0, 4) === yr ? fmtDateShort(c.f) : fmtDate(c.f);
-        return '<div><button type="button" onclick="clsRetoToggle(' + k + ')" style="width:100%; display:flex; justify-content:space-between; align-items:center; gap:8px; padding:14px; border-radius:12px; font-weight:800; font-size:0.92rem; cursor:pointer; text-align:left; border:1px solid ' + (on ? '#ff9f1c' : '#333') + '; background:' + (on ? '#ff9f1c' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';"><span>🏆 ' + escHtml(c.t) + ' · ' + fd + '</span><span>' + (on ? '▾' : '▸') + '</span></button>' + (on ? clsCardHtml(c, 'ret', k) : '') + '</div>';
+        return '<div><button type="button" onclick="clsAccToggle(\'' + kind + '\',' + k + ')" style="width:100%; display:flex; justify-content:space-between; align-items:center; gap:8px; padding:14px; border-radius:12px; font-weight:800; font-size:0.92rem; cursor:pointer; text-align:left; border:1px solid ' + (on ? '#ff9f1c' : '#333') + '; background:' + (on ? '#ff9f1c' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';"><span>' + icon + escHtml(c.t) + ' · ' + fd + '</span><span>' + (on ? '▾' : '▸') + '</span></button>' + (on ? clsCardHtml(c, kind, k) : '') + '</div>';
       }).join('') + '</div>';
     }
+    function clsRetoTabs() { return clsAccordion('ret', '🏆 '); }
     function clsPickSel(k, v) { CLS_SEL[k] = parseInt(v, 10) || 0; clsPaint(); }
     function clsCardHtml(c, kind, idx) {
       var dur = clsDuration(c.items), open = clsHasOpen(c.items), dtxt = open ? ((clsFmtMin(dur) ? '~' + clsFmtMin(dur) + ' + ' : '') + 'ejercicios por repeticiones') : (clsFmtMin(dur) ? '~' + clsFmtMin(dur) : '');
@@ -9736,7 +9737,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           return '<button type="button" onclick="clsTab(\'' + t[0] + '\')" style="flex:1; padding:10px 4px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer; border:1px solid ' + (on ? 'var(--primary)' : '#333') + '; background:' + (on ? 'var(--primary)' : '#161616') + '; color:' + (on ? '#000' : '#fff') + ';">' + t[1] + '</button>';
         }).join('') + '</div>';
       if (CLS_TAB === 'hoy') h += d.hoy ? clsCardHtml(d.hoy, 'hoy', 0) : '<div style="color:var(--muted); margin-top:18px; text-align:center; line-height:1.5;">Hoy todavía no hay una clase publicada.' + (d.ant.length ? '<br>Mira las clases anteriores 👆' : '') + '</div>';
-      else if (CLS_TAB === 'ant') h += clsSelPanel('ant', '');
+      else if (CLS_TAB === 'ant') h += clsAccordion('ant', '📅 ');
       else h += clsRetoTabs();
       box.innerHTML = h;
     }
