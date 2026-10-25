@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-v';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -592,6 +592,8 @@
     @media (max-width: 640px) { .header-brand { display: none; } .header-title p { font-size: .72rem; } .hd-logo { width: 48px; } }
     .gen-tabs { position: sticky; top: 0; z-index: 60; padding: 8px 2px 10px; margin: 0 -2px 14px; background: linear-gradient(180deg, rgba(13,13,13,.97) 70%, rgba(13,13,13,0)); backdrop-filter: blur(6px); scrollbar-width: none; }
     .gen-tabs::-webkit-scrollbar { display: none; }
+    /* En computador (pantalla ancha) las pestañas bajan a una segunda fila en vez de esconderse a la derecha */
+    @media (min-width: 900px) { .gen-tabs { flex-wrap: wrap; overflow-x: visible; } }
     .gen-tab-btn { font-size: .82rem; padding: 10px 16px; }
     .gen-tab-btn:not(.active):hover { border-color: #4a4a4a; color: #fff; }
     .section-title { font-size: .95rem; letter-spacing: .6px; padding-bottom: 10px; border-bottom: 1px solid #2a2a2a; position: relative; }
@@ -1078,6 +1080,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <button type="button" class="btn btn-accent" id="exportTextCopyBtn" style="flex:1;" onclick="copyExportText()">📋 Copiar texto</button>
         <button type="button" class="btn btn-secondary" style="flex:1;" onclick="downloadExportText()">⬇️ Descargar .txt</button>
       </div>
+      <button type="button" class="btn btn-accent" id="exportTextEditBtn" style="display:none; width:100%; margin-bottom:8px;" onclick="exportTextGoEdit()">✏️ Cargar a este cliente para actualizarlo con el texto corregido</button>
       <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_export_text')">Cerrar</button>
     </div>
   </div>
@@ -3076,12 +3079,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var lines = raw.split('\n').map(function(l) { return l.trim(); });
       var curSection = null, curDay = null, parsedDays = [];
       var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1, lastCircuit = null;
-      var importMeas = {}, importMeasDate = '';
+      var importMeas = {}, importMeasDate = '', histMeas = [], curMed = null;
 
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         if (!line) continue;
         if (line.indexOf('[ATLETA]') === 0) { curSection = 'ATLETA'; continue; }
+        // Mediciones anteriores: "[MEDICION 2026-09-18]" seguido de sus líneas de medidas
+        if (/^\[medici[oó]n/i.test(line)) { curSection = 'MEDICION'; var mdm = line.match(/\d{4}-\d{2}-\d{2}/); curMed = { d: mdm ? mdm[0] : '', v: {} }; histMeas.push(curMed); continue; }
         if (line.indexOf('[MENSAJE') === 0 || line.indexOf('[COACH') === 0) { curSection = 'MENSAJE_COACH'; continue; }
         if (line.indexOf('[DIA') === 0 || line.indexOf('[DESCANSO') === 0) {
           curSection = 'DIA';
@@ -3101,6 +3106,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           pendingVigencia = null; currentSlotCounter = 0; lastHandledSlot = 1;
           continue;
         }
+        if (curSection === 'MEDICION') { if (curMed) parseImportMeasureLine(line, curMed.v); continue; }
         if (curSection === 'ATLETA') {
           var lineLower = line.toLowerCase();
           if (lineLower.indexOf('nombre:') === 0) document.getElementById('clientName').value = line.split(':')[1].trim();
@@ -3329,9 +3335,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
         routineDays = parsedDays;
         renderDays();
+        // Mediciones anteriores del historial (bloques [MEDICION fecha]): se agregan o reemplazan por fecha, sin tocar el resto
+        var nHist = 0;
+        histMeas.forEach(function(hm) {
+          if (!isIsoDate(hm.d)) return;
+          var hv = {}, hk = 0;
+          Object.keys(hm.v).forEach(function(k) { if (k.indexOf('__') !== 0 && isFinite(hm.v[k])) { hv[k] = hm.v[k]; hk++; } });
+          if (!hk) return;
+          var hi = indexOfDate(measureLog, hm.d);
+          if (hi >= 0) measureLog[hi] = { d: hm.d, v: hv }; else measureLog.push({ d: hm.d, v: hv });
+          nHist++;
+        });
+        if (nHist) { measureLog.sort(byDate); renderMeasureLog(); }
         var nMeas = applyImportedMeasures(importMeas, importMeasDate || document.getElementById('startDate').value);
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-        alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días' + (nMeas ? ' y ' + nMeas + ' medidas (revísalas en "👤 Datos Atleta & Medidas").' : '.'));
+        alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días' + (nMeas ? ' y ' + nMeas + ' medidas (revísalas en "👤 Datos Atleta & Medidas").' : '.') + (nHist ? '\nTambién se cargaron ' + nHist + ' medición(es) anterior(es) en el historial.' : ''));
       } else {
         alert('No se detectaron días válidos.');
       }
@@ -3383,13 +3401,32 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (Object.keys(formVals).length) { mVals = formVals; mDate = (last && sameValues(last.v, formVals)) ? last.d : (g('m_fecha') || todayIso()); }
       else if (last) { mVals = last.v; mDate = last.d; }
       if (mVals) {
-        var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I' };
-        MEASURE_FIELDS.forEach(function(f) { if (mVals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(mVals[f.k], f.unit)); });
+        expMeasureLines(L, mVals);
         if (isIsoDate(mDate)) L.push('Fecha medicion: ' + mDate);
       }
+      expHistoryBlocks(L, log, mDate);   // mediciones anteriores del historial
+      expMessageAndDays(L, g('coachMsgTitle'), g('coachMsgBody'), routineDays);
+      return L.join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
+    }
 
+    // Líneas de medidas ("Peso: 78.5 kg", "Cintura 1: 84 cm"...) de una medición
+    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I' };
+    function expMeasureLines(L, vals) {
+      MEASURE_FIELDS.forEach(function(f) { if (vals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(vals[f.k], f.unit)); });
+    }
+    // Mediciones anteriores: un bloque [MEDICION AAAA-MM-DD] por cada una (la más reciente va en [ATLETA]); el importador las vuelve a leer
+    function expHistoryBlocks(L, entries, skipDate) {
+      (entries || []).forEach(function(e) {
+        if (!e || !isIsoDate(e.d) || e.d === skipDate || !e.v) return;
+        L.push('', '[MEDICION ' + e.d + ']');
+        if (e.src === 'a') L.push('Origen: anotada por el cliente');
+        expMeasureLines(L, e.v);
+      });
+    }
+
+    // Mensaje del coach + días de la rutina (compartido por el exportador del constructor y el del perfil de cada cliente)
+    function expMessageAndDays(L, mt, mb, days) {
       // ----- [MENSAJE COACH] -----
-      var mt = g('coachMsgTitle'), mb = g('coachMsgBody');
       if (mt || mb) {
         L.push('', '[MENSAJE COACH]');
         if (mt) L.push('Titulo: ' + mt);
@@ -3401,7 +3438,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
 
       // ----- Días -----
-      routineDays.forEach(function(d, di) {
+      (days || []).forEach(function(d, di) {
         var title = String(d.title || '');
         var mNum = title.match(/d[ií]a\s*(\d+)/i);
         var num = mNum ? mNum[1] : String(di + 1);
@@ -3485,21 +3522,86 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           }
         });
       });
+    }
+
+    // Texto plano de una rutina ya guardada en la hoja (perfil de un cliente en «Mis clientes»): rutina vigente con todos sus cambios,
+    // nota del coach, alimentación y TODO el historial de medidas (las del coach y las que anotó el propio cliente).
+    // «own»: mediciones del cliente [{d, v}]; si el coach midió ese mismo día, gana la del coach.
+    function buildExportTextFromState(st, own) {
+      var L = [];
+      var ms = st.measures || {};
+      function mv(k) { var v = String(ms[k] == null ? '' : ms[k]).trim(); return v === '-' ? '' : v; }
+      L.push('[ATLETA]');
+      if (st.clientName) L.push('Nombre: ' + st.clientName);
+      L.push('Genero: ' + (st.clientGender === 'a' ? 'a' : 'o'));
+      if (st.startDate) L.push('Fecha: ' + st.startDate);
+      if (st.durationWeeks) L.push('Semanas: ' + st.durationWeeks);
+      if (mv('m_objetivo')) L.push('Objetivo: ' + expClean(mv('m_objetivo')));
+      if (mv('m_estatura')) L.push('Estatura: ' + mv('m_estatura'));
+      if (mv('m_edad')) L.push('Edad: ' + mv('m_edad'));
+      var coachLog = normalizeMeasureLog(st.measureLog);
+      if (!coachLog.length) { var base = legacyBaseline(st); if (base) coachLog = [base]; }
+      var entries = coachLog.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
+      (own || []).forEach(function(e) { if (indexOfDate(entries, e.d) < 0) entries.push({ d: e.d, v: e.v, src: 'a' }); });
+      entries.sort(byDate);
+      var last = entries.length ? entries[entries.length - 1] : null;
+      if (last) { expMeasureLines(L, last.v); L.push('Fecha medicion: ' + last.d); }
+      expHistoryBlocks(L, entries, last ? last.d : '');
+      expMessageAndDays(L, String(st.coachMsgTitle || '').trim(), String(st.coachMsgBody || '').trim(), st.routineDays || []);
       return L.join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
     }
 
-    function openExportText() {
-      var txt = buildExportText();
-      document.getElementById('exportTextArea').value = txt;
-      var nDays = routineDays.length;
+    var exportTextName = '', exportTextEditId = '';   // cliente al que pertenece el texto abierto (vacío = lo que está montado en el constructor)
+    function expStatsText(days, log) {
       var nEx = 0, hasDiet = false;
-      routineDays.forEach(function(d) {
+      (days || []).forEach(function(d) {
         (d.items || []).forEach(function(it) { (it.sub || []).forEach(function(s) { if (String(s.name || '').trim()) nEx++; }); });
         var df = d.diet || {}; if (df.desayuno || df.snack || df.almuerzo || df.cena) hasDiet = true;
       });
-      document.getElementById('exportTextInfo').innerText = nDays + ' día(s), ' + nEx + ' ejercicio(s)/estación(es)' + (hasDiet ? ', con alimentación' : ', sin alimentación') + '. Es el mismo formato de "📥 Importación Rápida de Texto": se puede pegar allá para volver a cargarlo. Las medidas incluyen solo la medición más reciente.';
+      return (days || []).length + ' día(s), ' + nEx + ' ejercicio(s)/estación(es)' + (hasDiet ? ', con alimentación' : ', sin alimentación') + (log ? ', ' + log + ' medición(es)' : '') + '. ';
+    }
+    function showExportModal(txt, info, name, editId) {
+      document.getElementById('exportTextArea').value = txt;
+      document.getElementById('exportTextInfo').innerText = info;
+      exportTextName = name || ''; exportTextEditId = editId || '';
+      var eb = document.getElementById('exportTextEditBtn'); if (eb) eb.style.display = editId ? 'block' : 'none';
       var cb = document.getElementById('exportTextCopyBtn'); if (cb) cb.innerText = '📋 Copiar texto';
       openModal('modal_export_text');
+    }
+    function openExportText() {
+      var txt = buildExportText();
+      var nLog = normalizeMeasureLog(measureLog).length;
+      showExportModal(txt, expStatsText(routineDays, 0) + 'Es el mismo formato de "📥 Importación Rápida de Texto": se puede pegar allá para volver a cargarlo. La medición más reciente va en [ATLETA] y las anteriores (' + Math.max(0, nLog - 1) + ') en bloques [MEDICION fecha].', '', '');
+    }
+    // Botón «📤 Texto plano» del perfil de cada cliente: trae lo último guardado de ese cliente y arma el texto para corregirlo y volver a subirlo
+    var clientExportBusy = false;
+    function clientExportText(id, name) {
+      if (!COACH || clientExportBusy) return;
+      clientExportBusy = true;
+      var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Preparando el texto de ' + name + '… puede tardar unos segundos';
+      var state = null, ownFail = false;
+      fetchRoutine(id).then(function(j) {
+        state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
+        if (!state) throw new Error('lectura');
+        return fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).catch(function() { ownFail = true; return null; });
+      }).then(function(h) {
+        var best = null;
+        if (h && h.ok && Array.isArray(h.sesiones)) h.sesiones.forEach(function(x) { if (x && isMetaSess(x) && Array.isArray(x.md) && (!best || x.t > best.t)) best = x; });
+        var own = best ? normalizeMeasureLog(best.md) : [];
+        var txt = buildExportTextFromState(state, own);
+        var nMeas = normalizeMeasureLog(state.measureLog).length + own.filter(function(e) { return indexOfDate(normalizeMeasureLog(state.measureLog), e.d) < 0; }).length;
+        var info = name + ': ' + expStatsText(state.routineDays, nMeas) + 'Es lo último guardado de este cliente (cambios del coach incluidos) en el formato de "📥 Importación Rápida de Texto". Las medidas de las que anotó el propio cliente vienen marcadas con «Origen».' + (ownFail ? ' ⚠️ No pude traer las medidas que anotó el cliente (sin conexión con la hoja): vuelve a intentarlo si las necesitas.' : '') + (state.off ? ' Este cliente está desconectado.' : '');
+        if (st) st.innerText = '';
+        showExportModal(txt, info, name, id);
+      }).catch(function(e) {
+        if (st) st.innerText = (e && e.message === 'lectura') ? 'No se pudo abrir esa rutina.' : clientsErrorText(e && e.message);
+      }).then(function() { clientExportBusy = false; });
+    }
+    // Desde la ventana del texto: abre al cliente en modo edición (para actualizar su mismo enlace) y deja lista la pestaña de importación
+    function exportTextGoEdit() {
+      var id = exportTextEditId; if (!id) return;
+      closeModal('modal_export_text');
+      editClientRoutine(id, 'tab_import');
     }
     function copyExportText() {
       var ta = document.getElementById('exportTextArea');
@@ -3509,7 +3611,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function downloadExportText() {
       var ta = document.getElementById('exportTextArea');
-      var clientPart = (document.getElementById('clientName').value.trim() || 'rutina').replace(/[^A-Za-z0-9_-]+/g, '_');
+      var clientPart = (exportTextName || document.getElementById('clientName').value.trim() || 'rutina').replace(/[^A-Za-z0-9_-]+/g, '_');
       var fname = 'rutina_' + clientPart + '_' + todayIso() + '.txt';
       var blob = new Blob([ta.value], { type: 'text/plain;charset=utf-8' });
       var url = URL.createObjectURL(blob);
@@ -8555,7 +8657,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="display:flex; gap:6px;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
-        html += '<div style="margin-top:6px;"><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button></div>';
+        html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="clientExportText(\'' + escHtml(last.id) + '\', ' + jsArg(g.name) + ')" title="Sacar todo lo guardado de este cliente como texto para corregirlo y volver a subirlo" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📤 Exportar a texto plano</button><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button></div>';
         if (g.list.length > 1) {
           html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">';
           g.list.slice(1, 6).forEach(function(r) {
@@ -8741,6 +8843,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } catch (e) {}
     }
     setInterval(coachHomePaint, 500);
+    // Ventana angosta en computador: la rueda del mouse sobre las pestañas las desplaza de lado
+    (function() {
+      try {
+        var tb = document.querySelector('.gen-tabs');
+        if (tb) tb.addEventListener('wheel', function(e) {
+          if (tb.scrollWidth <= tb.clientWidth + 2 || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+          tb.scrollLeft += e.deltaY; e.preventDefault();
+        }, { passive: false });
+      } catch (e) {}
+    })();
 
 
     // ----- Editar un ejercicio desde el modo entrenamiento (etapa 2) -----
@@ -8899,7 +9011,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (code === 'datos') return 'El servicio rechazó los datos de la rutina.';
       return clientsErrorText(code);
     }
-    function editClientRoutine(id) {
+    function editClientRoutine(id, afterTab) {
       if (!COACH) return;
       var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Abriendo rutina para editar… puede tardar unos segundos';
       fetchRoutine(id).then(function(j) {
@@ -8911,6 +9023,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         closeModal('modal_clients');
         showEditBanner('');
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+        if (afterTab === 'tab_import') {   // viene del texto plano del cliente: lo deja en la pestaña donde se pega el texto corregido
+          switchGenTab('tab_import', document.querySelectorAll('.gen-tab-btn')[2]);
+          showToastTop('✏️ ' + (state.clientName || 'Cliente') + ' cargado. Pega aquí el texto corregido, toca importar y luego «Actualizar rutina» (se guarda en su mismo enlace).');
+        }
         window.scrollTo(0, 0);
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
