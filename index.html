@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -657,6 +657,7 @@
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
       <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
       <button type="button" class="gen-tab-btn" id="btn_frase_dia" onclick="openFraseEditor()">✨ Frase del día</button>
+      <button type="button" class="gen-tab-btn" onclick="openReception(false)">🚪 Recepción</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
     </div>
 
@@ -6928,6 +6929,313 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     attLoad();
 
+    // ----- Pestaña Recepción: todos los clientes del gym, asistencia, teléfonos, cumpleaños y mensajes por WhatsApp -----
+    // Los datos se comparten por un script de Google aparte (REC_URL_DEFAULT o la dirección pegada en la pestaña); sin él, todo queda en este dispositivo.
+    var REC_URL_DEFAULT = '';   // dirección del script de Recepción (termina en /exec)
+    var REC_KEY = 'bn_rec_v1', REC_PIN_KEY = 'bn_rec_pin', REC_URL_KEY = 'bn_rec_url';
+    var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [] };
+    var REC_TIPOS = { falta: '🔴 Hace días que no viene', poco: '🟡 Viene poco', felicitacion: '🟢 Felicitación por asistencia', cumple: '🎂 Cumpleaños', otro: '💬 Otro' };
+    var REC_DEF_TPLS = [
+      { id: 'd1', tipo: 'falta', titulo: 'Te extrañamos', texto: 'Hola {nombre} 👋 Soy {quien} de Benessere Gym. Hace {dias} días que no te vemos por el gym y queríamos saber cómo estás. ¿Pasó algo con tu horario? Aquí estamos para ayudarte a retomar, ¡tu espacio te está esperando! 💪' },
+      { id: 'd2', tipo: 'poco', titulo: 'Un día más', texto: 'Hola {nombre} 👋 Soy {quien} de Benessere Gym. ¡Qué bueno verte por aquí! Esta semana has venido {veces}. ¿Te animas a sumar un día más? Si algo te lo dificulta (horario, cansancio…) cuéntanos y lo resolvemos juntos 💪' },
+      { id: 'd3', tipo: 'felicitacion', titulo: 'Asistencia impecable', texto: '¡Felicidades {nombre}! 🎉 Soy {quien} de Benessere Gym. Llevas {veces} esta semana: ¡una asistencia impecable! Tu constancia es la que construye los resultados. ¡Sigue así! 👏🔥' },
+      { id: 'd4', tipo: 'cumple', titulo: 'Feliz cumpleaños', texto: '¡Feliz cumpleaños {nombre}! 🎂🎉 De parte de todo el equipo de Benessere Gym te deseamos un día lleno de alegría y salud. ¡Gracias por ser parte de esta familia! 💙' }
+    ];
+    function recUrl() { var u = REC_URL_DEFAULT; if (!u) { try { u = localStorage.getItem(REC_URL_KEY) || ''; } catch (e) {} } return /^https:\/\/script\.google\.com\//.test(u) ? u : ''; }
+    function recPost(body) { return fetchJson(recUrl(), { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }, 40000); }
+    function recLoadLocal() {
+      try { var o = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (o) { REC.people = o.people || {}; REC.contacts = o.contacts || {}; REC.tpls = o.tpls || []; REC.sent = o.sent || {}; REC.meta = o.meta || {}; } } catch (e) {}
+      if (!REC.tpls.length) REC.tpls = REC_DEF_TPLS.map(function(t) { return Object.assign({}, t); });
+    }
+    function recSaveLocal() { try { localStorage.setItem(REC_KEY, JSON.stringify({ people: REC.people, contacts: REC.contacts, tpls: REC.tpls, sent: REC.sent, meta: REC.meta })); } catch (e) {} }
+    function recEl() {
+      var m = document.getElementById('rec_view');
+      if (!m) { m = document.createElement('div'); m.id = 'rec_view'; m.className = 'view-screen'; m.style.zIndex = '100010'; document.body.appendChild(m); }
+      return m;
+    }
+    function recFmtDT(iso) { try { var d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+    function openReception(only) {
+      REC.only = !!only; recLoadLocal();
+      var v = recEl(); v.classList.add('active');
+      if (REC.only) { ['coach_builder_view', 'athlete_client_view', 'athlete_message_view'].forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; }); }
+      if (REC.rol) { recRender(); return; }
+      if (!recUrl()) { REC.rol = REC.only ? '' : 'admin'; REC.quien = REC.only ? '' : (COACH ? COACH.name : 'el equipo'); if (REC.rol) { REC.loaded = true; recRender(); } else recLoginRender('Falta configurar el servicio de Recepción. Avisa al administrador.'); return; }
+      var pin = ''; try { pin = localStorage.getItem(REC_PIN_KEY) || ''; } catch (e) {}
+      if (!pin && COACH && !REC.only) pin = COACH.pin;
+      if (pin) recLogin(pin, true); else recLoginRender('');
+    }
+    function recClose() { if (REC.only) { recLogout(); return; } var v = document.getElementById('rec_view'); if (v) v.classList.remove('active'); }
+    function recLogout() { try { localStorage.removeItem(REC_PIN_KEY); } catch (e) {} REC.pin = ''; REC.rol = ''; REC.loaded = false; if (REC.only) recLoginRender(''); else { var v = document.getElementById('rec_view'); if (v) v.classList.remove('active'); } }
+    function recLoginRender(msg) {
+      var admin = !REC.only;
+      recEl().innerHTML = '<div style="max-width:420px; margin:40px auto 0;"><div style="font-size:1.2rem; font-weight:900; color:var(--primary); margin-bottom:4px;">🚪 Recepción · Benessere Gym</div>' +
+        '<div style="font-size:0.78rem; color:var(--muted); margin-bottom:12px;">Escribe tu PIN para entrar.</div>' +
+        '<input type="password" id="rec_pin" placeholder="PIN" autocomplete="current-password" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:10px; padding:12px; font-size:1rem; margin-bottom:8px;" onkeydown="if(event.key===\'Enter\')recLoginFromForm()">' +
+        '<label style="display:flex; gap:8px; align-items:center; font-size:0.78rem; color:#bbb; margin-bottom:10px;"><input type="checkbox" id="rec_rem" checked> Recordar el PIN en este dispositivo</label>' +
+        '<button type="button" class="btn-action-primary" onclick="recLoginFromForm()">Entrar</button>' +
+        '<div id="rec_msg" style="font-size:0.8rem; margin-top:10px; color:#ffd166;">' + escHtml(msg || '') + '</div>' +
+        (admin ? '<button type="button" onclick="recClose()" style="margin-top:14px; background:transparent; border:1px solid #555; color:#aaa; border-radius:10px; padding:9px; width:100%; cursor:pointer;">Volver al constructor</button>' : '') + '</div>';
+    }
+    function recLoginFromForm() { var p = (document.getElementById('rec_pin').value || '').trim(); if (p.length < 4) { document.getElementById('rec_msg').textContent = 'El PIN es muy corto.'; return; } recLogin(p, false); }
+    function recApplyServer(j) {
+      var ppl = {}; (j.personas || []).forEach(function(x) { if (x && x.k) ppl[x.k] = { n: x.n, d: String(x.d || '').split(',').filter(Boolean) }; });
+      var con = {}; (j.contactos || []).forEach(function(x) { if (x && x.k) con[x.k] = { n: x.n, t: x.t || '', b: x.b || '' }; });
+      var snt = {}; (j.envios || []).forEach(function(x) { if (x && x.k) snt[x.k] = { f: x.f, tipo: x.tipo, quien: x.quien }; });
+      REC.people = ppl; REC.contacts = con; REC.sent = snt; REC.meta = j.meta || {};
+      if (j.plantillas && j.plantillas.length) REC.tpls = j.plantillas; else if (!REC.tpls.length) REC.tpls = REC_DEF_TPLS.map(function(t) { return Object.assign({}, t); });
+      recSaveLocal();
+    }
+    function recLogin(pin, silent) {
+      var m = document.getElementById('rec_msg'); if (m) m.textContent = 'Entrando…'; else if (silent) recEl().innerHTML = '<div style="padding:40px 0; text-align:center; color:var(--muted);">Entrando…</div>';
+      recPost({ a: 'rec_leer', pin: pin }).then(function(j) {
+        if (j && j.ok) {
+          REC.pin = pin; REC.rol = j.rol; REC.quien = j.nombre || ''; REC.loaded = true; recApplyServer(j);
+          var rem = document.getElementById('rec_rem'); try { if (!rem || rem.checked) localStorage.setItem(REC_PIN_KEY, pin); } catch (e) {}
+          recRender();
+        } else {
+          if (j && j.error === 'pin') { try { localStorage.removeItem(REC_PIN_KEY); } catch (e) {} }
+          recLoginRender(j && j.error === 'bloqueado' ? 'Demasiados intentos. Espera 15 minutos.' : (j && j.error === 'pin' ? (silent ? '' : 'PIN incorrecto.') : 'El servicio no respondió bien. Inténtalo de nuevo.'));
+        }
+      }).catch(function() { if (REC.people && Object.keys(REC.people).length && silent) { REC.rol = REC.rol || 'recepcion'; REC.pin = pin; REC.note = '⚠️ Sin conexión: mostrando los últimos datos guardados en este dispositivo.'; recRender(); } else recLoginRender('No se pudo conectar. Revisa tu internet.'); });
+    }
+    function recSync() { if (!recUrl() || !REC.pin) { recRender(); return; } REC.note = 'Actualizando…'; recRender(); recPost({ a: 'rec_leer', pin: REC.pin }).then(function(j) { if (j && j.ok) { recApplyServer(j); REC.note = ''; } else REC.note = '⚠️ No se pudo actualizar.'; recRender(); }).catch(function() { REC.note = '⚠️ Sin conexión.'; recRender(); }); }
+    function recMerge(parsed) {
+      Object.keys(parsed.people).forEach(function(k) {
+        var cur = REC.people[k], set = {}; (cur ? cur.d : []).concat(parsed.people[k].d).forEach(function(x) { set[x] = 1; });
+        REC.people[k] = { n: parsed.people[k].n, d: Object.keys(set).sort() };
+      });
+      REC.meta = { up: new Date().toISOString(), by: REC.quien || '', from: (REC.meta.from && REC.meta.from < parsed.from) ? REC.meta.from : parsed.from, to: (REC.meta.to && REC.meta.to > parsed.to) ? REC.meta.to : parsed.to, rep: (REC.meta.rep && REC.meta.rep > parsed.rep) ? REC.meta.rep : parsed.rep };
+      recSaveLocal();
+    }
+    function recPickFile(inp) {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      var fr = new FileReader(); showToastTop('Leyendo el reporte…');
+      fr.onload = function() {
+        try {
+          var parsed = attParseFile(new Uint8Array(fr.result), f.name);
+          if (!parsed.used) { showToastTop('No encontré asistencias válidas en ese archivo.'); inp.value = ''; return; }
+          recMerge(parsed);
+          var msg = '✅ Reporte cargado: ' + Object.keys(parsed.people).length + ' personas, del ' + fmtDateShort(parsed.from) + ' al ' + fmtDateShort(parsed.to) + '.';
+          if (recUrl() && REC.pin) {
+            var arr = Object.keys(parsed.people).map(function(k) { return { k: k, n: parsed.people[k].n, d: parsed.people[k].d.join(',') }; });
+            recPost({ a: 'rec_asist', pin: REC.pin, personas: arr, meta: { from: parsed.from, to: parsed.to, rep: parsed.rep }, quien: REC.quien || '' }).then(function(j) {
+              if (j && j.ok) { showToastTop(msg + ' Guardado para todos.'); recSync(); } else { showToastTop('El reporte se cargó aquí pero no se pudo guardar en el servicio. Reintenta.'); recRender(); }
+            }).catch(function() { showToastTop('Sin conexión: el reporte quedó solo en este dispositivo. Vuelve a cargarlo con internet.'); recRender(); });
+          } else { showToastTop(msg); recRender(); }
+        } catch (e) { showToastTop(e && e.message === 'xls' ? 'Ese es un .xls viejo. Guárdalo como .xlsx (o CSV) y súbelo de nuevo.' : 'No pude leer ese archivo. Sube el Excel (.xlsx) o CSV tal como lo emite el app de ingreso.'); }
+        inp.value = '';
+      };
+      fr.readAsArrayBuffer(f);
+    }
+    function recMD(b) { return b ? b.slice(3, 5) + '/' + b.slice(0, 2) : ''; }   // 'MM-DD' -> 'dd/mm'
+    function recParseMD(s) { var m = /^\s*(\d{1,2})[\/\-.](\d{1,2})/.exec(String(s || '')); if (!m) return ''; var d = +m[1], mo = +m[2]; if (mo > 12 && d <= 12) { var t = d; d = mo; mo = t; } if (d < 1 || d > 31 || mo < 1 || mo > 12) return ''; return pad2(mo) + '-' + pad2(d); }
+    function recSendContact(k) {
+      if (!recUrl() || !REC.pin) return;
+      var c = REC.contacts[k] || {}, p = REC.people[k];
+      recPost({ a: 'rec_contacto', pin: REC.pin, k: k, n: (p ? p.n : c.n) || '', t: c.t || '', b: c.b || '' }).then(function(j) { if (!(j && j.ok)) showToastTop('No se pudo guardar el contacto en el servicio.'); }).catch(function() { showToastTop('Sin conexión: el contacto quedó solo en este dispositivo.'); });
+    }
+    function recSetContact(k, field, val) {
+      var c = REC.contacts[k] || (REC.contacts[k] = { n: (REC.people[k] || {}).n || '', t: '', b: '' });
+      if (field === 't') c.t = String(val || '').trim(); else { var md = recParseMD(val); if (val && !md) { showToastTop('Escribe el cumpleaños como día/mes, por ejemplo 15/03.'); return; } c.b = md; }
+      recSaveLocal(); recSendContact(k); recRender();
+    }
+    function recFindPerson(name) {
+      var key = attKey(name); if (!key) return '';
+      if (REC.people[key]) return key;
+      var ct = key.split(' ').filter(function(t) { return t.length > 1; }), best = [], bs = 0;
+      Object.keys(REC.people).forEach(function(pk) {
+        var pt = pk.split(' '), inter = ct.filter(function(t) { return pt.indexOf(t) >= 0; }).length, sc = 0;
+        if (ct.length >= 2 && inter === ct.length) sc = 3; else if (pt.length >= 2 && inter === pt.length) sc = 2; else if (ct.length === 1 && inter === 1) sc = 1;
+        if (sc > bs) { bs = sc; best = [pk]; } else if (sc === bs && sc) best.push(pk);
+      });
+      return (best.length === 1 && bs >= 2) ? best[0] : (best.length === 1 && bs === 1 ? best[0] : '');
+    }
+    function recImportLines(lines) {   // cada línea: nombre + teléfono (+ cumpleaños dd/mm)
+      var ok = 0, unk = [], newC = 0, changed = {};
+      lines.forEach(function(line) {
+        var s = String(line || '').trim(); if (!s) return;
+        var pm = /(\+?\s*506[\s-]?)?(\d{4})[\s-]?(\d{4})(?!\d)/.exec(s), tel = '';
+        if (pm) { tel = pm[2] + pm[3]; s = s.replace(pm[0], ' '); }
+        var dm = /(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.]\d{2,4})?/.exec(s), md = '';
+        if (dm) { md = recParseMD(dm[0]); s = s.replace(dm[0], ' '); }
+        var name = s.replace(/[\d\t;,|]+/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!name || (!tel && !md)) return;
+        var k = recFindPerson(name);
+        if (!k) { k = attKey(name); unk.push(name); }
+        var c = REC.contacts[k] || (REC.contacts[k] = { n: name, t: '', b: '' });
+        if (tel) c.t = tel; if (md) c.b = md; ok++; changed[k] = 1;
+      });
+      recSaveLocal();
+      if (recUrl() && REC.pin) Object.keys(changed).forEach(function(k) { recSendContact(k); });
+      return { ok: ok, unk: unk };
+    }
+    function recImportPaste() {
+      var t = document.getElementById('rec_imp_ta'); if (!t || !t.value.trim()) { showToastTop('Pega primero la lista.'); return; }
+      var r = recImportLines(t.value.split(/\r?\n/));
+      REC.impOpen = false; recRender();
+      showToastTop('✅ ' + r.ok + ' contactos cargados' + (r.unk.length ? ' (' + r.unk.length + ' aún no aparecen en el reporte de asistencias)' : '') + '.');
+    }
+    function recImportFile(inp) {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function() {
+        try {
+          var u8 = new Uint8Array(fr.result), rows = (u8[0] === 0x50 && u8[1] === 0x4b) ? attReadXlsx(u8) : attReadCsv(fflate.strFromU8(u8));
+          var lines = rows.map(function(r) { return (r || []).map(function(c) { if (typeof c === 'number' && c > 30000) { var iso = attParseDate(c); return iso.slice(8) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4); } return c == null ? '' : c; }).join('\t'); });
+          var r = recImportLines(lines); REC.impOpen = false; recRender();
+          showToastTop('✅ ' + r.ok + ' contactos cargados' + (r.unk.length ? ' (' + r.unk.length + ' aún no aparecen en el reporte de asistencias)' : '') + '.');
+        } catch (e) { showToastTop('No pude leer ese archivo. Usa .xlsx o CSV con nombre y teléfono.'); }
+        inp.value = '';
+      };
+      fr.readAsArrayBuffer(f);
+    }
+    function recToday() { var t = todayIso(); return { iso: t, md: t.slice(5) }; }
+    function recBdayDelta(md) {   // días hasta el próximo cumpleaños (0 = hoy)
+      if (!md) return 999;
+      var t = recToday().iso, y = +t.slice(0, 4), a = dayNum(t), b = dayNum(y + '-' + md);
+      if (isNaN(b)) return 999; if (b < a) b = dayNum((y + 1) + '-' + md); return b - a;
+    }
+    function recMsgCtx(p, st) {
+      var first = attFirst(p.n);
+      return { nombre: first, nombre_completo: p.n, dias: st.ago < 0 ? 'varios' : String(st.ago), veces: st.w7 === 1 ? '1 vez' : st.w7 + ' veces', mes: String(st.month), quien: REC.quien || 'el equipo' };
+    }
+    function recFill(txt, ctx) { return String(txt || '').replace(/\{(\w+)\}/g, function(m, k) { return ctx[k] != null ? ctx[k] : m; }); }
+    function recKind(st, k) {
+      var c = REC.contacts[k] || {}, bd = recBdayDelta(c.b);
+      var base = st.kind === 'out' ? ((st.ago < 0 || st.ago >= 30) ? 'gone' : 'out') : (st.kind === 'low' ? 'low' : 'great');
+      return { base: base, bd: bd };
+    }
+    function recDefaultType(kd) { if (kd.bd === 0) return 'cumple'; return kd.base === 'out' || kd.base === 'gone' ? 'falta' : (kd.base === 'low' ? 'poco' : 'felicitacion'); }
+    function recSelectType(i, tipo) { var o = REC.list[i]; if (!o) return; REC.sel[o.k] = tipo; delete REC.tsel[o.k]; delete REC.msgs[o.k]; recRender(); }
+    function recSelectTpl(i, id) { var o = REC.list[i]; if (!o) return; REC.tsel[o.k] = id; delete REC.msgs[o.k]; recRender(); }
+    function recToggle(i) { var o = REC.list[i]; if (!o) return; REC.open = REC.open === o.k ? '' : o.k; recRender(); if (REC.open) setTimeout(function() { var t = document.getElementById('rec_ta'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center' }); }, 60); }
+    function recMsgNow() { var t = document.getElementById('rec_ta'); return t ? t.value : ''; }
+    function recCopy() { copyTextSilently(recMsgNow()); showToastTop('✅ Mensaje copiado.'); }
+    function recWhatsApp(i) {
+      var o = REC.list[i]; if (!o) return; var c = REC.contacts[o.k] || {}, ph = cleanPhone(c.t);
+      if (ph.length < 10) { showToastTop('Primero escribe el teléfono de este cliente.'); return; }
+      var tipo = REC.sel[o.k] || recDefaultType(o.kd);
+      window.open('https://wa.me/' + ph + '?text=' + encodeURIComponent(recMsgNow()), '_blank');
+      var rec = { f: new Date().toISOString(), tipo: tipo, quien: REC.quien || '' }; REC.sent[o.k] = rec; recSaveLocal();
+      if (recUrl() && REC.pin) recPost({ a: 'rec_enviado', pin: REC.pin, k: o.k, tipo: tipo, quien: REC.quien || '' }).catch(function() {});
+      setTimeout(recRender, 400);
+    }
+    // ---- mensajes (plantillas) ----
+    function recTplSet(i, field, val) { if (REC.tpls[i]) REC.tpls[i][field] = val; }
+    function recTplAdd() { REC.tpls.push({ id: 't' + Date.now().toString(36), tipo: 'otro', titulo: 'Nuevo mensaje', texto: 'Hola {nombre} 👋 ' }); REC.tplOpen = true; recRender(); }
+    function recTplDel(i) { if (!confirm('¿Borrar este mensaje?')) return; REC.tpls.splice(i, 1); recRender(); }
+    function recTplSave() {
+      REC.tpls = REC.tpls.filter(function(t) { return String(t.texto || '').trim(); }); recSaveLocal();
+      if (recUrl() && REC.pin) recPost({ a: 'rec_plantillas', pin: REC.pin, items: REC.tpls }).then(function(j) { showToastTop(j && j.ok ? '✅ Mensajes guardados para todos.' : 'No se pudieron guardar en el servicio.'); }).catch(function() { showToastTop('Sin conexión: los mensajes quedaron solo en este dispositivo.'); });
+      else showToastTop('✅ Mensajes guardados.');
+      REC.tplOpen = false; REC.msgs = {}; recRender();
+    }
+    function recSetUrl() {
+      var cur = recUrl(), u = prompt('Pega la dirección del script de Recepción (termina en /exec):', cur); if (u == null) return;
+      u = u.trim(); if (u && !/^https:\/\/script\.google\.com\/.+\/exec$/.test(u)) { alert('Esa dirección no parece correcta. Debe empezar con https://script.google.com/ y terminar en /exec'); return; }
+      try { if (u) localStorage.setItem(REC_URL_KEY, u); else localStorage.removeItem(REC_URL_KEY); } catch (e) {}
+      REC.rol = ''; REC.pin = ''; openReception(REC.only);
+    }
+    function recSetFilter(f) { REC.filt = f; REC.lim = 60; REC.open = ''; recRender(); }
+    function recMore() { REC.lim += 60; recRender(); }
+    function recSearch(v) { REC.q = v; REC.lim = 60; recRender(); var e = document.getElementById('rec_q'); if (e) { e.focus(); try { e.setSelectionRange(v.length, v.length); } catch (x) {} } }
+    function recBuildList() {
+      var ref = (REC.meta.to && REC.meta.to > (REC.meta.rep || '')) ? REC.meta.to : (REC.meta.rep || REC.meta.to || todayIso()), out = [];
+      Object.keys(REC.people).forEach(function(k) {
+        var p = REC.people[k], st = attStats(p, ref), kd = recKind(st, k); out.push({ k: k, p: p, st: st, kd: kd });
+      });
+      // contactos con cumpleaños de gente que aún no aparece en el reporte
+      Object.keys(REC.contacts).forEach(function(k) { if (!REC.people[k] && REC.contacts[k].b) { var p = { n: REC.contacts[k].n || k, d: [] }, st = attStats(p, ref); out.push({ k: k, p: p, st: st, kd: { base: 'gone', bd: recBdayDelta(REC.contacts[k].b) } }); } });
+      return { all: out, ref: ref };
+    }
+    function recRender() {
+      var v = recEl(), B = recBuildList(), all = B.all, ref = B.ref, hasData = Object.keys(REC.people).length > 0;
+      var cnt = { out: 0, low: 0, great: 0, gone: 0, cumple: 0, sintel: 0 };
+      all.forEach(function(o) { cnt[o.kd.base]++; if (o.kd.bd <= 7) cnt.cumple++; var c = REC.contacts[o.k]; if (!c || cleanPhone(c.t).length < 10) cnt.sintel++; });
+      var f = REC.filt, q = attKey(REC.q), items = all.filter(function(o) {
+        if (q && attKey(o.p.n).indexOf(q) < 0) return false;
+        if (f === 'todos') return o.kd.base !== 'gone' || q;
+        if (f === 'cumple') return o.kd.bd <= 7;
+        if (f === 'sintel') { var c = REC.contacts[o.k]; return !c || cleanPhone(c.t).length < 10; }
+        return o.kd.base === f;
+      });
+      var rank = { out: 0, low: 1, great: 2, gone: 3 };
+      items.sort(function(a, b) { if (f === 'cumple') return a.kd.bd - b.kd.bd; var d = rank[a.kd.base] - rank[b.kd.base]; if (d) return d; if (a.kd.base === 'out') return b.st.ago - a.st.ago; return attKey(a.p.n) < attKey(b.p.n) ? -1 : 1; });
+      REC.list = items;
+      var h = '<div style="max-width:680px; margin:0 auto;">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div style="font-size:1.15rem; font-weight:900; color:var(--primary);">🚪 Recepción</div>' +
+        '<span><button type="button" onclick="recSync()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.72rem; padding:5px 9px; border-radius:6px; cursor:pointer;">🔄</button> ' +
+        '<button type="button" onclick="recClose()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.72rem; padding:5px 9px; border-radius:6px; cursor:pointer;">' + (REC.only ? 'Salir' : 'Cerrar') + '</button></span></div>' +
+        '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 8px;">' + escHtml(REC.quien || '') + (REC.rol === 'admin' ? ' · administrador' : '') + (recUrl() ? ' · datos compartidos' : ' · <span style="color:#ffd166;">solo en este dispositivo</span>') + '</div>';
+      if (REC.note) h += '<div style="background:#3a2a10; border:1px solid #8a6d1a; border-radius:10px; padding:8px 10px; font-size:0.76rem; margin-bottom:8px;">' + escHtml(REC.note) + '</div>';
+      var up = REC.meta.up, ageD = up ? Math.floor((Date.now() - new Date(up).getTime()) / 86400000) : -1;
+      h += '<div style="background:' + (!up || ageD >= 3 ? '#3a2a10' : '#102418') + '; border:1px solid ' + (!up || ageD >= 3 ? '#8a6d1a' : '#1f6b3b') + '; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">' +
+        (up ? '📅 <b>Última carga del Excel:</b> ' + escHtml(recFmtDT(up)) + (REC.meta.by ? ' · ' + escHtml(REC.meta.by) : '') + '<br><span style="color:var(--muted); font-size:0.74rem;">El reporte cubre del ' + fmtDate(REC.meta.from) + ' al ' + fmtDate(REC.meta.to) + (ageD >= 3 ? ' · <b style="color:#ffd166;">hace ' + ageD + ' días: carga uno nuevo</b>' : '') + '</span>' : '⚠️ Todavía no se ha cargado ningún Excel de accesos.') + '</div>';
+      h += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">' +
+        '<label style="flex:1; min-width:140px; text-align:center; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">📁 Cargar Excel de accesos<input type="file" accept=".xlsx,.csv,.xls,.txt" style="display:none;" onchange="recPickFile(this)"></label>' +
+        '<button type="button" onclick="REC.impOpen=!REC.impOpen; recRender();" style="flex:1; min-width:140px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">📞 Cargar teléfonos</button>' +
+        '<button type="button" onclick="REC.tplOpen=!REC.tplOpen; recRender();" style="flex:1; min-width:140px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">✏️ Mis mensajes</button></div>';
+      if (REC.impOpen) {
+        h += '<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;"><div style="font-size:0.8rem; font-weight:800; margin-bottom:4px;">📞 Cargar teléfonos y cumpleaños</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:6px;">Pega una lista, una persona por línea: nombre, teléfono y (opcional) cumpleaños día/mes. Ej: <i>María Pérez 8888 1234 15/03</i>. También puedes subir un Excel o CSV con esas columnas. Si prefieres, escribe el teléfono directo en cada cliente.</div>' +
+          '<textarea id="rec_imp_ta" rows="6" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:0.8rem; font-family:inherit;"></textarea>' +
+          '<div style="display:flex; gap:6px; margin-top:6px;"><button type="button" class="btn-action-primary" style="flex:1; margin:0;" onclick="recImportPaste()">Importar lista</button>' +
+          '<label style="flex:1; text-align:center; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">Subir Excel/CSV<input type="file" accept=".xlsx,.csv,.txt" style="display:none;" onchange="recImportFile(this)"></label></div></div>';
+      }
+      if (REC.tplOpen) {
+        h += '<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;"><div style="font-size:0.8rem; font-weight:800; margin-bottom:2px;">✏️ Mensajes guardados</div>' +
+          '<div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">Puedes usar: {nombre} {nombre_completo} {dias} (días sin venir) {veces} (veces en 7 días) {mes} (días en el mes) {quien} (tu nombre).</div>';
+        REC.tpls.forEach(function(t, i) {
+          h += '<div style="border:1px solid var(--border); border-radius:8px; padding:8px; margin-bottom:6px;"><div style="display:flex; gap:6px; margin-bottom:6px;">' +
+            '<select onchange="recTplSet(' + i + ',\'tipo\',this.value)" style="background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:6px; font-size:0.74rem;">' + Object.keys(REC_TIPOS).map(function(k) { return '<option value="' + k + '"' + (t.tipo === k ? ' selected' : '') + '>' + REC_TIPOS[k] + '</option>'; }).join('') + '</select>' +
+            '<input type="text" value="' + escHtml(t.titulo || '') + '" oninput="recTplSet(' + i + ',\'titulo\',this.value)" placeholder="Título" style="flex:1; min-width:0; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:6px; font-size:0.78rem;">' +
+            '<button type="button" onclick="recTplDel(' + i + ')" style="background:transparent; border:1px solid #a33; color:#ff8a8a; border-radius:8px; padding:4px 8px; cursor:pointer;">🗑</button></div>' +
+            '<textarea rows="4" oninput="recTplSet(' + i + ',\'texto\',this.value)" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:0.8rem; font-family:inherit;">' + escHtml(t.texto || '') + '</textarea></div>';
+        });
+        h += '<div style="display:flex; gap:6px;"><button type="button" onclick="recTplAdd()" style="flex:1; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:9px; font-weight:800; font-size:0.78rem; cursor:pointer;">➕ Nuevo mensaje</button>' +
+          '<button type="button" class="btn-action-primary" style="flex:1; margin:0;" onclick="recTplSave()">Guardar mensajes</button></div></div>';
+      }
+      if (!hasData) {
+        h += '<div style="font-size:0.85rem; color:var(--muted); padding:14px 2px; line-height:1.5;">Carga el Excel de accesos para ver quién viene, quién empezó a faltar y a quién felicitar.</div>';
+      } else {
+        h += '<div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px;">';
+        [['todos', 'Todos', all.length - cnt.gone], ['out', '🔴 Sin venir', cnt.out], ['low', '🟡 Poco', cnt.low], ['great', '🟢 Impecable', cnt.great], ['cumple', '🎂 Cumple', cnt.cumple], ['sintel', '📵 Sin teléfono', cnt.sintel], ['gone', '💤 30+ días', cnt.gone]].forEach(function(x) {
+          h += '<button type="button" onclick="recSetFilter(\'' + x[0] + '\')" style="border-radius:999px; padding:6px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; border:1px solid ' + (f === x[0] ? 'var(--primary)' : '#444') + '; background:' + (f === x[0] ? 'var(--primary)' : 'transparent') + '; color:' + (f === x[0] ? '#000' : '#ccc') + ';">' + x[1] + ' · ' + x[2] + '</button>';
+        });
+        h += '</div><input type="search" id="rec_q" value="' + escHtml(REC.q) + '" oninput="recSearch(this.value)" placeholder="Buscar por nombre…" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:8px;">';
+        if (!items.length) h += '<div style="font-size:0.82rem; color:var(--muted); padding:12px 2px;">No hay nadie en esta lista.</div>';
+        items.slice(0, REC.lim).forEach(function(o, i) { h += recRowHtml(o, i); });
+        if (items.length > REC.lim) h += '<button type="button" onclick="recMore()" style="width:100%; margin:6px 0; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; cursor:pointer;">Ver más (' + (items.length - REC.lim) + ')</button>';
+        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:10px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Solo aparece quien entró al menos una vez en los reportes cargados. «Sin venir» = 7 a 29 días desde su última entrada; «Impecable» = 3 días o más en los últimos 7. Reporte calculado al ' + fmtDate(ref) + '.</div>';
+      }
+      h += '</div>';
+      var oldIn = v.scrollTop; v.innerHTML = h; v.scrollTop = oldIn;
+    }
+    function recRowHtml(o, i) {
+      var k = o.k, st = o.st, kd = o.kd, c = REC.contacts[k] || {}, ref = (REC.meta.to || todayIso()), col = kd.base === 'out' || kd.base === 'gone' ? '#a33' : (kd.base === 'low' ? '#8a6d1a' : '#1f6b3b');
+      var sent = REC.sent[k], sentTxt = '';
+      if (sent) { var sd = Math.floor((Date.now() - new Date(sent.f).getTime()) / 86400000); sentTxt = ' · <span style="color:#9fe8c8;">✔ ' + (REC_TIPOS[sent.tipo] ? REC_TIPOS[sent.tipo].replace(/^\S+\s/, '') : 'enviado') + (sd <= 0 ? ' hoy' : ' hace ' + sd + ' d') + '</span>'; }
+      var info = st.ago < 0 && !o.p.d.length ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : '<b>' + st.w7 + '</b> ' + (st.w7 === 1 ? 'día' : 'días') + ' en 7') + (o.p.d.length ? ' · <b>' + st.month + '</b> en el mes' : '');
+      var bday = kd.bd === 0 ? ' · <b style="color:#ff8fd1;">🎂 HOY</b>' : (kd.bd <= 7 ? ' · 🎂 en ' + kd.bd + ' d' : '');
+      var h = '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
+        '<div onclick="recToggle(' + i + ')" style="cursor:pointer;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
+        '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + (o.p.d.length ? attStrip(st, (REC.meta.to && REC.meta.to > (REC.meta.rep || '') ? REC.meta.to : (REC.meta.rep || REC.meta.to))) : '') + '</div>';
+      if (REC.open === k) {
+        var tipo = REC.sel[k] || recDefaultType(kd), tps = REC.tpls.filter(function(t) { return t.tipo === tipo; }), tid = REC.tsel[k] || (tps[0] && tps[0].id) || '', tpl = REC.tpls.filter(function(t) { return t.id === tid; })[0] || tps[0];
+        var txt = REC.msgs[k] != null ? REC.msgs[k] : (tpl ? recFill(tpl.texto, recMsgCtx(o.p, st)) : '');
+        h += '<div style="display:flex; gap:6px; margin-top:8px;"><div style="flex:1;"><div style="font-size:0.66rem; color:var(--muted);">Teléfono</div><input type="tel" value="' + escHtml(c.t || '') + '" placeholder="8888 1234" onchange="recSetContact(' + jsArg(k) + ',\'t\',this.value)" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:7px; font-size:0.82rem;"></div>' +
+          '<div style="flex:1;"><div style="font-size:0.66rem; color:var(--muted);">Cumpleaños (día/mes)</div><input type="text" value="' + escHtml(recMD(c.b)) + '" placeholder="15/03" onchange="recSetContact(' + jsArg(k) + ',\'b\',this.value)" style="width:100%; box-sizing:border-box; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:7px; font-size:0.82rem;"></div></div>' +
+          '<div style="font-size:0.66rem; color:var(--muted); margin:8px 0 4px;">Tipo de mensaje</div><div style="display:flex; flex-wrap:wrap; gap:5px;">' +
+          Object.keys(REC_TIPOS).map(function(t) { return '<label style="display:flex; gap:4px; align-items:center; font-size:0.72rem; border:1px solid ' + (tipo === t ? 'var(--primary)' : '#444') + '; border-radius:999px; padding:5px 9px; cursor:pointer; color:' + (tipo === t ? 'var(--primary)' : '#ccc') + ';"><input type="checkbox" ' + (tipo === t ? 'checked ' : '') + 'onchange="recSelectType(' + i + ',\'' + t + '\')" style="margin:0;"> ' + REC_TIPOS[t] + '</label>'; }).join('') + '</div>';
+        if (tps.length > 1) h += '<select onchange="recSelectTpl(' + i + ',this.value)" style="width:100%; margin-top:6px; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:7px; font-size:0.78rem;">' + tps.map(function(t) { return '<option value="' + escHtml(t.id) + '"' + (tpl && t.id === tpl.id ? ' selected' : '') + '>' + escHtml(t.titulo || 'Mensaje') + '</option>'; }).join('') + '</select>';
+        if (!tps.length) h += '<div style="font-size:0.72rem; color:#ffd166; margin-top:6px;">No hay mensajes de este tipo. Crea uno en «✏️ Mis mensajes».</div>';
+        h += '<textarea id="rec_ta" oninput="REC.msgs[' + jsArg(k) + ']=this.value" rows="5" style="width:100%; box-sizing:border-box; margin-top:6px; background:#0f1217; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:0.8rem; font-family:inherit;">' + escHtml(txt) + '</textarea>' +
+          '<div style="display:flex; gap:6px; margin-top:6px;"><button type="button" onclick="recCopy()" style="flex:1; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px; font-weight:800; font-size:0.78rem; cursor:pointer;">📋 Copiar</button>' +
+          '<button type="button" onclick="recWhatsApp(' + i + ')" style="flex:2; background:#25d366; color:#000; border:none; border-radius:8px; padding:9px; font-weight:900; font-size:0.82rem; cursor:pointer;">📲 Enviar por WhatsApp</button></div>';
+      }
+      return h + '</div>';
+    }
+
     // ----- Temporizador de circuitos (pantalla completa) -----
     var TRANS_SECS = 15;   // transición para preparar el siguiente ejercicio
     var SIDE_SECS = 10;    // pausa para cambiar de lado en unilaterales por tiempo
@@ -10702,6 +11010,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     window.onload = function() {
       var where = (window.location.hash || '') + (window.location.search || '');
+
+      // 0) Enlace de recepción (#recepcion): solo ve la pestaña de Recepción, con su propio PIN
+      if (/(^|[#&?])recepcion(\b|=)/.test(where)) { openReception(true); return; }
 
       // 1) Llegó un enlace con rutina
       var payload = readPayloadFromUrl();
