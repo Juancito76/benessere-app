@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-t';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -554,6 +554,20 @@
     #tm_overlay #tm_side > #tm_mu_btn { border-color: #6a4bb0 !important; background: #211838 !important; }
     #tm_overlay #tm_side > #tm_exit { border-color: #7a3f3a !important; background: #1d1313 !important; }
     #tm_overlay #tm_muinv { border-radius: 16px; }
+
+    /* ===== Detalles de pulido: movimiento suave ===== */
+    @keyframes popIn { 0% { opacity: 0; transform: scale(.88); } 60% { transform: scale(1.03); } 100% { opacity: 1; transform: none; } }
+    @keyframes checkPop { 0% { transform: scale(0); opacity: 0; } 55% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); } }
+    @keyframes confFall { 0% { top: -4%; opacity: 1; } 100% { top: 104%; opacity: .9; } }
+    #tm_overlay #tm_guide { animation: popIn .35s ease-out; }
+    .blk-check { width: 54px; height: 54px; margin: 0 auto 6px; border-radius: 50%; background: var(--grad-go); color: #00281a; font-size: 1.7rem; font-weight: 900; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 22px rgba(6,214,160,.55); animation: checkPop .5s ease-out; }
+    .confetti-wrap { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 100010; }
+    .confetti-wrap i { position: absolute; top: -4%; width: 9px; height: 15px; border-radius: 2px; animation-name: confFall; animation-timing-function: ease-in; animation-fill-mode: forwards; }
+    .cls-tab, .cls-acc-btn, .cls-block, .capsule-btn, .gen-tab-btn { transition: all .2s ease; }
+    .cls-card .cls-block { animation: vsIn .25s ease-out backwards; }
+    .cls-card .cls-block:nth-child(3) { animation-delay: .04s; } .cls-card .cls-block:nth-child(4) { animation-delay: .08s; } .cls-card .cls-block:nth-child(5) { animation-delay: .12s; } .cls-card .cls-block:nth-child(n+6) { animation-delay: .16s; }
+    #tm_overlay #tm_gbar { transition: width .5s ease; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
@@ -7617,7 +7631,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (document.getElementById('tm_g')) document.getElementById('tm_g').style.display = 'block';
       if (document.getElementById('tm_gbar')) document.getElementById('tm_gbar').style.width = Math.round(((nums.cur + 1) / nums.n) * 100) + '%';
       if (document.getElementById('tm_gpct')) document.getElementById('tm_gpct').innerText = Math.round(((nums.cur + 1) / nums.n) * 100) + '%';
-      box.innerHTML = '<div style="font-size:0.8rem; color:#9fe8c8;">Bloque ' + (nums.cur + 1) + ' de ' + nums.n + ' listo ✔</div>' +
+      box.innerHTML = '<div class="blk-check">✔</div><div style="font-size:0.8rem; color:#9fe8c8;">Bloque ' + (nums.cur + 1) + ' de ' + nums.n + ' listo ✔</div>' +
         '<div style="font-size:1rem; font-weight:800; margin-top:6px;">' + (isP ? 'Sigue: Pausa de ' + escHtml(next.circ.total) : 'Sigue: ' + escHtml(next.circ.nombre)) + '</div>' +
         ((!isP && first) ? '<div style="font-size:0.85rem; color:#ccc;">' + escHtml(clsBlockInfoPlain(next.circ)) + '</div><div style="font-size:0.85rem; color:#ddd; text-align:left; margin-top:4px;">' + (next.sub || []).map(function(sb, i) { var r = isTimeText(sb.reps) ? sb.reps : clsRepsTxt(sb); return (i + 1) + '. ' + escHtml(ctShort(sb.name)) + (r ? ' · <span style="color:#ffd60a;">' + escHtml(r) + '</span>' : '') + (sb.notes ? ' <span style="color:#aaa;">(' + escHtml(sb.notes) + ')</span>' : ''); }).join('<br>') + '</div>' : '') +
         '<div id="tm_gnum" style="font-size:2.2rem; font-weight:900; font-variant-numeric:tabular-nums; margin:4px 0;"></div>' +
@@ -7658,6 +7672,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (G.clase.m) h += '<div style="font-size:0.95rem; margin-top:8px;">💪 Músculos trabajados: <b>' + escHtml(G.clase.m) + '</b></div>';
       h += '<div style="font-size:0.85rem; color:#ccc; margin-top:8px;">¡Buen trabajo! 👏</div>';
       box.innerHTML = h; box.style.display = 'block';
+      confettiBurst();
+    }
+    function confettiBurst() {   // pequeña lluvia de confeti al terminar la clase (se apaga sola)
+      try {
+        if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var o = document.getElementById('tm_overlay') || document.body, w = document.createElement('div'), cols = ['#00e5ff', '#ff6d00', '#06d6a0', '#ffd60a', '#ffffff'], i, h = '';
+        w.className = 'confetti-wrap';
+        for (i = 0; i < 36; i++) h += '<i style="left:' + Math.round(Math.random() * 100) + '%; background:' + cols[i % cols.length] + '; animation-delay:' + (Math.random() * 0.6).toFixed(2) + 's; animation-duration:' + (1.6 + Math.random() * 1.4).toFixed(2) + 's; transform:rotate(' + Math.round(Math.random() * 360) + 'deg);"></i>';
+        w.innerHTML = h; o.appendChild(w); setTimeout(function() { if (w.parentNode) w.parentNode.removeChild(w); }, 3600);
+      } catch (e) {}
     }
 
     // ================= ENTRENO GUIADO DEL DÍA COMPLETO =================
