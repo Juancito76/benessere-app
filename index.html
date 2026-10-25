@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6931,7 +6931,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- Pestaña Recepción: todos los clientes del gym, asistencia, teléfonos, cumpleaños y mensajes por WhatsApp -----
     // Los datos se comparten por un script de Google aparte (REC_URL_DEFAULT o la dirección pegada en la pestaña); sin él, todo queda en este dispositivo.
-    var REC_URL_DEFAULT = '';   // dirección del script de Recepción (termina en /exec)
+    var REC_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzHwQspUXtKP90BTtcjzOlDpiHQNJJv2O-eq_tsRMRnyzEzVc9bqaVFa8rIE_bBPk1Y/exec';   // dirección del script de Recepción (termina en /exec)
     var REC_KEY = 'bn_rec_v1', REC_PIN_KEY = 'bn_rec_pin', REC_URL_KEY = 'bn_rec_url';
     var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [], checked: {}, force: 'auto', queue: null };
     var REC_TIPOS = { falta: '🔴 Hace días que no viene', poco: '🟡 Viene poco', felicitacion: '🟢 Felicitación por asistencia', cumple: '🎂 Cumpleaños', otro: '💬 Otro' };
