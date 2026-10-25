@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-24-u';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-24-v';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -580,6 +580,43 @@
     .cap-ch { flex: none; font-size: 1.6rem; font-weight: 300; color: var(--c); line-height: 1; }
     .capsule-group .cap-card { animation: vsIn .3s ease-out backwards; }
     .capsule-group .cap-card:nth-child(2) { animation-delay: .04s; } .capsule-group .cap-card:nth-child(3) { animation-delay: .08s; } .capsule-group .cap-card:nth-child(4) { animation-delay: .12s; } .capsule-group .cap-card:nth-child(n+5) { animation-delay: .16s; }
+
+    /* ===== Parte del coach: mismo pulido ===== */
+    header { gap: 14px; justify-content: flex-start; background: linear-gradient(135deg, #1c1c1c, #141414); border-bottom: 0; position: relative; overflow: hidden; }
+    header::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .hd-logo { flex: none; width: 58px; height: auto; filter: drop-shadow(0 0 10px rgba(0,229,255,.4)); }
+    .header-title { flex: 1; min-width: 0; }
+    .header-title h1 { font-size: 1.25rem; letter-spacing: .3px; }
+    .header-brand { flex: none; margin-left: auto; }
+    .gym-name { font-size: 1.35rem; }
+    @media (max-width: 640px) { .header-brand { display: none; } .header-title p { font-size: .72rem; } .hd-logo { width: 48px; } }
+    .gen-tabs { position: sticky; top: 0; z-index: 60; padding: 8px 2px 10px; margin: 0 -2px 14px; background: linear-gradient(180deg, rgba(13,13,13,.97) 70%, rgba(13,13,13,0)); backdrop-filter: blur(6px); scrollbar-width: none; }
+    .gen-tabs::-webkit-scrollbar { display: none; }
+    .gen-tab-btn { font-size: .82rem; padding: 10px 16px; }
+    .gen-tab-btn:not(.active):hover { border-color: #4a4a4a; color: #fff; }
+    .section-title { font-size: .95rem; letter-spacing: .6px; padding-bottom: 10px; border-bottom: 1px solid #2a2a2a; position: relative; }
+    .section-title::before { content: ''; width: 4px; height: 1.1em; border-radius: 3px; background: linear-gradient(180deg, var(--primary), var(--accent)); flex: none; }
+    .section-title .badge { margin-left: auto; background: var(--grad-accent); }
+    label { letter-spacing: .3px; color: #b8b8b8; }
+    input, textarea, select { background: #1b1b1b; border-color: #333; }
+    input:hover:not(:focus):not([readonly]), textarea:hover:not(:focus), select:hover:not(:focus) { border-color: #484848; }
+    .btn-secondary { background: linear-gradient(180deg, #2c2c2c, #232323); border-color: #3a3a3a; }
+    .btn-secondary:hover { border-color: #555; }
+    .btn-danger { background: linear-gradient(135deg, #f25a5a, #d93636); }
+    .btn-export-pdf { box-shadow: 0 3px 10px rgba(255,255,255,.12); }
+    .btn-export-download { background: linear-gradient(180deg, #2a2a2a, #1f1f1f); }
+    .day-card { background: linear-gradient(180deg, #232323, #1b1b1b); }
+    .day-header { border-bottom-color: #2e2e2e; }
+    .day-title-input { border-radius: 8px; }
+    .exercise-item { background: linear-gradient(180deg, #2b2b2b, #252525); border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
+    .sub-box { border-radius: 10px; border-color: #3a3a3a; }
+    .toggles-panel { background: #121212; border-radius: 12px; }
+    .diet-box, .security-box { border-radius: 12px; }
+    .export-bar { background: rgba(16,16,16,.92); backdrop-filter: blur(14px); border-top: 0; box-shadow: 0 -6px 24px rgba(0,0,0,.6); }
+    .export-bar::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .modal-inner { border-radius: 20px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+    .modal-overlay { backdrop-filter: blur(4px); }
+    .section-box, .day-card { animation: vsIn .25s ease-out backwards; }
   </style>
 </head>
 <body>
@@ -587,6 +624,7 @@
   <!-- ================= 1. MODO CONSTRUCTOR (COACH) ================= -->
   <div id="coach_builder_view">
     <header>
+      <img class="hd-logo" src="icons/logo.png" alt="" onerror="this.style.display='none'">
       <div class="header-title">
         <h1>Generador Pro Benessere</h1>
         <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v10</p>
