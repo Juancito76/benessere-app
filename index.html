@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6998,14 +6998,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (pushed[c.id] !== sig) todo.push({ id: c.id, gd: gd, sig: sig });
       });
       if (!todo.length) return;
-      ATT.pushing = true; var i = 0;
-      (function next() {
-        if (!COACH || i >= todo.length) { ATT.pushing = false; return; }
-        var it = todo[i++], now = new Date().toISOString();
+      ATT.pushing = true; var i = 0, done = 0, fails = 0, total = todo.length, running = 0;
+      showToastTop('🚪 Actualizando las visitas al gym de ' + total + ' cliente' + (total === 1 ? '' : 's') + '… deja esta pantalla abierta un par de minutos.');
+      function finish() {
+        if (running > 0) return;
+        ATT.pushing = false;
+        showToastTop(fails ? '⚠️ Visitas al gym: ' + done + ' actualizados, ' + fails + ' fallaron (se reintentan la próxima vez).' : '✅ Visitas al gym actualizadas en la portada de ' + done + ' cliente' + (done === 1 ? '' : 's') + '.');
+      }
+      function next() {
+        if (!COACH || i >= todo.length) { finish(); return; }
+        var it = todo[i++], now = new Date().toISOString(); running++;
         postJson({ a: 'sesion', id: it.id, s: JSON.stringify({ t: now, d: wr.from, k: 'gym', w: wr.from, gd: it.gd, at: now, ex: [] }), pin: COACH.pin }).then(function(j) {
-          if (j && j.ok) { pushed[it.id] = it.sig; try { localStorage.setItem('bn_gym_pushed', JSON.stringify(pushed)); } catch (e) {} }
-        }).catch(function() {}).then(next);
-      })();
+          if (j && j.ok) { done++; pushed[it.id] = it.sig; try { localStorage.setItem('bn_gym_pushed', JSON.stringify(pushed)); } catch (e) {} } else fails++;
+        }).catch(function() { fails++; }).then(function() { running--; next(); });
+      }
+      for (var w = 0; w < 3; w++) next();   // 3 envíos a la vez
     }
     function attWeekTag(name, id) {   // «Mis clientes»: visitas al gym de esta semana según el reporte
       if (!ATT.data) return '';
