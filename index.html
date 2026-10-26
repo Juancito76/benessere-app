@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6562,15 +6562,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var rk = weekRange(0), rows = CW.rows.slice();
       function rank(r) { if (!r.st) return 5; var s = r.st; if (s.n === 0 && (s.ago < 0 || s.ago >= 7)) return 0; if (s.n === 0) return 1; if (s.goal && s.n >= s.goal) return 3; return 2; }
       rows.sort(function(a, b) { var d = rank(a) - rank(b); if (d) return d; var aa = a.st ? (a.st.ago < 0 ? 999 : a.st.ago) : 0, bb = b.st ? (b.st.ago < 0 ? 999 : b.st.ago) : 0; return bb - aa; });
-      var okN = 0, trainedN = 0, known = 0;
-      rows.forEach(function(r) { if (!r.st) return; known++; if (r.st.n > 0) trainedN++; if (r.st.goal && r.st.n >= r.st.goal) okN++; });
+      var okN = 0, trainedN = 0, known = 0, cx = { n: 0, both: 0, gym: 0, app: 0, none: 0, union: 0, goalOk: 0 };
+      rows.forEach(function(r) { if (!r.st) return; known++; if (r.st.n > 0) trainedN++; if (r.st.goal && r.st.n >= r.st.goal) okN++; var c = cwCross(r); if (c) { cx.n++; cx[c.kind]++; if (c.kind !== 'none') cx.union++; if (c.goal && c.tot >= c.goal) cx.goalOk++; } });
       var h = '<div class="modal-inner" style="max-width:560px;">' +
         '<div style="font-size:1.05rem; font-weight:900; color:var(--primary);">📈 Quién entrenó esta semana</div>' +
         '<div style="font-size:0.72rem; color:var(--muted); margin:2px 0 10px;">Del ' + fmtDateShort(rk.from) + ' al ' + fmtDateShort(rk.to) + ' (lunes a domingo) · clientes con rutina de los últimos 90 días.</div>';
       h += '<div style="background:#102418; border:1px solid #1f6b3b; border-radius:10px; padding:10px; font-size:0.85rem; margin-bottom:10px;">' +
         (CW.done < CW.total ? '⏳ Consultando… ' + CW.done + ' de ' + CW.total + '<br>' : '') +
-        '<b>' + trainedN + ' de ' + known + '</b> clientes ya entrenaron esta semana' + (okN ? ' · <b>' + okN + '</b> cumplieron su meta ✔' : '') + '.</div>';
-      h += attWeekSummary();
+        (cx.n ? '<b>' + cx.union + ' de ' + cx.n + '</b> clientes entrenaron esta semana <span style="color:var(--muted);">(en el gym o en la app)</span>' + (cx.goalOk ? ' · <b>' + cx.goalOk + '</b> cumplieron su meta ✔' : '') + '.' :
+          '<b>' + trainedN + ' de ' + known + '</b> clientes ya entrenaron esta semana' + (okN ? ' · <b>' + okN + '</b> cumplieron su meta ✔' : '') + '.') +
+        (ATT.data ? (function() { var n = attCounts(); return '<div style="margin-top:7px; padding-top:7px; border-top:1px solid #1f6b3b; font-size:0.78rem; line-height:1.7;">' +
+          (cx.n ? '🔗 <b>' + cx.both + '</b> en ambos · <b style="color:#ffb347;">' + cx.gym + '</b> vinieron al gym pero no anotaron · <b style="color:#7fb0ff;">' + cx.app + '</b> anotaron pero no aparecen en el gym · <b style="color:#ff8a8a;">' + cx.none + '</b> ninguno<br>' : '') +
+          '🚪 Reporte al ' + fmtDate(attRef()) + ': <b style="color:#ff8a8a;">' + n.out + '</b> sin ir 7+ días · <b style="color:#ffd166;">' + n.low + '</b> viniendo poco · <b style="color:#06d6a0;">' + n.ok + '</b> al día · <a href="#" onclick="openAttendance(); return false;" style="color:var(--primary); font-weight:800;">Ver lista y mensajes</a></div>'; })() : '') + '</div>';
+      if (!ATT.data) h += attWeekSummary();
       if (!rows.length) h += '<div style="font-size:0.85rem; color:var(--muted); padding:12px 0;">No hay rutinas recientes para mostrar.</div>';
       rows.forEach(function(r) {
         var s = r.st, badge, line, col = '#555';
@@ -6956,21 +6960,39 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var nin = box.querySelector('.modal-inner'); if (nin && keep) nin.scrollTop = keep;
     }
     // Línea de asistencia dentro de «Esta semana» (una por cliente)
+    // Cruce de la semana: días que entró al gym (reporte) vs. días que anotó en la app (rutina)
+    function cwCross(r) {
+      if (!r || !r.st || !ATT.data) return null;
+      var rk = weekRange(0), ref = attRef(); if (ref < rk.from) return null;   // el reporte es de una semana anterior: no se puede cruzar
+      var m = attMatch({ key: normName(r.name), name: r.name, id: r.id }); if (!m || m.off || !m.p) return null;
+      var g = attStats(m.p, ref).wk, a = r.st.n, goal = r.st.goal || 0;
+      return { g: g, a: a, goal: goal, tot: Math.max(g, a), kind: g && a ? 'both' : (g ? 'gym' : (a ? 'app' : 'none')) };
+    }
+    function cwRemind(id) {   // recordatorio por WhatsApp a quien vino al gym pero no anotó en la app
+      var r = (CW.rows || []).filter(function(x) { return x.id === id; })[0]; if (!r) return;
+      var coach = (COACH && COACH.name) ? COACH.name : 'tu coach';
+      var txt = 'Hola ' + attFirst(r.name) + ' 👋 Soy ' + coach + ' de Benessere Gym. ¡Te vi entrenando esta semana, qué bien! 💪 Recuerda anotar tus marcas y tocar «Guardar día» en tu rutina: así podemos ver tu progreso y ajustarla a ti. ¡Vas muy bien!';
+      window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+    }
     function attWeekLine(r) {
       if (!ATT.data) return '';
       var c = { key: normName(r.name), name: r.name, id: r.id }, m = attMatch(c);
       if (!m || m.off) return '';
       if (!m.p) return '<div style="font-size:0.7rem; color:#8a8f98; margin-top:3px;">🚪 Gym: sin vincular al reporte · <a href="#" onclick="openAttendance(); return false;" style="color:var(--primary);">vincular</a></div>';
-      var ref = attRef(), st = attStats(m.p, ref), tag = '';
+      var ref = attRef(), st = attStats(m.p, ref), tag = '', cx = cwCross(r), cxHtml = '';
+      if (cx) {
+        var cxTxt = cx.kind === 'both' ? '<span style="color:#06d6a0;">✔ coincide</span>' : (cx.kind === 'gym' ? '<span style="color:#ffb347;">vino pero no anotó en la app</span> · <a href="#" onclick="cwRemind(' + jsArg(r.id) + '); return false;" style="color:#06d6a0; font-weight:800;">📲 recordarle</a>' : (cx.kind === 'app' ? '<span style="color:#7fb0ff;">anotó pero no aparece en el gym</span>' : '<span style="color:#ff8a8a;">no vino ni anotó</span>'));
+        cxHtml = '<div style="font-size:0.72rem; color:var(--muted); margin-top:3px;">🔗 Gym <b>' + cx.g + '</b> · App <b>' + cx.a + '</b>' + (cx.goal ? ' · Meta <b>' + cx.goal + '</b>' : '') + ' · ' + cxTxt + '</div>';
+      }
       if (st.kind === 'out') tag = ' · <b style="color:#ff8a8a;">' + (st.ago < 0 ? 'sin entradas' : st.ago + ' días sin ir') + '</b>';
       else if (st.kind === 'low') tag = ' · <b style="color:#ffd166;">viene poco</b>';
       return '<div style="font-size:0.72rem; color:var(--muted); margin-top:4px;">🚪 Gym: <b>' + st.wk + '</b> ' + (st.wk === 1 ? 'día' : 'días') + ' esta semana · <b>' + st.month + '</b> en ' + ATT_MESES[+ref.slice(5, 7) - 1] + tag +
-        (st.kind !== 'ok' ? ' · <a href="#" onclick="openAttendance(' + jsArg(c.key) + '); return false;" style="color:#06d6a0; font-weight:800;">📲 mensaje</a>' : '') + '</div>' + attStrip(st, ref);
+        (st.kind !== 'ok' ? ' · <a href="#" onclick="openAttendance(' + jsArg(c.key) + '); return false;" style="color:#06d6a0; font-weight:800;">📲 mensaje</a>' : '') + '</div>' + cxHtml + attStrip(st, ref);
     }
+    function attCounts() { var ref = attRef(), n = { out: 0, low: 0, ok: 0 }; attClients().forEach(function(c) { var m = attMatch(c); if (m && m.p) n[attStats(m.p, ref).kind]++; }); return n; }
     function attWeekSummary() {
       if (!ATT.data) return '<button type="button" onclick="openAttendance()" style="width:100%; margin-bottom:10px; background:transparent; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:9px; font-weight:800; font-size:0.78rem; cursor:pointer;">🚪 Cargar asistencias del gym (Excel)</button>';
-      var ref = attRef(), n = { out: 0, low: 0, ok: 0 };
-      attClients().forEach(function(c) { var m = attMatch(c); if (m && m.p) n[attStats(m.p, ref).kind]++; });
+      var ref = attRef(), n = attCounts();
       return '<div style="background:#14202e; border:1px solid #2b4a6b; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">🚪 <b>Gym</b> (reporte al ' + fmtDate(ref) + '): <b style="color:#ff8a8a;">' + n.out + '</b> sin ir 7+ días · <b style="color:#ffd166;">' + n.low + '</b> viniendo poco · <b style="color:#06d6a0;">' + n.ok + '</b> al día · <a href="#" onclick="openAttendance(); return false;" style="color:var(--primary); font-weight:800;">Ver lista y mensajes</a></div>';
     }
 
