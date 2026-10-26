@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-u';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-v';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6778,7 +6778,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { var l2 = JSON.parse(localStorage.getItem(ATT_LINKS_KEY) || 'null'); if (l2) Object.keys(l2).forEach(function(k) { links[k] = l2[k]; }); } catch (e) {}
       if (!Object.keys(REC.people).length) { try { recLoadLocal(); } catch (e) {} }
       if (Object.keys(REC.people).length && REC.meta && REC.meta.to) {   // la asistencia sale de Recepción: una sola carga para todo
-        var pp = {}; Object.keys(REC.people).forEach(function(k) { var q = REC.people[k]; if (q.d && q.d.length) pp[k] = { n: q.n, d: q.d }; });
+        var pp = {}; Object.keys(REC.people).forEach(function(k) { var q = REC.people[k]; if ((q.d && q.d.length) || (q.x && q.x.length)) pp[k] = { n: q.n, d: q.d || [], x: q.x || [] }; });
         ATT.data = { p: pp, from: REC.meta.from || REC.meta.to, to: REC.meta.to, rep: REC.meta.rep || '', up: REC.meta.up || '', links: links, rec: true };
       } else {
         ATT.data = old;
@@ -6811,9 +6811,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function attMerge(parsed) {
       var D = ATT.data || { p: {}, links: {} };
       Object.keys(parsed.people).forEach(function(k) {
-        var cur = D.p[k], set = {};
+        var cur = D.p[k], set = {}, setx = {};
         (cur ? cur.d : []).concat(parsed.people[k].d).forEach(function(x) { set[x] = 1; });
-        D.p[k] = { n: parsed.people[k].n, d: Object.keys(set).sort() };
+        (cur && cur.x ? cur.x : []).concat(parsed.people[k].x || []).forEach(function(x) { setx[x] = 1; });
+        D.p[k] = { n: parsed.people[k].n, d: Object.keys(set).sort(), x: Object.keys(setx).sort() };
       });
       D.from = (!D.from || (parsed.from && parsed.from < D.from)) ? parsed.from : D.from;
       D.to = (!D.to || parsed.to > D.to) ? parsed.to : D.to;
@@ -6821,7 +6822,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       D.up = todayIso();
       var ref = D.to > (D.rep || '') ? D.to : D.rep, cut = new Date(ref + 'T12:00:00'); cut.setDate(cut.getDate() - 62);
       var cutIso = isoOfDate(cut);
-      Object.keys(D.p).forEach(function(k) { D.p[k].d = D.p[k].d.filter(function(x) { return x >= cutIso; }); if (!D.p[k].d.length) delete D.p[k]; });
+      Object.keys(D.p).forEach(function(k) { D.p[k].d = D.p[k].d.filter(function(x) { return x >= cutIso; }); D.p[k].x = (D.p[k].x || []).filter(function(x) { return x >= cutIso; }); if (!D.p[k].d.length && !D.p[k].x.length) delete D.p[k]; });
       ATT.data = D; attSave();
     }
     function attClients() {   // mismos clientes que en «Esta semana»: la rutina más nueva de cada uno, de los últimos 90 días
