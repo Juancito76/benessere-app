@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5049,7 +5049,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { var a = JSON.parse(localStorage.getItem(sessKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
     }
     // Los registros del historial pueden ser entrenos con marcas, entrenos sin marcas (nm) o metas diarias (k:'meta').
-    function isMetaSess(s) { return !!(s && (s.k === 'meta' || s.k === 'rep' || s.k === 'vis')); }   // 'rep' = aviso de video que no se ve; 'vis' = abrió su rutina (ninguno es un entreno)
+    function isMetaSess(s) { return !!(s && (s.k === 'meta' || s.k === 'rep' || s.k === 'vis' || s.k === 'gym')); }   // 'rep' = aviso de video que no se ve; 'vis' = abrió su rutina; 'gym' = días que entró al gym esta semana (lo anota el coach desde el reporte); ninguno es un entreno
     function loadWorkouts() {   // solo entrenos; si un entreno con marcas reemplaza a uno "sin marcas" (sup), queda el de las marcas
       var all = loadSessions(), sup = {};
       all.forEach(function(x) { if (x && x.sup) sup[x.sup] = true; });
@@ -6162,6 +6162,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var b = new Date(a.getTime()); b.setDate(b.getDate() + 6);
       return { from: isoOfDate(a), to: isoOfDate(b) };
     }
+    // Visitas al gym de esta semana (días distintos): las del reporte del gym (el coach las anota en su historial) + los días en que entrenó en la app
+    function gymWeekInfo() {
+      var wr = weekRange(0), best = null, days = {}, gd = [];
+      loadSessions().forEach(function(x) { if (x && x.k === 'gym' && x.w === wr.from && (!best || String(x.at || '') > String(best.at || ''))) best = x; });
+      if (best && Array.isArray(best.gd)) gd = best.gd.filter(function(d) { return d >= wr.from && d <= wr.to; });
+      gd.forEach(function(d) { days[d] = 1; });
+      loadWorkouts().forEach(function(s) { var d = sessDateIso(s); if (d && d >= wr.from && d <= wr.to) days[d] = 1; });
+      return { n: Object.keys(days).length, rep: gd.length, has: !!best };
+    }
     function weekStats(off) {
       var r = weekRange(off), days = {}, secs = 0, kc = 0, sk = 0;
       loadWorkouts().forEach(function(s) {
@@ -6323,6 +6332,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         head = n + 1 <= goal ? '🔥 ¡Vas por tu día ' + (n + 1) + ' de entreno esta semana!' : '🔥 ¡Meta de días cumplida, hoy sumas un día extra!';
         line = 'Felicidades: ya llevas <b>' + n + ' de ' + goal + '</b> días' + (cur.secs > 0 ? ', <b>' + wkHM(cur.secs) + '</b>' : '') + (cur.tk > 0 ? ' y <b>~' + cur.tk + ' de ' + wkKcalGoal() + ' kcal</b> de tu meta semanal' : '') + '. ¡Sigue así!';
       }
+      var gwi = gymWeekInfo();
+      if (gwi.n > 0) line += '<div style="margin-top:8px; font-size:0.86rem;">🚪 Visitas al gym esta semana: <b>' + gwi.n + '</b></div>';
       var chips = '', trainIdx = [];
       days.forEach(function(d, i) { if (!d.rest) trainIdx.push(i); });
       if (trainIdx.length > 1) {
@@ -6416,6 +6427,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:' + (hasToday ? '8px' : '0') + ' 0 2px;">ESTA SEMANA</div>' +
         row('📅 Días de entreno', cur.days + ' de ' + goal) +
+        (gymWeekInfo().n ? row('🚪 Visitas al gym', String(gymWeekInfo().n)) : '') +
         row('⏱ Tiempo acumulado', cur.secs > 0 ? wkHM(cur.secs) : '-') +
         row('🔥 Calorías estimadas', '~' + cur.tk + ' de ' + kGoal + ' kcal') +
         (cur.sk > 0 ? '<div style="font-size:0.72rem; color:var(--muted); text-align:right;">incluye ~' + cur.sk + ' kcal por pasos</div>' : '');
@@ -6514,7 +6526,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function openCoachWeek() {
       if (!COACH) return;
-      attLoad(); attFromServer(function() { try { renderCoachWeek(); } catch (e) {} });
+      attLoad(); attFromServer(function() { try { renderCoachWeek(); } catch (e) {} try { attPushGym(); } catch (e2) {} });
       var run = ++CW.run;
       var groups = {}, order = [], cut = new Date(); cut.setDate(cut.getDate() - 90);
       var cutIso = isoOfDate(cut);
@@ -6840,7 +6852,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       attLoad();
       if (typeof openKey === 'string') ATT.open = openKey;
       renderAttendance(); openModal('att_modal');
-      attFromServer(function() { try { renderAttendance(); } catch (e) {} });
+      attFromServer(function() { try { renderAttendance(); } catch (e) {} try { attPushGym(); } catch (e2) {} });
       if (ATT.open) setTimeout(function() { var t = document.getElementById('att_ta'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center' }); }, 60);
     }
     function attPickFile(inp) {
@@ -6971,6 +6983,37 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var coach = (COACH && COACH.name) ? COACH.name : 'tu coach';
       var txt = 'Hola ' + attFirst(r.name) + ' 👋 Soy ' + coach + ' de Benessere Gym. ¡Te vi entrenando esta semana, qué bien! 💪 Recuerda anotar tus marcas y tocar «Guardar día» en tu rutina: así podemos ver tu progreso y ajustarla a ti. ¡Vas muy bien!';
       window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+    }
+    // El coach anota en el historial de cada cliente los días de esta semana en que entró al gym; así aparecen en la portada del cliente
+    function attPushGym() {
+      if (!COACH || !ATT.data || ATT.pushing) return;
+      var ref = attRef(), wr = weekRange(0); if (!ref || ref < wr.from) return;   // el reporte es de una semana anterior
+      var pushed = {}; try { pushed = JSON.parse(localStorage.getItem('bn_gym_pushed') || '{}') || {}; } catch (e) {}
+      var todo = [];
+      attClients().forEach(function(c) {
+        var m = attMatch(c); if (!m || m.off || !m.p) return;
+        var set = {}; (m.p.d || []).concat(m.p.x || []).forEach(function(d) { if (d >= wr.from && d <= wr.to && d <= ref) set[d] = 1; });
+        var gd = Object.keys(set).sort(); if (!gd.length) return;
+        var sig = wr.from + '|' + gd.join(',');
+        if (pushed[c.id] !== sig) todo.push({ id: c.id, gd: gd, sig: sig });
+      });
+      if (!todo.length) return;
+      ATT.pushing = true; var i = 0;
+      (function next() {
+        if (!COACH || i >= todo.length) { ATT.pushing = false; return; }
+        var it = todo[i++], now = new Date().toISOString();
+        postJson({ a: 'sesion', id: it.id, s: JSON.stringify({ t: now, d: wr.from, k: 'gym', w: wr.from, gd: it.gd, at: now, ex: [] }), pin: COACH.pin }).then(function(j) {
+          if (j && j.ok) { pushed[it.id] = it.sig; try { localStorage.setItem('bn_gym_pushed', JSON.stringify(pushed)); } catch (e) {} }
+        }).catch(function() {}).then(next);
+      })();
+    }
+    function attWeekTag(name, id) {   // «Mis clientes»: visitas al gym de esta semana según el reporte
+      if (!ATT.data) return '';
+      var ref = attRef(), rk = weekRange(0); if (!ref || ref < rk.from) return '';
+      var m = attMatch({ key: normName(name), name: name, id: id }); if (!m || m.off) return '';
+      if (!m.p) return '<div style="font-size:0.72rem; color:#8a8f98; margin-top:3px;">🚪 Gym: sin vincular al reporte</div>';
+      var st = attStats(m.p, ref);
+      return '<div style="font-size:0.74rem; margin-top:3px; color:' + (st.wk ? '#06d6a0' : '#ff8a8a') + ';">🚪 <b>' + st.wk + '</b> ' + (st.wk === 1 ? 'visita' : 'visitas') + ' al gym esta semana</div>';
     }
     function attWeekLine(r) {
       if (!ATT.data) return '';
@@ -9469,6 +9512,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var up = 0;
         local.forEach(function(x) { if (x && x.t && !remote[x.t] && !queued[x.t] && up < 40 && (x.ex && x.ex.length || x.nm || isMetaSess(x))) { q.push({ id: id, s: JSON.stringify(x), c: 0 }); up++; } });
         if (up) savePending(q);
+        var lastGym = {}; local.forEach(function(x) { if (x && x.k === 'gym' && (!lastGym[x.w] || String(x.at || '') > String(lastGym[x.w].at || ''))) lastGym[x.w] = x; });
+        local = local.filter(function(x) { return !(x && x.k === 'gym') || lastGym[x.w] === x; });   // de los avisos del gym solo se conserva el más nuevo de cada semana
         local.sort(function(a, b) { return a.t < b.t ? -1 : (a.t > b.t ? 1 : 0); });
         if (local.length > 300) local = local.slice(local.length - 300);
         try { localStorage.setItem(sessKey(), JSON.stringify(local)); } catch (e) {}
@@ -9530,6 +9575,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           } catch (e) {}
           clientRows = j.rutinas || [];
           renderClientList();
+          try { attLoad(); attFromServer(function() { try { renderClientList(); attPushGym(); } catch (e) {} }); } catch (e) {}
         } else {
           if (j && j.error === 'pin') { try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
           showClientLogin(clientsErrorText(j && j.error));
@@ -9542,7 +9588,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pinAtStart = COACH.pin;
       postJson({ a: 'listar', pin: pinAtStart }).then(function(j) {
         if (!COACH || COACH.pin !== pinAtStart) return;   // cerró sesión o cambió de coach mientras tanto
-        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); }
+        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { attLoad(); attFromServer(function() { try { renderClientList(); attPushGym(); } catch (e) {} }); } catch (e2) {} }
         else { var s2 = document.getElementById('cl_status'); if (s2) s2.innerText = clientsErrorText(j && j.error); }
       }).catch(function(e) { if (!COACH || COACH.pin !== pinAtStart) return; var s3 = document.getElementById('cl_status'); if (s3) s3.innerText = clientsErrorText(e && e.message); });
     }
@@ -9576,7 +9622,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:10px; padding:12px; margin-bottom:8px;">' +
           '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">' +
           '<div style="flex:1 1 180px; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.95rem;">' + escHtml(g.name) + '</div>' +
-          '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.days.length > 1 ? ' · ' + g.days.length + ' rutinas' : '') + '</div>' + (isOff ? '<div style="margin-top:4px; font-size:0.7rem; font-weight:700; color:#ffb347;">🔌 Desconectado: ya no ve la rutina ni las actualizaciones</div>' : '') + '</div>' +
+          '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.days.length > 1 ? ' · ' + g.days.length + ' rutinas' : '') + '</div>' + (isOff ? '<div style="margin-top:4px; font-size:0.7rem; font-weight:700; color:#ffb347;">🔌 Desconectado: ya no ve la rutina ni las actualizaciones</div>' : '') + attWeekTag(g.name, last.id) + '</div>' +
           '<div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
           '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:#ffd60a; border:1px solid #ffd60a; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
