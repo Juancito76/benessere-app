@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-t';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -4034,7 +4034,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       openModal('modal_share');
     }
 
-    function finishShare(state, link, reason) {
+    function finishShare(state, link, reason, modo) {
       var phone = cleanPhone(document.getElementById('clientPhone').value);
       var text = buildWaText(state, link);
       var enc = encodeURIComponent(text);
@@ -4043,9 +4043,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       var isShort = link.indexOf('#i=') !== -1;
       var title, note;
-      if (isShort) {
+      if (isShort && modo === 'mismo') {
+        title = '✅ Mismo enlace actualizado';
+        note = state.clientName + ' ya tenía un enlace: se actualizó la rutina en ese mismo enlace (no se creó otro). Toca "Abrir WhatsApp" para avisarle.';
+      } else if (isShort) {
         title = '✅ Enlace corto listo';
-        note = 'Toca "Abrir WhatsApp" y envía el mensaje a ' + state.clientName + '.';
+        note = 'Toca "Abrir WhatsApp" y envía el mensaje a ' + state.clientName + '.' + (modo === 'sin-pin' ? ' Para que la próxima vez se reutilice el mismo enlace, entra primero a "Mis clientes" con tu PIN.' : (modo === 'no-actualizo' ? ' (No se pudo actualizar su enlace anterior, por eso se creó uno nuevo.)' : ''));
       } else if (reason) {
         title = 'Enlace largo listo';
         note = 'No se pudo crear el enlace corto: ' + reason + ' Se usó el enlace largo, que funciona igual pero puede cortarse en WhatsApp. Si pasa, toca "Copiar mensaje" y pégalo en el chat. 🔒 Ojo: este enlace lleva la rutina y las medidas del cliente dentro; envíalo solo a esa persona. Cuando el servicio responda, vuelve a enviar para obtener el enlace corto (más privado).';
@@ -4098,17 +4101,37 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       // Enlace corto: la rutina se guarda en la hoja de Google y el enlace lleva solo el código
       showShareWorking();
-      fetchJson(conn.base, {
-        method: 'POST',
-        redirect: 'follow',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ k: conn.key, p: payloadText, coach: state.coachName, atleta: state.clientName })
-      }, 25000).then(function(j) {
-        if (j && j.ok && j.id) finishShare(state, baseUrl + '#i=' + j.id, '');
-        else finishShare(state, longLink, shareReasonText(j && j.error ? j.error : 'respuesta'));
-      }).catch(function(e) {
-        finishShare(state, longLink, shareReasonText(e && e.message));
+      function crearNuevo(modo) {
+        fetchJson(conn.base, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ k: conn.key, p: payloadText, coach: state.coachName, atleta: state.clientName })
+        }, 25000).then(function(j) {
+          if (j && j.ok && j.id) finishShare(state, baseUrl + '#i=' + j.id, '', modo);
+          else finishShare(state, longLink, shareReasonText(j && j.error ? j.error : 'respuesta'));
+        }).catch(function(e) {
+          finishShare(state, longLink, shareReasonText(e && e.message));
+        });
+      }
+      // Si este cliente ya tiene un enlace (el último que se le envió), se actualiza ese mismo en vez de crear otro
+      var pin = vrepPin(), cn = normName(state.clientName);
+      if (!cn || cn === 'atleta benessere') { crearNuevo(''); return; }
+      if (!pin) { crearNuevo('sin-pin'); return; }
+      lastLinkFor(state.clientName, pin).then(function(id) {
+        if (!id) { crearNuevo(''); return; }
+        postJson({ a: 'actualizar', id: id, p: payloadText, pin: pin }).then(function(j) {
+          if (j && j.ok) finishShare(state, baseUrl + '#i=' + id, '', 'mismo');
+          else crearNuevo('no-actualizo');
+        }).catch(function() { crearNuevo('no-actualizo'); });
       });
+    }
+    // Último enlace enviado a un cliente: la rutina más nueva con su nombre en la hoja (la lista llega de la más nueva a la más vieja)
+    function lastLinkFor(name, pin) {
+      var n = normName(name);
+      function buscar() { var id = ''; (clientRows || []).forEach(function(r) { if (!id && r && r.id && normName(r.atleta) === n) id = r.id; }); return id; }
+      var id0 = buscar(); if (id0) return Promise.resolve(id0);
+      return postJson({ a: 'listar', pin: pin }).then(function(j) { if (j && j.ok) clientRows = j.rutinas || []; return buscar(); }).catch(function() { return ''; });
     }
 
     // ================= VISTA DEL ATLETA =================
