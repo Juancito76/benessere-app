@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6526,7 +6526,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function openCoachWeek() {
       if (!COACH) return;
-      attLoad(); attFromServer(function() { try { renderCoachWeek(); } catch (e) {} try { attPushGym(); } catch (e2) {} });
+      attLoad(); attFromServer(function() { try { renderCoachWeek(); } catch (e) {} });
       var run = ++CW.run;
       var groups = {}, order = [], cut = new Date(); cut.setDate(cut.getDate() - 90);
       var cutIso = isoOfDate(cut);
@@ -6852,7 +6852,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       attLoad();
       if (typeof openKey === 'string') ATT.open = openKey;
       renderAttendance(); openModal('att_modal');
-      attFromServer(function() { try { renderAttendance(); } catch (e) {} try { attPushGym(); } catch (e2) {} });
+      attFromServer(function() { try { renderAttendance(); } catch (e) {} });
       if (ATT.open) setTimeout(function() { var t = document.getElementById('att_ta'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center' }); }, 60);
     }
     function attPickFile(inp) {
@@ -6983,36 +6983,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var coach = (COACH && COACH.name) ? COACH.name : 'tu coach';
       var txt = 'Hola ' + attFirst(r.name) + ' 👋 Soy ' + coach + ' de Benessere Gym. ¡Te vi entrenando esta semana, qué bien! 💪 Recuerda anotar tus marcas y tocar «Guardar día» en tu rutina: así podemos ver tu progreso y ajustarla a ti. ¡Vas muy bien!';
       window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
-    }
-    // El coach anota en el historial de cada cliente los días de esta semana en que entró al gym; así aparecen en la portada del cliente
-    function attPushGym() {
-      if (!COACH || !ATT.data || ATT.pushing) return;
-      var ref = attRef(), wr = weekRange(0); if (!ref || ref < wr.from) return;   // el reporte es de una semana anterior
-      var pushed = {}; try { pushed = JSON.parse(localStorage.getItem('bn_gym_pushed') || '{}') || {}; } catch (e) {}
-      var todo = [];
-      attClients().forEach(function(c) {
-        var m = attMatch(c); if (!m || m.off || !m.p) return;
-        var set = {}; (m.p.d || []).concat(m.p.x || []).forEach(function(d) { if (d >= wr.from && d <= wr.to && d <= ref) set[d] = 1; });
-        var gd = Object.keys(set).sort(); if (!gd.length) return;
-        var sig = wr.from + '|' + gd.join(',');
-        if (pushed[c.id] !== sig) todo.push({ id: c.id, gd: gd, sig: sig });
-      });
-      if (!todo.length) return;
-      ATT.pushing = true; var i = 0, done = 0, fails = 0, total = todo.length, running = 0;
-      showToastTop('🚪 Actualizando las visitas al gym de ' + total + ' cliente' + (total === 1 ? '' : 's') + '… deja esta pantalla abierta un par de minutos.');
-      function finish() {
-        if (running > 0) return;
-        ATT.pushing = false;
-        showToastTop(fails ? '⚠️ Visitas al gym: ' + done + ' actualizados, ' + fails + ' fallaron (se reintentan la próxima vez).' : '✅ Visitas al gym actualizadas en la portada de ' + done + ' cliente' + (done === 1 ? '' : 's') + '.');
-      }
-      function next() {
-        if (!COACH || i >= todo.length) { finish(); return; }
-        var it = todo[i++], now = new Date().toISOString(); running++;
-        postJson({ a: 'sesion', id: it.id, s: JSON.stringify({ t: now, d: wr.from, k: 'gym', w: wr.from, gd: it.gd, at: now, ex: [] }), pin: COACH.pin }).then(function(j) {
-          if (j && j.ok) { done++; pushed[it.id] = it.sig; try { localStorage.setItem('bn_gym_pushed', JSON.stringify(pushed)); } catch (e) {} } else fails++;
-        }).catch(function() { fails++; }).then(function() { running--; next(); });
-      }
-      for (var w = 0; w < 3; w++) next();   // 3 envíos a la vez
     }
     function attWeekTag(name, id) {   // «Mis clientes»: visitas al gym de esta semana según el reporte
       if (!ATT.data) return '';
@@ -9582,7 +9552,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           } catch (e) {}
           clientRows = j.rutinas || [];
           renderClientList();
-          try { attLoad(); attFromServer(function() { try { renderClientList(); attPushGym(); } catch (e) {} }); } catch (e) {}
+          try { attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} }); } catch (e) {}
         } else {
           if (j && j.error === 'pin') { try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
           showClientLogin(clientsErrorText(j && j.error));
@@ -9595,7 +9565,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pinAtStart = COACH.pin;
       postJson({ a: 'listar', pin: pinAtStart }).then(function(j) {
         if (!COACH || COACH.pin !== pinAtStart) return;   // cerró sesión o cambió de coach mientras tanto
-        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { attLoad(); attFromServer(function() { try { renderClientList(); attPushGym(); } catch (e) {} }); } catch (e2) {} }
+        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} }); } catch (e2) {} }
         else { var s2 = document.getElementById('cl_status'); if (s2) s2.innerText = clientsErrorText(j && j.error); }
       }).catch(function(e) { if (!COACH || COACH.pin !== pinAtStart) return; var s3 = document.getElementById('cl_status'); if (s3) s3.innerText = clientsErrorText(e && e.message); });
     }
