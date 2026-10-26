@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6804,14 +6804,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (x.slice(0, 7) === ym) month++;
         if (x >= wr.from && x <= wr.to) wk++;
       });
+      var den = {}; (p && p.x ? p.x : []).forEach(function(x) { if (x <= ref && !set[x]) den[x] = 1; });   // días en que intentó entrar y se denegó el acceso
       var ago = last ? dayNum(ref) - dayNum(last) : -1;
-      return { last: last, ago: ago, w7: w7, month: month, wk: wk, set: set, kind: (ago < 0 || ago >= 7) ? 'out' : (w7 <= 2 ? 'low' : 'ok') };
+      return { last: last, ago: ago, w7: w7, month: month, wk: wk, set: set, den: den, kind: (ago < 0 || ago >= 7) ? 'out' : (w7 <= 2 ? 'low' : 'ok') };
     }
     function attStrip(st, ref) {   // una casilla por día del mes: verde = fue al gym
       var y = +ref.slice(0, 4), mo = +ref.slice(5, 7), total = new Date(y, mo, 0).getDate(), today = +ref.slice(8, 10), h = '<div style="display:flex; gap:1px; margin-top:5px;" title="Días del mes en que entró al gym">';
       for (var d = 1; d <= total; d++) {
-        var iso = ref.slice(0, 8) + pad2(d), on = st.set[iso];
-        h += '<span style="flex:1; height:8px; border-radius:2px; background:' + (on ? '#06d6a0' : (d <= today ? '#2c3340' : '#171b22')) + ';"></span>';
+        var iso = ref.slice(0, 8) + pad2(d), on = st.set[iso], dn = !on && st.den && st.den[iso];
+        h += '<span title="' + (dn ? 'Acceso denegado (no entró)' : '') + '" style="flex:1; height:8px; border-radius:2px; background:' + (on ? '#06d6a0' : (dn ? '#ff4d4d' : (d <= today ? '#2c3340' : '#171b22'))) + ';"></span>';
       }
       return h + '</div>';
     }
@@ -6945,7 +6946,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           off.forEach(function(i) { h += '<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 2px;"><span>' + escHtml(cl[i].name) + '</span><button type="button" onclick="attUnlink(' + jsArg(cl[i].key) + ')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:3px 8px; font-size:0.7rem; cursor:pointer;">Deshacer</button></div>'; });
           h += '</details>';
         }
-        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:6px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Se ignoran «Desconocido», accesos deshabilitados y registros sin nombre. Barra del mes: cada casilla es un día, verde = fue al gym.</div>';
+        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:6px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Se ignoran «Desconocido» y registros sin nombre. Los accesos deshabilitados no cuentan como asistencia (la persona no entró), pero se marcan en rojo en la barra del mes. Barra del mes: cada casilla es un día, verde = fue al gym, rojo = intentó entrar y se le denegó.</div>';
         if (!D.rec) h += '<button type="button" onclick="attClear()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #555; color:#aaa; border-radius:10px; padding:9px; font-weight:700; font-size:0.78rem; cursor:pointer;">🗑 Borrar reporte cargado</button>';
       }
       h += '<button type="button" class="btn-action-primary" style="margin-top:8px;" onclick="closeModal(\'att_modal\')">Cerrar</button></div>';
