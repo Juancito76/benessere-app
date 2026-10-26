@@ -6451,16 +6451,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (iso === today) sty += ' outline:2px solid var(--primary); outline-offset:1px;';
         cells += '<span title="' + ttl + '" style="width:30px; height:36px; border-radius:7px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; font-size:0.8rem; ' + sty + '">' + L[i] + (came ? '<i style="font-style:normal; font-size:0.62rem;">✓</i>' : '') + '</span>';
       }
-      var days = st.routineDays || [], chips = '';
-      var tr = days.filter(function(d) { return !d.rest; });
-      if (tr.length) chips = '<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:10px;">' + tr.map(function(d, i) {
-        var t = d.title || ('Día ' + (days.indexOf(d) + 1)), ok = doneNames[normName(d.title)];
-        return '<span style="padding:5px 11px; border-radius:999px; font-size:0.74rem; font-weight:800; ' + (ok ? 'background:rgba(6,214,160,0.16); color:#06d6a0; border:1px solid #06d6a0;' : 'background:#1b1f27; color:#aab0bb; border:1px solid #2c3340;') + '">' + escHtml(t) + (ok ? ' ✓' : '') + '</span>';
-      }).join('') + '</div>';
+      var chips = '';
       box.style.cssText = 'display:block; max-width:340px; margin:10px auto 0; background:#14171d; border:1px solid #262b34; border-radius:14px; padding:12px 12px 11px; text-align:center;';
-      box.innerHTML = '<div style="font-size:0.74rem; color:var(--muted); font-weight:800; letter-spacing:0.04em; margin-bottom:8px;">TU SEMANA · 🚪 <b style="color:' + (n ? '#06d6a0' : '#8a8f98') + ';">' + n + '</b> ' + (n === 1 ? 'día' : 'días') + ' de gym</div>' +
-        '<div style="display:flex; justify-content:center; gap:6px;">' + cells + '</div>' + chips +
-        '<div style="font-size:0.64rem; color:var(--muted); margin-top:8px;">Verde = fuiste al gym o entrenaste · ✓ = día de tu rutina que ya hiciste</div>';
+      box.innerHTML = '<div style="font-size:0.78rem; color:var(--muted); font-weight:800; margin-bottom:8px;">🚪 Días de gym esta semana: <b style="color:' + (n ? '#06d6a0' : '#8a8f98') + ';">' + n + '</b></div>' +
+        '<div style="display:flex; justify-content:center; gap:6px;">' + cells + '</div>';
     }
     function wkWelcomeRefresh() {
       try { athWeekPanel(); } catch (e) {}
