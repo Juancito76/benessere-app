@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -961,6 +961,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <button onclick="clearHistorialData()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Borrar Historial</button>
       </div>
       <div class="med-chip-row" id="historialTabs"></div>
+      <div id="hist_sync" style="font-size:0.74rem; color:var(--muted); margin:6px 0 8px;"></div>
       <div id="historialListContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
 
@@ -5077,7 +5078,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       alert('Marca montada para ' + (ex.n || 'el ejercicio') + ': ' + exDetailText(ex));
     }
 
-    function openHistorialModal() { renderHistorial(); openModal('ath_modal_historial'); }
+    function openHistorialModal() { renderHistorial(); openModal('ath_modal_historial'); histSyncUi(); }
+    // Estado de la descarga del historial desde la hoja (para que un historial vacío no quede sin explicación)
+    var HSYNC = { s: '' };
+    function histSyncUi() {
+      var el = document.getElementById('hist_sync'); if (!el) return;
+      var btn = ' <button type="button" onclick="syncHistorial(true)" style="background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:0.72rem; cursor:pointer;">↻ Reintentar</button>';
+      if (HSYNC.s === 'run') el.innerHTML = '⏳ Trayendo tu historial guardado…';
+      else if (HSYNC.s === 'ok') el.innerHTML = '<span style="color:#06d6a0;">✅ Historial al día</span> (' + HSYNC.n + ' registros en la nube)' + btn;
+      else if (HSYNC.s === 'noid') el.innerHTML = '<span style="color:#ffb347;">⚠️ Este celular abrió la rutina sin su enlace personal, por eso no puede traer el historial guardado. Abre de nuevo el enlace que te envió tu coach (una sola vez) y se recupera.</span>';
+      else if (HSYNC.s === 'fail') el.innerHTML = '<span style="color:#ffb347;">⚠️ No se pudo traer el historial guardado (' + escHtml(HSYNC.e || 'sin conexión') + ').</span>' + btn;
+      else el.innerHTML = '';
+    }
+    function ridKey(n) { return 'benessere_rid_' + String(n || '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
     function renderHistorial() {
       var container = document.getElementById('historialListContainer'), tabs = document.getElementById('historialTabs');
@@ -9411,14 +9424,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function findPending(q, it) { for (var i = 0; i < q.length; i++) { if (q[i].id === it.id && q[i].s === it.s) return i; } return 0; }
 
     // Trae el historial del atleta desde la hoja y lo une con el del celular (sin duplicar por id de sesión)
-    function syncHistorial() {
-      var id = athleteRoutineId;
-      if (!id || !athleteActiveState) return;
-      var name = athleteActiveState.clientName;
+    function syncHistorial(manual) {
+      if (!athleteActiveState) return;
+      var name = athleteActiveState.clientName, id = athleteRoutineId;
+      try { if (id) localStorage.setItem(ridKey(name), id); else id = localStorage.getItem(ridKey(name)) || ''; } catch (e) {}   // si este celular abrió la app sin enlace, se usa el último código conocido de esta persona
+      if (!id) { HSYNC = { s: 'noid' }; histSyncUi(); return; }
+      HSYNC = { s: 'run' }; histSyncUi();
       flushPending().then(function() {
         return fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000);
       }).then(function(j) {
-        if (!j || !j.ok || !Array.isArray(j.sesiones)) return;
+        if (!j || !j.ok || !Array.isArray(j.sesiones)) { HSYNC = { s: 'fail', e: j && j.error === 'no-existe' ? 'ese enlace ya no existe' : 'el servidor no respondió bien' }; histSyncUi(); return; }
+        HSYNC = { s: 'ok', n: j.sesiones.length }; histSyncUi();
         if (!athleteActiveState || athleteActiveState.clientName !== name) return;   // ya cambió de cliente
         var local = loadSessions(), have = {}, remote = {};
         local.forEach(function(x) { have[x.t] = true; });
@@ -9440,7 +9456,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         try { var mm = document.getElementById('ath_modal_medidas'); if (added && mm && mm.classList.contains('active')) renderAthleteMeasures(); } catch (e) {}
         coachSummaryRefresh();
         if (up) flushPending();
-      }).catch(function() { /* sin internet: se queda lo que hay en el celular */ });
+      }).catch(function() { HSYNC = { s: 'fail', e: 'sin conexión' }; histSyncUi(); /* sin internet: se queda lo que hay en el celular */ });
     }
 
     // Pide una rutina a la hoja; si el primer intento falla o se cuelga, reintenta una vez en silencio
