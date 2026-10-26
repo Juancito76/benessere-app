@@ -6697,7 +6697,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!nm || normName(nm).indexOf('desconocido') === 0 || mail === 'descon@desc.com') { ignored++; continue; }
         var k = attKey(nm); if (!k) { ignored++; continue; }
         var p = people[k] || (people[k] = { n: nm, d: {}, x: {} });
-        if (st === 'deshabilitado') p.x[d] = 1; else p.d[d] = 1;   // acceso denegado: se guarda aparte, no cuenta como asistencia
+        if (st === 'deshabilitado') p.x[d] = 1; else p.d[d] = 1;   // acceso denegado: se guarda aparte (para avisar de renovación), pero cuenta como asistencia
         used++;
         if (!from || d < from) from = d; if (!to || d > to) to = d;
       }
@@ -6798,21 +6798,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function attStats(p, ref) {
       var last = '', w7 = 0, month = 0, wk = 0, wr = attWeekOf(ref), ym = ref.slice(0, 7), set = {};
-      (p ? p.d : []).forEach(function(x) {
+      var allD = {}; (p ? p.d : []).concat(p && p.x ? p.x : []).forEach(function(x) { allD[x] = 1; });   // los accesos «deshabilitados» también cuentan: casi siempre la persona sí logra entrar
+      Object.keys(allD).sort().forEach(function(x) {
         if (x > ref) return; set[x] = 1; if (x > last) last = x;
         if (dayNum(ref) - dayNum(x) <= 6) w7++;
         if (x.slice(0, 7) === ym) month++;
         if (x >= wr.from && x <= wr.to) wk++;
       });
-      var den = {}; (p && p.x ? p.x : []).forEach(function(x) { if (x <= ref && !set[x]) den[x] = 1; });   // días en que intentó entrar y se denegó el acceso
+      var den = {}; (p && p.x ? p.x : []).forEach(function(x) { if (x <= ref) den[x] = 1; });   // días con acceso denegado (igual cuentan como asistencia)
       var ago = last ? dayNum(ref) - dayNum(last) : -1;
       return { last: last, ago: ago, w7: w7, month: month, wk: wk, set: set, den: den, kind: (ago < 0 || ago >= 7) ? 'out' : (w7 <= 2 ? 'low' : 'ok') };
     }
     function attStrip(st, ref) {   // una casilla por día del mes: verde = fue al gym
       var y = +ref.slice(0, 4), mo = +ref.slice(5, 7), total = new Date(y, mo, 0).getDate(), today = +ref.slice(8, 10), h = '<div style="display:flex; gap:1px; margin-top:5px;" title="Días del mes en que entró al gym">';
       for (var d = 1; d <= total; d++) {
-        var iso = ref.slice(0, 8) + pad2(d), on = st.set[iso], dn = !on && st.den && st.den[iso];
-        h += '<span title="' + (dn ? 'Acceso denegado (no entró)' : '') + '" style="flex:1; height:8px; border-radius:2px; background:' + (on ? '#06d6a0' : (dn ? '#ff4d4d' : (d <= today ? '#2c3340' : '#171b22'))) + ';"></span>';
+        var iso = ref.slice(0, 8) + pad2(d), on = st.set[iso], dn = on && st.den && st.den[iso];
+        h += '<span title="' + (dn ? 'Entró con acceso denegado (cuenta como asistencia)' : '') + '" style="flex:1; height:8px; border-radius:2px; background:' + (on ? '#06d6a0' : (d <= today ? '#2c3340' : '#171b22')) + (dn ? '; box-shadow:inset 0 0 0 1.5px #ff4d4d' : '') + ';"></span>';
       }
       return h + '</div>';
     }
@@ -6946,7 +6947,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           off.forEach(function(i) { h += '<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 2px;"><span>' + escHtml(cl[i].name) + '</span><button type="button" onclick="attUnlink(' + jsArg(cl[i].key) + ')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:3px 8px; font-size:0.7rem; cursor:pointer;">Deshacer</button></div>'; });
           h += '</details>';
         }
-        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:6px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Se ignoran «Desconocido» y registros sin nombre. Los accesos deshabilitados no cuentan como asistencia (la persona no entró), pero se marcan en rojo en la barra del mes. Barra del mes: cada casilla es un día, verde = fue al gym, rojo = intentó entrar y se le denegó.</div>';
+        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:6px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Se ignoran «Desconocido» y registros sin nombre. Los accesos deshabilitados sí cuentan (casi siempre la persona entra igual) y se marcan con borde rojo. Barra del mes: cada casilla es un día, verde = fue al gym.</div>';
         if (!D.rec) h += '<button type="button" onclick="attClear()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #555; color:#aaa; border-radius:10px; padding:9px; font-weight:700; font-size:0.78rem; cursor:pointer;">🗑 Borrar reporte cargado</button>';
       }
       h += '<button type="button" class="btn-action-primary" style="margin-top:8px;" onclick="closeModal(\'att_modal\')">Cerrar</button></div>';
@@ -7158,7 +7159,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function recWeekLabel(mon) { var a = new Date(mon + 'T12:00:00'), b = new Date(a.getTime()); b.setDate(b.getDate() + 6); var mm = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return a.getDate() + (a.getMonth() === b.getMonth() ? '' : ' ' + mm[a.getMonth()]) + ' al ' + b.getDate() + ' ' + mm[b.getMonth()]; }
     function recSetWeek(v) { REC.week = v; recRender(); }
-    function recWeekStrip(p, k) {   // grupos de 7 casillas pequeñas (L K M J V S D), uno por semana del reporte; verde = vino, rojo = acceso denegado
+    function recWeekStrip(p, k) {   // grupos de 7 casillas pequeñas (L K M J V S D), uno por semana del reporte; verde = vino, borde rojo = acceso denegado (cuenta igual)
       var from = REC.meta.from || '', to = recRefDate(), today = todayIso(), came = {}, den = {};
       (p.d || []).forEach(function(x) { came[x] = 1; }); (p.x || []).forEach(function(x) { den[x] = 1; });
       var msgs = {}; ((REC.sentLog && REC.sentLog[k]) || []).forEach(function(e) { var di = isoOfDate(new Date(e.f)); (msgs[di] = msgs[di] || []).push(e.tipo); });
@@ -7169,7 +7170,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var d = new Date(mon + 'T12:00:00'); d.setDate(d.getDate() + i); var iso = isoOfDate(d), st, ttl = REC_DN[i] + ' ' + fmtDateShort(iso);
           if (came[iso] && den[iso]) { st = 'background:#06d6a0; color:#000; box-shadow:inset 0 0 0 1.5px #ff4d4d;'; ttl += ': vino (y un intento denegado)'; n++; }
           else if (came[iso]) { st = 'background:#06d6a0; color:#000;'; ttl += ': vino'; n++; }
-          else if (den[iso]) { st = 'background:#4a1414; color:#ff9a9a; box-shadow:inset 0 0 0 1.5px #ff4d4d;'; ttl += ': acceso DENEGADO'; }
+          else if (den[iso]) { st = 'background:#06d6a0; color:#000; box-shadow:inset 0 0 0 1.5px #ff4d4d;'; ttl += ': vino con acceso DENEGADO (cuenta como asistencia)'; n++; }
           else if ((from && iso < from) || iso > to || iso > today) { st = 'background:transparent; color:#4a4f5a; box-shadow:inset 0 0 0 1px #2c3340;'; ttl += ': sin datos'; }
           else { st = 'background:#2c3340; color:#7a8190;'; ttl += ': no vino'; }
           var dot = '', mt = msgs[iso];
@@ -7422,7 +7423,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         items.slice(0, REC.lim).forEach(function(o, i) { h += recRowHtml(o, i); });
         if (items.length > REC.lim) h += '<button type="button" onclick="recMore()" style="width:100%; margin:6px 0; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; cursor:pointer;">Ver más (' + (items.length - REC.lim) + ')</button>';
         h += recSendBarHtml();
-        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:10px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Solo aparece quien entró (o intentó entrar) al menos una vez en los reportes cargados. «Denegados» = intentó entrar en los últimos 7 días y no se le habilitó el acceso. Cada persona está en una sola lista: «Sin venir» = ni un día en los últimos 7 (de 7 a 29 días desde su última entrada; con 30 o más pasa a «30+ días»); «Poco» = 1 día en los últimos 7; «Normal» = 2; «Impecable» = 3 o más. Reporte calculado al ' + fmtDate(ref) + '.</div>';
+        h += '<div style="font-size:0.68rem; color:var(--muted); line-height:1.5; margin-top:10px;">Cuenta días distintos con entrada (varias entradas el mismo día cuentan 1). Solo aparece quien entró (o intentó entrar) al menos una vez en los reportes cargados. «Denegados» = el sistema le marcó acceso denegado en los últimos 7 días (igual cuenta como asistencia, porque casi siempre entra; sirve para recordarle renovar). Cada persona está en una sola lista: «Sin venir» = ni un día en los últimos 7 (de 7 a 29 días desde su última entrada; con 30 o más pasa a «30+ días»); «Poco» = 1 día en los últimos 7; «Normal» = 2; «Impecable» = 3 o más. Reporte calculado al ' + fmtDate(ref) + '.</div>';
       }
       h += '</div>';
       var oldIn = v.scrollTop; v.innerHTML = h; v.scrollTop = oldIn;
@@ -7431,7 +7432,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var k = o.k, st = o.st, kd = o.kd, c = REC.contacts[k] || {}, ref = (REC.meta.to || todayIso()), col = kd.base === 'out' || kd.base === 'gone' ? '#a33' : (kd.base === 'low' ? '#8a6d1a' : (kd.base === 'mid' ? '#2b6cb0' : '#1f6b3b'));
       var sent = REC.sent[k], sentTxt = '';
       if (sent) { var sdt = isoOfDate(new Date(sent.f)), sc = REC_COLORS[sent.tipo] || '#9aa4b2'; sentTxt = ' · <span style="color:' + sc + '; font-weight:800;">● ✉ ' + fmtDateShort(sdt) + '</span> <span style="color:var(--muted);">(' + (REC_TIPOS[sent.tipo] ? REC_TIPOS[sent.tipo].replace(/^\S+\s/, '') : 'mensaje') + ')</span>'; }
-      var info = st.ago < 0 && !o.p.d.length ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : (st.ago === 0 ? 'Vino hoy' : 'Última vez: hace ' + st.ago + ' d')) + (o.p.d.length ? ' · mes: <b>' + st.month + '</b>' : '') + (kd.denied ? ' · <b style="color:#ff8a8a;">🚫 acceso denegado ' + fmtDateShort(kd.lastX) + '</b>' : '');
+      var info = st.ago < 0 ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : (st.ago === 0 ? 'Vino hoy' : 'Última vez: hace ' + st.ago + ' d')) + ((o.p.d.length || st.month) ? ' · mes: <b>' + st.month + '</b>' : '') + (kd.denied ? ' · <b style="color:#ff8a8a;">🚫 acceso denegado ' + fmtDateShort(kd.lastX) + '</b>' : '');
       var bday = kd.bd === 0 ? ' · <b style="color:#ff8fd1;">🎂 HOY</b>' : (kd.bd <= 7 ? ' · 🎂 en ' + kd.bd + ' d' : '');
       var h = '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
         '<div style="display:flex; gap:8px; align-items:flex-start;"><input type="checkbox" ' + (REC.checked[k] ? 'checked ' : '') + 'onchange="recCheck(' + i + ',this.checked)" style="width:20px; height:20px; margin-top:2px; flex-shrink:0;"><div onclick="recToggle(' + i + ')" style="cursor:pointer; flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
