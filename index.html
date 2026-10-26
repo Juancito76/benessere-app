@@ -6442,19 +6442,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (best && Array.isArray(best.gd)) best.gd.forEach(function(d) { if (d >= wr.from && d <= wr.to) gym[d] = 1; });
       var doneNames = {};
       loadWorkouts().forEach(function(s) { var d = sessDateIso(s); if (d && d >= wr.from && d <= wr.to) { app[d] = 1; if (s.day) doneNames[normName(s.day)] = true; } });
-      var L = ['L', 'K', 'M', 'J', 'V', 'S', 'D'], N = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'], cells = '', n = 0;
+      var n = 0;
       for (var i = 0; i < 7; i++) {
-        var d = new Date(wr.from + 'T12:00:00'); d.setDate(d.getDate() + i); var iso = isoOfDate(d), came = gym[iso] || app[iso], sty, ttl = N[i];
-        if (came) { sty = 'background:#06d6a0; color:#000;'; n++; ttl += ': ' + (gym[iso] && app[iso] ? 'gym y app' : (gym[iso] ? 'fuiste al gym' : 'entrenaste')); }
-        else if (iso > today) { sty = 'background:transparent; color:#5a606c; box-shadow:inset 0 0 0 1px #2c3340;'; }
-        else { sty = 'background:#2c3340; color:#7a8190;'; }
-        if (iso === today) sty += ' outline:2px solid var(--primary); outline-offset:1px;';
-        cells += '<span title="' + ttl + '" style="width:30px; height:36px; border-radius:7px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; font-size:0.8rem; ' + sty + '">' + L[i] + (came ? '<i style="font-style:normal; font-size:0.62rem;">✓</i>' : '') + '</span>';
+        var d = new Date(wr.from + 'T12:00:00'); d.setDate(d.getDate() + i); var iso = isoOfDate(d);
+        if (gym[iso] || app[iso]) n++;
       }
-      var chips = '';
-      box.style.cssText = 'display:block; max-width:340px; margin:10px auto 0; background:#14171d; border:1px solid #262b34; border-radius:14px; padding:12px 12px 11px; text-align:center;';
-      box.innerHTML = '<div style="font-size:0.78rem; color:var(--muted); font-weight:800; margin-bottom:8px;">🚪 Días de gym esta semana: <b style="color:' + (n ? '#06d6a0' : '#8a8f98') + ';">' + n + '</b></div>' +
-        '<div style="display:flex; justify-content:center; gap:6px;">' + cells + '</div>';
+      var goal = wkWeekGoal(), falta = Math.max(0, goal - n);
+      box.style.cssText = 'display:block; text-align:center; margin:10px auto 0; font-size:0.9rem; font-weight:800; color:#e8e8e8;';
+      box.innerHTML = '🚪 Días de gym: <b style="color:#06d6a0;">' + n + '</b>' + (goal ? (falta > 0 ? ' · faltan <b style="color:#ffd166;">' + falta + '</b>' : ' · <span style="color:#06d6a0;">¡meta cumplida! 🎉</span>') : '');
     }
     function wkWelcomeRefresh() {
       try { athWeekPanel(); } catch (e) {}
