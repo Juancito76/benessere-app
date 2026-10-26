@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9533,10 +9533,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       shown.forEach(function(k) {
         var g = groups[k], last = g.list[0], isOff = !!offSet[k];
         html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:10px; padding:12px; margin-bottom:8px;">' +
-          '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
-          '<div><div style="font-weight:800; color:#fff; font-size:0.95rem;">' + escHtml(g.name) + '</div>' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">' +
+          '<div style="flex:1 1 180px; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.95rem;">' + escHtml(g.name) + '</div>' +
           '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.list.length > 1 ? ' · ' + g.list.length + ' rutinas' : '') + '</div>' + (isOff ? '<div style="margin-top:4px; font-size:0.7rem; font-weight:700; color:#ffb347;">🔌 Desconectado: ya no ve la rutina ni las actualizaciones</div>' : '') + '</div>' +
-          '<div style="display:flex; gap:6px;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
+          '<div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
           '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:#ffd60a; border:1px solid #ffd60a; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
