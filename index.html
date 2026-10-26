@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-25-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6599,12 +6599,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="font-size:1.1rem;">' + badge + '</div>' +
           '<div style="flex:1; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.9rem;">' + escHtml(r.name) + '</div>' +
           '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + line + '</div>' + attWeekLine(r) +
-          (r.st ? '<div style="margin-top:6px; display:flex; gap:6px; align-items:center;"><span style="font-size:0.7rem; color:#9fe8c8; font-weight:800;">Marcar que entrenó:</span>' +
-            '<button type="button" onclick="cwMark(\'' + escHtml(r.id) + '\', 0)" style="background:#06d6a0; color:#000; border:none; border-radius:8px; padding:5px 10px; font-weight:900; font-size:0.72rem; cursor:pointer;">✔ Hoy</button>' +
-            '<button type="button" onclick="cwMark(\'' + escHtml(r.id) + '\', -1)" style="background:transparent; color:#06d6a0; border:1px solid #06d6a0; border-radius:8px; padding:5px 10px; font-weight:800; font-size:0.72rem; cursor:pointer;">Ayer</button></div>' : '') + '</div>' +
+          '</div>' +
           '<button type="button" onclick="closeModal(\'coach_week_modal\'); openClientRoutine(\'' + escHtml(r.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:6px 9px; font-weight:800; font-size:0.72rem; cursor:pointer;">Abrir</button></div>';
       });
-      h += '<div style="font-size:0.68rem; color:var(--muted); margin-top:8px; line-height:1.5;">✅ meta cumplida · 🟡 entrenó pero le falta · ⚪ aún no entrena esta semana · 🔴 sin entrenar hace 7 días o más · 👁 abrió su rutina hoy pero no registró entreno (puede que haya ido; márcalo tú con «✔ Hoy»). La meta solo aparece si ya abriste la rutina del cliente en este celular.</div>';
+      h += '<div style="font-size:0.68rem; color:var(--muted); margin-top:8px; line-height:1.5;">✅ meta cumplida · 🟡 entrenó pero le falta · ⚪ aún no entrena esta semana · 🔴 sin entrenar hace 7 días o más · 👁 abrió su rutina hoy pero no registró entreno (puede que haya ido: mira el cruce con el gym). La meta solo aparece si ya abriste la rutina del cliente en este celular.</div>';
       h += '<button type="button" onclick="openCoachWeek()" style="width:100%; margin-top:12px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:11px; font-weight:800; cursor:pointer;">🔄 Actualizar</button>';
       h += '<button type="button" class="btn-action-primary" style="margin-top:8px;" onclick="closeModal(\'coach_week_modal\')">Cerrar</button></div>';
       var cwBox = coachWeekEl(), oldIn = cwBox.querySelector('.modal-inner'), keepTop = oldIn ? oldIn.scrollTop : 0;
