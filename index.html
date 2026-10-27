@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-27-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-27-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8194,17 +8194,33 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         this.innerText = CT.vidMuted ? '🔇 Activar sonido' : '🔊 Silenciar';
       };
       fr.onload = function() { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch (e) {} };
-      CT.vidOk = false; clearTimeout(CT.vidWatch);
-      CT.vidWatch = setTimeout(function() {   // si en 8 s el video no dio señales de vida, se intenta una vez más solo
+      CT.vidOk = false; CT.vidState = -9; clearTimeout(CT.vidWatch); clearTimeout(CT.vidWatch2);
+      function demoFallback() {   // el video no arrancó: se quita la caja vacía y queda el botón «Ver demostración»
+        box.style.display = 'none'; box.innerHTML = '';
+        var db = document.getElementById('tm_demo'); if (db && CT.demoUrl) db.style.display = 'block';
+      }
+      CT.vidWatch = setTimeout(function() {   // si en 8 s el video no dio señales de vida, se intenta una vez más solo; si tampoco, botón «Ver demostración»
         CT.vidAuto = CT.vidAuto || {};
-        if (CT.active && !CT.vidOk && CT.vidId === id && !CT.vidAuto[id]) { CT.vidAuto[id] = 1; ctVidSync(true); }
+        if (!CT.active || CT.vidId !== id) return;
+        if (!CT.vidOk) { if (!CT.vidAuto[id]) { CT.vidAuto[id] = 1; ctVidSync(true); } else demoFallback(); }
       }, 8000);
+      CT.vidWatch2 = setTimeout(function() {   // el reproductor respondió pero no está reproduciendo (autoplay bloqueado por el celular)
+        if (!CT.active || CT.vidId !== id || !CT.vidOk || CT.vidState === 1) return;
+        try { fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'); } catch (e) {}
+        setTimeout(function() {
+          if (!CT.active || CT.vidId !== id || CT.vidState === 1) return;
+          fr.style.pointerEvents = 'auto';   // un toque sobre el video lo arranca (el celular lo permite si lo toca la persona)
+          var sb = document.getElementById('tm_vsnd'); if (sb) { sb.innerText = '▶ Toca el video para verlo'; sb.onclick = function() { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'); } catch (e) {} fr.style.pointerEvents = 'none'; this.innerText = '🔇 Activar sonido'; }; }
+          var db = document.getElementById('tm_demo'); if (db && CT.demoUrl) db.style.display = 'block';
+        }, 2500);
+      }, 5000);
     }
     window.addEventListener('message', function(e) {   // si YouTube no deja incrustar ese video, se oculta y queda el boton Ver demo
       if (!CT || !CT.active || !/youtube/.test(String(e.origin || ''))) return;
       var fr = document.getElementById('tm_vframe'); if (!fr || e.source !== fr.contentWindow) return;
       var d; try { d = JSON.parse(e.data); } catch (x) { return; }
       if (d && (d.event === 'onReady' || d.event === 'infoDelivery')) CT.vidOk = true;
+      if (d && d.event === 'infoDelivery' && d.info && d.info.playerState !== undefined) CT.vidState = d.info.playerState;   // 1 = reproduciendo
       if (d && d.event === 'onError') {
         if (CT.vidId) VID_BAD[CT.vidId] = true;
         ctVidSync(true);
