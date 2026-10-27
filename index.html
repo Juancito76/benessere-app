@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-25-v';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-27-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -333,6 +333,8 @@
     .exercise-item-wrap:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
     .exercise-item-box.alt-off { display: none !important; }
     .alt-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 10px; margin-bottom: 6px; }
+    .btn-pair { display: block; width: 100%; margin: 6px 0 2px; padding: 10px 12px; font-size: 0.82rem; font-weight: 800; border-radius: 10px; border: 1px dashed #b388ff; background: rgba(179,136,255,0.08); color: #d9c7ff; cursor: pointer; }
+    .btn-pair.on { border-style: solid; background: rgba(179,136,255,0.18); }
     .btn-alt { display: inline-block; margin: 4px 0 8px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
     .btn-alt.back { border-color: var(--muted); color: var(--muted); }
     .exercise-item-box:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
@@ -554,10 +556,9 @@
     #tm_overlay #tm_side > #tm_pause { background: linear-gradient(135deg, #ffe14d, #ffc400); }
     #tm_overlay #tm_side > #tm_skip { background: linear-gradient(135deg, #ffffff, #e6e6e6); }
     #tm_overlay #tm_side > #tm_plus { background: linear-gradient(135deg, #6ea0ff, #3e78f0); }
+    #tm_overlay #tm_side > #tm_more { background: linear-gradient(135deg, #ffb84d, #ff8c00); color: #2a1500 !important; }
     #tm_overlay #tm_side > .tm-btn.tm-sm { border: 1.5px solid #3a3a3a !important; background: #1a1a1a !important; box-shadow: none; }
-    #tm_overlay #tm_side > #tm_mu_btn { border-color: #6a4bb0 !important; background: #211838 !important; }
     #tm_overlay #tm_side > #tm_exit { border-color: #7a3f3a !important; background: #1d1313 !important; }
-    #tm_overlay #tm_muinv { border-radius: 16px; }
 
     /* ===== Detalles de pulido: movimiento suave ===== */
     @keyframes popIn { 0% { opacity: 0; transform: scale(.88); } 60% { transform: scale(1.03); } 100% { opacity: 1; transform: none; } }
@@ -4202,7 +4203,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var daysContainer = document.getElementById('ath_daysContainer');
       daysContainer.innerHTML = '';
 
-      athCircuits = []; athSrCi = {}; ALT_REG = {};   // circuitos de esta rutina, para el temporizador (y srId -> temporizador, para el entreno guiado)
+      athCircuits = []; athSrCi = {}; ALT_REG = {}; PAIR = {};   // circuitos de esta rutina, para el temporizador (y srId -> temporizador, para el entreno guiado)
       athSetSeq = 0; SR = {}; SETMETA = {};   // controles "Iniciar serie / Descanso" y filas de registro por serie de esta rutina
       state.routineDays.forEach(function(d, i) {
         var exercisesHtml = '';
@@ -4312,6 +4313,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
               '<span style="font-size:0.68rem; color:var(--muted);">Semana ' + vDesde + (vHasta ? '-' + vHasta : '+') + (isCoachView() ? '<button type="button" class="btn-edit-ex" onclick="openEditEx(' + i + ',' + itIdx + ')">✏️ Editar</button>' : '') + '</span>' +
             '</div>' +
             subsDetails +
+            ((isNormal && !isHiit) ? '<button type="button" class="btn-pair" style="display:none;" onclick="pairToggle(this)"></button>' : '') +
           '</div>';
         });
 
@@ -4421,8 +4423,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var hastaAttr = el.getAttribute('data-vig-hasta');
         var hasta = (hastaAttr !== null && hastaAttr !== '') ? parseInt(hastaAttr) : null;
         var isMatch = (effectiveWeek >= desde) && (hasta === null || effectiveWeek <= hasta);
-        el.style.display = isMatch ? '' : 'none';
+        el.style.display = (isMatch && !el.classList.contains('pair-b')) ? '' : 'none';
       });
+      try { pairInit(); } catch (e) {}
     }
 
     function openModal(id) { var el = document.getElementById(id); if (el) el.classList.add('active'); }
@@ -5481,6 +5484,102 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ================= TEMPORIZADORES (circuitos y descanso entre series) =================
     var athCircuits = [], athSrCi = {};
+
+    // ================= «Hacer en biserie con el siguiente» =================
+    // Dos ejercicios "solo" seguidos se pueden juntar en una biserie (A + B) por hoy: un solo temporizador, un solo cuadro de cargas.
+    // La tarjeta B se esconde y sus cajas pasan a la tarjeta A; al separar, todo vuelve a su lugar.
+    var PAIR = {};   // srId de A -> { bCard, bSr, orig..., moved }
+    function pairKey(card) { var h = card.querySelector('.set-rows'); return h ? h.getAttribute('data-key') : ''; }
+    function pairSrId(card) { var r = card.querySelector('.set-runner'); return r ? parseInt(String(r.id).replace('sr_', ''), 10) : 0; }
+    function pairVisible(el) { return el.style.display !== 'none'; }
+    function pairNext(card) {   // la siguiente tarjeta visible del día
+      var all = Array.prototype.slice.call(card.parentNode.querySelectorAll('.exercise-variant')), i = all.indexOf(card);
+      for (var j = i + 1; j < all.length; j++) if (pairVisible(all[j])) return all[j];
+      return null;
+    }
+    function pairRefresh(dayEl) {
+      (dayEl ? [dayEl] : Array.prototype.slice.call(document.querySelectorAll('.view-screen'))).forEach(function(day) {
+        day.querySelectorAll('.exercise-variant').forEach(function(card) {
+          var b = card.querySelector(':scope > .btn-pair'); if (!b) return;
+          var sid = pairSrId(card), on = !!PAIR[sid], ok = false;
+          if (pairVisible(card)) {
+            if (on) ok = true;
+            else { var nx = pairNext(card); ok = !!nx && nx.classList.contains('normal') && !!nx.querySelector(':scope > .btn-pair') && !PAIR[pairSrId(nx)] && !!pairSrId(nx); }
+          }
+          b.style.display = ok ? '' : 'none';
+          b.classList.toggle('on', on);
+          b.innerText = on ? '↩ Separar la biserie' : '🔗 Hacer en biserie con el siguiente';
+        });
+      });
+    }
+    function pairToggle(btn) {
+      var card = btn.closest('.exercise-variant'); if (!card) return;
+      var sid = pairSrId(card);
+      if (PAIR[sid]) pairUndo(sid, true); else pairDo(card, true);
+    }
+    function pairDo(card, save) {
+      var sid = pairSrId(card), nx = pairNext(card);
+      if (!sid || !nx || PAIR[sid]) return false;
+      var sidB = pairSrId(nx), rA = SR[sid], rB = SR[sidB], ciA = athSrCi[sid], ciB = athSrCi[sidB], cA = athCircuits[ciA], cB = athCircuits[ciB];
+      if (!rA || !rB || cA == null || cB == null) return false;
+      if (rA.state !== 'idle' || rA.cur > 0 || rB.state !== 'idle' || rB.cur > 0) { try { wkToast('Primero termina o reinicia la serie en curso'); } catch (e) {} return false; }
+      if (CT.active) return false;
+      var st = { bCard: nx, sidB: sidB, ciA: ciA, ciB: ciB, origC: cA, origSets: rA.sets, origBase: rA.base, alt: [], moved: [], badge: null, keyA: pairKey(card) };
+      // temporizador combinado
+      var n = cA.stations.length, m = {};
+      Object.keys(cA).forEach(function(k) { m[k] = cA[k]; });
+      ['stations', 'videos', 'keys', 'unis', 'works', 'reps'].forEach(function(k) { m[k] = (cA[k] || []).concat(cB[k] || []); });
+      m.rondas = String(Math.max(parseInt(cA.rondas, 10) || 1, parseInt(cB.rondas, 10) || 1));
+      m.nombre = (cA.nombre || '') && (cB.nombre || '') ? cA.nombre + ' + ' + cB.nombre : (cA.nombre || cB.nombre || '');
+      athCircuits[ciA] = m;
+      rA.sets = rA.base = parseInt(m.rondas, 10);
+      // alternativas "¿Máquina ocupada?" de B pasan al circuito combinado
+      Object.keys(ALT_REG).forEach(function(f) {
+        var r = ALT_REG[f];
+        if (r.ci === ciA) { st.alt.push({ f: f, ci: r.ci, k: r.k, isNormal: r.isNormal }); r.isNormal = false; }
+        else if (r.ci === ciB) { st.alt.push({ f: f, ci: r.ci, k: r.k, isNormal: r.isNormal }); r.ci = ciA; r.k = r.k + n; r.isNormal = false; }
+      });
+      // cajas de B pasan a la tarjeta A (antes del temporizador)
+      var runA = card.querySelector('.set-runner');
+      Array.prototype.slice.call(nx.children).forEach(function(ch) {
+        if (ch.classList.contains('exercise-item-box') || ch.classList.contains('exercise-item-wrap')) { card.insertBefore(ch, runA); st.moved.push(ch); }
+      });
+      nx.classList.add('pair-b'); nx.style.display = 'none';
+      var bd = card.querySelector('.badge-type'); if (bd) { st.badge = bd.innerText; bd.innerText = 'BISERIE (A + B)'; }
+      PAIR[sid] = st;
+      try { srEnsureRows(sid, rA.sets); srRender(sid); srMarkRows(sid); } catch (e) {}
+      if (save) { try { localStorage.setItem('bw_pair_' + st.keyA, altToday()); } catch (e) {} }
+      pairRefresh(card.parentNode);
+      try { guidePaint(card.closest('.view-screen').id); } catch (e) {}
+      return true;
+    }
+    function pairUndo(sid, save) {
+      var st = PAIR[sid]; if (!st) return;
+      var card = srCard(sid), rA = SR[sid];
+      if (rA && (rA.state !== 'idle' || rA.cur > 0)) { try { wkToast('Primero termina o reinicia la serie en curso'); } catch (e) {} return; }
+      if (CT.active) return;
+      var runB = st.bCard.querySelector('.set-runner');
+      st.moved.forEach(function(ch) { st.bCard.insertBefore(ch, runB); });
+      athCircuits[st.ciA] = st.origC;
+      if (rA) { rA.sets = st.origSets; rA.base = st.origBase; }
+      st.alt.forEach(function(a) { var r = ALT_REG[a.f]; if (r) { r.ci = a.ci; r.k = a.k; r.isNormal = a.isNormal; } });
+      st.bCard.classList.remove('pair-b'); st.bCard.style.display = '';
+      var bd = card && card.querySelector('.badge-type'); if (bd && st.badge) bd.innerText = st.badge;
+      delete PAIR[sid];
+      try { srRender(sid); } catch (e) {}
+      if (save) { try { localStorage.removeItem('bw_pair_' + st.keyA); } catch (e) {} }
+      if (card) { pairRefresh(card.parentNode); try { guidePaint(card.closest('.view-screen').id); } catch (e) {} }
+    }
+    function pairInit() {   // al abrir la app: vuelve a juntar las biseries que se armaron hoy
+      PAIR = PAIR || {};
+      document.querySelectorAll('.view-screen .exercise-variant.normal').forEach(function(card) {
+        if (!pairVisible(card) || card.classList.contains('pair-b')) return;
+        var k = pairKey(card), v = null;
+        try { v = k && localStorage.getItem('bw_pair_' + k); } catch (e) {}
+        if (v === altToday()) pairDo(card, false);
+      });
+      pairRefresh();
+    }
     // ----- "¿Máquina ocupada?": alternativa de un ejercicio (se recuerda solo durante el día de hoy) -----
     var ALT_REG = {};   // fieldId -> { ci, k, name, video, key, aName, aVideo, aKey, on }
     function altToday() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
@@ -5706,7 +5805,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } else if (r.state === 'work') {
         srFill(id, r.cur);   // confirma la serie recién terminada; las filas de registro se crean solas si hacen falta
         try { if (!(WK.start && WK.dayId)) recordActivity(dayIdOfEl(srCard(id)), 0); } catch (e) {}   // una serie hecha con el temporizador = día entrenado
-        if (r.cur >= r.sets) { r.state = 'choose'; tmrBeep(880, 300, 0); tmrBeep(1175, 500, 350); tmrVibrate([200, 80, 200]); srRender(id); equipReminder(); return; }
+        if (r.cur >= r.sets) { r.state = 'choose'; tmrBeep(880, 300, 0); tmrBeep(1175, 500, 350); tmrVibrate([200, 80, 200]); srRender(id); return; }
         r.state = 'rest'; srRender(id);
         startRestTimer(r.rest, function() { srNext(id); });   // al terminar el descanso, la serie siguiente arranca sola
       } else if (r.state === 'rest') {
@@ -7644,7 +7743,88 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') ctSaveResume(true); });
     window.addEventListener('pagehide', function() { ctSaveResume(true); });
 
+    // ----- Material de cada ejercicio: se deduce del nombre (si no se reconoce, se toma como peso corporal) -----
+    var MT_RULES = [
+      [/mancuerna|dumbbell/, 'Mancuernas'],
+      [/kettlebell|pesa rusa/, 'Kettlebell'],
+      [/goblet/, 'Kettlebell o mancuerna', /mancuerna|kettlebell|pesa rusa/],
+      [/\bbarra (z|ez)\b/, 'Barra Z'],
+      [/\bbarra\b(?!\s*(de dominadas|fija|z\b|ez\b))|barbell/, 'Barra'],
+      [/\bdiscos?\b/, 'Discos'],
+      [/landmine/, 'Barra (landmine)'],
+      [/\bbandas?\b|\bliga\b|miniband|mini band|elastic/, 'Banda elástica'],
+      [/polea|\bcable\b|jalon|face pull|pushdown|crossover/, 'Polea'],
+      [/maquina|\bprensa\b|\bsmith\b|multipower|peck ?deck|pec ?deck|\bhack\b|extension de (piernas|cuadriceps)|curl (femoral|de piernas)|aductor|abductor|contractora|leg press|\bhammer\b/, 'Máquina'],
+      [/\bbanco\b|\bbench\b|hip thrust|bulgara|press (inclinado|declinado|plano|de banca)|curl inclinado|fondos? en banco/, 'Banco'],
+      [/\bstep\b|cajon|box jump|escalon/, 'Cajón / step'],
+      [/balon medicinal|slam ball|wall ball|medicine ball/, 'Balón medicinal'],
+      [/fitball|pelota suiza|swiss ball|pelota de pilates|\bbosu\b/, 'Pelota suiza / Bosu'],
+      [/\btrx\b|suspension|anillas/, 'TRX / anillas'],
+      [/cuerda de batalla|battle rope/, 'Cuerda de batalla'],
+      [/saltar (la )?cuerda|cuerda de saltar|jump rope|\bsoga\b|\bcomba\b|saltos? con cuerda/, 'Cuerda de saltar'],
+      [/caminadora|trotadora|treadmill/, 'Caminadora'],
+      [/bicicleta|\bbike\b|spinning|air ?bike|assault/, 'Bicicleta'],
+      [/remo (ergometro|en ergometro|concept)|rower|ergometro/, 'Remo (ergómetro)'],
+      [/eliptica/, 'Elíptica'],
+      [/escaladora|stair ?master/, 'Escaladora'],
+      [/trineo|\bsled\b|prowler/, 'Trineo'],
+      [/rueda abdominal|ab wheel|ab roller/, 'Rueda abdominal'],
+      [/dominada|pull.?up|chin.?up|colgado|barra fija|barra de dominadas/, 'Barra de dominadas'],
+      [/paralelas|\bdips\b/, 'Paralelas', /banco/],
+      [/saco de arena|sandbag/, 'Saco de arena'],
+      [/rodillo|foam roller/, 'Rodillo'],
+      [/plancha|\bplank|abdominal|crunch|dead bug|bicho muerto|bird dog|perro de caza|puente|superman|hollow|mountain climber|escalador|burpee|elevacion de piernas|sit.?up|flexion|push.?up|lagartija|bear crawl|caminata (del )?oso|clamshell|almeja|patada de gluteo|donkey|hidrante|fire hydrant|gato.?vaca|estiramiento|movilidad/, 'Colchoneta']
+    ];
+    var MT_FIXED = ['Peso corporal', 'Colchoneta', 'Máquina', 'Polea', 'Caminadora', 'Bicicleta', 'Remo (ergómetro)', 'Elíptica', 'Escaladora', 'Barra de dominadas', 'Paralelas'];   // no hay que "regresarlos"
+    function exMaterial(name) {
+      var n = normName(name), out = [];
+      MT_RULES.forEach(function(r) { if (r[0].test(n) && !(r[2] && r[2].test(n)) && out.indexOf(r[1]) < 0) out.push(r[1]); });
+      return out.length ? out : ['Peso corporal'];
+    }
+    // Lo que hay que regresar a su lugar al terminar el bloque (según los ejercicios que se muestran en la tarjeta)
+    function bdEquipList(srId) {
+      var card = srCard(srId), out = [];
+      if (!card) return out;
+      card.querySelectorAll('.exercise-item-box:not(.alt-off) .ex-name').forEach(function(nm) {
+        exMaterial(nm.innerText.replace(/^[A-C1-9]\s/, '').trim()).forEach(function(x) { if (MT_FIXED.indexOf(x) < 0 && out.indexOf(x) < 0) out.push(x); });
+      });
+      return out;
+    }
+    // Ventanita externa al temporizador: materiales y para qué ejercicio; al tocar «¿Listo?» arranca el temporizador
+    var MT_GATE = null;
+    function mtGateOpen(ci, srId, extra) {
+      try { altSyncCi(ci); } catch (e) {}
+      var c = athCircuits[ci]; if (!c || !(c.stations || []).length) return false;
+      var all = [], rows = '';
+      c.stations.forEach(function(n0, i) {
+        var n = (n0 && String(n0).trim()) || ('Ejercicio ' + (i + 1)), ms = exMaterial(n);
+        ms.forEach(function(x) { if (x !== 'Peso corporal' && all.indexOf(x) < 0) all.push(x); });
+        rows += '<div style="display:flex; gap:10px; justify-content:space-between; align-items:baseline; padding:9px 0; border-top:1px solid #2a2a2a; text-align:left;"><span style="font-weight:800; font-size:0.92rem;">' + escHtml(ctShort(n)) + '</span><span style="color:#ffd60a; font-weight:800; font-size:0.85rem; text-align:right;">' + ms.map(escHtml).join(' · ') + '</span></div>';
+      });
+      var old = document.getElementById('mt_modal'); if (old) old.remove();
+      var m = document.createElement('div'); m.id = 'mt_modal'; m.className = 'modal-overlay active'; m.style.zIndex = '100010';
+      MT_GATE = { ci: ci, srId: srId, extra: extra };
+      m.innerHTML = '<div class="modal-inner" style="text-align:center;">' +
+        '<div style="font-size:1.15rem; font-weight:900; color:var(--primary);">🧰 Prepara tu material</div>' +
+        '<div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">' + (all.length ? 'Ve por esto antes de empezar:' : 'Este bloque no necesita material especial.') + '</div>' +
+        (all.length && c.stations.length > 1 ? '<div style="margin-top:10px; font-size:1rem; font-weight:900; color:#fff; line-height:1.35;">' + all.map(escHtml).join(' · ') + '</div>' : '') +
+        '<div style="margin-top:10px;">' + rows + '</div>' +
+        '<button type="button" class="btn-action-primary" style="margin-top:16px; font-size:1.1rem; padding:16px;" onclick="mtGateGo()">¿Listo? ▶</button>' +
+        '<button type="button" onclick="mtGateClose()" style="margin-top:8px; width:100%; background:none; border:none; color:#aaa; font-size:0.85rem; padding:8px; cursor:pointer;">Volver</button></div>';
+      document.body.appendChild(m);
+      return true;
+    }
+    function mtGateClose() { var m = document.getElementById('mt_modal'); if (m) m.remove(); MT_GATE = null; }
+    function mtGateGo() {
+      var g = MT_GATE; mtGateClose();
+      if (g) startCircuitTimerGo(g.ci, g.srId, g.extra);
+    }
+    // Desde la tarjeta del ejercicio, primero sale la ventanita del material; en el entreno guiado, al retomar o con «1 ronda más» arranca directo
     function startCircuitTimer(ci, srId, extra, guide, resume) {
+      if (!guide && !resume && extra !== true && mtGateOpen(ci, srId, extra)) return;
+      startCircuitTimerGo(ci, srId, extra, guide, resume);
+    }
+    function startCircuitTimerGo(ci, srId, extra, guide, resume) {
       altSyncCi(ci);
       var src = athCircuits[ci];
       if (!src) return;
@@ -7668,7 +7848,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       tmrAudio();
       rtClose();
-      CT.keys = c.keys || []; CT.acc = {};   // para anotar los segundos logrados en cada serie
+      CT.keys = c.keys || []; CT.acc = {}; CT.cfg = c;   // para anotar los segundos logrados en cada serie (cfg: para poder agregar una ronda más)
       CT.videos = c.videos || []; CT.ci = ci; CT.srId = srId || 0; CT.doneBefore = (extra && srId && SR[srId]) ? (typeof extra === 'number' ? extra : SR[srId].cur) : 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = c.nombre || 'Circuito';
       ctGuideClear(); CT.guide = guide || null; CT.cls = false;
@@ -7700,15 +7880,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '#tm_side > #tm_skip{background:#f4f4f4; border-color:#f4f4f4; color:#000;}' +
           '#tm_side > #tm_plus{background:#4d8bff; border-color:#4d8bff; color:#000;}' +
           '#tm_side > #tm_stop{background:#ff5a4f !important; border-color:#ff5a4f !important; color:#000 !important;}' +
+          '#tm_side > #tm_more{background:#ff9f1c; border-color:#ff9f1c; color:#000;}' +
           '#tm_side > .tm-btn.tm-sm{padding:7px 4px; font-size:0.85rem; border-radius:12px; background:#1c1c1c; border:2px solid #fff; color:#fff;}' +
-          '#tm_side > #tm_mu_btn{border-color:#b388ff !important; color:#e6dbff !important; background:#241a3d;}' +
           '#tm_side > #tm_exit{border-color:#ff9a93; color:#ffd0cc;}' +
           '#tm_extra{display:none; position:fixed; left:0; right:0; bottom:0; z-index:100005; background:#17171c; border-top:1px solid #444; border-radius:20px 20px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); flex-direction:column; gap:10px; box-shadow:0 -10px 30px rgba(0,0,0,0.7);} #tm_extra.on{display:flex;} #tm_extra .tm-btn.tm-sm{width:100%; padding:15px 14px !important; font-size:0.95rem !important; text-align:left; border-radius:12px !important; display:block;}' +
-          '#tm_muinv{flex:none; display:block; margin:12px 0 0; width:100%; background:transparent; color:#d9c7ff; border:1.5px dashed #6a4bb0; border-radius:14px; padding:12px; font-size:0.95rem; font-weight:800; cursor:pointer;} #tm_overlay.mu-on #tm_muinv{display:none;}' +
           'body.tm-extra-open .wk-bubble{display:none !important;}' +
           '#tm_overlay.tm-fin #tm_time{font-size:2.4rem !important; margin:2px 0 6px !important;} #tm_overlay.tm-fin #tm_station{font-size:1.05rem !important;} #tm_overlay.tm-fin #tm_vid{height:calc((100vw - 32px) * 0.5625) !important;} #tm_overlay.tm-fin #tm_phase{margin-top:4px !important;}' +
           '@keyframes tmBob{0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)}} #tm_scrollhint{margin-top:12px; font-size:0.85rem; font-weight:800; color:#ffd60a; transition:opacity .3s; animation:tmBob 1.4s ease-in-out infinite;}' +
-          '#tm_sheethint{margin:8px auto 0; padding:8px 10px; border:1.5px solid #ffd60a; border-radius:12px; background:rgba(255,214,10,0.08); font-size:0.85rem; font-weight:800; color:#ffd60a; line-height:1.3; transition:opacity .3s; animation:tmBob 1.4s ease-in-out infinite;}' +
           '#tm_radj{display:none; gap:6px; align-items:stretch;} #tm_radj .tm-btn{flex:1 1 0; min-width:0; padding:11px 0; font-size:1.05rem; font-weight:900; background:#4d8bff; border:3px solid #4d8bff; color:#000;}' +
           '#tm_radjl{display:none; font-size:0.85rem; color:#bcd3ff; font-weight:900; text-align:center; margin-bottom:-3px;}' +
           '@keyframes tmBlink{0%,100%{opacity:1} 50%{opacity:0.12}} .tm-blink{animation:tmBlink .6s linear infinite;}' +
@@ -7731,7 +7909,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_time" style="font-size:min(22vw, 120px); font-weight:900; line-height:1; margin:6px 0 8px; font-variant-numeric:tabular-nums;"></div>' +
         '<div style="height:10px; background:#2a2a2a; border-radius:6px; overflow:hidden;"><div id="tm_bar" style="height:100%; width:0; background:#fff;"></div></div>' +
         '<div id="tm_next" style="margin-top:8px; font-size:0.95rem; color:#aaa;"></div>' +
-        '<div id="tm_sheethint" style="display:none;">⬇ Desplaza hacia abajo y anota tus cargas de esta serie</div>' +
         '</div>' +
         '<div id="tm_side">' +
         '<button type="button" class="tm-btn" id="tm_done" style="display:none; background:#06d6a0; border-color:#06d6a0; color:#000;">✔ Terminé</button>' +
@@ -7741,7 +7918,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_radjl">Descanso</div><div id="tm_radj"><button type="button" class="tm-btn" id="tm_rminus" aria-label="Menos descanso">−15</button><button type="button" class="tm-btn" id="tm_rplus" aria-label="Más descanso">+15</button></div>' +
         '<button type="button" class="tm-btn" id="tm_plus" style="display:none;">+5 s</button>' +
         '<button type="button" class="tm-btn" id="tm_stop" style="display:none; border-color:#ff453a; color:#ff9a93;">⏹ Parar</button>' +
-        '<button type="button" class="tm-btn tm-sm" id="tm_mu_btn" style="border-color:#b388ff; color:#d9c7ff;">🎵 Música</button>' +
+        '<button type="button" class="tm-btn" id="tm_more" style="display:none;">➕ 1 ronda más</button>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_more_btn">⚙️ Más</button>' +
         '<div id="tm_extra"><div style="font-weight:900; font-size:1rem; color:#fff; text-align:left; margin-bottom:2px;">⚙️ Ajustes</div>' +
         '<button type="button" class="tm-btn tm-sm" id="tm_vtog"></button>' +
@@ -7756,11 +7933,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_guide" style="display:none; margin-top:12px; background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; text-align:center;"></div>' +
         '<div id="tm_vid" style="display:none; position:relative; background:#000; border-radius:10px; overflow:hidden; min-height:200px;"></div>' +
         '<button type="button" id="tm_vrep">⚠️ El video no se ve</button>' +
-        '<div id="tm_sheet" style="display:none; margin-top:12px; background:#1b1b1b; border:1px solid #333; border-radius:12px; padding:10px; text-align:left;"></div>' +
-        '<button type="button" id="tm_muinv">🎵 Poner música</button>' +
-        '<div id="tm_mslot" style="flex:none; margin-top:14px; height:calc((100vw - 32px) * 0.5625 + 38px);"></div>' +
-        '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>' +
-        '<button type="button" class="tm-btn" id="tm_more" style="display:none; margin-top:10px; background:#06d6a0; color:#000; width:100%; flex:none;">➕ 1 serie más</button>';
+        '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>';
       document.body.appendChild(o);
       document.getElementById('tm_pause').onclick = ctTogglePause;
       document.getElementById('tm_skip').onclick = ctSkip;
@@ -7771,20 +7944,35 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_exit').onclick = function() { if (CT.done || confirm('¿Salir del temporizador?\n\nEl bloque queda pendiente. Si ya lo terminaste, toca «✅ Completado» en su pestaña.')) ctClose(); };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
       document.getElementById('tm_vtog').onclick = ctVidToggle; ctVidLabel(); ctPipInit();
-      document.getElementById('tm_muinv').onclick = muOpenSheet;
       document.getElementById('tm_more_btn').onclick = function() { document.getElementById('tm_extra').classList.add('on'); document.body.classList.add('tm-extra-open'); };
       document.getElementById('tm_extra_x').onclick = function() { document.getElementById('tm_extra').classList.remove('on'); document.body.classList.remove('tm-extra-open'); };
-      document.getElementById('tm_mu_btn').onclick = function() { if (MU.on) { muStop(); wkToast('Música quitada'); } else muOpenSheet(); }; o.addEventListener('scroll', function() { muSync(); var h = document.getElementById('tm_scrollhint'); if (h) h.style.opacity = o.scrollTop > 40 ? '0' : '1'; var h2 = document.getElementById('tm_sheethint'); if (h2) h2.style.opacity = o.scrollTop > 40 ? '0' : '1'; }, { passive: true }); muSync();
+      o.addEventListener('scroll', function() { var h = document.getElementById('tm_scrollhint'); if (h) h.style.opacity = o.scrollTop > 40 ? '0' : '1'; }, { passive: true });
       document.getElementById('tm_rminus').onclick = function() { ctRestAdj(-15); };
       document.getElementById('tm_rplus').onclick = function() { ctRestAdj(15); };
       document.getElementById('tm_vrep').onclick = ctVrepClick;
       if (tmrSndVisible()) { var sndB = document.getElementById('tm_snd'); sndB.style.display = ''; sndB.onclick = tmrToggleMode; tmrModeLabel(); }
       document.getElementById('tm_blkb').onclick = clsBlocksOpen;
-      document.getElementById('tm_more').onclick = function() { var ci = CT.ci, sid = CT.srId, gd = CT.guide; startCircuitTimer(ci, sid, true, gd); };
+      document.getElementById('tm_more').onclick = ctMoreRound;
     }
 
+    // «1 ronda más»: ya terminó el bloque -> arranca una ronda extra; todavía en la última ronda -> la agrega al final sin reiniciar nada
+    function ctMoreRound() {
+      if (!CT.active) return;
+      if (CT.done) { var ci = CT.ci, sid = CT.srId, gd = CT.guide; startCircuitTimer(ci, sid, true, gd); return; }
+      ctAddRound();
+    }
+    function ctAddRound() {
+      if (CT.done || CT.cls || CT.hiit || !CT.cfg || !CT.srId) return;
+      var c2 = {}; Object.keys(CT.cfg).forEach(function(k) { c2[k] = CT.cfg[k]; }); c2.rondas = '1';
+      var b2 = buildCircuitPhases(c2); if (b2.err || !b2.phases || b2.phases.length < 2) return;
+      var rest = (SR[CT.srId] && SR[CT.srId].rest) || parseSecs(c2.descanso) || 0, prevR = CT.rounds;
+      if (rest > 0) CT.phases.push({ t: 'rest', d: rest, st: 'Descanso', r: prevR, si: -1 });   // igual que entre cualquier par de rondas
+      b2.phases.slice(1).forEach(function(p) { p.r = prevR + 1; CT.phases.push(p); });   // sin el «Prepárate» inicial
+      CT.rounds = prevR + 1;
+      try { wkToast('➕ ' + (CT.roundLabel || 'Ronda') + ' extra agregada'); } catch (e) {}
+      ctTick();
+    }
     function ctPhaseSound(ph) {
-      if (ph.t === 'work') ctSheetHide();   // la ventanita de peso/reps se cierra al empezar la siguiente serie
       ctFlash(ph.t === 'work' ? '#0b5a47' : (ph.t === 'rest' ? '#1d3a6b' : '#6b4a0b'));
       if (ph.t === 'work') { tmrBeep(1000, 600, 0); tmrVibrate(250); }
       else if (ph.t === 'rest') { tmrBeep(520, 450, 0); tmrVibrate([100, 60, 100]); }
@@ -7935,6 +8123,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         el('tm_done').style.background = '#06d6a0'; el('tm_done').style.borderColor = '#06d6a0'; el('tm_done').style.color = '#000';
       }
       el('tm_skip').style.display = isWork ? 'none' : '';
+      var moreB = el('tm_more');   // «1 ronda más» a la mano (junto a «Terminé») durante la última ronda
+      if (moreB) {
+        var showMore = !CT.done && !CT.cls && !CT.hiit && !!CT.srId && ph.t !== 'ready' && ph.r >= CT.rounds;
+        moreB.style.display = showMore ? '' : 'none';
+        if (showMore) moreB.innerText = '➕ 1 ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' más';
+      }
       var demoBtn = el('tm_demo');
       if (demoBtn) {   // demo del ejercicio actual (en descanso o transición, el del que sigue); el temporizador no se pausa
         var di = ph.list ? (CT.listSel || 0) : (ph.seq ? Math.min(CT.seqI, ph.steps.length - 1) : ph.si);
@@ -7966,159 +8160,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (PIP.prep) ctPipDraw(col, labels[ph.t], stationTxt, el('tm_time').innerText, el('tm_round').innerText, repsStr, isOpen ? 0 : Math.max(0, Math.min(1, 1 - remain / ph.d)));
     }
 
-
-    // ---- Música de YouTube dentro de la app: miniatura elegante + botón para intercambiar con el video del ejercicio ----
-    var MU = { list: false, on: false, big: false, playing: false, url: '', iv: null };
-    function muSaved() { try { return localStorage.getItem('benessere_music_url') || ''; } catch (e) { return ''; } }
-    function muMixPref() { try { return localStorage.getItem('benessere_music_mix') !== 'off'; } catch (e) { return true; } }
-    function muSrc(url, mix) {
-      var list = (String(url).match(/[?&]list=([A-Za-z0-9_-]{10,})/) || [])[1] || '', id = ytIdStrict(url);
-      var base = 'https://www.youtube-nocookie.com/embed/', q = '?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1' + ytOriginParam();
-      if (list && !id) return base + 'videoseries' + q + '&list=' + list + '&loop=1';
-      if (list) return base + id + q + '&list=' + list + '&loop=1';
-      if (id && mix) return base + id + q + '&list=RD' + id;   // "mezcla" automática de YouTube: sigue con canciones parecidas
-      if (id) return base + id + q + '&loop=1&playlist=' + id;
-      return '';
-    }
-    function muCss() {
-      if (document.getElementById('mu_css')) return;
-      var c = document.createElement('style'); c.id = 'mu_css';
-      c.textContent = '#mu_dock{position:fixed; z-index:100001; left:12px; bottom:calc(12px + env(safe-area-inset-bottom)); width:140px; display:none; flex-direction:column; background:rgba(14,10,24,0.92); border:1.5px solid #b388ff; border-radius:16px; box-shadow:0 0 14px rgba(179,136,255,0.55), 0 6px 18px rgba(0,0,0,0.6); overflow:hidden; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); transition:box-shadow .3s;}' +
-        '#mu_dock.on{display:flex;} #mu_dock.mu-play{box-shadow:0 0 20px rgba(179,136,255,0.9), 0 6px 18px rgba(0,0,0,0.6);}' +
-        '#mu_frame{position:relative; flex:1 1 auto; height:79px; background:#000;} #mu_frame iframe{position:absolute; inset:0; width:100%; height:100%; border:0; pointer-events:none;}' +
-        '#mu_dock.mu-big #mu_frame iframe{pointer-events:auto;} #mu_dock.mu-big{border-radius:14px;}' +
-        '#mu_bar{display:flex; align-items:center; justify-content:space-around; gap:2px; padding:3px 4px; height:30px; flex:none;} #mu_ttl{display:none; flex:1 1 auto; min-width:0; font-size:0.62rem; font-weight:800; color:#d9c7ff; letter-spacing:.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-left:3px;}' +
-        '#mu_bar button{flex:none; width:28px; height:24px; border:none; background:rgba(179,136,255,0.16); color:#e7dcff; border-radius:8px; font-size:0.8rem; line-height:1; padding:0; cursor:pointer;} #mu_bar button:active{background:rgba(179,136,255,0.4);}' +
-        '#mu_dock.mu-big #mu_bar{height:38px;} #mu_dock.mu-big #mu_ttl{display:block; font-size:0.74rem;} #mu_dock.mu-big #mu_bar button{width:34px; height:28px; font-size:0.95rem;}' +
-        '#tm_mslot{display:none;} #tm_overlay.mu-on #tm_mslot{display:block;} @media (orientation:landscape) and (max-height:520px){#tm_mslot{height:calc((50vw - 30px) * 0.5625 + 38px) !important;}}' +
-        '#mu_pill{position:fixed; z-index:100002; left:12px; bottom:calc(14px + env(safe-area-inset-bottom)); display:none; align-items:center; gap:2px; background:rgba(14,10,24,0.94); border:1.5px solid #b388ff; border-radius:22px; padding:3px; box-shadow:0 0 14px rgba(179,136,255,0.55), 0 6px 18px rgba(0,0,0,0.6);} #mu_pill.on{display:flex;} #mu_pill button{border:none; background:rgba(179,136,255,0.16); color:#e7dcff; height:34px; border-radius:18px; font-size:0.85rem; font-weight:800; padding:0 12px; cursor:pointer;} #mu_pill #mu_pp2{width:38px; padding:0;}' +
-        '#mu_sheet{position:fixed; left:0; right:0; bottom:0; z-index:100003; background:#17112a; border-top:1.5px solid #b388ff; border-radius:20px 20px 0 0; padding:18px 16px calc(18px + env(safe-area-inset-bottom)); color:#fff; box-shadow:0 -10px 30px rgba(0,0,0,0.7); text-align:left; display:none;} #mu_sheet.on{display:block;}' +
-        '#mu_sheet input{width:100%; box-sizing:border-box; background:#0e0a18; border:1px solid #6a4bb0; border-radius:12px; color:#fff; padding:13px 12px; font-size:16px; margin:10px 0 4px;} #mu_sheet .mu-b{border:none; border-radius:12px; padding:13px; font-weight:800; font-size:0.95rem; cursor:pointer;}';
-      document.head.appendChild(c);
-    }
-    function muDock() {
-      muCss();
-      var d = document.getElementById('mu_dock'); if (d) return d;
-      d = document.createElement('div'); d.id = 'mu_dock';
-      d.innerHTML = '<div id="mu_frame"></div><div id="mu_bar"><button type="button" id="mu_prev" aria-label="Canción anterior" style="display:none;">⏮</button><button type="button" id="mu_pp" aria-label="Reproducir o pausar">⏸</button><button type="button" id="mu_next" aria-label="Siguiente canción" style="display:none;">⏭</button><span id="mu_ttl">🎵 MÚSICA</span><button type="button" id="mu_x" aria-label="Quitar música">✕</button></div>';
-      document.body.appendChild(d);
-      document.getElementById('mu_pp').onclick = function() { muCmd(MU.playing ? 'pauseVideo' : 'playVideo'); };
-      document.getElementById('mu_x').onclick = muStop;
-      document.getElementById('mu_prev').onclick = function() { muCmd('previousVideo'); };
-      document.getElementById('mu_next').onclick = function() { muCmd('nextVideo'); };
-      return d;
-    }
-    function muCmd(fn) { try { var f = document.querySelector('#mu_frame iframe'); f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: fn, args: [] }), '*'); } catch (e) {} }
-    function muStop() {
-      MU.on = false; MU.big = false; MU.playing = false;
-      var d = document.getElementById('mu_dock'); if (d) { d.classList.remove('on', 'mu-big', 'mu-play'); document.getElementById('mu_frame').innerHTML = ''; d.removeAttribute('style'); }
-      var pl = document.getElementById('mu_pill'); if (pl) pl.classList.remove('on');
-      muSync();
-    }
-    function muPlay(url) {
-      var hasList = /[?&]list=[A-Za-z0-9_-]{10,}/.test(String(url)), mixTry = !hasList && !!ytIdStrict(url) && muMixPref() && !(MU.mixOff && MU.url === url);
-      var src = muSrc(url, mixTry); if (!src) return false;
-      MU.mixTry = mixTry;
-      try { localStorage.setItem('benessere_music_url', url); } catch (e) {}
-      var d = muDock(); MU.on = true; MU.url = url; MU.playing = true;
-      MU.list = hasList || mixTry;   // anterior/siguiente solo existen en listas de reproducción
-      ['mu_prev', 'mu_next'].forEach(function(k) { var bt = document.getElementById(k); if (bt) bt.style.display = MU.list ? '' : 'none'; });
-      document.getElementById('mu_ttl').innerText = '🎵 MÚSICA';
-      var fr = document.getElementById('mu_frame');
-      fr.innerHTML = '<iframe title="Música" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" src="' + src + '"></iframe>';
-      var f = fr.firstChild; f.onload = function() { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 2, channel: 'widget' }), '*'); } catch (e) {} };
-      d.classList.add('on'); muSync();
-      return true;
-    }
-    window.addEventListener('message', function(e) {
-      if (!MU.on || !/youtube/.test(String(e.origin || ''))) return;
-      var f = document.querySelector('#mu_frame iframe'); if (!f || e.source !== f.contentWindow) return;
-      var d; try { d = JSON.parse(e.data); } catch (x) { return; }
-      if (!d) return;
-      if (d.event === 'onError' && MU.mixTry) { MU.mixTry = false; MU.mixOff = true; var u0 = MU.url; muStop(); muPlay(u0); wkToast('YouTube no dejó seguir con canciones parecidas aquí: este video se repetirá. Para seguir con otras, pega una lista de reproducción 🎵'); return; }
-      if (d.event === 'onError') { var code = d.info; muStop(); wkToast(code === 101 || code === 150 ? 'YouTube no deja reproducir ese video aquí. Prueba otro enlace o una lista de reproducción 🎵' : 'No se pudo cargar esa música. Revisa el enlace 🎵'); return; }
-      if (d.event === 'infoDelivery' && d.info && d.info.playerState !== undefined) {
-        MU.playing = d.info.playerState === 1 || d.info.playerState === 3;
-        var pp = document.getElementById('mu_pp'); if (pp) pp.innerText = MU.playing ? '⏸' : '▶';
-        var dk = document.getElementById('mu_dock'); if (dk) dk.classList.toggle('mu-play', MU.playing);
-      }
-    });
-    function muPill() {
-      var pl = document.getElementById('mu_pill');
-      if (!pl) {
-        pl = document.createElement('div'); pl.id = 'mu_pill';
-        pl.innerHTML = '<button type="button" id="mu_pp2" aria-label="Reproducir o pausar">⏸</button><button type="button" id="mu_next2" aria-label="Siguiente canción" style="display:none; width:38px; padding:0;">⏭</button><button type="button" id="mu_go2">🎵 Música ↓</button>';
-        document.body.appendChild(pl);
-        document.getElementById('mu_pp2').onclick = function() { muCmd(MU.playing ? 'pauseVideo' : 'playVideo'); };
-        document.getElementById('mu_next2').onclick = function() { muCmd('nextVideo'); };
-        document.getElementById('mu_go2').onclick = function() { var sl = document.getElementById('tm_mslot'); if (sl) sl.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
-      }
-      return pl;
-    }
-    function muSync() {   // la música va en un bloque grande bajo el video del ejercicio; fuera del temporizador queda como miniatura
-      var o = document.getElementById('tm_overlay'), d = document.getElementById('mu_dock'), slot = document.getElementById('tm_mslot');
-      var inl = !!(MU.on && o && slot);
-      if (o) o.classList.toggle('mu-on', !!MU.on);
-      var b = document.getElementById('tm_mu_btn'); if (b) b.innerText = MU.on ? '🎵 Quitar' : '🎵 Música';
-      var pl = document.getElementById('mu_pill') || (MU.on ? muPill() : null);
-      if (!d) return;
-      if (MU.on) d.classList.add('on');
-      d.classList.toggle('mu-big', inl);
-      var off = false;
-      if (inl) {
-        var r = slot.getBoundingClientRect();
-        d.style.left = r.left + 'px'; d.style.top = r.top + 'px'; d.style.width = r.width + 'px'; d.style.height = r.height + 'px'; d.style.bottom = 'auto';
-        document.getElementById('mu_frame').style.height = Math.max(40, r.height - 38) + 'px';
-        off = r.bottom < 80 || r.top > window.innerHeight - 60;
-        d.style.visibility = (r.bottom < 0 || r.top > window.innerHeight) ? 'hidden' : '';
-      } else { d.style.left = d.style.top = d.style.width = d.style.height = d.style.bottom = ''; d.style.visibility = ''; document.getElementById('mu_frame').style.height = ''; }
-      if (pl) { var nx2 = document.getElementById('mu_next2'); if (nx2) nx2.style.display = MU.list ? '' : 'none'; pl.classList.toggle('on', !!(MU.on && off)); var p2 = document.getElementById('mu_pp2'); if (p2) p2.innerText = MU.playing ? '⏸' : '▶'; }
-      if (MU.on && !MU.iv) MU.iv = setInterval(function() { if (MU.on) muSync(); else { clearInterval(MU.iv); MU.iv = null; } }, 400);
-      if (!MU.on && MU.iv) { clearInterval(MU.iv); MU.iv = null; }
-    }
-    function muPasteClip(manual) {   // lee el enlace copiado; en iPhone el sistema pide permiso para pegar
-      var err = document.getElementById('mu_err'), inp = document.getElementById('mu_in');
-      if (!inp) return;
-      function fail(msg) { if (err && manual) { err.style.color = '#ff9a93'; err.innerText = msg; } }
-      if (!navigator.clipboard || !navigator.clipboard.readText) { fail('Tu teléfono no deja pegar desde aquí: mantén presionado el cuadro de abajo y elige Pegar.'); return; }
-      navigator.clipboard.readText().then(function(t) {
-        t = String(t || '').trim();
-        if (!muSrc(t)) { fail('No encontré un enlace de YouTube copiado. En YouTube toca Compartir → Copiar enlace.'); return; }
-        inp.value = t; if (err) { err.style.color = '#9fe8c8'; err.innerText = '¡Enlace listo! Toca Reproducir ▶'; }
-      }).catch(function() { fail('No pude leer lo copiado: mantén presionado el cuadro de abajo y elige Pegar.'); });
-    }
-    document.addEventListener('visibilitychange', function() {   // al volver de YouTube, intenta traer el enlace copiado
-      if (document.visibilityState !== 'visible' || !MU.searched) return;
-      var sh = document.getElementById('mu_sheet'); if (!sh || !sh.classList.contains('on')) return;
-      MU.searched = false; muPasteClip(false);
-    });
-    function muOpenSheet() {
-      muCss();
-      var sh = document.getElementById('mu_sheet');
-      if (!sh) { sh = document.createElement('div'); sh.id = 'mu_sheet'; document.body.appendChild(sh); }
-      sh.innerHTML = '<div style="font-weight:900; font-size:1.05rem; color:#d9c7ff;">🎵 Tu música mientras entrenas</div>' +
-        '<div style="font-size:0.78rem; color:#a99bc9; margin-top:4px; line-height:1.4;">Pega un enlace de YouTube (un video o una lista de reproducción). Queda en un bloque grande bajo el video del ejercicio: desliza hacia abajo para verla.</div>' +
-        '<div style="display:flex; gap:8px; margin-top:12px;"><button type="button" class="mu-b" id="mu_yt" style="flex:1; background:#ff2d2d; color:#fff; padding:11px 6px; font-size:0.85rem;">🔎 Buscar en YouTube</button><button type="button" class="mu-b" id="mu_paste" style="flex:1; background:#2a1d47; color:#e7dcff; padding:11px 6px; font-size:0.85rem;">📋 Pegar enlace copiado</button></div>' +
-        '<div style="font-size:0.7rem; color:#8070a8; margin-top:5px; line-height:1.35;">1) Toca Buscar y encuentra tu música. 2) En YouTube toca Compartir → Copiar enlace. 3) Vuelve aquí y toca Pegar.</div>' +
-        '<input id="mu_in" type="url" inputmode="url" autocomplete="off" placeholder="https://youtube.com/…" value="' + escHtml(muSaved()) + '">' +
-        '<label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#d9c7ff; margin:6px 0 2px; text-transform:none;"><input type="checkbox" id="mu_mix" style="width:auto; margin:0;"' + (muMixPref() ? ' checked' : '') + '> Al terminar, seguir con canciones parecidas</label>' +
-        '<div id="mu_err" style="min-height:18px; font-size:0.76rem; color:#ff9a93; margin-bottom:6px;"></div>' +
-        '<div style="display:flex; gap:8px;"><button type="button" class="mu-b" id="mu_go" style="flex:2; background:#b388ff; color:#1a0f33;">▶ Reproducir</button>' +
-        (MU.on ? '<button type="button" class="mu-b" id="mu_off" style="flex:1; background:#2a1d47; color:#e7dcff;">Quitar</button>' : '') +
-        '<button type="button" class="mu-b" id="mu_cl" style="flex:1; background:#241a3a; color:#a99bc9;">Cerrar</button></div>' +
-        '<div style="font-size:0.7rem; color:#8070a8; margin-top:10px; line-height:1.35;">Si un video no se deja reproducir aquí, prueba otro o una lista. La música se detiene si bloqueas el teléfono o cambias de app.</div>';
-      sh.classList.add('on');
-      document.getElementById('mu_cl').onclick = function() { sh.classList.remove('on'); };
-      document.getElementById('mu_yt').onclick = function() { MU.searched = true; try { window.open('https://www.youtube.com/', '_blank'); } catch (e) {} };
-      document.getElementById('mu_paste').onclick = function() { muPasteClip(true); };
-      var off = document.getElementById('mu_off'); if (off) off.onclick = function() { muStop(); sh.classList.remove('on'); };
-      document.getElementById('mu_go').onclick = function() {
-        var v = document.getElementById('mu_in').value.trim();
-        if (!muSrc(v)) { document.getElementById('mu_err').innerText = 'Ese enlace no parece de YouTube. Copia el enlace del video o de la lista.'; return; }
-        try { localStorage.setItem('benessere_music_mix', document.getElementById('mu_mix').checked ? 'on' : 'off'); } catch (e) {}
-        muPlay(v); sh.classList.remove('on');
-      };
-    }
 
     // Abre el video del ejercicio en otra pestaña/pantalla flotante SIN detener el temporizador (sigue avanzando por reloj)
     // ---- Video de YouTube bajo el temporizador (mudo, en bucle; toca el boton para el sonido) ----
@@ -8346,17 +8387,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         ctSummaryShow(); el('tm_exit').innerText = CT.srId ? '✔ Salir' : 'Cerrar';
         if (CT.srId && SR[CT.srId]) {
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
-          el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = CT.hiit ? 'none' : 'block';
+          el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = CT.hiit ? 'none' : '';
           if (!CT.guide) { var dnB = el('tm_done'); dnB.innerText = '✅ Ya terminé'; dnB.style.display = ''; dnB.onclick = function() { bdOpen(CT.srId); }; }   // botón claro para cerrar el bloque: abre las cargas y lo da por completado
         }
       }
       tmrWakeOff();
-      setTimeout(equipReminder, 1300);   // última ronda lista: recordatorio de regresar el equipo
       if (CT.guide) ctGuideAfterFinish();
     }
 
     // ----- Segundos logrados por serie, +5 s y Parar -----
-    var EQ_TIMER = null;
     function ctPhaseDone(i) {
       var ph = CT.phases[i];
       if (!ph || ph.t !== 'work') return;
@@ -8365,7 +8404,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else CT.log.push({ si: ph.si, r: ph.r, secs: Math.max(0, Math.round((CT.paused ? CT.openElapsed : (Date.now() - CT.openStart)) / 1000)) });
       // al cerrar la última estación de una ronda con ejercicios por reps, esa serie cuenta como hecha (lo precargado en gris pasa a confirmado)
       if (CT.hasOpen && ph.si === CT.nSt - 1 && ph.side !== 1 && CT.srId && SR[CT.srId]) srFill(CT.srId, (CT.doneBefore || 0) + ph.r);
-      if (CT.hasOpen && ph.si === CT.nSt - 1 && ph.side !== 1) ctSheetShow(ph.r);   // ventanita para anotar peso y reps de esa serie
     }
     // Anota los segundos de ese tiempo de trabajo en la fila de la serie (unilateral: "lado 1/lado 2")
     function ctRecord(ph, secs) {
@@ -9097,19 +9135,38 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (rows) html += '<div style="margin-top:12px; text-align:left;"><div style="font-size:0.9rem; font-weight:800;">' + escHtml(nm) + '</div>' + rows + '</div>';
       });
       BD.srId = srId;
-      if (!html) { bdDone(); return; }   // nada que anotar (calentamiento, HIIT…): se completa directo
+      var eq = bdEquipList(srId);
+      if (!html && !eq.length) { bdDone(); return; }   // nada que anotar ni equipo que regresar (calentamiento, HIIT…): se completa directo
       var m = document.getElementById('bd_modal');
       if (!m) { m = document.createElement('div'); m.id = 'bd_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100006'; document.body.appendChild(m); }
+      var eqHtml = '<div class="equipment-banner" style="margin:10px 0 0; text-align:left;"><span style="font-size:1.4rem;">🧰</span><span>' + (eq.length ? 'Regresa el equipo a su lugar: <b>' + eq.map(escHtml).join(', ') + '</b>' : 'Si usaste equipo, regrésalo a su lugar.') + '</span></div>';
       m.innerHTML = '<div class="modal-inner" style="text-align:center;">' +
-        '<div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📝 Anota tus cargas</div>' +
-        '<div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Anota lo que falte. Es opcional: si lo dejas vacío no pasa nada.</div>' + html +
+        '<div style="font-size:1.1rem; font-weight:900; color:var(--primary);">' + (html ? '📝 Anota tus cargas' : '✅ ¡Bloque listo!') + '</div>' + eqHtml +
+        (html ? '<div style="font-size:0.8rem; color:var(--muted); margin-top:10px;">Anota lo que falte. Es opcional: si lo dejas vacío no pasa nada.</div>' + html : '') +
         '<button type="button" class="btn-action-primary" style="margin-top:16px;" onclick="bdDone()">✅ Completado</button>' +
         '<button type="button" onclick="bdCancel()" style="margin-top:8px; width:100%; background:none; border:none; color:#aaa; font-size:0.85rem; padding:8px; cursor:pointer;">Volver</button></div>';
       m.classList.add('active');
     }
     function bdInput(el) {
-      ctSheetSet(el.getAttribute('data-k'), parseInt(el.getAttribute('data-i'), 10), el.getAttribute('data-kind'), el.value);
+      var key = el.getAttribute('data-k'), idx = parseInt(el.getAttribute('data-i'), 10), kind = el.getAttribute('data-kind'), val = el.value;
+      ctSheetSet(key, idx, kind, val);
       el.classList.remove('pre');
+      var real0 = document.getElementById(kind + '_' + key + '_' + idx);
+      if (idx > 0) { delete el.dataset.auto; el.dataset.man = '1'; if (real0) { delete real0.dataset.auto; real0.dataset.man = '1'; } return; }   // corregida a mano: ya no se pisa
+      // al llenar la fila 1 (peso o reps), las demás se llenan solas con lo mismo; lo que ya corrigió a mano no se pisa
+      var m = document.getElementById('bd_modal'); if (!m) return;
+      m.querySelectorAll('.bd-in[data-kind="' + kind + '"]').forEach(function(o) {
+        if (o.getAttribute('data-k') !== key) return;
+        var oi = parseInt(o.getAttribute('data-i'), 10); if (!(oi > 0)) return;
+        var rl = document.getElementById(kind + '_' + key + '_' + oi);
+        if ((o.dataset.man === '1' || (rl && rl.dataset.man === '1')) && o.value.trim()) return;
+        if (!o.value.trim() || o.classList.contains('pre') || o.dataset.auto === '1') {
+          o.value = val; o.classList.remove('pre');
+          if (val) o.dataset.auto = '1'; else delete o.dataset.auto;
+          ctSheetSet(key, oi, kind, val);
+          if (rl) { if (val) rl.dataset.auto = '1'; else delete rl.dataset.auto; }
+        }
+      });
     }
     function bdCancel() { var m = document.getElementById('bd_modal'); if (m) m.remove(); }
     function bdDone() {
@@ -9121,43 +9178,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (gk) setTimeout(function() { try { var sec = document.getElementById('sec_rutina_' + gk.dayId), nx = sec && sec.querySelector('.gd-go .gd-head, .gd-pend .gd-head'); if (nx) nx.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e3) {} }, 450);
     }
 
-    // ----- Ventanita para anotar peso y reps sin salir del temporizador (no bloquea el descanso) -----
-    function ctSheetHide() { var b = document.getElementById('tm_sheet'); if (b) { b.style.display = 'none'; b.innerHTML = ''; } var h = document.getElementById('tm_sheethint'); if (h) h.style.display = 'none'; }
-    function ctSheetShow(round) {
-      var box = document.getElementById('tm_sheet'); if (!box) return;
-      var idx = (CT.doneBefore || 0) + round - 1, rows = '';
-      var stepBtn = 'style="width:38px; height:38px; border-radius:10px; border:1px solid #444; background:#262626; color:#fff; font-size:1.2rem; font-weight:800;"';
-      var inpSty = 'style="width:64px; height:38px; text-align:center; background:#202020; border:1px solid #333; color:#fff; border-radius:8px; font-size:1rem;"';
-      var stepper = function(kind, key, v, step, unit) {
-        return '<span style="display:inline-flex; align-items:center; gap:4px; margin-left:8px;">' +
-          '<button type="button" ' + stepBtn + ' onclick="ctSheetStep(\'' + key + '\',' + idx + ',\'' + kind + '\',' + (-step) + ')">−</button>' +
-          '<input type="text" inputmode="decimal" id="sh_' + kind + '_' + key + '_' + idx + '" value="' + escHtml(v) + '" ' + inpSty + ' oninput="ctSheetSet(\'' + key + '\',' + idx + ',\'' + kind + '\',this.value)">' +
-          '<button type="button" ' + stepBtn + ' onclick="ctSheetStep(\'' + key + '\',' + idx + ',\'' + kind + '\',' + step + ')">+</button>' +
-          '<span style="font-size:0.7rem; color:#aaa;">' + unit + '</span></span>';
-      };
-      for (var s = 0; s < CT.nSt; s++) {
-        if (!(CT.openSt && CT.openSt[s])) continue;
-        var key = (CT.keys || [])[s]; if (!key) continue;
-        ensureSetRows(key, idx + 1);
-        var w = document.getElementById('pw_' + key + '_' + idx), r = document.getElementById('pr_' + key + '_' + idx);
-        if (!r) continue;
-        rows += '<div style="margin-top:8px;"><div style="font-size:0.9rem; font-weight:800; margin-bottom:4px;">' + escHtml(CT.names[s] || ('Ejercicio ' + (s + 1))) + '</div>' +
-          '<div style="display:flex; flex-wrap:wrap; align-items:center;">' + (w ? stepper('pw', key, w.value, 2.5, 'lbs') : '') + stepper('pr', key, r.value, 1, 'reps') + '</div></div>';
-      }
-      if (!rows) { ctSheetHide(); return; }
-      box.innerHTML = '<div style="font-size:0.8rem; color:#ccc; font-weight:800;">📝 ' + escHtml(CT.roundLabel || 'Serie') + ' ' + round + ' · anota lo que hiciste (opcional)</div>' + rows;
-      box.style.display = 'block';
-      var hh = document.getElementById('tm_sheethint'); if (hh) { hh.style.display = 'block'; hh.style.opacity = '1'; }
-    }
+    // Anota un valor en la fila de registro de un ejercicio (lo usa el cuadro final de cargas)
     function ctSheetSet(key, idx, kind, val) {
       var t = document.getElementById(kind + '_' + key + '_' + idx); if (!t) return;
       t.value = val; t.classList.remove('prefilled'); saveTracker(); refreshSetSummary(key);
-    }
-    function ctSheetStep(key, idx, kind, delta) {
-      var i = document.getElementById('sh_' + kind + '_' + key + '_' + idx); if (!i) return;
-      var cur = parseFloat(String(i.value).replace(',', '.')); if (isNaN(cur)) cur = 0;
-      var nv = Math.max(0, Math.round((cur + delta) * 10) / 10);
-      i.value = String(nv); ctSheetSet(key, idx, kind, i.value);
     }
     // Resumen al terminar: tiempo de cada serie (o de cada ejercicio por ronda)
     function ctSummaryShow() {
@@ -9190,25 +9214,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { localStorage.setItem('benessere_audio_mode', nm); } catch (e) {}
       tmrModeLabel(); tmrAudio(); tmrBeep(1000, 300, 0);   // pitido de prueba con el modo nuevo
       try { wkToast(nm === 'mix' ? '🔊 Con música: los pitidos se mezclan con tu música. Si no los oyes, revisa que el iPhone no esté en silencio.' : '🔊 Normal: los pitidos suenan aunque el iPhone esté en silencio, pero pueden pausar tu música.'); } catch (e) {}
-    }
-
-    // ----- Recordatorio de 5 s al terminar la última ronda de un ejercicio -----
-    function closeEquip() {
-      var t = document.getElementById('equip_toast'); if (t) t.remove();
-      if (EQ_TIMER) { clearTimeout(EQ_TIMER); EQ_TIMER = null; }
-    }
-    function equipReminder() {
-      closeEquip();
-      var t = document.createElement('div');
-      t.id = 'equip_toast';
-      t.style.cssText = 'position:fixed; top:14px; left:12px; right:12px; max-width:520px; margin:0 auto; z-index:100005; background:#0d2318; border:2px solid #06d6a0; color:#fff; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 4px 18px rgba(0,0,0,0.6);';
-      t.innerHTML = '<div style="font-size:1.5rem;">🧰</div>' +
-        '<div style="flex:1;"><div style="font-size:0.9rem; font-weight:800;">¡Última ronda lista! Regresa el equipo a su lugar.</div></div>' +
-        '<button type="button" id="equip_close" style="background:#1c1c1c; border:1px solid #444; color:#fff; border-radius:8px; padding:8px 12px; font-weight:800; cursor:pointer;">✖</button>';
-      document.body.appendChild(t);
-      document.getElementById('equip_close').onclick = closeEquip;
-      tmrAudio(); tmrBeep(660, 180, 0); tmrBeep(880, 260, 240); tmrVibrate([150, 80, 150]);
-      EQ_TIMER = setTimeout(closeEquip, 5000);
     }
 
     // ---- Pantalla flotante (Picture-in-Picture con un video dibujado): experimental, depende del celular y del navegador ----
