@@ -7854,7 +7854,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ctGuideClear(); CT.guide = guide || null; CT.cls = false;
       CT.nSt = built.nSt; CT.hasOpen = built.hasOpen; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = !!built.hiit;
       CT.i = 0; CT.paused = false; CT.done = false; CT.active = true; CT.lastBeep = '';
-      CT.gapPreview = false; CT.rsAt = 0; CT.warnI = -1; CT.demoName = ''; CT.vidId = ''; CT.vidReloads = {}; CT.vidAuto = {};
+      CT.gapPreview = false; CT.rsAt = 0; CT.warnI = -1; CT.demoName = ''; CT.vidId = ''; CT.vidReloads = {}; CT.vidAuto = {}; CT.vidGave = {};
       ctEnter(CT.phases[0], Date.now());
       ctOpen();
       if (CT.tick) clearInterval(CT.tick);
@@ -8177,11 +8177,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var demoBtn = document.getElementById('tm_demo'), vb = document.getElementById('tm_vid');
       if (demoBtn) demoBtn.style.display = (CT.demoUrl && !(vb && vb.style.display !== 'none')) ? 'block' : 'none';
     }
+    // El video no arrancó tras los intentos: sale «Ver demostración» y el botoncito para avisar al coach (ya en modo «avisar», sin más recargas)
+    function vidGiveUp(id, keepBox) {
+      if (!keepBox) { CT.vidGave = CT.vidGave || {}; CT.vidGave[id] = 1; }
+      var db = document.getElementById('tm_demo'); if (db && CT.demoUrl) db.style.display = 'block';
+      CT.vidReloads = CT.vidReloads || {}; CT.vidReloads[id] = 2;
+      var vr = document.getElementById('tm_vrep'); if (vr && CT.demoUrl) { vr.style.display = 'block'; ctVrepLabel(); }
+    }
     function ctVidSync(force) {
       var box = document.getElementById('tm_vid'); if (!box) return;
       var ovf = document.getElementById('tm_overlay'); if (ovf) ovf.classList.toggle('tm-fin', !!CT.done);
       var id = (ctVidOn() && (!CT.done || CT.gapPreview)) ? ytIdStrict(CT.demoUrl) : '';
-      if (!id || VID_BAD[id]) { box.style.display = 'none'; box.innerHTML = ''; CT.vidId = ''; return; }
+      if (!id || VID_BAD[id] || (!force && CT.vidGave && CT.vidGave[id])) { box.style.display = 'none'; box.innerHTML = ''; CT.vidId = ''; return; }   // tras rendirse con ese video no se vuelve a cargar solo (solo con «Recargar»)
       if (CT.vidId === id && !force && box.querySelector('iframe')) { box.style.display = 'block'; return; }   // mismo video: no se reinicia (si la caja está vacía, se vuelve a cargar)
       CT.vidId = id; CT.vidMuted = true;
       box.style.display = 'block';
@@ -8197,12 +8204,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.vidOk = false; CT.vidState = -9; clearTimeout(CT.vidWatch); clearTimeout(CT.vidWatch2);
       function demoFallback() {   // el video no arrancó: se quita la caja vacía y queda el botón «Ver demostración»
         box.style.display = 'none'; box.innerHTML = '';
-        var db = document.getElementById('tm_demo'); if (db && CT.demoUrl) db.style.display = 'block';
+        vidGiveUp(id);
       }
-      CT.vidWatch = setTimeout(function() {   // si en 8 s el video no dio señales de vida, se intenta una vez más solo; si tampoco, botón «Ver demostración»
+      CT.vidWatch = setTimeout(function() {   // si en 8 s el video no dio señales de vida, se intenta de nuevo solo (3 intentos en total); si ninguno funciona: «Ver demostración» + aviso al coach
         CT.vidAuto = CT.vidAuto || {};
         if (!CT.active || CT.vidId !== id) return;
-        if (!CT.vidOk) { if (!CT.vidAuto[id]) { CT.vidAuto[id] = 1; ctVidSync(true); } else demoFallback(); }
+        if (!CT.vidOk) { if ((CT.vidAuto[id] || 0) < 2) { CT.vidAuto[id] = (CT.vidAuto[id] || 0) + 1; ctVidSync(true); } else demoFallback(); }
       }, 8000);
       CT.vidWatch2 = setTimeout(function() {   // el reproductor respondió pero no está reproduciendo (autoplay bloqueado por el celular)
         if (!CT.active || CT.vidId !== id || !CT.vidOk || CT.vidState === 1) return;
@@ -8211,7 +8218,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (!CT.active || CT.vidId !== id || CT.vidState === 1) return;
           fr.style.pointerEvents = 'auto';   // un toque sobre el video lo arranca (el celular lo permite si lo toca la persona)
           var sb = document.getElementById('tm_vsnd'); if (sb) { sb.innerText = '▶ Toca el video para verlo'; sb.onclick = function() { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'); } catch (e) {} fr.style.pointerEvents = 'none'; this.innerText = '🔇 Activar sonido'; }; }
-          var db = document.getElementById('tm_demo'); if (db && CT.demoUrl) db.style.display = 'block';
+          vidGiveUp(id, true);
         }, 2500);
       }, 5000);
     }
@@ -8225,6 +8232,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (CT.vidId) VID_BAD[CT.vidId] = true;
         ctVidSync(true);
         var demoBtn = document.getElementById('tm_demo'); if (demoBtn && CT.demoUrl) demoBtn.style.display = 'block';
+        if (CT.vidId === '' ) { var bid = ytIdStrict(CT.demoUrl); if (bid) vidGiveUp(bid); }
       }
     });
 
@@ -9365,7 +9373,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.vidReloads = CT.vidReloads || {};
       if (id && !vrepDone(CT.demoUrl) && (CT.vidReloads[id] || 0) < 2) {
         CT.vidReloads[id] = (CT.vidReloads[id] || 0) + 1;
-        delete VID_BAD[id]; ctVidSync(true); ctVrepLabel();
+        delete VID_BAD[id]; if (CT.vidGave) delete CT.vidGave[id]; ctVidSync(true); ctVrepLabel();
         wkToast('🔄 Recargando el video…');
         return;
       }
