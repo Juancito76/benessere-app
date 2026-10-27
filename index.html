@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-27-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-27-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8025,15 +8025,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // − / + del descanso: ajusta el descanso en curso y los que faltan en este bloque; queda como el descanso elegido del ejercicio
     function ctRestAdj(delta) {
       if (!CT.active || CT.done) return;
-      var ph = CT.phases[CT.i]; if (!ph || ph.t !== 'rest' || ph.pausa || CT.hiit || CT.cls) return;
+      var ph = CT.phases[CT.i]; if (!ph || ph.t !== 'rest' || CT.hiit) return;
+      var only = !!(CT.cls || ph.pausa);   // clases, retos y pausas entre bloques: el ajuste vale solo para este descanso (los demás los fijó el coach)
       var nd = Math.max(10, Math.min(600, ph.d + delta)), real = nd - ph.d;
       if (!real) return;
       var remMs = CT.paused ? CT.remain : (CT.end - Date.now());
       if (remMs + real * 1000 < 1500) return;   // ya queda muy poco: para terminar el descanso está "Iniciar ya"
       ph.d = nd;
       if (CT.paused) CT.remain += real * 1000; else CT.end += real * 1000;
-      CT.phases.forEach(function(p, k) { if (k > CT.i && p.t === 'rest' && !p.pausa) p.d = nd; });   // los descansos que faltan quedan igual
-      if (CT.srId && SR[CT.srId]) {
+      if (!only) CT.phases.forEach(function(p, k) { if (k > CT.i && p.t === 'rest' && !p.pausa) p.d = nd; });   // los descansos que faltan quedan igual
+      if (!only && CT.srId && SR[CT.srId]) {
         SR[CT.srId].rest = nd;   // el descanso ajustado es el que se sigue mostrando (también en "1 serie más" y al reiniciar)
         document.querySelectorAll('.rest-btn[data-sr="' + CT.srId + '"]').forEach(function(b) { b.classList.toggle('sel', b.innerText.trim() === nd + ' s'); });
       }
@@ -8111,7 +8112,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var goGreen = ph.t !== 'work' && !!nextWork;   // "Iniciar ya" bien visible durante el descanso
         el('tm_skip').style.background = goGreen ? '#06d6a0' : ''; el('tm_skip').style.borderColor = goGreen ? '#06d6a0' : ''; el('tm_skip').style.color = goGreen ? '#000' : '';
       }
-      var canAdj = ph.t === 'rest' && !CT.hiit && !CT.cls && !ph.pausa;   // − y + para ajustar el descanso desde la misma pantalla
+      var canAdj = ph.t === 'rest' && !CT.hiit;   // − y + para ajustar el descanso desde la misma pantalla
       if (el('tm_radj')) { el('tm_radj').style.display = canAdj ? 'flex' : 'none'; el('tm_radjl').style.display = canAdj ? 'block' : 'none'; }
       var isWork = ph.t === 'work';   // por tiempo: Pausar, +5 s y Parar; por reps: Pausar y Terminé; en descanso/transición: Pausar y Saltar
       el('tm_plus').style.display = (isWork && !isOpen && !ph.seq) ? '' : 'none';
