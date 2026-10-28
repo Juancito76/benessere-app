@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-27-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-27-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -3935,7 +3935,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= MODO PRUEBA (coach): se puede abrir y usar cualquier perfil, pero NADA se guarda ni se envía =================
     // Mientras está activo, el almacenamiento del celular se simula en memoria (se parte de una copia de lo real) y las
     // escrituras al servidor se bloquean. Al salir se recarga la app y todo queda exactamente como estaba.
-    var PRUEBA = { on: false, data: null };
+    var PRUEBA = { on: false, data: null, client: false };   // client: el perfil se abrió con «🧪 Probar» y funciona exactamente como lo vería el cliente
+    function pruebaAsClient() { return !!(PRUEBA.on && PRUEBA.client); }
     (function() {
       try {
         var SP = Storage.prototype, oGet = SP.getItem, oSet = SP.setItem, oRem = SP.removeItem, oClr = SP.clear, oKey = SP.key;
@@ -3978,7 +3979,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         PRUEBA.on = true; pruebaBanner();
         showToastTop('🧪 Modo prueba: nada se guarda ni se envía. Para salir toca «Salir ✖» abajo a la izquierda.');
       }
-      openClientRoutine(id);
+      openClientRoutine(id, true);   // true = abrirlo como lo ve el cliente (sin herramientas de coach)
     }
     function pruebaLabel() { var b = document.getElementById('cl_prueba'); if (b) { b.innerText = PRUEBA.on ? '🧪 Prueba: ACTIVA' : '🧪 Prueba'; b.style.background = PRUEBA.on ? '#ffd60a' : 'transparent'; b.style.color = PRUEBA.on ? '#000' : '#ffd60a'; } }
 
@@ -9767,7 +9768,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { var d = {}; coachSnapKeys(state).forEach(function(k) { d[k] = localStorage.getItem(k); }); COACH_SNAP = { id: id, ns: TRK_NS, state: state, data: d }; } catch (e) { COACH_SNAP = null; }
     }
     function coachResetRoutine() {
-      if (!isCoachView() || !COACH_SNAP || COACH_SNAP.id !== athleteRoutineId) { showToastTop('No hay nada que reiniciar.'); return; }
+      if (!(isCoachView() || pruebaAsClient()) || !COACH_SNAP || COACH_SNAP.id !== athleteRoutineId) { showToastTop('No hay nada que reiniciar.'); return; }
       if (!confirm('↺ Reiniciar rutina\n\nLa rutina vuelve a como estaba cuando la abriste: se borran las marcas, los bloques completados y el cronómetro de esta sesión.\n\n(Lo que ya se haya enviado a la hoja del cliente no se borra desde aquí; para ensayar sin enviar nada usa 🧪 Probar en el perfil del cliente.)\n\n¿Reiniciar?')) return;
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
       try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
@@ -9785,6 +9786,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!state) return 'bad';
       TRK_NS = 'c:' + normName(state.clientName) + '|';
       athleteRoutineId = id;
+      if (PRUEBA.on && PRUEBA.client && !keepSnap && PRUEBA.data) {
+        // Probar como cliente: se parte de cero, como un cliente que abre su rutina por primera vez (solo dentro de la prueba; lo real no se toca)
+        Object.keys(PRUEBA.data).forEach(function(k) { if (k.indexOf(TRK_NS) === 0) delete PRUEBA.data[k]; });
+        [RESUME_KEY, WK_KEY, ANN_SEEN, PENDING_KEY].forEach(function(k) { delete PRUEBA.data[k]; });
+        try { WK.start = 0; WK.dayId = ''; WKW.shown = false; ANN_CHECKED = false; } catch (e) {}
+      }
       if (!keepSnap) coachSnapTake(id, state);   // foto del estado tal como estaba al abrirla
       try {
         renderAthleteApp(state);   // no se guarda como "rutina de este celular"
@@ -9792,7 +9799,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       closeModal('modal_clients');
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'block';
       var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'block';
-      var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = 'none';
+      var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = pruebaAsClient() ? '' : 'none';   // el cliente sí ve «Enviar Reporte»
       window.scrollTo(0, 0);
       return 'ok';
     }
@@ -9807,8 +9814,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       window.scrollTo(0, scrollY);
       showToastTop('🔄 La rutina se actualizó con los últimos cambios.');
     }
-    function openClientRoutine(id) {
+    function openClientRoutine(id, asClient) {
       if (!COACH) return;
+      PRUEBA.client = !!(asClient && PRUEBA.on);   // «🧪 Probar» abre el perfil como cliente; «Abrir» lo abre como coach
       var st = document.getElementById('cl_status');
       var cached = coachCacheGet(id);
       if (cached && coachShowRoutine(id, cached) === 'ok') {
@@ -9831,7 +9839,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function exitClientRoutine(noList) {
       document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { el.classList.remove('active'); });
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function') ctClose(); } catch (e) {}
-      TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null;
+      TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null; PRUEBA.client = false;
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'none';
       var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'none'; COACH_SNAP = null;
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
@@ -9881,7 +9889,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Editar un ejercicio desde el modo entrenamiento (etapa 2) -----
     var ATH_WEEK = 1;
     var EDX = null;   // { di, ii, w }
-    function isCoachView() { return !!COACH && typeof TRK_NS === 'string' && TRK_NS.indexOf('c:') === 0; }
+    // En «🧪 Probar» (PRUEBA.client) la app se comporta como en el celular del cliente: no hay vista de coach, así que salen la pantalla de inicio, los avisos, la frase del día, el reporte, etc.
+    function isCoachView() { return !!COACH && typeof TRK_NS === 'string' && TRK_NS.indexOf('c:') === 0 && !(PRUEBA.on && PRUEBA.client); }
     function edxAttr(t) { return escHtml(String(t == null ? '' : t)).replace(/"/g, '&quot;'); }
     function edxSubHtml(p, item, sIdx, sub) {
       var isCirc = item.type === 'circuito';
