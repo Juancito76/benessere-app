@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-29-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-29-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5007,6 +5007,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function archiveCurrentDay(dayId) {
       var r = archiveCurrentDayCore(dayId);
       setTimeout(function() { try { guidePaint(dayId); } catch (e) {} }, 400);
+      closeModal(dayId);   // al guardar el día, el entreno se cierra y el cliente vuelve a la pantalla inicial (la ventana «Entrenamiento Guardado» queda encima)
+      try { window.scrollTo(0, 0); } catch (e) {}
       return r;
     }
     function archiveCurrentDayCore(dayId) {
@@ -8932,7 +8934,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function dayCloseSave(dayId) {
       CLOSE_PENDING = '';
       if (dayHasMarks(dayId)) archiveCurrentDay(dayId);
-      else { recordActivity(dayId, wkTakeDuration(dayId)); try { wkToast('✅ Entreno cerrado. Quedó registrado sin marcas.'); } catch (e) {} }
+      else { recordActivity(dayId, wkTakeDuration(dayId)); try { wkToast('✅ Entreno cerrado. Quedó registrado sin marcas.'); } catch (e) {} closeModal(dayId); }   // sin marcas: también vuelve a la pantalla inicial
       setTimeout(function() { try { guidePaint(dayId); } catch (e) {} }, 400);
     }
     function dcPaint(dayId) {
