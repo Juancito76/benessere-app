@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-27-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-29-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8125,6 +8125,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         el('tm_done').style.background = '#06d6a0'; el('tm_done').style.borderColor = '#06d6a0'; el('tm_done').style.color = '#000';
       }
       el('tm_skip').style.display = isWork ? 'none' : '';
+      if (ph.seq && seqDone) {   // descanso dentro del intervalo (EMOM / rondas en secuencia): también lleva "Iniciar ya" (o "Terminar" si es el último)
+        var skS = el('tm_skip'); skS.style.display = '';
+        skS.innerText = nextWork ? '▶ INICIAR YA' : '⏭ TERMINAR';
+        skS.style.background = '#06d6a0'; skS.style.borderColor = '#06d6a0'; skS.style.color = '#000';
+      }
       var moreB = el('tm_more');   // «1 ronda más» a la mano (junto a «Terminé») durante la última ronda
       if (moreB) {
         var showMore = !CT.done && !CT.cls && !CT.hiit && !!CT.srId && ph.t !== 'ready' && ph.r >= CT.rounds;
@@ -8377,7 +8382,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctSkip() {
       if (!CT.active || CT.done) return;
       var cps = CT.phases[CT.i];
-      if (cps && cps.seq && !(cps.open && CT.seqI >= cps.steps.length - 1)) { ctSeqNext(); return; }
+      var seqResting = !!(cps && cps.seq && !cps.open && CT.seqI >= cps.steps.length);   // ya hizo todos los ejercicios del intervalo y espera el siguiente: "Iniciar ya" pasa directo al que sigue
+      if (cps && cps.seq && !seqResting && !(cps.open && CT.seqI >= cps.steps.length - 1)) { ctSeqNext(); return; }
       if (cps && CT.cls && cps.list && cps.t === 'work' && clsRetoStep(cps)) return;   // clases y retos: el botón pasa al ejercicio que sigue
       var wasOpen = !!(CT.phases[CT.i] && CT.phases[CT.i].open);
       if (wasOpen) ctPhaseDone(CT.i);   // "Terminé": la serie por reps queda hecha
