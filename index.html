@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-29-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-29-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8109,8 +8109,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         el('tm_done').style.background = toRest ? '#2f6bff' : '#06d6a0'; el('tm_done').style.borderColor = toRest ? '#2f6bff' : '#06d6a0'; el('tm_done').style.color = toRest ? '#fff' : '#000';
       }
       if (el('tm_skip')) {
-        el('tm_skip').innerText = (ph.t === 'work') ? '⏭ Saltar' : (nextWork ? '▶ INICIAR YA' : (ph.pausa ? '⏭ Saltar pausa' : '⏭ Terminar'));
-        var goGreen = ph.t !== 'work' && !!nextWork;   // "Iniciar ya" bien visible durante el descanso
+        var pauseNext = !!(ph.pausa && CT.guide && CT.guide.clase && CT.guide.clase.items && CT.guide.clase.items[CT.guide.pos + 1]);   // pausa entre bloques (ej. 3:30): "Iniciar ya" arranca el bloque que sigue
+        el('tm_skip').innerText = (ph.t === 'work') ? '⏭ Saltar' : ((nextWork || pauseNext) ? '▶ INICIAR YA' : (ph.pausa ? '⏭ Saltar pausa' : '⏭ Terminar'));
+        var goGreen = ph.t !== 'work' && (!!nextWork || pauseNext);   // "Iniciar ya" bien visible durante el descanso
         el('tm_skip').style.background = goGreen ? '#06d6a0' : ''; el('tm_skip').style.borderColor = goGreen ? '#06d6a0' : ''; el('tm_skip').style.color = goGreen ? '#000' : '';
       }
       var canAdj = ph.t === 'rest' && !CT.hiit;   // − y + para ajustar el descanso desde la misma pantalla
