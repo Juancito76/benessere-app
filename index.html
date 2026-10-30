@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-30-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-30-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -276,7 +276,8 @@
     @keyframes gdBlinkY { 0%,100% { border-color: #ffee00; box-shadow: 0 0 8px #ffee00, 0 0 22px rgba(255,238,0,.6); } 50% { border-color: rgba(255,238,0,.25); box-shadow: none; } }
     @keyframes gdBlinkO { 0%,100% { border-color: #ff7a00; box-shadow: 0 0 8px #ff7a00, 0 0 22px rgba(255,122,0,.6); } 50% { border-color: rgba(255,122,0,.25); box-shadow: none; } }
     .exercise-card.gd-collapsed { background: none; border: none !important; padding: 0; box-shadow: none; margin-bottom: 10px; }
-    .exercise-card.gd-collapsed > *:not(.gd-head) { display: none !important; }
+    .exercise-card.gd-collapsed > *:not(.gd-head):not(.btn-pair) { display: none !important; }
+    .exercise-card.gd-collapsed > .btn-pair { margin: 6px 0 4px; }
     .exercise-card.gd-done .gd-head { border-color: #3a3a3a; opacity: 0.45; }
     .exercise-card.gd-done.gd-collapsed { opacity: 1; }
     .exercise-card.gd-here { border: 2px solid #ffee00 !important; animation: gdPulse 2.2s ease-in-out infinite; }
