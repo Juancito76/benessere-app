@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-29-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-30-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -320,6 +320,8 @@
     .bd-n { flex: none; width: 28px; font-size: 0.8rem; font-weight: 800; color: #aaa; text-align: left; }
     .bd-in { flex: 1; min-width: 0; height: 40px; text-align: center; background: #202020; border: 1px solid #333; color: #fff; border-radius: 8px; font-size: 1rem; }
     .bd-in.pre { color: #777; }
+    .bd-t { flex: none; width: 54px; font-size: 0.82rem; font-weight: 800; color: #06d6a0; text-align: center; font-variant-numeric: tabular-nums; }
+    .bd-hd { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.62rem; font-weight: 700; color: #888; text-transform: uppercase; text-align: center; } .bd-hd span { flex: 1; min-width: 0; } .bd-hd .bd-n { flex: none; } .bd-hd .bd-t { flex: none; color: #888; font-size: 0.62rem; font-weight: 700; }
     .gd-ban { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 10px 12px; margin: 8px 0; box-shadow: 0 0 8px rgba(255,238,0,.5), 0 0 20px rgba(255,238,0,.2); text-align: left; }
     .gd-ban .gd-t { font-size: 0.92rem; font-weight: 900; color: #ffee00; }
     .gd-ban .gd-s { font-size: 0.8rem; color: #ddd; margin: 3px 0 8px; line-height: 1.35; }
@@ -1026,6 +1028,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             <input type="number" inputmode="numeric" id="cg_hr" placeholder="Pulso promedio" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">
           </div>
         </div>
+        <button type="button" onclick="actOpen()" style="width:100%; margin-bottom:10px; background:transparent; color:#06d6a0; border:1.5px solid #06d6a0; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">🏃 Agregar actividad del día (pasos, nadar, caminar, correr…)</button>
         <button class="btn-action-primary" style="margin-bottom:8px;" onclick="congratsAccept()">Aceptar y Continuar</button>
         <button class="btn-action-wa" id="ath_congratsWaBtn" onclick="sendWhatsAppFromCongrats()">📲 Enviar Reporte al Coach</button>
       </div>
@@ -4389,10 +4392,55 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
 
       calculateWeek(state.startDate, state.durationWeeks);
+      setTimeout(function() { try { remindCheck(state); } catch (e) {} }, 1200);
       loadTracker();
       autoPrefillAll();
       wkRestore();
       try { guidePaintAll(); } catch (e) {}   // bloques cerrados en pestañas; el primero parpadea "inicia aquí"
+    }
+
+    // ----- Recordatorios: pesaje cada 4 semanas (cliente + aviso al coach) y alarma al coach cuando falta 1 semana del ciclo -----
+    var REM_KEY = 'benessere_rem_v1';
+    function remLoad() { try { return JSON.parse(localStorage.getItem(tk(REM_KEY)) || '{}') || {}; } catch (e) { return {}; } }
+    function remSave(o) { try { localStorage.setItem(tk(REM_KEY), JSON.stringify(o)); } catch (e) {} }
+    function remQueue(tipo, extra) {
+      if (!athleteRoutineId || PRUEBA.on || isCoachView()) return;
+      var st = athleteActiveState || {};
+      var rep = { t: new Date().toISOString(), k: 'rep', tipo: tipo, cli: st.clientName || '', dia: '', ej: '', url: '', rid: athleteRoutineId,
+        coach: st.coachName ? displayCoach(st.coachName) : '', mot: extra || '', n: 0 };
+      var q = vrepQ(); q.push(rep); vrepSaveQ(q); vrepFlush();
+    }
+    function remCheck(state) {
+      if (!state || !isIsoDate(state.startDate)) return;
+      var diff = Math.floor((new Date(todayIso() + 'T12:00:00') - new Date(state.startDate + 'T12:00:00')) / 86400000);
+      if (diff < 0) return;
+      var total = parseInt(state.durationWeeks, 10) || 4, cur = Math.floor(diff / 7) + 1, R = remLoad(), coachV = isCoachView(), name = state.clientName || 'el cliente';
+      var k = Math.floor(diff / 28);   // 1 = ya van 4 semanas, 2 = 8 semanas…
+      var msgs = [];
+      if (k >= 1 && !R['pes' + k] && !(R.snz && R.snz > Date.now())) {
+        if (coachV) msgs.push('⚖️ Toca pesaje de ' + name + ' (van ' + (k * 4) + ' semanas).');
+        else remPesoModal(k);
+        if (!coachV && !R['sp' + k]) { R['sp' + k] = 1; remSave(R); remQueue('pesaje', 'Pesaje cada 4 semanas (semana ' + (k * 4) + ')'); }
+      }
+      if (total >= 2 && cur >= total) {
+        if (coachV) msgs.push('⏰ A ' + name + ' le queda ' + (cur > total ? 'el ciclo terminado' : 'la última semana del ciclo') + ': prepara su nueva rutina.');
+        else if (!R.cyc) { R.cyc = 1; remSave(R); remQueue('ciclo', cur > total ? 'Ciclo terminado' : 'Falta 1 semana para terminar el ciclo'); }
+      }
+      if (msgs.length) showToastTop(msgs.join('  '));
+    }
+    function remindCheck(state) { remCheck(state); }
+    function remPesoModal(k) {
+      if (document.getElementById('rem_peso')) return;
+      var d = document.createElement('div'); d.id = 'rem_peso';
+      d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+      d.innerHTML = '<div style="background:#1a1f2b;border:1px solid #4d8bff;border-radius:14px;padding:18px;max-width:340px;color:#fff;text-align:center;">' +
+        '<div style="font-size:2rem;">⚖️</div><div style="font-weight:900;font-size:1.05rem;margin:6px 0;">Toca pesarte y medirte</div>' +
+        '<div style="font-size:.85rem;color:#c9d1e0;line-height:1.4;">Ya llevas ' + (k * 4) + ' semanas. Pésate en ayunas y avísale a tu coach para ver tu avance.</div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px;"><button type="button" id="rem_later" style="flex:1;background:transparent;border:1px solid #6b7488;color:#c9d1e0;border-radius:8px;padding:9px;font-weight:700;">Luego</button>' +
+        '<button type="button" id="rem_ok" style="flex:1;background:#06d6a0;border:none;color:#04251c;border-radius:8px;padding:9px;font-weight:900;">Ya me pesé</button></div></div>';
+      document.body.appendChild(d);
+      document.getElementById('rem_later').onclick = function() { var R = remLoad(); R.snz = Date.now() + 86400000; remSave(R); d.remove(); };
+      document.getElementById('rem_ok').onclick = function() { var R = remLoad(); R['pes' + k] = 1; remSave(R); d.remove(); };
     }
 
     function calculateWeek(sDate, totalWeeks) {
@@ -4780,6 +4828,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return ' · por lado';
     }
 
+    // Al tocar una celda de pesos/reps/segundos, todo su contenido queda seleccionado: lo primero que se escribe lo reemplaza (no hay que borrar a mano)
+    document.addEventListener('focusin', function(e) {
+      var t = e.target;
+      if (!t || t.tagName !== 'INPUT' || !(t.classList.contains('bd-in') || (t.closest && t.closest('.set-row')))) return;
+      t.dataset.pv = t.value;   // valor de antes: sirve para que las demás filas sigan a la fila 1
+      setTimeout(function() { try { t.setSelectionRange(0, t.value.length); } catch (x) { try { t.select(); } catch (y) {} } }, 0);
+    });
     document.addEventListener('input', function(e) {
       if (e.target && e.target.classList) e.target.classList.remove('prefilled');
       var h = e.target && e.target.closest && e.target.closest('.set-rows[data-key]');
@@ -4793,12 +4848,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var m = /^(pw|pr)_(.+)_(\d+)$/.exec(inp.id || ''); if (!m) return;
       var idx = parseInt(m[3], 10);
       if (idx > 0) { delete inp.dataset.auto; inp.dataset.man = '1'; return; }   // la tocó a mano: se respeta
-      var val = inp.value.trim(), changed = false;
+      var val = inp.value.trim(), changed = false, prevV = (inp.dataset.pv != null ? inp.dataset.pv : '').trim();   // prevV: lo que tenía la fila 1 antes de tocarla
       holder.querySelectorAll('.set-rows-list .set-row').forEach(function(row, i) {
         if (i === 0) return;
         var o = row.querySelector('input[id^="' + m[1] + '_"]'); if (!o) return;
-        if (o.dataset.man === '1' && o.value.trim()) return;   // corregida a mano
-        if (!o.value.trim() || o.classList.contains('prefilled') || o.dataset.auto === '1') {
+        var sameAsRow1 = !!prevV && o.value.trim() === prevV;   // si tenía lo mismo que la fila 1, sigue a la fila 1
+        if (o.dataset.man === '1' && o.value.trim() && !sameAsRow1) return;   // corregida a mano con otro valor
+        if (!o.value.trim() || o.classList.contains('prefilled') || o.dataset.auto === '1' || sameAsRow1) {
+          delete o.dataset.man;
           o.value = val; o.classList.remove('prefilled');
           if (val) o.dataset.auto = '1'; else delete o.dataset.auto;
           changed = true;
@@ -5657,7 +5714,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function tmrVibrate(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
     function tmrWakeOn() {
-      try { if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(function(l) { TMR.wake = l; }).catch(function() {}); } catch (e) {}
+      try {
+        if (TMR.wake && !TMR.wake.released) return;   // ya hay un bloqueo de pantalla activo: no se piden más (se acumulaban en iPhone)
+        if (TMR.wakeBusy) return; TMR.wakeBusy = true;
+        if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(function(l) { TMR.wakeBusy = false; TMR.wake = l; }).catch(function() { TMR.wakeBusy = false; }); else TMR.wakeBusy = false;
+      } catch (e) { TMR.wakeBusy = false; }
     }
     function tmrWakeOff() { try { if (TMR.wake) { TMR.wake.release(); TMR.wake = null; } } catch (e) {} }
     document.addEventListener('visibilitychange', function() {
@@ -5858,10 +5919,36 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function wkToggle(dayId) {
       if (WK.dayId === dayId && WK.start) wkEnd(dayId); else wkStart(dayId);
     }
+    // Descarta un entreno abierto por error: no se registra nada (ni tiempo ni sesión)
+    function wkDiscard(dayId) {
+      WK.start = 0; WK.dayId = '';
+      if (WK.tick) { clearInterval(WK.tick); WK.tick = null; }
+      try { localStorage.removeItem(tk(WK_KEY)); localStorage.removeItem(tk('wkdur_' + dayId)); localStorage.removeItem(tk('wklast_' + dayId)); localStorage.removeItem(tk('wkwatch_' + dayId)); } catch (e) {}
+      try { wkPaint(dayId); wkBubbleUpdate(); } catch (e) {}
+      if (!CT.active && !RT.active) tmrWakeOff();
+    }
+    function wkDayName(id) { var el = document.getElementById(id); return (el && el.getAttribute('data-day-title')) || 'otro día'; }
+    // Devuelve false si el cliente cancela (no se inicia nada)
     function wkStart(dayId) {
       if (WK.start && WK.dayId !== dayId) {
-        if (!confirm('Tienes otro entreno en marcha. ¿Terminarlo y empezar este?')) return;
-        wkEnd(WK.dayId, true);
+        var oldId = WK.dayId;
+        if (!dayHasMarks(oldId)) {   // abrió un día por error y ahora entra al correcto: se ofrece quedarse con el de hoy y descartar el abierto
+          if (!confirm('Tienes abierto el entreno de «' + wkDayName(oldId) + '», y vas a empezar «' + wkDayName(dayId) + '».\n\nAceptar = continuar el entreno de hoy en «' + wkDayName(dayId) + '» y descartar el de «' + wkDayName(oldId) + '» (no se registra)\nCancelar = seguir con «' + wkDayName(oldId) + '»')) return false;
+          wkDiscard(oldId);
+        } else {
+          if (!confirm('Tienes otro entreno en marcha (con marcas anotadas). ¿Terminarlo y empezar este?')) return false;
+          wkEnd(oldId, true);
+        }
+      } else if (!WK.start && !PRUEBA.on) {   // ya registró hoy: antes de abrir otro registro se pregunta (evita dobles registros por toques accidentales)
+        var tdy = todayIso(), thisDayN = normName(wkDayName(dayId));
+        var doneT = loadWorkouts().filter(function(s) {
+          if (sessDateIso(s) !== tdy) return false;
+          return !(s.nm && !s.dur && normName(s.day) === thisDayN);   // solo usó los temporizadores de este mismo día sin iniciar el cronómetro: no es un entreno ya cerrado
+        });
+        if (doneT.length) {
+          var lastT = doneT[doneT.length - 1];
+          if (!confirm('Ya entrenaste hoy' + (lastT.day ? ' (' + lastT.day + (lastT.dur ? ', ' + wkHM(lastT.dur) : '') + ')' : '') + '.\n\n¿Seguro que quieres hacer un registro adicional?\n\nAceptar = sí, otro entreno hoy\nCancelar = no, fue un toque sin querer')) return false;
+        }
       }
       tmrAudio();
       wkNmCommit(0, 0);   // si había un entreno anterior sin enviar, se envía antes de empezar otro
@@ -6307,7 +6394,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         days[d] = true; secs += parseInt(s.dur, 10) || 0; kc += sessKcal(s);
       });
       var dt = new Date(r.from + 'T12:00:00');
-      for (var i = 0; i < 7; i++) { sk += dailyStepsKcal(dailyFor(isoOfDate(dt))); dt.setDate(dt.getDate() + 1); }
+      for (var i = 0; i < 7; i++) { var rcD = dailyFor(isoOfDate(dt)); sk += dailyStepsKcal(rcD) + dailyActKcal(rcD); dt.setDate(dt.getDate() + 1); }   // pasos y actividades extra suman calorías a la semana
       return { days: Object.keys(days).length, secs: secs, kc: kc, sk: sk, tk: kc + sk };   // kc = entrenos, sk = pasos, tk = total
     }
 
@@ -6327,7 +6414,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function dailyLocal(date) { try { var o = JSON.parse(localStorage.getItem(dailyKey(date)) || 'null'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
     function dailyFor(date) {   // lo anotado en este celular; si no hay, lo último que llegó de la hoja (otro celular o modo coach)
       var o = dailyLocal(date);
-      if (o.pasos || o.agua || o.sueno) return o;
+      if (o.pasos || o.agua || o.sueno || (o.act && o.act.length)) return o;
       var best = null;
       loadSessions().forEach(function(x) { if (isMetaSess(x) && x.d === date && x.g && (!best || x.t > best.t)) best = x; });
       return best ? best.g : o;
@@ -6343,7 +6430,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!athleteRoutineId || !athleteActiveState || COACH) return;
         var today = todayIso(), rec = dailyLocal(today);
         var s = { d: today, t: new Date().toISOString(), k: 'meta', ex: [], md: ownMeasuresPayload() };
-        if (rec.pasos || rec.agua || rec.sueno) s.g = rec;   // sin metas del día no se pone "g" para no tapar las metas anteriores
+        if (rec.pasos || rec.agua || rec.sueno || (rec.act && rec.act.length)) s.g = rec;   // sin metas del día no se pone "g" para no tapar las metas anteriores
         var a = loadSessions().filter(function(x) { return !(isMetaSess(x) && x.d === today); });
         a.push(s);
         try { localStorage.setItem(sessKey(), JSON.stringify(a.slice(-300))); } catch (e) {}
@@ -6363,7 +6450,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try {
         if (!athleteRoutineId || !athleteActiveState) return;
         var today = todayIso(), rec = dailyLocal(today);
-        if (!(rec.pasos || rec.agua || rec.sueno)) return;
+        if (!(rec.pasos || rec.agua || rec.sueno || (rec.act && rec.act.length))) return;
         var sig = JSON.stringify(rec); if (localStorage.getItem(tk('metasig_' + today)) === sig) return;
         localStorage.setItem(tk('metasig_' + today), sig);
         var s = { d: today, t: new Date().toISOString(), k: 'meta', ex: [], g: rec };
@@ -6376,6 +6463,102 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden' && META_TIMER) { clearTimeout(META_TIMER); metaPush(); } });
     function dailyStepsKcal(rec) { return (rec && rec.pasos && rec.pasos.v > 0) ? stepsKcal(rec.pasos.v) : 0; }
+    function dailyActKcal(rec) { return (rec && Array.isArray(rec.act)) ? rec.act.reduce(function(t, a) { return t + (parseInt(a && a.kc, 10) || 0); }, 0) : 0; }
+
+    // ----- Actividades extra del día (después de cerrar el entreno): pasos, natación, caminata, correr, bicicleta u otra, con tiempo, distancia, pulso y calorías -----
+    // Se guardan en el registro diario (rec.act) y viajan a la hoja con las metas del día para que el coach las vea. Las calorías suman a la meta semanal.
+    var ACT_TYPES = [
+      { k: 'pasos', n: '👟 Pasos del día' },
+      { k: 'natacion', n: '🏊 Natación', met: 6, du: 'm', dl: 'Distancia (metros)', lap: true },
+      { k: 'caminata', n: '🚶 Caminata', met: 3.5, du: 'km', dl: 'Distancia (km)' },
+      { k: 'correr', n: '🏃 Correr', met: 8.5, du: 'km', dl: 'Distancia (km)' },
+      { k: 'bici', n: '🚴 Bicicleta', met: 6.8, du: 'km', dl: 'Distancia (km)' },
+      { k: 'otra', n: '✨ Otra actividad', met: 5, name: true }
+    ];
+    var ACT = { type: '' };
+    function actType(k) { for (var i = 0; i < ACT_TYPES.length; i++) { if (ACT_TYPES[i].k === k) return ACT_TYPES[i]; } return null; }
+    function actSummaryTxt(a) {
+      var T = actType(a.k) || {}, parts = [];
+      if (a.min) parts.push(a.min + ' min');
+      if (a.dist) parts.push(a.dist + ' ' + (a.du || 'km'));
+      if (a.lp) parts.push(a.lp + ' vueltas');
+      if (a.hr) parts.push('pulso ' + a.hr);
+      if (a.kc) parts.push((a.est ? '~' : '') + a.kc + ' kcal');
+      return (a.nm || T.n || 'Actividad') + (parts.length ? ' · ' + parts.join(' · ') : '');
+    }
+    function actModalEl() {
+      var m = document.getElementById('act_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'act_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100020'; document.body.appendChild(m); }
+      return m;
+    }
+    function actRender() {
+      var m = actModalEl(), today = todayIso(), rec = dailyFor(today), T = actType(ACT.type);
+      var inp = 'width:100%; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; box-sizing:border-box;';
+      var lst = '';
+      if (rec && rec.pasos && rec.pasos.v > 0) lst += '<div style="display:flex; justify-content:space-between; gap:8px; font-size:0.82rem; padding:5px 0; border-top:1px solid #2a2a2a;"><span>👟 Pasos del día · ' + rec.pasos.v + ' (~' + stepsKcal(rec.pasos.v) + ' kcal)</span></div>';
+      ((rec && rec.act) || []).forEach(function(a) {
+        lst += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:0.82rem; padding:5px 0; border-top:1px solid #2a2a2a; text-align:left;"><span>' + escHtml(actSummaryTxt(a)) + '</span><button type="button" onclick="actDelete(\'' + escHtml(a.id) + '\')" style="background:none; border:none; color:#ff6b6b; font-size:1rem; cursor:pointer;" aria-label="Quitar">✕</button></div>';
+      });
+      var chips = '<div class="med-chip-row" style="justify-content:center; flex-wrap:wrap; gap:8px; margin-top:10px;">' + ACT_TYPES.map(function(t) {
+        return '<button type="button" class="med-chip' + (t.k === ACT.type ? ' active' : '') + '" style="padding:9px 12px; font-size:0.85rem;" onclick="actPick(\'' + t.k + '\')">' + t.n + '</button>';
+      }).join('') + '</div>';
+      var form = '';
+      if (T && T.k === 'pasos') {
+        form = '<div style="margin-top:12px; text-align:left;"><div style="font-size:0.74rem; color:var(--muted); margin-bottom:4px;">¿Cuántos pasos llevas hoy?</div><input type="text" inputmode="numeric" id="act_steps" placeholder="Ej. 8500" style="' + inp + '" onfocus="this.select()"></div>';
+      } else if (T) {
+        form = '<div style="margin-top:12px; text-align:left; display:grid; grid-template-columns:1fr 1fr; gap:8px;">' +
+          (T.name ? '<div style="grid-column:1 / -1;"><div style="font-size:0.7rem; color:var(--muted); margin-bottom:3px;">¿Qué hiciste?</div><input type="text" id="act_name" placeholder="Ej. Yoga, fútbol, baile…" style="' + inp + '"></div>' : '') +
+          '<div><div style="font-size:0.7rem; color:var(--muted); margin-bottom:3px;">Tiempo (min)</div><input type="text" inputmode="numeric" id="act_min" placeholder="min" style="' + inp + '" onfocus="this.select()"></div>' +
+          (T.du ? '<div><div style="font-size:0.7rem; color:var(--muted); margin-bottom:3px;">' + T.dl + '</div><input type="text" inputmode="decimal" id="act_dist" placeholder="' + T.du + '" style="' + inp + '" onfocus="this.select()"></div>' : '') +
+          (T.lap ? '<div><div style="font-size:0.7rem; color:var(--muted); margin-bottom:3px;">Vueltas (opcional)</div><input type="text" inputmode="numeric" id="act_lap" placeholder="vueltas" style="' + inp + '" onfocus="this.select()"></div>' : '') +
+          '<div><div style="font-size:0.7rem; color:var(--muted); margin-bottom:3px;">Pulso promedio</div><input type="text" inputmode="numeric" id="act_hr" placeholder="lpm" style="' + inp + '" onfocus="this.select()"></div>' +
+          '<div><div style="font-size:0.7rem; color:var(--muted); margin-bottom:3px;">Calorías (del reloj)</div><input type="text" inputmode="numeric" id="act_kc" placeholder="kcal" style="' + inp + '" onfocus="this.select()"></div>' +
+          '<div style="grid-column:1 / -1; font-size:0.68rem; color:var(--muted);">Todo es opcional menos el tiempo o la distancia. Si no anotas calorías, se estiman con tu peso y el tiempo.</div></div>';
+      }
+      m.innerHTML = '<div class="modal-inner" style="text-align:center;">' +
+        '<div style="font-size:1.1rem; font-weight:900; color:var(--primary);">🏃 Actividad del día</div>' +
+        '<div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Suma lo que hiciste además de tu entreno: pasos, nadar, caminar, correr…</div>' +
+        chips + form +
+        (T ? '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="actSave()">💾 Guardar actividad</button>' : '') +
+        (lst ? '<div style="margin-top:14px; font-size:0.72rem; font-weight:800; color:var(--primary); text-align:left;">HOY LLEVAS</div>' + lst : '') +
+        '<button type="button" onclick="actClose()" style="margin-top:10px; width:100%; background:none; border:none; color:#aaa; font-size:0.85rem; padding:8px; cursor:pointer;">Cerrar</button></div>';
+    }
+    function actOpen() { ACT.type = ''; actRender(); actModalEl().classList.add('active'); }
+    function actClose() { var m = document.getElementById('act_modal'); if (m) m.classList.remove('active'); try { wkWelcomeRefresh(); } catch (e) {} }
+    function actPick(k) { ACT.type = k; actRender(); }
+    function actStore(rec) {
+      var today = todayIso();
+      try { localStorage.setItem(dailyKey(today), JSON.stringify(rec)); } catch (e) {}
+      if (!PRUEBA.on) metaQueue();   // viaja a la hoja con las metas del día (45 s después del último cambio o al salir de la app)
+    }
+    function actSave() {
+      var T = actType(ACT.type); if (!T) return;
+      var g = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      var today = todayIso(), rec = dailyLocal(today);
+      if (T.k === 'pasos') {
+        var v = parseSteps(g('act_steps')); if (!(v > 0)) { wkToast('Escribe cuántos pasos llevas.'); return; }
+        rec.pasos = { v: v, t: (rec.pasos && rec.pasos.t) || null };
+      } else {
+        var min = parseInt(g('act_min'), 10) || 0, dist = T.du ? (parseNum(g('act_dist')) || 0) : 0, lp = T.lap ? (parseInt(g('act_lap'), 10) || 0) : 0, hr = parseInt(g('act_hr'), 10) || 0, kc = parseInt(g('act_kc'), 10) || 0;
+        if (!(min > 0 || dist > 0)) { wkToast('Anota el tiempo o la distancia.'); return; }
+        var est = 0;
+        if (!(kc > 0) && min > 0) { kc = Math.round((T.met || 5) * (bodyData().w || 70) * min / 60); est = 1; }
+        var a = { id: Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36), k: T.k, at: new Date().toISOString() };
+        if (T.name && g('act_name')) a.nm = g('act_name').slice(0, 40);
+        if (min) a.min = min; if (dist) { a.dist = dist; a.du = T.du; } if (lp) a.lp = lp; if (hr > 30 && hr < 250) a.hr = hr; if (kc > 0 && kc < 5000) { a.kc = kc; if (est) a.est = 1; }
+        rec.act = (rec.act || []).concat([a]);
+      }
+      actStore(rec);
+      ACT.type = ''; actRender();
+      wkToast('✅ Actividad guardada.');
+    }
+    function actDelete(id) {
+      var today = todayIso(), rec = dailyLocal(today);
+      if (!Array.isArray(rec.act)) return;
+      rec.act = rec.act.filter(function(a) { return a.id !== id; });
+      if (!rec.act.length) delete rec.act;
+      actStore(rec); actRender();
+    }
     function alcParts(inp) { var m = /^alc_([a-z]+)_(.+)$/.exec(inp.id || ''); return m ? { f: m[1], day: m[2] } : null; }
     function alcTarget(f, dayId) {
       var d = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(function(x) { return x.id === dayId; })[0];
@@ -6566,11 +6749,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var row = function(l, v) { return '<div style="display:flex; justify-content:space-between; gap:10px; font-size:0.84rem; padding:3px 0;"><span style="color:var(--muted);">' + l + '</span><b>' + v + '</b></div>'; };
       var h = '<div style="background:#101010; border:1px solid #2c2c2c; border-radius:10px; padding:10px 12px; margin-bottom:14px; text-align:left;">';
       var rec = dailyFor(todayIso()), stK = dailyStepsKcal(rec), metL = ['pasos', 'agua', 'sueno'].filter(function(f) { return goalMet(rec, f); });
-      var hasToday = todaySecs > 0 || stK > 0 || metL.length;
+      var aK = dailyActKcal(rec), hasToday = todaySecs > 0 || stK > 0 || aK > 0 || metL.length;
       if (hasToday) {
         h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin-bottom:2px;">HOY</div>';
         if (todaySecs > 0) h += row('⏱ Tiempo', wkHM(todaySecs)) + row('🔥 Calorías del entreno', '~' + todayKc + ' kcal');
         if (stK > 0) h += row('👟 Pasos (' + rec.pasos.v + ')', '~' + stK + ' kcal extra');
+        if (aK > 0) h += row('🏃 Actividades extra (' + rec.act.length + ')', '~' + aK + ' kcal extra');
         metL.forEach(function(f) { h += '<div style="font-size:0.82rem; font-weight:800; color:var(--primary); padding:3px 0;">' + GOAL_MSG[f] + '</div>'; });
       }
       h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:' + (hasToday ? '8px' : '0') + ' 0 2px;">ESTA SEMANA</div>' +
@@ -6637,7 +6821,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (rec.pasos) parts.push('👟 ' + rec.pasos.v + (goalMet(rec, 'pasos') ? ' ✔' : ''));
         if (rec.agua) parts.push('💧 ' + rec.agua.v + (goalMet(rec, 'agua') ? ' ✔' : ''));
         if (rec.sueno) parts.push('😴 ' + rec.sueno.v + (goalMet(rec, 'sueno') ? ' ✔' : ''));
-        if (parts.length) gl += '<div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); font-size:0.8rem;"><span>' + fmtDate(iso) + '</span><span>' + parts.join(' · ') + '</span></div>';
+        (rec.act || []).forEach(function(a) { parts.push(escHtml(actSummaryTxt(a))); });   // actividades extra que anotó el cliente
+        if (parts.length) gl +='<div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); font-size:0.8rem;"><span>' + fmtDate(iso) + '</span><span>' + parts.join(' · ') + '</span></div>';
         dt.setDate(dt.getDate() - 1);
       }
       h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:12px 0 2px;">METAS DIARIAS (ÚLTIMOS 7 DÍAS)</div>' + (gl || '<div style="font-size:0.8rem; color:var(--muted);">Sin registros.</div>');
@@ -7869,6 +8054,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     function ctOpen() {
+      CT.rKey = ''; CT.prevCache = {};   // pantalla nueva: se pinta completa la primera vez y se vuelve a buscar la marca anterior
       var old = document.getElementById('tm_overlay'); if (old) old.remove();
       var o = document.createElement('div');
       if (!document.getElementById('tm_css')) {
@@ -7908,6 +8094,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_prog" style="display:none; margin-top:2px; font-size:0.9rem; font-weight:800; color:#ccc;"></div>' +
         '<div id="tm_station" style="margin-top:4px; font-size:1.35rem; font-weight:800; line-height:1.2;"></div>' +
         '<div id="tm_reps" style="font-size:1.3rem; font-weight:800; color:#ffd60a; margin-top:2px;"></div>' +
+        '<div id="tm_prev" style="display:none; margin-top:4px; font-size:0.85rem; font-weight:700; color:#8fd3ff; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;"></div>' +
         '<div id="tm_list" style="display:none; text-align:left; margin:6px 0 2px; font-size:0.95rem; line-height:1.35;"></div>' +
         '<button type="button" class="tm-btn" id="tm_demo" style="display:none; flex:none; margin:2px auto 0; padding:9px 18px; font-size:0.85rem;">🎥 Ver demo</button>' +
         '<div id="tm_time" style="font-size:min(22vw, 120px); font-weight:900; line-height:1; margin:6px 0 8px; font-variant-numeric:tabular-nums;"></div>' +
@@ -8009,11 +8196,38 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (cph.open) {   // fase por reps: el cronómetro sube
         var osecs = Math.floor((now - CT.openStart) / 1000);
         if (cph.cap && osecs >= cph.cap) { ctSkip(); return; }   // "por tiempo" con límite: se acaba el tiempo
-        ctRender(osecs); return;
+        ctRenderThrottled(osecs, cph); return;
       }
       var remain = Math.ceil((CT.end - now) / 1000);
       if (ctWarn10On(cph, remain) && CT.warnI !== CT.i) { CT.warnI = CT.i; tmrBeep(880, 200, 0); tmrBeep(880, 200, 300); tmrVibrate([200, 100, 200]); ctFlash('#6b4a0b'); }   // 10 s para iniciar
       if (remain <= 3 && remain >= 1 && CT.lastBeep !== CT.i + '-' + remain) { CT.lastBeep = CT.i + '-' + remain; tmrBeep(700, 140, 0); }
+      ctRenderThrottled(remain, cph);
+    }
+    // Texto bajo el ejercicio con el peso y las reps de la última vez (referencia para el cliente), o «Sin marcas» si no hay registro
+    function ctPrevPaint(ph) {
+      var pv = document.getElementById('tm_prev'); if (!pv) return;
+      var txt = '';
+      try {
+        if (!CT.cls && !CT.hiit && !CT.done && ph) {
+          var di = ph.list ? (CT.listSel || 0) : (ph.seq ? Math.min(CT.seqI, ph.steps.length - 1) : ph.si);
+          if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
+          var key = (CT.keys || [])[di];
+          if (key) {
+            CT.prevCache = CT.prevCache || {};
+            if (!(key in CT.prevCache)) { var mk = lastMarkFor(key); CT.prevCache[key] = mk ? ('Anterior: ' + markSummary(mk)) : 'Sin marcas'; }
+            txt = CT.prevCache[key];
+          }
+        }
+      } catch (e) { txt = ''; }
+      if (pv.innerText !== txt) pv.innerText = txt;
+      pv.style.display = txt ? '-webkit-box' : 'none';
+    }
+    // Antes se repintaba toda la pantalla 5 veces por segundo (y el video flotante), lo que congelaba algunos iPhone.
+    // Ahora solo se repinta cuando cambia el segundo que se ve o el estado; si algo no cambió la llave, se corrige a más tardar en 1 s.
+    function ctRenderThrottled(remain, ph) {
+      var key = CT.i + '|' + remain + '|' + (CT.paused ? 1 : 0) + '|' + (CT.seqI || 0) + '|' + (CT.listSel || 0) + '|' + (ph ? ph.d : 0) + '|' + (CT.amrapN || 0) + '|' + CT.rounds + '|' + (CT.demoUrl || '') + '|' + (CT.vidId || '');
+      if (key === CT.rKey) return;
+      CT.rKey = key;
       ctRender(remain);
     }
 
@@ -8083,6 +8297,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       if (ph.seq) repsStr = seqDone ? '' : seqStep.reps;
       if (el('tm_reps')) el('tm_reps').innerText = repsStr;
+      ctPrevPaint(ph);   // marca anterior (peso y reps) del ejercicio, o «Sin marcas»
       if (el('tm_prog')) {   // avance del bloque: cuánto falta, y "ya casi" cuando queda poco
         var left = CT.rounds - ph.r, lab = (CT.roundLabel || 'Ronda').toLowerCase(), pTxt = '', pCol = '#ccc';
         if (CT.hiit && ph.t !== 'ready') {   // HIIT: cuánto tiempo queda en total
@@ -8437,15 +8652,32 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!ph || ph.t !== 'work') return;
       if (CT.cls) { clsPhaseDone(ph); return; }   // en clase no se anota nada
       if (!ph.open) ctRecord(ph, ph.d);
-      else CT.log.push({ si: ph.si, r: ph.r, secs: Math.max(0, Math.round((CT.paused ? CT.openElapsed : (Date.now() - CT.openStart)) / 1000)) });
+      else {
+        var opSecs = Math.max(0, Math.round((CT.paused ? CT.openElapsed : (Date.now() - CT.openStart)) / 1000));
+        CT.log.push({ si: ph.si, r: ph.r, secs: opSecs });
+        try { var opKey = (CT.keys || [])[ph.si]; if (opKey && !CT.hiit) cttSave(opKey, (CT.doneBefore || 0) + ph.r - 1, opSecs); } catch (e) {}   // tiempo de esa serie por reps, para la ventanita de cargas
+      }
       // al cerrar la última estación de una ronda con ejercicios por reps, esa serie cuenta como hecha (lo precargado en gris pasa a confirmado)
       if (CT.hasOpen && ph.si === CT.nSt - 1 && ph.side !== 1 && CT.srId && SR[CT.srId]) srFill(CT.srId, (CT.doneBefore || 0) + ph.r);
     }
     // Anota los segundos de ese tiempo de trabajo en la fila de la serie (unilateral: "lado 1/lado 2")
+    // Tiempo logrado en cada serie (también las de reps): se guarda en el celular unas horas para mostrarlo junto a las cargas
+    var CTT_KEY = 'benessere_ctt_v1', CTT_MAX = 6 * 3600 * 1000;
+    function cttLoad() { var o = {}; try { o = JSON.parse(localStorage.getItem(tk(CTT_KEY)) || '{}') || {}; } catch (e) {} return o; }
+    function cttSave(key, idx, secs) {
+      try {
+        var o = cttLoad(), now = Date.now();
+        Object.keys(o).forEach(function(k) { if (!o[k] || now - o[k][1] > CTT_MAX) delete o[k]; });
+        o[key + '|' + idx] = [Math.max(0, Math.round(secs)), now];
+        localStorage.setItem(tk(CTT_KEY), JSON.stringify(o));
+      } catch (e) {}
+    }
+    function cttGet(key, idx) { var o = cttLoad(), v = o[key + '|' + idx]; return (v && Date.now() - v[1] <= CTT_MAX) ? v[0] : null; }
     function ctRecord(ph, secs) {
       if (CT.hiit) return;   // en HIIT no se anotan segundos por ronda
       var key = (CT.keys || [])[ph.si]; if (!key) return;
       var idx = (CT.doneBefore || 0) + ph.r - 1;
+      cttSave(key, idx, (ph.side === 2 && CT.acc && CT.acc[key + '|' + idx] != null) ? (parseInt(CT.acc[key + '|' + idx], 10) || 0) + secs : secs);   // unilateral: suma de los dos lados
       ensureSetRows(key, idx + 1);
       var inp = document.getElementById('pr_' + key + '_' + idx); if (!inp) return;
       var val = String(Math.max(0, Math.round(secs)));
@@ -8479,7 +8711,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= CLASES: REPRODUCTOR =================
     // Reutiliza el temporizador (CT) pero sin anotar nada: sin series, pesos, historial ni reportes. CT.cls = true.
     var CLS_GAP = 15;   // segundos entre un bloque y el siguiente
-    var CLS_PRE_DWELL = 8;   // segundos que se ve cada ejercicio en la previa y en las pausas (se repite en ciclo)
+    var CLS_PRE_DWELL = 10;   // segundos que se ve cada ejercicio en la previa y en las pausas (se repite en ciclo)
     var CLS_PRE = 120;  // previa de la clase: segundos antes del primer bloque, proyectando cada ejercicio con su video e instrucciones
     // Ejercicios de UN bloque (el que inicia o sigue) con sus reps e instrucciones, para proyectarlos en la previa y en las pausas
     function clsPreListBlock(it) {
@@ -8628,7 +8860,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var pl = clsPreGroup(G.clase.items, 0);
         if (pl.length) built.phases[0] = { t: 'ready', d: CLS_PRE, st: 'Previa de la clase', r: 1, si: 0, pre: true, preList: pl };
       }
-      if (built.phases[0] && built.phases[0].pausa) { var pg = clsPreGroup(G.clase.items, pos + 1); built.phases[0].preList = pg.length ? pg : null; }
+      if (built.phases[0] && built.phases[0].pausa) {   // en la pausa solo se ven los ejercicios del bloque que sigue (no los de todos los bloques hasta la próxima pausa)
+        var nxBlk = G.clase.items[pos + 1], pg = (nxBlk && nxBlk.circ && nxBlk.circ.tipo !== 'pausa') ? clsPreListBlock(nxBlk) : [];
+        built.phases[0].preList = pg.length ? pg : null;
+      }
       tmrAudio(); rtClose();
       CT.cls = true; CT.keys = []; CT.acc = {}; CT.videos = built.videos; CT.repsTxt = built.repsTxt; CT.ci = -1; CT.srId = 0; CT.doneBefore = 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = it.circ.nombre || 'Bloque';
@@ -8896,12 +9131,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var rs = resumeLoad('g');   // ¿salió a la mitad la vez anterior?
       if (rs && rs.dayId === dayId && blocks[rs.pos] && blocks[rs.pos].ci === rs.ci) {
         if (confirm('Dejaste este entreno guiado a medias (bloque ' + (rs.pos + 1) + ' de ' + blocks.length + ').\n\nAceptar = continuar donde ibas\nCancelar = empezar de nuevo')) {
-          if (!(WK.start && WK.dayId === dayId)) wkStart(dayId);
+          if (!(WK.start && WK.dayId === dayId) && wkStart(dayId) === false) return;
           guideRun(dayId, blocks, rs.pos, rs); return;
         }
         resumeClear();
       }
-      if (!(WK.start && WK.dayId === dayId)) wkStart(dayId);   // si no había iniciado el entreno, lo inicia
+      if (!(WK.start && WK.dayId === dayId) && wkStart(dayId) === false) return;   // si no había iniciado el entreno, lo inicia (si cancela el aviso de "ya entrenaste hoy", no sigue)
       guideRun(dayId, blocks, pos);
     }
     // ----- Cerrar el entreno del día: una sola acción (termina el cronómetro, pregunta el reloj y guarda las marcas) -----
@@ -8950,6 +9185,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="dc-l">📋 Bloques: <b>' + nDone + ' de ' + N + '</b><br>⏱ Cronómetro: <b>' + timeTxt + '</b><br>💾 Marcas: <b>' + (marks ? 'anotadas, falta guardar' : 'sin anotar') + '</b></div>' +
         '<button type="button" class="dc-b" onclick="dayClose(\'' + dayId + '\')">🏁 Cerrar entreno</button>' +
         '<button type="button" onclick="dayQuickDone(\'' + dayId + '\')" style="width:100%; margin-top:8px; background:transparent; color:#06d6a0; border:1.5px solid #06d6a0; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">✅ Ya entrené hoy (solo avisar)</button>' +
+        '<button type="button" onclick="actOpen()" style="width:100%; margin-top:8px; background:transparent; color:#8fd3ff; border:1.5px solid #8fd3ff; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">🏃 Agregar actividad del día</button>' +
         '<div style="font-size:0.7rem; color:#8a8a8a; margin-top:6px;">Termina el cronómetro, te pregunta lo de tu reloj y guarda tus pesos y reps.</div></div>';
     }
 
@@ -9159,16 +9395,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (timed && !hasW) return;   // los segundos de los ejercicios por tiempo ya se anotan solos
         var box = h.closest('.exercise-item-box:not(.alt-off)'), nmEl = box && box.querySelector('.ex-name');
         var nm = nmEl ? nmEl.innerText.replace(/^[A-C1-9]\s/, '').trim() : 'Ejercicio';
-        var rows = '';
+        var rows = '', anyT = false;
         for (var i = 0; i < n; i++) {
           var w = document.getElementById('pw_' + key + '_' + i), rp = document.getElementById('pr_' + key + '_' + i);
           if (!rp) continue;
           var cell = function(inp, kind, ph) {
             return '<input type="text" inputmode="decimal" class="bd-in' + (inp.classList.contains('prefilled') ? ' pre' : '') + '" data-k="' + escHtml(key) + '" data-i="' + i + '" data-kind="' + kind + '" value="' + escHtml(inp.value) + '" placeholder="' + ph + '" oninput="bdInput(this)">';
           };
-          rows += '<div class="bd-row"><span class="bd-n">S' + (i + 1) + '</span>' + (w ? cell(w, 'pw', 'lbs') : '') + cell(rp, 'pr', timed ? 'seg' : 'reps') + '</div>';
+          var tSec = cttGet(key, i); if (tSec != null) anyT = true;
+          rows += '<div class="bd-row"><span class="bd-n">S' + (i + 1) + '</span>' + (w ? cell(w, 'pw', 'lbs') : '') + cell(rp, 'pr', timed ? 'seg' : 'reps') + '<span class="bd-t">' + (tSec != null ? wkFmt(tSec) : '') + '</span></div>';
         }
-        if (rows) html += '<div style="margin-top:12px; text-align:left;"><div style="font-size:0.9rem; font-weight:800;">' + escHtml(nm) + '</div>' + rows + '</div>';
+        if (rows) {
+          var hdr = '<div class="bd-hd"><span class="bd-n"></span>' + (hasW ? '<span>Peso (lbs)</span>' : '') + '<span>' + (timed ? 'Segundos' : 'Reps') + '</span><span class="bd-t">Tiempo</span></div>';
+          html += '<div style="margin-top:12px; text-align:left;"><div style="font-size:0.9rem; font-weight:800;">' + escHtml(nm) + '</div>' + hdr + rows + '</div>';
+        }
       });
       BD.srId = srId;
       var eq = bdEquipList(srId);
@@ -9185,22 +9425,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function bdInput(el) {
       var key = el.getAttribute('data-k'), idx = parseInt(el.getAttribute('data-i'), 10), kind = el.getAttribute('data-kind'), val = el.value;
+      var prevV = (el.dataset.pv != null ? el.dataset.pv : '').trim();   // lo que tenía la celda antes de tocarla
       ctSheetSet(key, idx, kind, val);
       el.classList.remove('pre');
       var real0 = document.getElementById(kind + '_' + key + '_' + idx);
       if (idx > 0) { delete el.dataset.auto; el.dataset.man = '1'; if (real0) { delete real0.dataset.auto; real0.dataset.man = '1'; } return; }   // corregida a mano: ya no se pisa
-      // al llenar la fila 1 (peso o reps), las demás se llenan solas con lo mismo; lo que ya corrigió a mano no se pisa
+      // al cambiar la fila 1 (peso o reps), las demás cambian solas: las vacías, las grises, las automáticas y las que tenían lo mismo que la fila 1; solo lo que corrigió a mano con otro valor no se pisa
       var m = document.getElementById('bd_modal'); if (!m) return;
       m.querySelectorAll('.bd-in[data-kind="' + kind + '"]').forEach(function(o) {
         if (o.getAttribute('data-k') !== key) return;
         var oi = parseInt(o.getAttribute('data-i'), 10); if (!(oi > 0)) return;
         var rl = document.getElementById(kind + '_' + key + '_' + oi);
-        if ((o.dataset.man === '1' || (rl && rl.dataset.man === '1')) && o.value.trim()) return;
-        if (!o.value.trim() || o.classList.contains('pre') || o.dataset.auto === '1') {
-          o.value = val; o.classList.remove('pre');
+        var sameAsRow1 = !!prevV && o.value.trim() === prevV;
+        if ((o.dataset.man === '1' || (rl && rl.dataset.man === '1')) && o.value.trim() && !sameAsRow1) return;
+        if (!o.value.trim() || o.classList.contains('pre') || o.dataset.auto === '1' || sameAsRow1) {
+          o.value = val; o.classList.remove('pre'); delete o.dataset.man;
           if (val) o.dataset.auto = '1'; else delete o.dataset.auto;
           ctSheetSet(key, oi, kind, val);
-          if (rl) { if (val) rl.dataset.auto = '1'; else delete rl.dataset.auto; }
+          if (rl) { delete rl.dataset.man; if (val) rl.dataset.auto = '1'; else delete rl.dataset.auto; }
         }
       });
     }
@@ -9264,7 +9506,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!ctPipSupported()) return;
       b.style.display = '';
       b.onclick = ctPipToggle;
-      ctPipPrepare();   // deja listo el video flotante para que se abra solo cuando la persona sale de la app
+      // En iPhone no se prepara solo (un video dibujado en vivo corriendo todo el tiempo congelaba el contador); se prepara al tocar «Ventana flotante»
+      var iosDev = false; try { iosDev = /iPhone|iPad|iPod/i.test(navigator.userAgent || '') || (/Macintosh/i.test(navigator.userAgent || '') && navigator.maxTouchPoints > 1); } catch (e) {}
+      if (!iosDev) ctPipPrepare();   // deja listo el video flotante para que se abra solo cuando la persona sale de la app
     }
     // Prepara (sin mostrar) el video que alimenta la pantalla flotante y registra la apertura automática al salir de la app
     function ctPipPrepare() {
@@ -9441,6 +9685,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:0.85rem; font-weight:900; color:#ff9a93; margin-bottom:6px;">🔔 Videos que los clientes reportaron (' + VREP_INBOX.length + ')</div>' +
         VREP_INBOX.map(function(r, i) {
           var when = ''; try { when = new Date(r.t).toLocaleString('es-CR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
+          if (r.tipo === 'pesaje' || r.tipo === 'ciclo') {
+            return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
+              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + (r.tipo === 'pesaje' ? '⚖️ Toca pesaje' : '⏰ Fin de ciclo cerca') + '</div>' +
+              '<div style="color:#ff9a93;">' + escHtml(r.mot || '') + '</div>' +
+              '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + '</div>' +
+              '<div style="display:flex; gap:8px; margin-top:6px;"><button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Listo</button></div></div>';
+          }
           return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
             '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + escHtml(r.dia || 'día sin nombre') + '</div>' +
             '<div>Ejercicio: <b>' + escHtml(r.ej || '-') + '</b>' + (r.mot ? ' <span style="color:#ff9a93;">(' + escHtml(r.mot) + ')</span>' : '') + '</div>' +
@@ -9810,8 +10061,29 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'block';
       var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'block';
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = pruebaAsClient() ? '' : 'none';   // el cliente sí ve «Enviar Reporte»
+      if (!PRUEBA.on) coachOpenSave(id);   // por si el celular recarga la app en segundo plano: al volver se reabre este cliente
       window.scrollTo(0, 0);
       return 'ok';
+    }
+    // ----- Modo entrenador: si el celular recarga la app mientras estaba en segundo plano (ej. para contestar un mensaje), vuelve solo al cliente que estaba entrenando -----
+    var COACH_OPEN_KEY = 'benessere_coach_open', COACH_OPEN_MAX = 12 * 3600 * 1000;
+    function coachOpenSave(id) { try { localStorage.setItem(COACH_OPEN_KEY, JSON.stringify({ id: id, t: Date.now() })); } catch (e) {} }
+    function coachOpenClear() { try { localStorage.removeItem(COACH_OPEN_KEY); } catch (e) {} }
+    document.addEventListener('visibilitychange', function() {
+      try { if (document.visibilityState === 'hidden' && COACH && athleteRoutineId && isCoachView() && !PRUEBA.on) coachOpenSave(athleteRoutineId); } catch (e) {}
+    });
+    function coachRestoreOpen() {
+      var o = null; try { o = JSON.parse(localStorage.getItem(COACH_OPEN_KEY) || 'null'); } catch (e) {}
+      if (!o || !o.id || !o.t || Date.now() - o.t > COACH_OPEN_MAX) { coachOpenClear(); return false; }
+      var pin = ''; try { pin = localStorage.getItem(COACH_PIN_KEY) || ''; } catch (e) {}
+      if (!pin || COACH) return false;   // sin PIN recordado no se puede reabrir solo
+      COACH = { pin: pin, name: '', todos: false };   // provisional: se completa con la respuesta del servidor
+      openClientRoutine(o.id);   // abre al instante con la copia guardada; la hoja se consulta en segundo plano
+      postJson({ a: 'listar', pin: pin }).then(function(j) {
+        if (j && j.ok) { COACH = { pin: pin, name: j.coach, todos: !!j.todos }; clientRows = j.rutinas || []; }
+        else if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+      }).catch(function() { /* sin conexión: sigue con la sesión provisional */ });
+      return true;
     }
     // Cambia la rutina en pantalla por una versión más nueva sin perder las pantallas abiertas ni el scroll
     function coachApplyPayload(id, p) {
@@ -9850,6 +10122,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { el.classList.remove('active'); });
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function') ctClose(); } catch (e) {}
       TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null; PRUEBA.client = false;
+      coachOpenClear();   // salió a propósito: ya no se reabre solo
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'none';
       var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'none'; COACH_SNAP = null;
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
@@ -9883,7 +10156,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else { b.style.top = 'auto'; b.style.bottom = '108px'; b.style.right = '12px'; }
       } catch (e) {}
     }
-    setInterval(coachHomePaint, 500);
+    setInterval(coachHomePaint, 1000);
     // Ventana angosta en computador: la rueda del mouse sobre las pestañas las desplaza de lado
     (function() {
       try {
@@ -11396,7 +11669,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
 
       // 2) Acceso explícito de coach, o este dispositivo ya tiene perfil de coach
-      if (/(^|[#&?])coach(\b|=)/.test(where) || hasCoachProfile()) { showBuilder(); return; }
+      if (/(^|[#&?])coach(\b|=)/.test(where) || hasCoachProfile()) { showBuilder(); try { coachRestoreOpen(); } catch (e) {} return; }
 
       // 3) Atleta que vuelve a abrir la app sin enlace: recuperar su última rutina
       var saved = loadAthletePayload();
