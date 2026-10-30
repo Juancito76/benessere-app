@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-30-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-30-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -276,8 +276,7 @@
     @keyframes gdBlinkY { 0%,100% { border-color: #ffee00; box-shadow: 0 0 8px #ffee00, 0 0 22px rgba(255,238,0,.6); } 50% { border-color: rgba(255,238,0,.25); box-shadow: none; } }
     @keyframes gdBlinkO { 0%,100% { border-color: #ff7a00; box-shadow: 0 0 8px #ff7a00, 0 0 22px rgba(255,122,0,.6); } 50% { border-color: rgba(255,122,0,.25); box-shadow: none; } }
     .exercise-card.gd-collapsed { background: none; border: none !important; padding: 0; box-shadow: none; margin-bottom: 10px; }
-    .exercise-card.gd-collapsed > *:not(.gd-head):not(.btn-pair) { display: none !important; }
-    .exercise-card.gd-collapsed > .btn-pair { margin: 6px 0 4px; }
+    .exercise-card.gd-collapsed > *:not(.gd-head) { display: none !important; }
     .exercise-card.gd-done .gd-head { border-color: #3a3a3a; opacity: 0.45; }
     .exercise-card.gd-done.gd-collapsed { opacity: 1; }
     .exercise-card.gd-here { border: 2px solid #ffee00 !important; animation: gdPulse 2.2s ease-in-out infinite; }
@@ -4735,7 +4734,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="set-rows-list">' + rows + '</div>' +
         '<button type="button" class="btn-add-set" onclick="addSetRow(\'' + key + '\')">＋ Serie</button></div>';
       // Siempre plegado: el resumen de lo anotado queda a la vista y se despliega solo al tocarlo
-      return '<details class="set-box" id="setbox_' + key + '"><summary><span class="set-lbl">📝 ' + (fold ? 'Registro por ronda' : 'Registro por serie') + '</span><span class="set-sum empty" id="ssum_' + key + '">Toca para anotar</span></summary>' + body + '</details>';
+      return '<details class="set-box" id="setbox_' + key + '"><summary><span class="set-lbl">📝 ' + 'Marcas anteriores' + '</span><span class="set-sum empty" id="ssum_' + key + '">Toca para anotar</span></summary>' + body + '</details>';
     }
     // Resumen de una línea de lo anotado (o precargado en gris) para mostrarlo con el registro plegado
     function refreshSetSummary(key) {
@@ -8113,7 +8112,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_prog" style="display:none; margin-top:2px; font-size:0.9rem; font-weight:800; color:#ccc;"></div>' +
         '<div id="tm_station" style="margin-top:4px; font-size:1.35rem; font-weight:800; line-height:1.2;"></div>' +
         '<div id="tm_reps" style="font-size:1.3rem; font-weight:800; color:#ffd60a; margin-top:2px;"></div>' +
-        '<div id="tm_prev" style="display:none; margin-top:4px; font-size:0.85rem; font-weight:700; color:#8fd3ff; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;"></div>' +
+        '<div id="tm_prev" style="display:none; margin-top:4px; font-size:1rem; font-weight:800; color:#8fd3ff; line-height:1.25;"></div>' +
         '<div id="tm_list" style="display:none; text-align:left; margin:6px 0 2px; font-size:0.95rem; line-height:1.35;"></div>' +
         '<button type="button" class="tm-btn" id="tm_demo" style="display:none; flex:none; margin:2px auto 0; padding:9px 18px; font-size:0.85rem;">🎥 Ver demo</button>' +
         '<div id="tm_time" style="font-size:min(22vw, 120px); font-weight:900; line-height:1; margin:6px 0 8px; font-variant-numeric:tabular-nums;"></div>' +
@@ -8223,23 +8222,34 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ctRenderThrottled(remain, cph);
     }
     // Texto bajo el ejercicio con el peso y las reps de la última vez (referencia para el cliente), o «Sin marcas» si no hay registro
+    function ctRepsClean(t) { return String(t == null ? '' : t).replace(/\s*[—–-]+\s*EP\s*\d+(?:[.,]\d+)?/gi, '').trim(); }   // fuera el índice de esfuerzo (EP) de la pantalla del temporizador
+    function ctPrevSetTxt(mk, idx) {   // «Última vez: 30 lbs × 8 reps» de la serie que toca
+      var sets = (mk && mk.sets) || [], st = sets[idx];
+      if (!st || (!cleanMark(st.w) && !cleanMark(st.r))) { for (var q = Math.min(idx, sets.length - 1); q >= 0; q--) { if (sets[q] && (cleanMark(sets[q].w) || cleanMark(sets[q].r))) { st = sets[q]; break; } } }
+      if (!st) return 'Sin marcas';
+      var w = cleanMark(st.w), r = cleanMark(st.r), parts = [];
+      if (w) parts.push(/^[\d.,]+$/.test(w) ? w + ' lbs' : w);
+      if (r) parts.push(/^\d+$/.test(r) ? r + (mk.tm ? ' s' : ' reps') : r);
+      return 'Última vez: ' + parts.join(' × ');
+    }
     function ctPrevPaint(ph) {
       var pv = document.getElementById('tm_prev'); if (!pv) return;
       var txt = '';
       try {
         if (!CT.cls && !CT.hiit && !CT.done && ph) {
-          var di = ph.list ? (CT.listSel || 0) : (ph.seq ? Math.min(CT.seqI, ph.steps.length - 1) : ph.si);
-          if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
+          var di = ph.list ? (CT.listSel || 0) : (ph.seq ? Math.min(CT.seqI, ph.steps.length - 1) : ph.si), wp = ph;
+          if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; wp = CT.phases[q]; break; } } }
           var key = (CT.keys || [])[di];
           if (key) {
             CT.prevCache = CT.prevCache || {};
-            if (!(key in CT.prevCache)) { var mk = lastMarkFor(key); CT.prevCache[key] = mk ? ('Anterior: ' + markSummary(mk)) : 'Sin marcas'; }
-            txt = CT.prevCache[key];
+            if (!(key in CT.prevCache)) CT.prevCache[key] = lastMarkFor(key) || null;
+            var mk = CT.prevCache[key], idx = Math.max(0, (CT.doneBefore || 0) + ((wp && wp.r) || 1) - 1);
+            txt = mk ? ctPrevSetTxt(mk, idx) : 'Sin marcas';
           }
         }
       } catch (e) { txt = ''; }
       if (pv.innerText !== txt) pv.innerText = txt;
-      pv.style.display = txt ? '-webkit-box' : 'none';
+      pv.style.display = txt ? 'block' : 'none';
     }
     // Antes se repintaba toda la pantalla 5 veces por segundo (y el video flotante), lo que congelaba algunos iPhone.
     // Ahora solo se repinta cuando cambia el segundo que se ve o el estado; si algo no cambió la llave, se corrige a más tardar en 1 s.
@@ -8315,7 +8325,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         for (var qn = CT.i + 1; qn < CT.phases.length; qn++) { var pn = CT.phases[qn]; if (pn.t === 'work') { repsStr = pn.open ? (pn.reps || '') : (pn.note || (pn.d ? tmrFmt(pn.d) + (pn.d < 60 ? ' s' : ' min') : '')); break; } }
       }
       if (ph.seq) repsStr = seqDone ? '' : seqStep.reps;
-      if (el('tm_reps')) el('tm_reps').innerText = repsStr;
+      if (el('tm_reps')) el('tm_reps').innerText = CT.cls ? repsStr : ctRepsClean(repsStr);
       ctPrevPaint(ph);   // marca anterior (peso y reps) del ejercicio, o «Sin marcas»
       if (el('tm_prog')) {   // avance del bloque: cuánto falta, y "ya casi" cuando queda poco
         var left = CT.rounds - ph.r, lab = (CT.roundLabel || 'Ronda').toLowerCase(), pTxt = '', pCol = '#ccc';
@@ -8394,7 +8404,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else if (nx.t === 'trans') nxTxt = 'Sigue: ' + (nx.kind === 'side' ? 'Cambio de lado' : (nx.lbl || 'Transición') + ' ' + nx.d + ' s');
         else nxTxt = 'Sigue: ' + ctShort(nx.st) + (nx.side ? ' · lado ' + nx.side : '') + (nx.open && nx.reps ? ' · ' + nx.reps : '');
       }
-      el('tm_next').innerText = nxTxt;
+      el('tm_next').innerText = CT.cls ? nxTxt : ctRepsClean(nxTxt);
       if (CT.cls) ctClsRender(ph); else if (el('tm_blkb')) el('tm_blkb').style.display = 'none';
       if (ph.seq) {   // qué sigue dentro del intervalo
         var sq = ph.steps[CT.seqI + 1];
@@ -9011,7 +9021,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           el('tm_station').style.display = ''; el('tm_station').innerText = ctShort(CT.names[cur]);
           el('tm_rnd').style.display = 'none';   // la ronda del AMRAP se cuenta sola al terminar el último ejercicio
           el('tm_reps').innerText = [ph.amrap ? 'Rondas: ' + (CT.amrapN || 0) : (ph.cap ? 'Límite ' + tmrFmt(ph.cap) : ''), curReps].filter(Boolean).join(' · ');
-          el('tm_next').innerText = nxI >= 0 ? 'Sigue: ' + ctShort(CT.names[nxI]) + (nxReps ? ' · ' + nxReps : '') : 'Último ejercicio del reto';
+          el('tm_next').innerText = nxI >= 0 ? 'Sigue: ' + ctShort(CT.names[nxI]) + (nxReps ? ' · ' + ctRepsClean(nxReps) : '') : 'Último ejercicio del reto';
           el('tm_done').style.display = '';
         }
       } else {
