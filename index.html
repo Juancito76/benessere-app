@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-30-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-30-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8856,8 +8856,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         G.times = G.times || []; var tb0 = G.times[pos];
         if (tb0 && resume) tb0.t0 = Date.now() - (resume.bt || 0); else G.times[pos] = { n: it.circ.nombre || ('Bloque ' + (pos + 1)), t0: Date.now(), ex: [] };
       }
-      if (pos === 0 && !resume && built.phases[0] && built.phases[0].t === 'ready') {   // previa de 2 min con todos los ejercicios de la clase
-        var pl = clsPreGroup(G.clase.items, 0);
+      if (pos === 0 && !resume && built.phases[0] && built.phases[0].t === 'ready') {   // previa de 2 min con los ejercicios del primer bloque
+        var pl = clsPreListBlock(G.clase.items[0]);   // la previa muestra solo el primer bloque
         if (pl.length) built.phases[0] = { t: 'ready', d: CLS_PRE, st: 'Previa de la clase', r: 1, si: 0, pre: true, preList: pl };
       }
       if (built.phases[0] && built.phases[0].pausa) {   // en la pausa solo se ven los ejercicios del bloque que sigue (no los de todos los bloques hasta la próxima pausa)
@@ -9180,7 +9180,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var timeTxt = running ? '▶ corriendo · ' + wkFmt((Date.now() - WK.start) / 1000) : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0 ? '✔ terminado' : (saved ? '✔ terminado' : 'sin iniciar'));
       var all = nDone >= N;
       if (!saved && !marks && !running && nmTodayFor(dayId)) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Quedó registrado que entrenaste hoy</div><div class="dc-l">Tu coach ya lo puede ver. ¡Buen trabajo! 💪</div></div>'; return; }
-      if (saved) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div></div>'; return; }
+      if (saved) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div><button type="button" onclick="actOpen()" style="width:100%; margin-top:10px; background:transparent; color:#8fd3ff; border:1.5px solid #8fd3ff; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">🏃 Agregar actividad del día (pasos, nadar, caminar, correr…)</button></div>'; return; }
       box.innerHTML = '<div class="dc-card' + (all ? ' on' : '') + '"><div class="dc-t">🏁 ' + (all ? '¡Terminaste! Cierra tu entreno' : 'Al terminar, cierra tu entreno') + '</div>' +
         '<div class="dc-l">📋 Bloques: <b>' + nDone + ' de ' + N + '</b><br>⏱ Cronómetro: <b>' + timeTxt + '</b><br>💾 Marcas: <b>' + (marks ? 'anotadas, falta guardar' : 'sin anotar') + '</b></div>' +
         '<button type="button" class="dc-b" onclick="dayClose(\'' + dayId + '\')">🏁 Cerrar entreno</button>' +
