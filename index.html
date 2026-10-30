@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-30-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-30-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -258,6 +258,16 @@
     .sec-title { font-size: 0.75rem; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
     .equipment-banner { background: #0d2318; border: 1px solid var(--success); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #e0ffe8; }
     .sec-items { font-size: 0.78rem; color: #fff; line-height: 1.35; }
+    /* Progresión semanal y Protocolo de seguridad: cerrados por defecto, con flechita para desplegar */
+    .fold-card { padding: 0; margin-bottom: 8px; }
+    .fold-card > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; }
+    .fold-card > summary::-webkit-details-marker { display: none; }
+    .fold-card > summary::after { content: '▾'; font-size: 1.1rem; line-height: 1; transition: transform 0.2s; }
+    .fold-card[open] > summary::after { transform: rotate(180deg); }
+    .fold-card > summary .prog-title, .fold-card > summary .sec-title { margin: 0; }
+    .progression-banner.fold-card > summary::after { color: var(--primary); }
+    .security-card.fold-card > summary::after { color: var(--accent); }
+    .fold-card > .prog-desc, .fold-card > .sec-items { padding: 0 12px 10px; }
     .day-toggle-container { display: flex; gap: 8px; margin-bottom: 16px; background: #191919; padding: 4px; border-radius: 30px; }
     .toggle-choice { flex: 1; padding: 10px; border: none; border-radius: 25px; background: transparent; color: var(--muted); font-weight: 800; font-size: 0.85rem; cursor: pointer; }
     .toggle-choice.active { background: var(--primary); color: #000; }
@@ -4365,9 +4375,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button class="back-btn" onclick="closeModal(\'' + d.id + '\')">← Volver</button>' +
           '<div class="view-title">' + escHtml(d.title) + '</div><div style="width:50px;"></div>' +
         '</div>' +
-        '<div class="progression-banner"><div class="prog-title">📈 Progresión Semanal</div><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></div>' +
-        '<div class="security-card"><div class="sec-title">🛡️ Protocolo de Seguridad</div><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></div>' +
-        '<div class="equipment-banner">🧰 No olvides regresar el equipo a su lugar después de completar tus repeticiones</div>' +
+        '<details class="progression-banner fold-card"><summary><span class="prog-title">📈 Progresión Semanal</span></summary><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></details>' +
+        '<details class="security-card fold-card"><summary><span class="sec-title">🛡️ Protocolo de Seguridad</span></summary><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></details>' +
         (isNutri ? '<button type="button" class="nutri-hoy-link" id="nutri_link_' + d.id + '" onclick="nutriHoyGo(\'' + d.id + '\')">🍽 Nutrición de hoy</button>' : '') +
         toggleHeaderHtml +
         '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
