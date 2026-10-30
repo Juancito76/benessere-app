@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-30-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-30-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -4788,7 +4788,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var w = row.querySelector('input[id^="pw_"]'), r = row.querySelector('input[id^="pr_"]');
         var wv = (w && !w.classList.contains('prefilled')) ? w.value.trim() : '';
         var rv = (r && !r.classList.contains('prefilled')) ? r.value.trim() : '';
-        out.list.push({ w: wv, r: rv });
+        var st0 = { w: wv, r: rv }, tt = (holder.getAttribute('data-key') && typeof cttGet === 'function') ? cttGet(holder.getAttribute('data-key'), i) : null;
+        if (tt != null && tt > 0) st0.t = tt;   // tiempo de esa serie (cronómetro)
+        out.list.push(st0);
         if (wv || rv) { out.counted++; last = i; }
       });
       out.list = out.list.slice(0, last + 1);
@@ -4816,7 +4818,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var w = cleanMark(st && st.w), r = cleanMark(st && st.r);
           if (!w && !r) return '';
           if (r && ex.tm && /^\d+$/.test(r)) r = r + ' s';
-          return 'S' + (i + 1) + ' ' + (w && r ? w + ' × ' + r : (w || r));
+          var tx = (!ex.tm && st && st.t > 0) ? ' ⏱' + wkFmt(st.t) : '';
+          return 'S' + (i + 1) + ' ' + (w && r ? w + ' × ' + r : (w || r)) + tx;
         }).filter(Boolean);
         if (parts.length) return parts.join(' · ');
       }
@@ -5095,6 +5098,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         localStorage.setItem(tk('hist_' + key), JSON.stringify({ key: key, name: exName, load: sm.l, reps: sm.r, series: sm.s, sets: rd.list, tm: rd.timed ? 1 : 0, date: fullDateStr }));
         holder.querySelectorAll('input').forEach(function(inp) { localStorage.removeItem(tk(inp.id)); inp.value = ''; inp.classList.remove('prefilled'); });
         try { localStorage.removeItem(tk('nsets_' + key)); } catch (e) {}
+        cttClear(key);
         trimSetRows(key);
         refreshSetSummary(key);
       });
@@ -5221,10 +5225,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { localStorage.setItem(sessKey(), JSON.stringify(all)); } catch (e) {}
       pushSession(sel);
       try { loadTracker(); } catch (e) {}
+      histRerender();
+      try { wkToast('✅ Guardado'); } catch (e) {}
+    }
+    function histRerender() {   // vuelve a pintar el historial sin cerrar los días que estaban abiertos
       var open = {}; document.querySelectorAll('#historialListContainer details.hist-sess[open]').forEach(function(d) { var b = d.querySelector('[id^="hw_c_"]'); if (b) open[b.id] = true; });
       renderHistorial();
       document.querySelectorAll('#historialListContainer details.hist-sess').forEach(function(d) { var b = d.querySelector('[id^="hw_c_"]'); if (b && open[b.id]) d.open = true; });
-      try { wkToast('✅ Guardado'); } catch (e) {}
+    }
+    function histActHtml(dIso) {   // actividades extra de ese día (pasos, nadar, caminar…)
+      if (!dIso) return '';
+      var rec = dailyFor(dIso), out = '';
+      if (rec && rec.pasos && rec.pasos.v > 0) out += '<div style="font-size:0.78rem; color:#cfd6e6; padding:3px 0;">👟 Pasos del día · ' + rec.pasos.v + '</div>';
+      ((rec && rec.act) || []).forEach(function(a) { out += '<div style="font-size:0.78rem; color:#cfd6e6; padding:3px 0;">' + escHtml(actSummaryTxt(a)) + '</div>'; });
+      return out;
     }
 
     function renderHistByDate(container, sessions, legacy) {
@@ -5240,11 +5254,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         html += '<details class="hist-sess" style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">' +
           '<summary style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; font-size:0.72rem; color:var(--primary); font-weight:800;"><span>📅 ' + escHtml(s.hd || fmtDate(s.d)) + (s.day ? ' · ' + escHtml(s.day) : '') + (s.dur ? ' · ⏱ ' + wkFmt(s.dur) : '') + (s.wc ? ' · 🔥 ' + s.wc : '') + (s.hr ? ' · ❤️ ' + s.hr : '') + (s.o && s.o !== 'atleta' ? ' · ✍️ ' + escHtml(s.o) : '') + ((s.ex || []).length ? '' : ' · sin marcas') + ((s.sc && !s.dur) ? ' · sin cerrar' : '') + '</span><span class="hist-arrow">▾</span></summary>' +
           '<div style="margin-top:8px;">' +
-          '<div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">' +
-            '<span style="font-size:0.72rem; color:var(--muted);">⌚</span>' +
+          '<div style="border:1px solid #2c3a44; border-radius:10px; padding:8px; margin-bottom:8px; background:#10171c;">' +
+          '<div style="font-size:0.72rem; font-weight:800; color:var(--primary); margin-bottom:6px;">⌚ Reloj y actividad del día</div>' +
+          '<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">' +
             '<input type="number" inputmode="numeric" id="hw_c_' + escHtml(s.t) + '" value="' + (s.wc || '') + '" placeholder="Calorías" style="flex:1; min-width:0; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; font-size:0.85rem;">' +
             '<input type="number" inputmode="numeric" id="hw_h_' + escHtml(s.t) + '" value="' + (s.hr || '') + '" placeholder="Pulso prom." style="flex:1; min-width:0; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; font-size:0.85rem;">' +
             '<button type="button" onclick="histWatchSave(\'' + escHtml(s.t) + '\')" style="background:#1b282c; border:1px solid var(--primary); color:var(--primary); font-size:0.72rem; font-weight:800; padding:8px 10px; border-radius:8px; cursor:pointer;">Guardar</button></div>' +
+          histActHtml(sessDateIso(s)) +
+          '<button type="button" onclick="actOpen(\'' + escHtml(sessDateIso(s)) + '\')" style="width:100%; margin-top:4px; background:transparent; color:#8fd3ff; border:1.5px solid #8fd3ff; border-radius:8px; padding:9px; font-weight:900; font-size:0.82rem; cursor:pointer;">🏃 Agregar actividad (pasos, nadar, caminar, correr…)</button></div>' +
           ((s.ex || []).length ? '' : '<div style="font-size:0.8rem; color:var(--muted); padding:4px 0;">Entreno registrado con el cronómetro, sin marcas anotadas.</div>') +
           ((s.ex || []).length ? '<button type="button" onclick="mountWholeSession(\'' + escHtml(s.t) + '\')" style="width:100%; background:var(--primary); border:none; color:#000; font-size:0.8rem; font-weight:900; padding:10px; border-radius:8px; cursor:pointer; margin-bottom:4px;">⚡ Montar todo el día en las marcas</button>' : '') +
           rows + '</div></details>';
@@ -6445,11 +6462,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     var META_TIMER = null;
     function metaQueue() { clearTimeout(META_TIMER); META_TIMER = setTimeout(metaPush, 45000); }
-    function metaPush() {
+    function metaPush(day) {
       META_TIMER = null;
       try {
         if (!athleteRoutineId || !athleteActiveState) return;
-        var today = todayIso(), rec = dailyLocal(today);
+        var today = (typeof day === 'string' && day) ? day : todayIso(), rec = dailyLocal(today);
         if (!(rec.pasos || rec.agua || rec.sueno || (rec.act && rec.act.length))) return;
         var sig = JSON.stringify(rec); if (localStorage.getItem(tk('metasig_' + today)) === sig) return;
         localStorage.setItem(tk('metasig_' + today), sig);
@@ -6475,7 +6492,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { k: 'bici', n: '🚴 Bicicleta', met: 6.8, du: 'km', dl: 'Distancia (km)' },
       { k: 'otra', n: '✨ Otra actividad', met: 5, name: true }
     ];
-    var ACT = { type: '' };
+    var ACT = { type: '', date: '' };
+    function actDate() { return ACT.date || todayIso(); }
     function actType(k) { for (var i = 0; i < ACT_TYPES.length; i++) { if (ACT_TYPES[i].k === k) return ACT_TYPES[i]; } return null; }
     function actSummaryTxt(a) {
       var T = actType(a.k) || {}, parts = [];
@@ -6492,7 +6510,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return m;
     }
     function actRender() {
-      var m = actModalEl(), today = todayIso(), rec = dailyFor(today), T = actType(ACT.type);
+      var m = actModalEl(), today = actDate(), rec = dailyFor(today), T = actType(ACT.type);
       var inp = 'width:100%; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; box-sizing:border-box;';
       var lst = '';
       if (rec && rec.pasos && rec.pasos.v > 0) lst += '<div style="display:flex; justify-content:space-between; gap:8px; font-size:0.82rem; padding:5px 0; border-top:1px solid #2a2a2a;"><span>👟 Pasos del día · ' + rec.pasos.v + ' (~' + stepsKcal(rec.pasos.v) + ' kcal)</span></div>';
@@ -6520,21 +6538,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Suma lo que hiciste además de tu entreno: pasos, nadar, caminar, correr…</div>' +
         chips + form +
         (T ? '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="actSave()">💾 Guardar actividad</button>' : '') +
-        (lst ? '<div style="margin-top:14px; font-size:0.72rem; font-weight:800; color:var(--primary); text-align:left;">HOY LLEVAS</div>' + lst : '') +
+        (lst ? '<div style="margin-top:14px; font-size:0.72rem; font-weight:800; color:var(--primary); text-align:left;">' + (today === todayIso() ? 'HOY LLEVAS' : 'ESE DÍA LLEVAS (' + escHtml(fmtDate(today)) + ')') + '</div>' + lst : '') +
         '<button type="button" onclick="actClose()" style="margin-top:10px; width:100%; background:none; border:none; color:#aaa; font-size:0.85rem; padding:8px; cursor:pointer;">Cerrar</button></div>';
     }
-    function actOpen() { ACT.type = ''; actRender(); actModalEl().classList.add('active'); }
-    function actClose() { var m = document.getElementById('act_modal'); if (m) m.classList.remove('active'); try { wkWelcomeRefresh(); } catch (e) {} }
+    function actOpen(date) { ACT.date = (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && date !== todayIso()) ? date : ''; ACT.type = ''; actRender(); actModalEl().classList.add('active'); }
+    function actClose() { var m = document.getElementById('act_modal'); if (m) m.classList.remove('active'); try { wkWelcomeRefresh(); } catch (e) {} try { var hm = document.getElementById('ath_modal_historial'); if (hm && hm.classList.contains('active')) histRerender(); } catch (e) {} }
     function actPick(k) { ACT.type = k; actRender(); }
     function actStore(rec) {
-      var today = todayIso();
+      var today = actDate();
       try { localStorage.setItem(dailyKey(today), JSON.stringify(rec)); } catch (e) {}
-      if (!PRUEBA.on) metaQueue();   // viaja a la hoja con las metas del día (45 s después del último cambio o al salir de la app)
+      if (!PRUEBA.on) { if (today === todayIso()) metaQueue(); else metaPush(today); }   // viaja a la hoja con las metas del día (45 s después del último cambio o al salir de la app)
     }
     function actSave() {
       var T = actType(ACT.type); if (!T) return;
       var g = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
-      var today = todayIso(), rec = dailyLocal(today);
+      var today = actDate(), rec = dailyLocal(today);
       if (T.k === 'pasos') {
         var v = parseSteps(g('act_steps')); if (!(v > 0)) { wkToast('Escribe cuántos pasos llevas.'); return; }
         rec.pasos = { v: v, t: (rec.pasos && rec.pasos.t) || null };
@@ -6553,7 +6571,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       wkToast('✅ Actividad guardada.');
     }
     function actDelete(id) {
-      var today = todayIso(), rec = dailyLocal(today);
+      var today = actDate(), rec = dailyLocal(today);
       if (!Array.isArray(rec.act)) return;
       rec.act = rec.act.filter(function(a) { return a.id !== id; });
       if (!rec.act.length) delete rec.act;
@@ -8662,7 +8680,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Anota los segundos de ese tiempo de trabajo en la fila de la serie (unilateral: "lado 1/lado 2")
     // Tiempo logrado en cada serie (también las de reps): se guarda en el celular unas horas para mostrarlo junto a las cargas
-    var CTT_KEY = 'benessere_ctt_v1', CTT_MAX = 6 * 3600 * 1000;
+    var CTT_KEY = 'benessere_ctt_v1', CTT_MAX = 3 * 86400 * 1000;
     function cttLoad() { var o = {}; try { o = JSON.parse(localStorage.getItem(tk(CTT_KEY)) || '{}') || {}; } catch (e) {} return o; }
     function cttSave(key, idx, secs) {
       try {
@@ -8672,6 +8690,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         localStorage.setItem(tk(CTT_KEY), JSON.stringify(o));
       } catch (e) {}
     }
+    function cttClear(key) { try { var o = cttLoad(), ch = false; Object.keys(o).forEach(function(k) { if (k.indexOf(key + '|') === 0) { delete o[k]; ch = true; } }); if (ch) localStorage.setItem(tk(CTT_KEY), JSON.stringify(o)); } catch (e) {} }
     function cttGet(key, idx) { var o = cttLoad(), v = o[key + '|' + idx]; return (v && Date.now() - v[1] <= CTT_MAX) ? v[0] : null; }
     function ctRecord(ph, secs) {
       if (CT.hiit) return;   // en HIIT no se anotan segundos por ronda
@@ -9180,12 +9199,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var timeTxt = running ? '▶ corriendo · ' + wkFmt((Date.now() - WK.start) / 1000) : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0 ? '✔ terminado' : (saved ? '✔ terminado' : 'sin iniciar'));
       var all = nDone >= N;
       if (!saved && !marks && !running && nmTodayFor(dayId)) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Quedó registrado que entrenaste hoy</div><div class="dc-l">Tu coach ya lo puede ver. ¡Buen trabajo! 💪</div></div>'; return; }
-      if (saved) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div><button type="button" onclick="actOpen()" style="width:100%; margin-top:10px; background:transparent; color:#8fd3ff; border:1.5px solid #8fd3ff; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">🏃 Agregar actividad del día (pasos, nadar, caminar, correr…)</button></div>'; return; }
+      if (saved) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div></div>'; return; }
       box.innerHTML = '<div class="dc-card' + (all ? ' on' : '') + '"><div class="dc-t">🏁 ' + (all ? '¡Terminaste! Cierra tu entreno' : 'Al terminar, cierra tu entreno') + '</div>' +
         '<div class="dc-l">📋 Bloques: <b>' + nDone + ' de ' + N + '</b><br>⏱ Cronómetro: <b>' + timeTxt + '</b><br>💾 Marcas: <b>' + (marks ? 'anotadas, falta guardar' : 'sin anotar') + '</b></div>' +
         '<button type="button" class="dc-b" onclick="dayClose(\'' + dayId + '\')">🏁 Cerrar entreno</button>' +
         '<button type="button" onclick="dayQuickDone(\'' + dayId + '\')" style="width:100%; margin-top:8px; background:transparent; color:#06d6a0; border:1.5px solid #06d6a0; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">✅ Ya entrené hoy (solo avisar)</button>' +
-        '<button type="button" onclick="actOpen()" style="width:100%; margin-top:8px; background:transparent; color:#8fd3ff; border:1.5px solid #8fd3ff; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">🏃 Agregar actividad del día</button>' +
         '<div style="font-size:0.7rem; color:#8a8a8a; margin-top:6px;">Termina el cronómetro, te pregunta lo de tu reloj y guarda tus pesos y reps.</div></div>';
     }
 
