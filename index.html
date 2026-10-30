@@ -9753,6 +9753,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else if (tries > 60) { clearInterval(iv); showToastTop('No se pudo abrir esa rutina. Revisa la conexión e inténtalo otra vez.'); }
       }, 500);
     }
+    var EDX_FROM_REP = false;
     function vrepEditFound(r) {
       var st = athleteActiveState, want = ytIdStrict(r.url), W = ATH_WEEK, best = null;
       (st.routineDays || []).forEach(function(d, di) { (d.items || []).forEach(function(it, ii) {
@@ -9764,6 +9765,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }); });
       if (!best) { showToastTop('No encontré ese video en la rutina (quizá ya lo cambiaste). Revisa el ejercicio "' + (r.ej || '') + '".'); return; }
       openEditEx(best.di, best.ii);
+      EDX_FROM_REP = true;   // vino desde un aviso de video: al guardar vuelve a «Mis clientes»
       setTimeout(function() {
         var inps = document.querySelectorAll('#edx_modal input[id$="_video"]');
         for (var k = 0; k < inps.length; k++) {
@@ -10270,6 +10272,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
     }
     function openEditEx(di, ii) {
+      EDX_FROM_REP = false;
       var st = athleteActiveState; if (!st || !isCoachView()) return;
       var d = st.routineDays[di], it = d && d.items[ii]; if (!it) return;
       var W = ATH_WEEK, vd = parseInt(it.vigenciaDesde, 10) || 1, slot = parseInt(it.slot, 10) || (ii + 1);
@@ -10335,6 +10338,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var scrollY = window.scrollY || 0;
           closeModal('edx_modal');
           coachCacheSet(athleteRoutineId, payloadText);
+          if (EDX_FROM_REP) {   // arregló un video reportado: de vuelta a «Mis clientes» para seguir con los demás avisos
+            EDX_FROM_REP = false;
+            exitClientRoutine();
+            showToastTop('✅ Video cambiado en la rutina de ' + (st.clientName || 'el cliente') + '. Toca «Ya lo arreglé» en el aviso.');
+            return;
+          }
           renderAthleteApp(st);
           openIds.forEach(function(oid) { var el = document.getElementById(oid); if (el) el.classList.add('active'); });
           window.scrollTo(0, scrollY);
