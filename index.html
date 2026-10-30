@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-30-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-30-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10596,9 +10596,66 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!FR_FETCHED && annId()) { FR_FETCHED = true; frasesFetch(); }
       } catch (e) {}
     }, 4000);
+    // Cuántos días muestra el editor: 14 como mínimo, y más si ya hay frases programadas más allá (tope 60)
+    var FR_N = 14;
+    function frWindow() {
+      var last = ''; FR_LIST.forEach(function(f) { if (f && f.t && f.d > last) last = f.d; });
+      var n = 14;
+      if (last) { var diff = Math.round((new Date(last + 'T12:00:00') - new Date(todayIso() + 'T12:00:00')) / 86400000) + 1; if (diff > n) n = Math.min(diff, 60); }
+      return n;
+    }
+    function frIsoPlus(iso, k) { var b = new Date(iso + 'T12:00:00'); var d = new Date(b.getFullYear(), b.getMonth(), b.getDate() + k); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    // Primer día libre después de la última frase programada (o hoy si no hay ninguna)
+    function frNextFree() {
+      var last = '', today = todayIso(); FR_LIST.forEach(function(f) { if (f && f.t && f.d > last) last = f.d; });
+      return (last && last >= today) ? frIsoPlus(last, 1) : today;
+    }
+    // Acepta una frase por línea, o la tabla "| Fecha | Frase |" tal cual (se queda con la frase); quita viñetas, números y comillas
+    function frParsePaste(txt) {
+      var out = [];
+      String(txt || '').split(/\r?\n/).forEach(function(raw) {
+        var s = raw.trim(); if (!s) return;
+        if (s.indexOf('|') >= 0) {
+          if (/^[\s|:\-]+$/.test(s)) return;                 // fila separadora de la tabla
+          var cells = s.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c; });
+          if (!cells.length) return;
+          if (cells.length >= 2 && /^fecha$/i.test(cells[0])) return;   // encabezado
+          s = cells.length >= 2 ? cells[cells.length - 1] : cells[0];
+        }
+        s = s.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').replace(/^["“”«']+|["“”»']+$/g, '').trim();
+        if (s) out.push(s);
+      });
+      return out;
+    }
+    function frPasteApply() {
+      var ta = document.getElementById('fr_paste_txt'), st = document.getElementById('fr_paste_start'), today = todayIso();
+      var say = function(txt, ok) { var mm = document.getElementById('fr_msg'); if (mm) { mm.style.color = ok ? '#06d6a0' : '#ff6b6b'; mm.innerHTML = txt; } };
+      if (!ta || !st) return;
+      var lines = frParsePaste(ta.value);
+      if (!lines.length) { say('Pega primero las frases (una por línea, o la tabla tal cual).', false); return; }
+      if (!st.value) { say('Elige la fecha de la primera frase.', false); return; }
+      if (st.value < today) { say('La fecha de inicio no puede ser antes de hoy.', false); return; }
+      frReadForm();   // conserva lo que ya hayas escrito a mano
+      var map = {}; FR_LIST.forEach(function(f) { if (f && f.d) map[f.d] = f; });
+      var replaced = 0, longOnes = [];
+      lines.forEach(function(t, i) {
+        var d = frIsoPlus(st.value, i);
+        if (t.length > 160) { longOnes.push(i + 1); t = t.slice(0, 160); }
+        if (map[d] && map[d].t && map[d].t !== t) replaced++;
+        map[d] = { d: d, t: t };
+      });
+      FR_LIST = Object.keys(map).filter(function(d) { return d >= today; }).sort().map(function(d) { return map[d]; });
+      var first = st.value, last = frIsoPlus(st.value, lines.length - 1);
+      renderFraseEditor('');
+      var f2 = function(iso) { try { return new Date(iso + 'T12:00:00').toLocaleDateString('es-CR', { day: 'numeric', month: 'short' }); } catch (e) { return iso; } };
+      say('✅ ' + lines.length + ' frase' + (lines.length === 1 ? '' : 's') + ' repartida' + (lines.length === 1 ? '' : 's') + ' del ' + escHtml(f2(first)) + ' al ' + escHtml(f2(last)) + '.' +
+        (replaced ? ' Reemplazó ' + replaced + ' que ya había.' : '') +
+        (longOnes.length ? '<br><span style="color:#ffd166;">Las frases #' + longOnes.join(', #') + ' pasaban de 160 caracteres y se cortaron: revísalas abajo.</span>' : '') +
+        '<br><b>Falta tocar "📤 Publicar frases" para que la vean los clientes.</b>', true);
+    }
     function frReadForm() {
       var map = {}; FR_LIST.forEach(function(f) { if (f && f.d) map[f.d] = f; });
-      frDays(14).forEach(function(d, k) {
+      frDays(FR_N).forEach(function(d, k) {
         var el = document.getElementById('fr_t_' + k); if (!el) return;
         var t = el.value.trim();
         if (t) map[d] = { d: d, t: t }; else delete map[d];
@@ -10609,9 +10666,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function renderFraseEditor(status) {
       var m = document.getElementById('fr_edit_modal'); if (!m) return;
       var map = {}; FR_LIST.forEach(function(f) { if (f && f.d) map[f.d] = f.t || ''; });
-      var days = frDays(14), today = todayIso();
+      FR_N = frWindow();
+      var days = frDays(FR_N), today = todayIso();
       var h = '<div class="modal-inner"><div style="font-size:1rem; font-weight:900; color:var(--primary); margin-bottom:2px;">✨ Frase del día</div>' +
-        '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">Escribe la frase de cada día (puedes dejar programados hasta 14 días). El día que no tenga frase, la app usa una de las frases de ejemplo. La ven todos los clientes en la pantalla principal y en la bienvenida.</div>';
+        '<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">Escribe la frase de cada día, o pega varias de una vez en el cuadro de abajo. El día que no tenga frase, la app usa una de las frases de ejemplo. La ven todos los clientes en la pantalla principal y en la bienvenida.</div>' +
+        '<div class="edx-sub" style="margin-bottom:10px;"><label style="font-weight:800;">📋 Pegar varias frases</label>' +
+        '<div style="font-size:0.7rem; color:var(--muted); margin:2px 0 6px;">Una frase por línea (o la tabla tal cual). Se reparten una por día desde la fecha que elijas, en orden.</div>' +
+        '<textarea id="fr_paste_txt" rows="5" placeholder="Pega aquí las frases…"></textarea>' +
+        '<div style="display:flex; gap:8px; align-items:flex-end; margin-top:6px;"><div style="flex:1;"><label style="font-size:0.72rem; font-weight:800; color:var(--muted);">Primera frase en</label>' +
+        '<input type="date" id="fr_paste_start" min="' + today + '" value="' + frNextFree() + '"></div>' +
+        '<button type="button" class="btn-action-primary" style="flex:1;" onclick="frPasteApply()">Repartir frases</button></div></div>';
       days.forEach(function(d, k) {
         var lbl = ''; try { lbl = new Date(d + 'T12:00:00').toLocaleDateString('es-CR', { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) {}
         h += '<div style="margin-bottom:7px;"><label style="font-size:0.72rem; font-weight:800; color:' + (d === today ? 'var(--primary)' : 'var(--muted)') + ';">' + escHtml(lbl) + (d === today ? ' · Hoy' : '') + '</label>' +
