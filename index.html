@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8045,6 +8045,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_guide" style="display:none; margin-top:12px; background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; text-align:center;"></div>' +
         '<div id="tm_vid" style="display:none; position:relative; background:#000; border-radius:10px; overflow:hidden; min-height:200px;"></div>' +
         '<button type="button" id="tm_vrep">⚠️ El video no se ve</button>' +
+        '<div id="tm_bd" style="display:none; margin-top:14px; text-align:left;"></div>' +
         '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>';
       document.body.appendChild(o);
       document.getElementById('tm_pause').onclick = ctTogglePause;
@@ -8573,7 +8574,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (CT.srId && SR[CT.srId]) {
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
           el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = CT.hiit ? 'none' : '';
-          if (!CT.guide) { var dnB = el('tm_done'); dnB.innerText = '✅ Ya terminé'; dnB.style.display = ''; dnB.onclick = function() { bdOpen(CT.srId); }; }   // botón claro para cerrar el bloque: abre las cargas y lo da por completado
+          if (!CT.guide) {
+            var dnB = el('tm_done'); dnB.innerText = '✅ Ya terminé'; dnB.style.display = '';
+            var bdI = null; try { bdI = bdBuild(CT.srId); } catch (e) {}
+            var bdBox = el('tm_bd');
+            if (bdI && bdBox && (bdI.html || bdI.eq.length)) {   // las cargas se anotan aquí mismo, sin otra ventana
+              bdBox.innerHTML = '<div style="font-size:1rem; font-weight:900; color:var(--primary); text-align:center;">' + (bdI.html ? '📝 Anota tus cargas' : '✅ ¡Bloque listo!') + '</div>' + bdI.eqHtml +
+                (bdI.html ? '<div style="font-size:0.8rem; color:var(--muted); margin-top:8px; text-align:center;">Anota lo que falte. Es opcional: si lo dejas vacío no pasa nada.</div>' + bdI.html : '');
+              bdBox.style.display = 'block'; BD.srId = CT.srId;
+              dnB.onclick = function() { BD.srId = CT.srId; bdDone(); };
+            } else dnB.onclick = function() { bdOpen(CT.srId); };
+          }   // botón claro para cerrar el bloque: abre las cargas y lo da por completado
         }
       }
       tmrWakeOff();
@@ -9322,8 +9333,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Se abre con "✅ Ya terminé" al acabar el temporizador, o con el botón "Completado" de una pestaña pendiente.
     // Lo ya anotado aparece lleno; lo que quede vacío no bloquea nada: el bloque se da por completado igual.
     var BD = { srId: 0 };
-    function bdOpen(srId) {
-      var r = SR[srId], card = srCard(srId); if (!r || !card) return;
+    function bdBuild(srId) {
+      var r = SR[srId], card = srCard(srId); if (!r || !card) return null;
       var n = Math.max(r.base || 0, r.sets || 0, r.cur || 0, 1), html = '';
       card.querySelectorAll('.set-rows').forEach(function(h) {
         var key = h.getAttribute('data-key'), timed = h.getAttribute('data-timed') === '1';
@@ -9331,6 +9342,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var hasW = !!h.querySelector('input[id^="pw_"]');
         if (timed && !hasW) return;   // los segundos de los ejercicios por tiempo ya se anotan solos
         var box = h.closest('.exercise-item-box:not(.alt-off)'), nmEl = box && box.querySelector('.ex-name');
+        if (!box) return;   // cuadro de un ejercicio alterno que no está activo: no se muestra (salía un cuadro de más)
         var nm = nmEl ? nmEl.innerText.replace(/^[A-C1-9]\s/, '').trim() : 'Ejercicio';
         var rows = '', anyT = false;
         for (var i = 0; i < n; i++) {
@@ -9349,10 +9361,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       BD.srId = srId;
       var eq = bdEquipList(srId);
+      var eqHtml = '<div class="equipment-banner" style="margin:10px 0 0; text-align:left;"><span style="font-size:1.4rem;">🧰</span><span>' + (eq.length ? 'Regresa el equipo a su lugar: <b>' + eq.map(escHtml).join(', ') + '</b>' : 'Si usaste equipo, regrésalo a su lugar.') + '</span></div>';
+      return { html: html, eq: eq, eqHtml: eqHtml };
+    }
+    function bdOpen(srId) {
+      var b = bdBuild(srId); if (!b) return;
+      var html = b.html, eq = b.eq, eqHtml = b.eqHtml;
       if (!html && !eq.length) { bdDone(); return; }   // nada que anotar ni equipo que regresar (calentamiento, HIIT…): se completa directo
       var m = document.getElementById('bd_modal');
       if (!m) { m = document.createElement('div'); m.id = 'bd_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100006'; document.body.appendChild(m); }
-      var eqHtml = '<div class="equipment-banner" style="margin:10px 0 0; text-align:left;"><span style="font-size:1.4rem;">🧰</span><span>' + (eq.length ? 'Regresa el equipo a su lugar: <b>' + eq.map(escHtml).join(', ') + '</b>' : 'Si usaste equipo, regrésalo a su lugar.') + '</span></div>';
       m.innerHTML = '<div class="modal-inner" style="text-align:center;">' +
         '<div style="font-size:1.1rem; font-weight:900; color:var(--primary);">' + (html ? '📝 Anota tus cargas' : '✅ ¡Bloque listo!') + '</div>' + eqHtml +
         (html ? '<div style="font-size:0.8rem; color:var(--muted); margin-top:10px;">Anota lo que falte. Es opcional: si lo dejas vacío no pasa nada.</div>' + html : '') +
@@ -9368,7 +9385,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var real0 = document.getElementById(kind + '_' + key + '_' + idx);
       if (idx > 0) { delete el.dataset.auto; el.dataset.man = '1'; if (real0) { delete real0.dataset.auto; real0.dataset.man = '1'; } return; }   // corregida a mano: ya no se pisa
       // al cambiar la fila 1 (peso o reps), las demás cambian solas: las vacías, las grises, las automáticas y las que tenían lo mismo que la fila 1; solo lo que corrigió a mano con otro valor no se pisa
-      var m = document.getElementById('bd_modal'); if (!m) return;
+      var m = document.getElementById('bd_modal') || document.getElementById('tm_bd'); if (!m) return;
       m.querySelectorAll('.bd-in[data-kind="' + kind + '"]').forEach(function(o) {
         if (o.getAttribute('data-k') !== key) return;
         var oi = parseInt(o.getAttribute('data-i'), 10); if (!(oi > 0)) return;
