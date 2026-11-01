@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -7996,7 +7996,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '#tm_side > .tm-btn.tm-sm{padding:7px 4px; font-size:0.85rem; border-radius:12px; background:#1c1c1c; border:2px solid #fff; color:#fff;}' +
           '#tm_side > #tm_exit{border-color:#ff9a93; color:#ffd0cc;}' +
           '#tm_extra{display:none; position:fixed; left:0; right:0; bottom:0; z-index:100005; background:#17171c; border-top:1px solid #444; border-radius:20px 20px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); flex-direction:column; gap:10px; box-shadow:0 -10px 30px rgba(0,0,0,0.7);} #tm_extra.on{display:flex;} #tm_extra .tm-btn.tm-sm{width:100%; padding:15px 14px !important; font-size:0.95rem !important; text-align:left; border-radius:12px !important; display:block;}' +
-          '#tm_overlay.tm-fin #tm_time{font-size:2.4rem !important; margin:2px 0 6px !important;} #tm_overlay.tm-fin #tm_station{font-size:1.05rem !important;} #tm_overlay.tm-fin #tm_vid{height:calc((100vw - 32px) * 0.5625) !important;} #tm_overlay.tm-fin #tm_phase{margin-top:4px !important;}' +
+          '#tm_overlay.tm-fin #tm_vrep{display:none !important;} #tm_overlay.tm-fin #tm_time{font-size:2.4rem !important; margin:2px 0 6px !important;} #tm_overlay.tm-fin #tm_station{font-size:1.05rem !important;} #tm_overlay.tm-fin #tm_vid{height:calc((100vw - 32px) * 0.5625) !important;} #tm_overlay.tm-fin #tm_phase{margin-top:4px !important;}' +
           '@keyframes tmBob{0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)}} #tm_scrollhint{margin-top:12px; font-size:0.85rem; font-weight:800; color:#ffd60a; transition:opacity .3s; animation:tmBob 1.4s ease-in-out infinite;}' +
           '#tm_radj{display:none; gap:6px; align-items:stretch;} #tm_radj .tm-btn{flex:1 1 0; min-width:0; padding:11px 0; font-size:1.05rem; font-weight:900; background:#4d8bff; border:3px solid #4d8bff; color:#000;}' +
           '#tm_radjl{display:none; font-size:0.85rem; color:#bcd3ff; font-weight:900; text-align:center; margin-bottom:-3px;}' +
@@ -8575,14 +8575,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           SR[CT.srId].cur = CT.doneBefore + CT.rounds; srFill(CT.srId, SR[CT.srId].cur);   // series hechas -> campo "Series"
           el('tm_more').innerText = '➕ 1 ' + (CT.roundLabel || 'Serie').toLowerCase() + ' más'; el('tm_more').style.display = CT.hiit ? 'none' : '';
           if (!CT.guide) {
-            var dnB = el('tm_done'); dnB.innerText = '✅ Ya terminé'; dnB.style.display = '';
+            var dnB = el('tm_done'); dnB.innerText = '✅ Cerrar'; dnB.style.display = '';   // ya tocó «Ya terminé» al acabar la serie: aquí solo se cierra
             var bdI = null; try { bdI = bdBuild(CT.srId); } catch (e) {}
             var bdBox = el('tm_bd');
             if (bdI && bdBox && (bdI.html || bdI.eq.length)) {   // las cargas se anotan aquí mismo, sin otra ventana
               bdBox.innerHTML = '<div style="font-size:1rem; font-weight:900; color:var(--primary); text-align:center;">' + (bdI.html ? '📝 Anota tus cargas' : '✅ ¡Bloque listo!') + '</div>' + bdI.eqHtml +
                 (bdI.html ? '<div style="font-size:0.8rem; color:var(--muted); margin-top:8px; text-align:center;">Anota lo que falte. Es opcional: si lo dejas vacío no pasa nada.</div>' + bdI.html : '');
+              if (bdI.html) bdBox.innerHTML += '<button type="button" id="tm_bd_close" class="btn-action-primary" style="margin-top:16px; width:100%;">✅ Cerrar</button>';   // el mismo botón de arriba, a la mano después de anotar
               bdBox.style.display = 'block'; BD.srId = CT.srId;
               dnB.onclick = function() { BD.srId = CT.srId; bdDone(); };
+              var bdC = el('tm_bd_close'); if (bdC) bdC.onclick = dnB.onclick;
+              if (/class="bd-t">\d/.test(bdI.html)) { var sm = el('tm_summary'); if (sm) { var kids = sm.children; for (var q = kids.length - 2; q >= 0; q--) kids[q].remove(); } }   // los tiempos de cada serie ya salen en la columna TIEMPO: solo queda el total
             } else dnB.onclick = function() { bdOpen(CT.srId); };
           }   // botón claro para cerrar el bloque: abre las cargas y lo da por completado
         }
