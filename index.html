@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -943,6 +943,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
         <button type="button" id="btn_update_routine" class="btn btn-accent" style="display:none;" onclick="updateEditingRoutine()">🔄 Actualizar rutina</button>
+        <button type="button" id="btn_queue_routine" class="btn" style="display:none; border:1px solid #ffb703; color:#ffb703; background:transparent;" onclick="queueEditingRoutine()">⏳ Guardar como rutina en espera</button>
         <button type="button" class="btn btn-accent" style="font-size:0.85rem; padding:12px 14px;" onclick="saveAndResetBuilder()" title="Guarda un borrador y deja el constructor limpio para el próximo cliente">💾➡️🧹 Guardar y reiniciar</button>
         <button type="button" class="btn btn-export-pdf" onclick="generateGymPDF()">📄 PDF Ficha</button>
         <button type="button" class="btn btn-export-download" onclick="downloadManualHTML()">💾 Guardar HTML</button>
@@ -10614,7 +10615,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function showEditBanner(done) {
       var b = document.getElementById('edit_banner'), u = document.getElementById('btn_update_routine');
-      if (!editingRoutine) { if (b) b.style.display = 'none'; if (u) u.style.display = 'none'; return; }
+      var q = document.getElementById('btn_queue_routine');
+      if (!editingRoutine) { if (b) b.style.display = 'none'; if (u) u.style.display = 'none'; if (q) q.style.display = 'none'; return; }
+      if (q) q.style.display = editingRoutine.target === 'pend' ? 'none' : 'inline-block';
       var waitTag = editingRoutine.target === 'pend' ? ' (su rutina EN ESPERA)' : '';
       document.getElementById('edit_banner_name').innerText = (editingRoutine.name || 'este cliente') + waitTag;
       document.getElementById('edit_banner_done').innerText = done || '';
@@ -10623,6 +10626,35 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       u.style.display = 'inline-block';
     }
     function cancelEditRoutine() { editingRoutine = null; showEditBanner(''); }
+    // Desde «Editar»: lo que está en el constructor se guarda como rutina NUEVA en espera (la actual del cliente no se toca) y empieza sola en la fecha que elijas
+    function queueEditingRoutine() {
+      if (!editingRoutine) return;
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      if (!videoGuard()) return;
+      if (!treadmillGuard()) return;
+      ensureMeasureSaved();
+      var state = getBuilderState(), id = editingRoutine.id, pin = COACH.pin;
+      if (editingRoutine.coach) state.coachName = editingRoutine.coach;
+      if (editingRoutine.name) state.clientName = editingRoutine.name;   // mismo nombre de siempre: el historial del cliente va por nombre
+      var btn = document.getElementById('btn_queue_routine'); if (btn) btn.disabled = true;
+      var done = function() { if (btn) btn.disabled = false; };
+      fetchRoutine(id).then(function(j) {
+        if (!j || !j.ok || !j.p) throw new Error('respuesta');
+        var cur = decodePayload('q', j.p); if (!cur) throw new Error('respuesta');
+        var eff = (!cur.off && pendDue(cur)) ? pendPromote(cur) : cur, today = todayIso(), endIso = routineEndIso(eff);
+        if (cur.off || !isIsoDate(eff.startDate) || eff.startDate > today || !endIso || endIso < today) {
+          done(); alert('Este cliente no tiene una rutina en curso (ya terminó, aún no empieza o está desconectado), así que no hay nada que esperar. Usa «Actualizar rutina» y empezará de inmediato.'); return;
+        }
+        pendSendModal(id, j.p, cur, eff, endIso, state, pin, function(r) {
+          done();
+          if (r === 'reemplazar') { updateEditingRoutine(); return; }
+          if (r !== 'espera') return;
+          editingRoutine.target = 'pend'; editingRoutine.nextRaw = null;   // desde aquí, «Actualizar» cambia la rutina en espera (la actual ya quedó intacta)
+          showEditBanner('✅ Quedó en espera: empieza el ' + fechaLargaEs(state.startDate) + '. La rutina actual de ' + (editingRoutine.name || 'el cliente') + ' no se tocó.');
+          try { finishShare(state, getAppBaseUrl() + '#i=' + id, '', 'espera'); } catch (e) {}
+        });
+      }).catch(function(e) { done(); alert('No se pudo preparar: ' + updateErrorText(e && e.message)); });
+    }
     function updateEditingRoutine() {
       if (!editingRoutine) return;
       if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
