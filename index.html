@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10105,7 +10105,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pinAtStart = COACH.pin;
       postJson({ a: 'listar', pin: pinAtStart }).then(function(j) {
         if (!COACH || COACH.pin !== pinAtStart) return;   // cerró sesión o cambió de coach mientras tanto
-        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e2) {} }
+        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { ASIST_MANUAL = true; ASIST_DONE = ''; attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e2) {} }
         else { var s2 = document.getElementById('cl_status'); if (s2) s2.innerText = clientsErrorText(j && j.error); }
       }).catch(function(e) { if (!COACH || COACH.pin !== pinAtStart) return; var s3 = document.getElementById('cl_status'); if (s3) s3.innerText = clientsErrorText(e && e.message); });
     }
@@ -10531,14 +10531,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudo guardar: ' + updateErrorText(e && e.message); }
       });
     }
-    function showToastTop(text) {
+    function showToastTop(text, ms) {
       var old = document.getElementById('top_toast'); if (old) old.remove();
       var n = document.createElement('div');
       n.id = 'top_toast'; n.innerText = text;
       n.style.cssText = 'position:fixed; top:14px; left:12px; right:12px; max-width:520px; margin:0 auto; z-index:100006; background:#06d6a0; color:#000; font-weight:700; font-size:0.85rem; padding:10px 14px; border-radius:12px; text-align:center; transition:opacity .5s;';
       document.body.appendChild(n);
-      setTimeout(function() { n.style.opacity = '0'; }, 4500);
-      setTimeout(function() { if (n.parentNode) n.parentNode.removeChild(n); }, 5100);
+      setTimeout(function() { n.style.opacity = '0'; }, ms || 4500);
+      setTimeout(function() { if (n.parentNode) n.parentNode.removeChild(n); }, (ms || 4500) + 600);
     }
 
     // ----- Editar una rutina ya enviada y actualizarla con el mismo enlace -----
@@ -10828,8 +10828,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return { s: s0, c: c };
     }
     // Coach: al abrir «Mis clientes» copia a la hoja (con el nombre cifrado) las asistencias por semana de cada cliente y, al cerrar el mes, su resumen del mes
+    var ASIST_DG = null, ASIST_MANUAL = false;
+    function asistDiagShow(ym, monthDone) {
+      var d = ASIST_DG; if (!d) return;
+      var mes = ATT_MESES[+ym.slice(5, 7) - 1], t = [];
+      if (!monthDone) t.push('El reporte todavía no llega al último día de ' + mes + ': por ahora solo se guardan las semanas.');
+      t.push(d.total + ' clientes con rutina reciente');
+      if (d.yaEstaban) t.push(d.yaEstaban + ' ya tenían su resumen');
+      if (d.sinVincular.length) t.push(d.sinVincular.length + ' sin vincular con el Excel (' + d.sinVincular.slice(0, 4).join(', ') + (d.sinVincular.length > 4 ? '…' : '') + '): vincúlalos en 🚪 Asistencia');
+      if (d.sinRutina.length) t.push(d.sinRutina.length + ' sin rutina vigente en ' + mes + ' (' + d.sinRutina.slice(0, 3).join(', ') + (d.sinRutina.length > 3 ? '…' : '') + ')');
+      showToastTop('📊 ' + t.join(' · '), 14000);
+    }
     function asistAutoPush() {
-      if (!COACH || !annId() || !ATT.data || ATT.pushBusy) return;
+      if (!COACH) return;
+      if (!annId()) { if (ASIST_MANUAL) showToastTop('📊 Falta el código de anuncios en la app (ANNOUNCE_ID).'); ASIST_MANUAL = false; return; }
+      if (!ATT.data) { if (ASIST_MANUAL) showToastTop('📊 Todavía no hay asistencias cargadas en este dispositivo. Carga el Excel en Recepción y vuelve a tocar 🔄.'); ASIST_MANUAL = false; return; }
+      if (ATT.pushBusy) return;
       var ref = attRef(), ym = asistPrevMonth(todayIso()), monthDone = attRef() >= asistLastDay(ym);
       var sig = ref + '|' + (ATT.data.up || '') + '|' + (monthDone ? ym : '');
       if (ASIST_DONE === sig) return;
@@ -10837,10 +10851,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var id = annId(), D = ATT.data, clients = attClients();
       fetchRoutine(id).then(function(j) {
         var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null; if (!all) throw new Error('lectura');
-        var have = all.s || {}, todo = [], out = {};
+        var have = all.s || {}, todo = [], out = {}, dg = { total: clients.length, sinVincular: [], yaEstaban: 0, sinRutina: [], enviados: 0 };
+        ASIST_DG = dg;
         clients.forEach(function(c) {
-          var m = attMatch(c); if (!m || !m.k || !m.p) return;   // solo si el reporte lo identifica con seguridad
+          var m = attMatch(c); if (!m || !m.k || !m.p) { dg.sinVincular.push(c.name); return; }   // solo si el reporte lo identifica con seguridad
           var h = asistHash(c.name), he = asistEntry(have[h]);
+          if (monthDone && he.m && he.m[0] === ym) dg.yaEstaban++;
           out[h] = { wk: asistWeekCounts(m.p, D, ref) };
           if (monthDone && !(he.m && he.m[0] === ym)) todo.push({ c: c, h: h, p: m.p });
         });
@@ -10852,7 +10868,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             var st = (r && r.ok && r.p) ? decodePayload('q', r.p) : null;
             if (st && pendDue(st)) st = pendPromote(st);
             var res = st ? asistCalc(st, t.p, ym) : null;
-            if (res) out[t.h].m = [ym, res.v, res.e];
+            if (res) out[t.h].m = [ym, res.v, res.e]; else if (ASIST_DG) ASIST_DG.sinRutina.push(t.c.name);
           }).catch(function() {}).then(next);
         }
         return next().then(function() {
@@ -10873,8 +10889,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
       }).then(function(r) {
         ATT.pushBusy = false; ASIST_DONE = sig;
+        var dg = ASIST_DG || {}; if (r) dg.enviados = r.nm || 0;
         if (r && r.nm) showToastTop('📊 Resumen de ' + ATT_MESES[+ym.slice(5, 7) - 1] + ' enviado a ' + r.nm + ' cliente' + (r.nm === 1 ? '' : 's') + '.');
-      }).catch(function() { ATT.pushBusy = false; });
+        else if (ASIST_MANUAL) asistDiagShow(ym, monthDone);
+        ASIST_MANUAL = false;
+      }).catch(function(e) { ATT.pushBusy = false; ASIST_MANUAL = false; showToastTop('📊 No pude enviar los resúmenes de asistencia: ' + ((e && e.message === 'lectura') ? 'no se pudo leer el registro de anuncios' : (e && e.message === 'guardar') ? 'la hoja rechazó el guardado' : 'revisa la conexión') + '.'); });
     }
     var ASIST_EQ = [
       { u: 1000, one: 'un tarro de helado', many: 'tarros de helado' },
