@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10092,7 +10092,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pinAtStart = COACH.pin;
       postJson({ a: 'listar', pin: pinAtStart }).then(function(j) {
         if (!COACH || COACH.pin !== pinAtStart) return;   // cerró sesión o cambió de coach mientras tanto
-        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} }); } catch (e2) {} }
+        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e2) {} }
         else { var s2 = document.getElementById('cl_status'); if (s2) s2.innerText = clientsErrorText(j && j.error); }
       }).catch(function(e) { if (!COACH || COACH.pin !== pinAtStart) return; var s3 = document.getElementById('cl_status'); if (s3) s3.innerText = clientsErrorText(e && e.message); });
     }
@@ -10708,8 +10708,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function annId() { var v = ANNOUNCE_ID; if (!v) { try { v = localStorage.getItem(ANN_KEY) || ''; } catch (e) {} } return v; }
     // El mismo registro guarda anuncios y frases del día programadas: si no hay frases queda como lista simple (formato anterior); con frases, { v: 2, a: anuncios, f: frases }
     var FR_LIST = [];
-    function annEncode(list, frases) {
-      var body = (frases && frases.length) ? JSON.stringify({ v: 2, a: list, f: frases }) : JSON.stringify(list);
+    var ANN_S = {};   // resúmenes mensuales de asistencia (por cliente, con el nombre cifrado); viajan en el mismo registro
+    function annEncode(list, frases, stats) {
+      if (stats === undefined) stats = ANN_S;
+      var hasS = stats && Object.keys(stats).length;
+      var body;
+      if (hasS) { var o = { v: 2, a: list, f: frases || [], s: stats }; body = JSON.stringify(o); }
+      else body = (frases && frases.length) ? JSON.stringify({ v: 2, a: list, f: frases }) : JSON.stringify(list);
       return encodePayload(buildUltraCompactState({
         clientName: 'ANUNCIOS', clientGender: 'o', startDate: '', durationWeeks: 1,
         coachMsgTitle: 'Anuncios', coachMsgBody: body, coachName: COACH ? COACH.name : '',
@@ -10720,10 +10725,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var st = decodePayload('q', p); if (!st) return null;
       try {
         var a = JSON.parse(st.coachMsgBody || '[]');
-        if (Array.isArray(a)) return { a: a, f: [] };
-        if (a && typeof a === 'object') return { a: Array.isArray(a.a) ? a.a : [], f: Array.isArray(a.f) ? a.f : [] };
-        return { a: [], f: [] };
-      } catch (e) { return { a: [], f: [] }; }
+        if (Array.isArray(a)) return { a: a, f: [], s: {} };
+        if (a && typeof a === 'object') return { a: Array.isArray(a.a) ? a.a : [], f: Array.isArray(a.f) ? a.f : [], s: (a.s && typeof a.s === 'object') ? a.s : {} };
+        return { a: [], f: [], s: {} };
+      } catch (e) { return { a: [], f: [], s: {} }; }
     }
     function annDecode(p) { var all = annDecodeAll(p); return all ? all.a : null; }
     // Cliente: baja las frases programadas y las guarda en el celular (así la de hoy aparece al instante y sin internet)
@@ -10732,12 +10737,128 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 20000).then(function(j) {
         var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null; if (!all) return;
         FR_REMOTE = all.f || [];
+        try { asistClientCheck(all.s); } catch (e) {}
         try { localStorage.setItem(FR_KEY, JSON.stringify(FR_REMOTE)); } catch (e) {}
         fraseDiaPaint(); wkHomeRefresh(); frLowPaint();
       }).catch(function() { /* sin internet: queda la frase guardada */ });
     }
     function annIsActive(a, today) { return a && a.m && (!a.d || a.d <= today) && (!a.h || a.h >= today); }
     function annSeenList() { try { var a = JSON.parse(localStorage.getItem(ANN_SEEN) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+
+
+    // ================= MENSAJE MENSUAL DE ASISTENCIA =================
+    // Al empezar el mes cada cliente ve cuánto vino el mes pasado frente a lo que pedía su rutina. Las asistencias salen del Excel de accesos
+    // (Recepción) y las copia el coach, sola, al abrir «Mis clientes»; viajan en el registro de anuncios con el nombre cifrado (sin nombres a la vista).
+    var ASIST_DONE = '', ASIST_SEEN_KEY = 'benessere_asist_seen', ASIST_CUR = null;
+    function asistHash(name) { var t = normName(name), h = 5381; for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; return h.toString(36); }
+    function asistPrevMonth(todayStr) { var y = +todayStr.slice(0, 4), m = +todayStr.slice(5, 7) - 1; if (m < 1) { m = 12; y--; } return y + '-' + pad2(m); }
+    function asistLastDay(ym) { return ym + '-' + pad2(new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate()); }
+    function asistCalc(st, p, ym) {   // visitas del mes frente a lo esperado (días de la rutina por semana × semanas del periodo)
+      if (!st || st.off || !st.routineDays) return null;
+      var goal = st.routineDays.filter(function(d) { return !d.rest; }).length; if (!goal) return null;
+      var mS = ym + '-01', mE = asistLastDay(ym), a = (isIsoDate(st.startDate) && st.startDate > mS) ? st.startDate : mS, e = mE;
+      var rEnd = routineEndIso(st); if (rEnd && rEnd < e) e = rEnd;
+      if (!(a <= e)) return null;
+      var days = dayNum(e) - dayNum(a) + 1; if (days < 7) return null;
+      var exp = Math.max(1, Math.round(Math.min(goal, 7) * days / 7)), set = {};
+      (p.d || []).concat(p.x || []).forEach(function(x) { if (x >= a && x <= e) set[x] = 1; });
+      return { v: Object.keys(set).length, e: exp };
+    }
+    function asistAutoPush() {
+      if (!COACH || !annId() || !ATT.data || ATT.pushBusy) return;
+      var ym = asistPrevMonth(todayIso()), key = ym + '|' + COACH.pin.length;
+      if (ASIST_DONE === ym) return;
+      if (attRef() < asistLastDay(ym)) return;   // el Excel todavía no cubre todo el mes
+      ATT.pushBusy = true;
+      var id = annId(), clients = attClients();
+      fetchRoutine(id).then(function(j) {
+        var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null; if (!all) throw new Error('lectura');
+        var have = all.s || {}, todo = [];
+        clients.forEach(function(c) {
+          var h = asistHash(c.name); if (have[h] && have[h][0] === ym) return;
+          var m = attMatch(c); if (!m || !m.k || !m.p) return;   // solo si el reporte lo identifica con seguridad
+          todo.push({ c: c, h: h, p: m.p });
+        });
+        var out = {}, i = 0;
+        function next() {
+          if (i >= todo.length) return Promise.resolve();
+          var t = todo[i++];
+          return fetchRoutine(t.c.id).then(function(r) {
+            var st = (r && r.ok && r.p) ? decodePayload('q', r.p) : null;
+            if (st && pendDue(st)) st = pendPromote(st);
+            var res = st ? asistCalc(st, t.p, ym) : null;
+            if (res) out[t.h] = [ym, res.v, res.e];
+          }).catch(function() {}).then(next);
+        }
+        return next().then(function() {
+          var n = Object.keys(out).length; if (!n) return 0;
+          return fetchRoutine(id).then(function(j2) {   // se vuelve a leer justo antes de guardar, para no pisar a otro coach
+            var fresh = (j2 && j2.ok && j2.p) ? annDecodeAll(j2.p) : null; if (!fresh) throw new Error('lectura');
+            var s2 = {}; Object.keys(fresh.s || {}).forEach(function(k) { if (fresh.s[k] && fresh.s[k][0] === ym) s2[k] = fresh.s[k]; });
+            Object.keys(out).forEach(function(k) { s2[k] = out[k]; });
+            return postJson({ a: 'actualizar', id: id, p: annEncode(fresh.a, fresh.f, s2), pin: COACH.pin });
+          }).then(function(r2) { if (r2 && r2.ok) return n; throw new Error('guardar'); });
+        });
+      }).then(function(n) {
+        ATT.pushBusy = false; ASIST_DONE = ym;
+        if (n) showToastTop('📊 Resumen de ' + ATT_MESES[+ym.slice(5, 7) - 1] + ' enviado a ' + n + ' cliente' + (n === 1 ? '' : 's') + '.');
+      }).catch(function() { ATT.pushBusy = false; });
+    }
+    var ASIST_EQ = [
+      { u: 1000, one: 'un tarro de helado', many: 'tarros de helado' },
+      { u: 285, one: 'una porción de pizza', many: 'porciones de pizza' },
+      { u: 550, one: 'una hamburguesa', many: 'hamburguesas' },
+      { u: 250, one: 'una dona', many: 'donas' },
+      { u: 500, one: 'una bolsa grande de papas fritas', many: 'bolsas grandes de papas fritas' }
+    ];
+    function asistMsg(e, name) {
+      var ym = e[0], v = e[1], ex = e[2], pct = Math.min(100, Math.round(v / ex * 100)), mes = ATT_MESES[+ym.slice(5, 7) - 1];
+      var kc = 0; try { kc = kcalEstimate(3600) * v; } catch (x) { kc = 0; }
+      var q = ASIST_EQ[(parseInt(asistHash(name + ym), 36) || 0) % ASIST_EQ.length], n = Math.max(1, Math.round(kc / q.u));
+      var eq = n === 1 ? q.one : (n + ' ' + q.many);
+      var tier, ttl, txt;
+      if (pct <= 25) { tier = 1; ttl = 'Un mes nuevo, una oportunidad nueva 🌱'; txt = 'En ' + mes + ' viniste ' + v + ' de las ' + ex + ' veces que pedía tu rutina. Sabemos que hay meses más difíciles, y está bien: lo importante es que aquí sigues. Cada visita cuenta, y con solo sumar un día más por semana tu cuerpo lo va a notar. ¡Este mes empezamos de nuevo, juntos!'; }
+      else if (pct <= 50) { tier = 2; ttl = 'Ya diste el primer paso 💛'; txt = 'En ' + mes + ' viniste ' + v + ' de ' + ex + ' veces (' + pct + '%). Ya tienes una base y eso es lo más difícil de conseguir. Si este mes sumas una sesión más por semana, vas a sentir la diferencia en energía y fuerza. ¡Tú puedes!'; }
+      else if (pct <= 75) { tier = 3; ttl = 'Vas por buen camino 💪'; txt = 'En ' + mes + ' cumpliste ' + pct + '% de tu rutina (' + v + ' de ' + ex + ' veces). Eso es constancia de verdad. Estás a pocos entrenamientos de tu mejor mes; con un día más por semana lo logras.'; }
+      else if (pct < 90) { tier = 4; ttl = '¡Qué gran mes! 🔥'; txt = 'En ' + mes + ' cumpliste ' + pct + '% de tu rutina (' + v + ' de ' + ex + ' veces). Tu disciplina se nota y los resultados también. Estás muy cerca de la perfección: ¡vamos por ese 100% este mes!'; }
+      else { tier = 5; ttl = '¡Mes espectacular! 🏆'; txt = 'En ' + mes + ' cumpliste ' + pct + '% de tu rutina (' + v + ' de ' + ex + ' veces). ¡Felicitaciones! Tu constancia es admirable y es la que construye los resultados de verdad. Eres un ejemplo para todo Benessere. ¡Gracias por tanta entrega!'; }
+      var extra = '';
+      if (kc > 0 && v > 0) extra = '<div class="pend-txt" style="margin-top:8px;">🔥 En total gastaste cerca de <b>' + kc.toLocaleString('es-CR') + ' calorías</b> entrenando en el gym. ¡Eso equivale a <b>' + eq + '</b>! Y además ganaste fuerza, energía y salud (corazón, huesos y músculos más fuertes).</div>';
+      return { pct: pct, tier: tier, ttl: ttl, txt: txt, extra: extra, mes: mes, v: v, ex: ex };
+    }
+    function asistShow(manual) {
+      var e = ASIST_CUR; if (!e) return;
+      var nm = (athleteActiveState && athleteActiveState.clientName) || '', m = asistMsg(e, nm), first = attFirst(nm);
+      var col = m.tier >= 5 ? '#06d6a0' : (m.tier >= 3 ? '#ffd166' : '#ff9f1c');
+      pendOverlay('asist_mes', '<div class="pend-ttl">📊 Tu ' + escHtml(m.mes) + (first ? ', ' + escHtml(first) : '') + '</div>' +
+        '<div style="text-align:center; margin:6px 0 10px;"><div style="font-size:2.6rem; font-weight:900; color:' + col + '; line-height:1;">' + m.pct + '%</div><div style="font-size:0.78rem; color:var(--muted);">' + m.v + ' de ' + m.ex + ' entrenamientos</div></div>' +
+        '<div class="pend-txt" style="font-weight:800;">' + escHtml(m.ttl) + '</div>' +
+        '<div class="pend-txt">' + escHtml(m.txt) + '</div>' + m.extra +
+        '<button type="button" class="pend-btn pend-ok" id="asist_ok" style="margin-top:12px;">¡Vamos por este mes! 💪</button>');
+      var b = document.getElementById('asist_ok'); if (b) b.onclick = function() { pendCloseOverlay('asist_mes'); };
+      try { localStorage.setItem(tk(ASIST_SEEN_KEY), e[0]); } catch (x) {}
+    }
+    function asistClientCheck(s) {
+      if (isCoachView() || !s || !athleteActiveState) return;
+      var e = s[asistHash(athleteActiveState.clientName || '')];
+      if (!e || e.length < 3 || e[0] !== asistPrevMonth(todayIso()) || !(e[2] > 0)) return;
+      ASIST_CUR = e; asistCapsule();
+      var seen = ''; try { seen = localStorage.getItem(tk(ASIST_SEEN_KEY)) || ''; } catch (x) {}
+      if (seen === e[0]) return;
+      var tries = 0;   // para no apilar avisos: espera a que no haya otra ventana abierta
+      (function go() {
+        if (document.querySelector('.modal-overlay.active')) { if (++tries < 12) setTimeout(go, 2000); return; }
+        asistShow(false);
+      })();
+    }
+    function asistCapsule() {
+      var g = document.getElementById('ath_capsuleGroup'); if (!g || !ASIST_CUR || document.getElementById('asist_capsule')) return;
+      var mes = ATT_MESES[+ASIST_CUR[0].slice(5, 7) - 1], b = document.createElement('button');
+      b.id = 'asist_capsule'; b.type = 'button'; b.className = 'capsule-btn cap-card'; b.style.setProperty('--c', '#06d6a0');
+      b.innerHTML = '<span class="cap-ic">📊</span><span class="cap-tx"><span class="cap-t">Tu ' + escHtml(mes) + '</span><span class="cap-s">Cuánto viniste al gym</span></span><span class="cap-ch">›</span>';
+      b.onclick = function() { asistShow(true); };
+      g.appendChild(b);
+    }
 
     // Cliente: al abrir su rutina consulta los anuncios vigentes y muestra los que no ha visto
     function checkAnnouncements() {
@@ -10796,7 +10917,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!id) { renderAnnEditor('Todavía no hay anuncios publicados.'); return; }
       fetchRoutine(id).then(function(j) {
         var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null;
-        ANN_LIST = all ? all.a : []; FR_LIST = all ? all.f : [];
+        ANN_LIST = all ? all.a : []; FR_LIST = all ? all.f : []; ANN_S = all ? (all.s || {}) : {};
         renderAnnEditor(all ? '' : 'No se pudieron leer los anuncios actuales.');
       }).catch(function() { renderAnnEditor('Sin conexión: no se pudieron leer los anuncios actuales.'); });
     }
@@ -10819,7 +10940,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!id) { FR_OK = true; renderFraseEditor(''); return; }
       fetchRoutine(id).then(function(j) {
         var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null;
-        if (all) { ANN_LIST = all.a; FR_LIST = all.f; FR_OK = true; }
+        if (all) { ANN_LIST = all.a; FR_LIST = all.f; ANN_S = all.s || {}; FR_OK = true; }
         renderFraseEditor(all ? '' : 'No se pudieron leer las frases actuales. Revisa la conexión y ábrelo otra vez.');
       }).catch(function() { renderFraseEditor('Sin conexión: no se pudieron leer las frases actuales.'); });
     }
