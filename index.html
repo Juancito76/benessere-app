@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-31-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6306,6 +6306,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:1.1rem; font-weight:900; color:var(--primary); margin-bottom:6px;">¡Entreno terminado!</div>' +
         '<div style="font-size:0.9rem; margin-bottom:4px;">Tiempo total: <b>' + wkFmt(secs) + '</b></div>' +
         '<div style="font-size:0.9rem; margin-bottom:12px;">Calorías estimadas: <b>~' + kc + ' kcal</b></div>' +
+        wkSummarySafe(secs, kc) +
         '<div style="text-align:left; font-size:0.72rem; color:var(--muted); margin-bottom:4px;">¿Usas reloj? Anota lo que marcó (opcional):</div>' +
         '<div style="display:flex; gap:8px; margin-bottom:12px;">' +
           '<input type="number" inputmode="numeric" id="wke_cal" placeholder="Calorías" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
@@ -6320,6 +6321,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="btn-action-primary" onclick="wkEndSave(\'' + dayId + '\')">Listo</button></div>';
       m.classList.add('active');
     }
+    function wkSummarySafe(secs, kc) { try { return wkWeekSummaryHtml(secs, kc); } catch (e) { return ''; } }
     function wkEndSave(dayId) {
       var c = parseInt((document.getElementById('wke_cal') || {}).value, 10), h = parseInt((document.getElementById('wke_hr') || {}).value, 10);
       var o = {}; if (c > 0 && c < 5000) o.c = c; if (h > 30 && h < 250) o.h = h;
@@ -9101,20 +9103,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else { recordActivity(dayId, wkTakeDuration(dayId)); try { wkToast('✅ Entreno cerrado. Quedó registrado sin marcas.'); } catch (e) {} closeModal(dayId); }   // sin marcas: también vuelve a la pantalla inicial
       setTimeout(function() { try { guidePaint(dayId); } catch (e) {} }, 400);
     }
+    // Reescribe la tarjeta solo si cambió: si se rehace cada segundo, un toque que cae justo en ese momento se pierde
+    function dcSet(box, html) { if (box.getAttribute('data-h') === html) return; box.setAttribute('data-h', html); box.innerHTML = html; }
     function dcPaint(dayId) {
       var box = document.getElementById('dc_card_' + dayId); if (!box) return;
-      var blocks = guideBlocks(dayId), N = blocks.length; if (!N) { box.innerHTML = ''; return; }
+      var blocks = guideBlocks(dayId), N = blocks.length; if (!N) { dcSet(box, ''); return; }
       var st = gdStatus(dayId, blocks), nDone = st.filter(function(x) { return x === 'done'; }).length;
       var running = !!(WK.start && WK.dayId === dayId), marks = dayHasMarks(dayId), saved = daySavedToday(dayId) && !marks;
-      var timeTxt = running ? '▶ corriendo · ' + wkFmt((Date.now() - WK.start) / 1000) : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0 ? '✔ terminado' : (saved ? '✔ terminado' : 'sin iniciar'));
+      var timeTxt = running ? '▶ corriendo · <span class="dc-clk"></span>' : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0 ? '✔ terminado' : (saved ? '✔ terminado' : 'sin iniciar'));
       var all = nDone >= N;
-      if (!saved && !marks && !running && nmTodayFor(dayId)) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Quedó registrado que entrenaste hoy</div><div class="dc-l">Tu coach ya lo puede ver. ¡Buen trabajo! 💪</div></div>'; return; }
-      if (saved) { box.innerHTML = '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div></div>'; return; }
-      box.innerHTML = '<div class="dc-card' + (all ? ' on' : '') + '"><div class="dc-t">🏁 ' + (all ? '¡Terminaste! Cierra tu entreno' : 'Al terminar, cierra tu entreno') + '</div>' +
+      if (!saved && !marks && !running && nmTodayFor(dayId)) { dcSet(box, '<div class="dc-card"><div class="dc-t">✅ Quedó registrado que entrenaste hoy</div><div class="dc-l">Tu coach ya lo puede ver. ¡Buen trabajo! 💪</div></div>'); return; }
+      if (saved) { dcSet(box, '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div></div>'); return; }
+      dcSet(box, '<div class="dc-card' + (all ? ' on' : '') + '"><div class="dc-t">🏁 ' + (all ? '¡Terminaste! Cierra tu entreno' : 'Al terminar, cierra tu entreno') + '</div>' +
         '<div class="dc-l">📋 Bloques: <b>' + nDone + ' de ' + N + '</b><br>⏱ Cronómetro: <b>' + timeTxt + '</b><br>💾 Marcas: <b>' + (marks ? 'anotadas, falta guardar' : 'sin anotar') + '</b></div>' +
         '<button type="button" class="dc-b" onclick="dayClose(\'' + dayId + '\')">🏁 Cerrar entreno</button>' +
         '<button type="button" onclick="dayQuickDone(\'' + dayId + '\')" style="width:100%; margin-top:8px; background:transparent; color:#06d6a0; border:1.5px solid #06d6a0; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">✅ Ya entrené hoy (solo avisar)</button>' +
-        '<div style="font-size:0.7rem; color:#8a8a8a; margin-top:6px;">Termina el cronómetro, te pregunta lo de tu reloj y guarda tus pesos y reps.</div></div>';
+        '<div style="font-size:0.7rem; color:#8a8a8a; margin-top:6px;">Termina el cronómetro, te pregunta lo de tu reloj y guarda tus pesos y reps.</div></div>');
+      var ck = box.querySelector('.dc-clk'); if (ck) ck.textContent = wkFmt((Date.now() - WK.start) / 1000);
     }
 
     // ----- Marcos de neón y "Vas aquí": cada bloque muestra si está hecho, en curso o pendiente; los hechos se cierran -----
