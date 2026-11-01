@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1087,6 +1087,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
         <span id="cl_who" style="font-size:0.78rem; color:var(--primary); font-weight:800;"></span>
         <span>
+          <button type="button" onclick="asistManualRun()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📊 Resúmenes</button>
           <button type="button" onclick="openAttendance()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🚪 Asistencia</button>
           <button type="button" onclick="openCoachWeek()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📈 Esta semana</button>
           <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
@@ -10837,20 +10838,41 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (d.yaEstaban) t.push(d.yaEstaban + ' ya tenían su resumen');
       if (d.sinVincular.length) t.push(d.sinVincular.length + ' sin vincular con el Excel (' + d.sinVincular.slice(0, 4).join(', ') + (d.sinVincular.length > 4 ? '…' : '') + '): vincúlalos en 🚪 Asistencia');
       if (d.sinRutina.length) t.push(d.sinRutina.length + ' sin rutina vigente en ' + mes + ' (' + d.sinRutina.slice(0, 3).join(', ') + (d.sinRutina.length > 3 ? '…' : '') + ')');
-      showToastTop('📊 ' + t.join(' · '), 14000);
+      showToastTop('📊 ' + t.join(' · '), 14000); asistLg('ℹ️ ' + t.join('\n• '));
+    }
+    var ASIST_LOGF = null;
+    function asistLg(t) { try { if (ASIST_LOGF) ASIST_LOGF(t); } catch (e) {} }
+    function asistManualRun() {
+      if (!COACH) { showToastTop('Entra primero a «Mis clientes» con tu PIN.'); return; }
+      var lines = [];
+      pendOverlay('asist_run', '<div class="pend-ttl">📊 Enviar resúmenes de asistencia</div><div id="asist_run_log" class="pend-txt" style="text-align:left; white-space:pre-wrap; line-height:1.55; max-height:55vh; overflow:auto;"></div><div class="pend-sub" style="margin-top:6px;">Versión de la app: ' + escHtml(APP_VERSION) + '</div><button type="button" class="pend-btn pend-cancel" id="asist_run_close">Cerrar</button>');
+      document.getElementById('asist_run_close').onclick = function() { ASIST_LOGF = null; pendCloseOverlay('asist_run'); };
+      ASIST_LOGF = function(t) { lines.push(t); var el = document.getElementById('asist_run_log'); if (el) { el.innerText = lines.join('\n'); el.scrollTop = el.scrollHeight; } };
+      asistLg('⏳ Leyendo las asistencias más nuevas de Recepción…');
+      ASIST_MANUAL = true; ASIST_DONE = '';
+      try { attLoad(); } catch (e) {}
+      var fin = false, go = function() { if (fin) return; fin = true; asistAutoPush(); };
+      try { attFromServer(go); } catch (e) { go(); }
+      setTimeout(function() { if (!fin) { asistLg('⚠️ Recepción tarda en responder; sigo con lo que hay guardado en este dispositivo.'); go(); } }, 20000);
     }
     function asistAutoPush() {
-      if (!COACH) return;
-      if (!annId()) { if (ASIST_MANUAL) showToastTop('📊 Falta el código de anuncios en la app (ANNOUNCE_ID).'); ASIST_MANUAL = false; return; }
-      if (!ATT.data) { if (ASIST_MANUAL) showToastTop('📊 Todavía no hay asistencias cargadas en este dispositivo. Carga el Excel en Recepción y vuelve a tocar 🔄.'); ASIST_MANUAL = false; return; }
-      if (ATT.pushBusy) return;
+      try { asistAutoPushRun(); } catch (e) { ATT.pushBusy = false; ASIST_MANUAL = false; asistLg('❌ Error inesperado: ' + (e && e.message)); }
+    }
+    function asistAutoPushRun() {
+      if (!COACH) { asistLg('❌ No hay sesión de coach abierta. Entra a «Mis clientes» con tu PIN.'); return; }
+      if (!annId()) { asistLg('❌ Falta el código de anuncios en la app (ANNOUNCE_ID).'); if (ASIST_MANUAL) showToastTop('📊 Falta el código de anuncios en la app (ANNOUNCE_ID).'); ASIST_MANUAL = false; return; }
+      if (!ATT.data) { asistLg('❌ No hay asistencias cargadas en este dispositivo. Carga el Excel en Recepción y vuelve a intentar.'); if (ASIST_MANUAL) showToastTop('📊 Todavía no hay asistencias cargadas en este dispositivo. Carga el Excel en Recepción y vuelve a tocar 🔄.'); ASIST_MANUAL = false; return; }
+      if (ATT.pushBusy) { asistLg('⏳ Ya hay un envío en curso. Espera unos segundos.'); return; }
+      asistLg('📅 Reporte cargado: ' + Object.keys(ATT.data.p || {}).length + ' personas, del ' + (ATT.data.from || '?') + ' al ' + attRef());
       var ref = attRef(), ym = asistPrevMonth(todayIso()), monthDone = attRef() >= asistLastDay(ym);
       var sig = ref + '|' + (ATT.data.up || '') + '|' + (monthDone ? ym : '');
-      if (ASIST_DONE === sig) return;
+      if (ASIST_DONE === sig) { asistLg('✔ Ya se envió con este mismo reporte. Para forzarlo, carga un Excel más nuevo.'); return; }
+      asistLg('🗓️ Mes a resumir: ' + ATT_MESES[+ym.slice(5, 7) - 1] + (monthDone ? ' (el reporte lo cubre completo)' : ' (el reporte NO llega al último día: solo se guardan las semanas)'));
       ATT.pushBusy = true;
       var id = annId(), D = ATT.data, clients = attClients();
       fetchRoutine(id).then(function(j) {
         var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null; if (!all) throw new Error('lectura');
+        asistLg('📥 Registro de anuncios leído. Revisando ' + clients.length + ' clientes con rutina reciente…');
         var have = all.s || {}, todo = [], out = {}, dg = { total: clients.length, sinVincular: [], yaEstaban: 0, sinRutina: [], enviados: 0 };
         ASIST_DG = dg;
         clients.forEach(function(c) {
@@ -10883,7 +10905,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
               if (out[k].m) { e.m = out[k].m; nm++; }
               if (JSON.stringify(e) !== before) { changed++; s2[k] = e; }
             });
-            if (!changed) return { n: 0, nm: 0 };
+            if (!changed) { asistLg('ℹ️ No había nada nuevo que guardar.'); return { n: 0, nm: 0 }; }
+            asistLg('💾 Guardando datos de ' + changed + ' clientes…');
             return postJson({ a: 'actualizar', id: id, p: annEncode(fresh.a, fresh.f, s2), pin: COACH.pin }).then(function(r2) { if (r2 && r2.ok) return { n: changed, nm: nm }; throw new Error('guardar'); });
           });
         });
@@ -10892,8 +10915,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var dg = ASIST_DG || {}; if (r) dg.enviados = r.nm || 0;
         if (r && r.nm) showToastTop('📊 Resumen de ' + ATT_MESES[+ym.slice(5, 7) - 1] + ' enviado a ' + r.nm + ' cliente' + (r.nm === 1 ? '' : 's') + '.');
         else if (ASIST_MANUAL) asistDiagShow(ym, monthDone);
+        if (r && r.nm) asistLg('✅ Listo: resumen de ' + ATT_MESES[+ym.slice(5, 7) - 1] + ' enviado a ' + r.nm + ' cliente' + (r.nm === 1 ? '' : 's') + '.');
         ASIST_MANUAL = false;
-      }).catch(function(e) { ATT.pushBusy = false; ASIST_MANUAL = false; showToastTop('📊 No pude enviar los resúmenes de asistencia: ' + ((e && e.message === 'lectura') ? 'no se pudo leer el registro de anuncios' : (e && e.message === 'guardar') ? 'la hoja rechazó el guardado' : 'revisa la conexión') + '.'); });
+      }).catch(function(e) { ATT.pushBusy = false; ASIST_MANUAL = false; var why = (e && e.message === 'lectura') ? 'no se pudo leer el registro de anuncios' : (e && e.message === 'guardar') ? 'la hoja rechazó el guardado' : 'revisa la conexión (' + ((e && e.message) || 'sin detalle') + ')'; asistLg('❌ No pude enviar: ' + why + '.'); showToastTop('📊 No pude enviar los resúmenes de asistencia: ' + why + '.'); });
     }
     var ASIST_EQ = [
       { u: 1000, one: 'un tarro de helado', many: 'tarros de helado' },
