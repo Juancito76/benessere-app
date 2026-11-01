@@ -5941,12 +5941,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function wkFmt(sec) { sec = Math.max(0, Math.floor(sec)); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return (h ? h + ':' + pad2(m) : m) + ':' + pad2(s); }
     function wkBarHtml(dayId) {
       return '<div class="wk-bar" id="wk_bar_' + dayId + '"><div class="wk-time" id="wk_time_' + dayId + '">0:00</div><div class="wk-lbl" id="wk_lbl_' + dayId + '">Tiempo total de entreno</div>' +
-        '<button type="button" class="wk-btn" id="wk_btn_' + dayId + '" onclick="wkToggle(\'' + dayId + '\')">▶ Iniciar entreno</button></div>';
+        '<button type="button" class="wk-btn" id="wk_btn_' + dayId + '" onclick="wkToggle(\'' + dayId + '\')">▶ Iniciar entreno</button></div>' +
+        '<div style="text-align:center;"><button type="button" class="wk-link" id="wk_cancel_' + dayId + '" style="display:none; margin:2px auto 6px;" onclick="wkCancel(\'' + dayId + '\')">✖ Cancelar entreno (lo inicié sin querer)</button></div>';
     }
     function wkToggle(dayId) {
       if (WK.dayId === dayId && WK.start) wkEnd(dayId); else wkStart(dayId);
     }
     // Descarta un entreno abierto por error: no se registra nada (ni tiempo ni sesión)
+    // «Cancelar entreno»: solo mientras corre y lleva menos de 10 min (igual que el cierre, que por debajo de 10 min no registra nada); después ya cuenta como entreno
+    function wkCancelPaint(dayId) {
+      var c = document.getElementById('wk_cancel_' + dayId); if (!c) return;
+      c.style.display = (WK.start && WK.dayId === dayId && Date.now() - WK.start < 600000) ? 'inline-block' : 'none';
+    }
+    function wkCancel(dayId) {
+      if (!(WK.start && WK.dayId === dayId)) return;
+      if (!confirm('¿Cancelar este entreno? No quedará nada registrado.')) return;
+      wkDiscard(dayId);
+      try { wkSuggestPaint(); wkToast('Entreno cancelado. No se registró nada.'); } catch (e) {}
+    }
     function wkDiscard(dayId) {
       WK.start = 0; WK.dayId = '';
       if (WK.tick) { clearInterval(WK.tick); WK.tick = null; }
@@ -5986,7 +5998,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       WK.tick = setInterval(wkTick, 1000);
       tmrWakeOn();
     }
-    function wkTick() { if (WK.start && Date.now() - WK.start > WK_MAX) { wkAutoClose(WK.dayId, WK.start); return; } if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); try { dcPaint(WK.dayId); } catch (e) {} } }
+    function wkTick() { if (WK.start && Date.now() - WK.start > WK_MAX) { wkAutoClose(WK.dayId, WK.start); return; } if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); try { dcPaint(WK.dayId); wkCancelPaint(WK.dayId); } catch (e) {} } }
     function wkPaint(dayId) {
       var t = document.getElementById('wk_time_' + dayId), b = document.getElementById('wk_btn_' + dayId), l = document.getElementById('wk_lbl_' + dayId);
       if (!t || !b) return;
@@ -5995,6 +6007,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (running) { t.innerText = wkFmt((Date.now() - WK.start) / 1000); b.innerText = '🏁 Final del entrenamiento'; b.className = 'wk-btn wk-end'; l.innerText = 'Entrenando…'; }
       else if (done > 0) { t.innerText = wkFmt(done); b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total del entreno ✔'; }
       else { t.innerText = '0:00'; b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total de entreno'; }
+      try { wkCancelPaint(dayId); } catch (e) {}
       try { dcPaint(dayId); } catch (e) {}
     }
     // Al abrir un día de entreno sin el cronómetro en marcha, se le recuerda iniciarlo (también en modo coach). Una vez por día y por apertura de la app.
@@ -6111,12 +6124,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">' +
             '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); dayReview(\'' + dayId + '\')">👀 Solo quiero ver qué toca hoy</button>' +
             (nutriOn() ? '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición del día</button>' : '') +
+            '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.74rem; margin-top:6px; cursor:pointer; text-decoration:underline;" onclick="wkNagExit(\'' + dayId + '\')">↩ Volver al inicio</button>' +
             (isCoachView() ? '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.72rem; margin-top:4px; cursor:pointer; text-decoration:underline;" onclick="closeModal(\'wk_nag_modal\')">Cerrar</button>' : '') +
           '</div></div>';
         m.classList.add('active');
       } catch (e) {}
     }
     function wkNagStart(dayId) { closeModal('wk_nag_modal'); wkStart(dayId); }
+    function wkNagExit(dayId) { delete WK_NAG[dayId]; closeModal('wk_nag_modal'); closeModal(dayId); }   // abrió el día por error: sale sin elegir y, si lo vuelve a abrir, se le pregunta de nuevo
 
     // Entreno que el cliente dejó sin cerrar: a las 3 h se cierra solo. El día cuenta como entrenado ("sin cerrar"), sin tiempo ni calorías inventados;
     // se le pregunta cuánto duró y, si contesta, se guarda con ese tiempo.
