@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-10-30-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-10-31-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -303,6 +303,12 @@
     /* Día que el cliente ya completó hoy: su tarjeta de la pantalla principal queda opaca con la nota «Completado» */
     .capsule-btn.cap-card.day-done { opacity: .55; }
     .capsule-btn.cap-card.day-done .cap-s { color: #06d6a0; font-weight: 900; }
+    /* Día que le toca hoy: la tarjeta de la pantalla principal late suave (se apaga si ya entrenó hoy) */
+    @keyframes daySugGlow { 0%,100% { box-shadow: var(--shadow-card); } 50% { box-shadow: var(--shadow-card), 0 0 0 2px color-mix(in srgb, var(--c) 75%, transparent), 0 0 20px color-mix(in srgb, var(--c) 55%, transparent); } }
+    .capsule-group .cap-card.day-sug { animation: vsIn .3s ease-out backwards, daySugGlow 2.6s ease-in-out .4s infinite; }
+    .capsule-btn.cap-card.day-sug .cap-s { color: #ffd60a; font-weight: 800; }
+    .capsule-btn.cap-card.day-sug .cap-s::before { content: '👉 Te toca hoy · '; }
+    @media (prefers-reduced-motion: reduce) { .capsule-group .cap-card.day-sug { animation: none; box-shadow: var(--shadow-card), 0 0 0 2px var(--c); } }
     .gd-legend { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin: 4px 0 10px; text-align: center; }
     .gd-guide { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 12px; margin: 8px 0 10px; text-align: left; font-size: 0.82rem; color: #eee; line-height: 1.5; }
     .gd-guide b { color: #ffee00; }
@@ -4161,7 +4167,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       setTimeout(frasesFetch, 900);   // frases del día programadas por el coach
       setTimeout(checkAnnouncements, 1200);   // anuncios vigentes para todos los clientes
       setTimeout(wkBubbleUpdate, 0);
-      setTimeout(wkWelcomeShow, 700);   // pantalla de inicio: saluda, resume la semana y deja el botón "Iniciar entreno" a la vista
+      setTimeout(wkSuggestPaint, 700);   // la tarjeta del día que le toca parpadea suave en la pantalla principal
       athleteCoachName = displayCoach(state.coachName);
       athleteCoachPhone = CONFIG_COACH_PHONE;   // fijo: se ignora cualquier número que traiga el enlace
       // Los identificadores del enlace solo pueden tener letras, números, guion y guion bajo
@@ -4194,6 +4200,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (isCoachView()) capsuleHtml += capCard('#ffb703', '📊', 'Resumen del cliente', 'Solo lo ve el coach', 'openCoachSummary()');
       capsuleHtml += capCard('#8d99ae', '📏', 'Ficha Antropométrica', 'Tus medidas y objetivo', "openModal('ath_modal_medidas')");
       document.getElementById('ath_capsuleGroup').innerHTML = capsuleHtml;
+      wkSuggestPaint();
       if (usoCli === 'c' && !isCoachView()) setTimeout(function() { openClasesTab(true); }, 400);   // solo clases: entra directo a la portada de clases
 
       var m = {};   // valores de la ficha, con el texto protegido (el enlace puede venir de cualquiera)
@@ -4488,7 +4495,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     function openModal(id) { var el = document.getElementById(id); if (el) el.classList.add('active'); }
-    function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('active'); }
+    function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('active'); try { wkSuggestPaint(); } catch (e) {} }   // al volver a la pantalla principal se actualiza el día sugerido (se apaga si ya entrenó o está entrenando)
 
     // ================= SELECTOR DE EJERCICIOS (Clasificación → Ejercicio) =================
     // Al elegir un ejercicio del inventario, se escribe directo en el campo de nombre indicado por targetPath.
@@ -5999,7 +6006,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Al abrir un día de entreno sin el cronómetro en marcha, se le recuerda iniciarlo (también en modo coach). Una vez por día y por apertura de la app.
     var WK_NAG = {};
-    // ----- Frase del día: se muestra en la pantalla principal y en la bienvenida. Para cambiarla, edita FRASE_DIA (fija) o la lista FRASES_DIA (rota por fecha). -----
+    // ----- Frase del día: se muestra en la pantalla principal. Para cambiarla, edita FRASE_DIA (fija) o la lista FRASES_DIA (rota por fecha). -----
     var FRASE_DIA = { t: '', a: '' };   // si "t" tiene texto, esa frase se muestra siempre (hasta que se cambie o se vacíe)
     var FRASES_DIA = [
       { t: 'No tienes que ser perfecto, solo constante.', a: '' },
@@ -6160,7 +6167,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { localStorage.setItem(sessKey(), JSON.stringify(all)); localStorage.removeItem(tk('wksc_pend')); } catch (e) {}
       closeModal('wk_sc_modal');
       if (sess) pushSession(sess);
-      wkWelcomeShow();
+      wkSuggestPaint();
     }
 
     // Si el cliente entrena con el cronómetro pero no anota marcas, el día igual queda registrado (mínimo 10 min).
@@ -6391,7 +6398,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Pantalla de inicio del día y resumen semanal -----
     // Semana = lunes a domingo. Meta de días = días de entreno de la rutina (los de descanso no cuentan).
     // Meta de calorías = meta de días × calorías de un entreno típico del propio cliente (promedio de sus últimos entrenos; si no hay, una hora estimada).
-    var WKW = { shown: false, sel: 0 };
     function isoOfDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
     function sessDateIso(s) {
       if (s && s.d) return String(s.d);
@@ -6551,7 +6557,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" onclick="actClose()" style="margin-top:10px; width:100%; background:none; border:none; color:#aaa; font-size:0.85rem; padding:8px; cursor:pointer;">Cerrar</button></div>';
     }
     function actOpen(date) { ACT.date = (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && date !== todayIso()) ? date : ''; ACT.type = ''; actRender(); actModalEl().classList.add('active'); }
-    function actClose() { var m = document.getElementById('act_modal'); if (m) m.classList.remove('active'); try { wkWelcomeRefresh(); } catch (e) {} try { var hm = document.getElementById('ath_modal_historial'); if (hm && hm.classList.contains('active')) histRerender(); } catch (e) {} }
+    function actClose() { var m = document.getElementById('act_modal'); if (m) m.classList.remove('active'); try { wkHomeRefresh(); } catch (e) {} try { var hm = document.getElementById('ath_modal_historial'); if (hm && hm.classList.contains('active')) histRerender(); } catch (e) {} }
     function actPick(k) { ACT.type = k; actRender(); }
     function actStore(rec) {
       var today = actDate();
@@ -6642,110 +6648,42 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var m = Math.round(sec / 60), h = Math.floor(m / 60);
       return h ? (h + ' h ' + (m % 60) + ' min') : (m + ' min');
     }
-    function wkNextDayIndex() {   // el día que sigue después del último que entrenó (saltando descansos)
-      var days = (athleteActiveState && athleteActiveState.routineDays) || [], first = -1, li = -1;
-      days.forEach(function(d, i) { if (!d.rest && first < 0) first = i; });
-      if (first < 0) return -1;
-      var sess = loadWorkouts().slice().sort(function(a, b) { return a.t < b.t ? -1 : 1; }), last = sess.length ? sess[sess.length - 1] : null;
-      if (!last || !last.day) return first;
-      days.forEach(function(d, i) { if (normName(d.title) === normName(last.day)) li = i; });
-      if (li < 0) return first;
-      for (var k = 1; k <= days.length; k++) { var j = (li + k) % days.length; if (!days[j].rest) return j; }
-      return first;
+    // Días de la semana en que se entrena (0 = domingo … 6 = sábado), según cuántos días de entreno tiene la rutina: el 1.º día de entreno cae en el 1.º día de la lista, etc.
+    // Con 4 días: lunes, martes, jueves y viernes. Solo se usa cuando no hay un historial que permita saber cuál sigue.
+    var WK_SCHED = { 1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] };
+    function wkWeekdayIndex(trainIdx) {   // el día que toca hoy según el día de la semana; si hoy no se entrena, el próximo que toque
+      if (!trainIdx.length) return -1;
+      var sched = WK_SCHED[trainIdx.length], dow = new Date().getDay();
+      if (!sched) return trainIdx[0];
+      for (var k = 0; k < 7; k++) { var p = sched.indexOf((dow + k) % 7); if (p >= 0) return trainIdx[p]; }
+      return trainIdx[0];
     }
-    function wkWelcomeEl() {
-      var m = document.getElementById('wk_welcome_modal');
-      if (!m) { m = document.createElement('div'); m.id = 'wk_welcome_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100003'; document.body.appendChild(m); }
-      return m;
-    }
-    function wkWelcomeRender() {
-      var st = athleteActiveState; if (!st) return;
-      var days = st.routineDays || [], fem = st.clientGender === 'a';
-      var cur = weekStats(0), prev = weekStats(-1), goal = wkWeekGoal(), n = cur.days, head, line;
-      if (n === 0) {
-        head = '¡' + (fem ? 'Bienvenida' : 'Bienvenido') + ' al día 1 de entreno de la semana!';
-        if (!loadWorkouts().length) line = 'Hoy arranca tu rutina. ¡Vamos con todo!';
-        else if (prev.days > 0) line = 'La semana pasada lograste <b>' + prev.days + (prev.days === 1 ? ' día' : ' días') + '</b> de entreno' + (prev.tk > 0 ? ' y unas <b>~' + prev.tk + ' kcal</b>' : '') + '. ¡Vamos por una semana todavía mejor! 💪';
-        else line = 'La semana pasada no te tuvimos por aquí, pero hoy arrancamos de nuevo. ¡Aquí estamos contigo! 💪';
-      } else {
-        head = n + 1 <= goal ? '🔥 ¡Vas por tu día ' + (n + 1) + ' de entreno esta semana!' : '🔥 ¡Meta de días cumplida, hoy sumas un día extra!';
-        line = 'Felicidades: ya llevas <b>' + n + ' de ' + goal + '</b> días' + (cur.secs > 0 ? ', <b>' + wkHM(cur.secs) + '</b>' : '') + (cur.tk > 0 ? ' y <b>~' + cur.tk + ' de ' + wkKcalGoal() + ' kcal</b> de tu meta semanal' : '') + '. ¡Sigue así!';
-      }
-      var gwi = gymWeekInfo();
-      if (gwi.n > 0) line += '<div style="margin-top:8px; font-size:0.86rem;">🚪 Visitas al gym esta semana: <b>' + gwi.n + '</b></div>';
-      var chips = '', trainIdx = [];
+    function wkNextDayIndex() {   // el día que sigue después del último que entrenó (saltando descansos); sin historial usable, el que toca por el día de la semana
+      var days = (athleteActiveState && athleteActiveState.routineDays) || [], trainIdx = [], li = -1;
       days.forEach(function(d, i) { if (!d.rest) trainIdx.push(i); });
-      if (trainIdx.length > 1) {
-        var wr = weekRange(0), doneNames = {}, lastS = null;
-        loadWorkouts().slice().sort(function(a, b) { return a.t < b.t ? -1 : 1; }).forEach(function(s) {
-          lastS = s;
-          var sd = sessDateIso(s);
-          if (s.day && sd >= wr.from && sd <= wr.to) doneNames[normName(s.day)] = true;
-        });
-        var sug = (WKW.sug != null && days[WKW.sug]) ? WKW.sug : -1;
-        var sugTitle = sug >= 0 ? (days[sug].title || ('Día ' + (sug + 1))) : '';
-        var why = sug < 0 ? '' : ((lastS && lastS.day) ? 'Te sugerimos <b>' + escHtml(sugTitle) + '</b> porque tu último entreno fue <b>' + escHtml(lastS.day) + '</b>.' : 'Te sugerimos <b>' + escHtml(sugTitle) + '</b> para arrancar tu rutina.');
-        chips = '<div style="font-size:0.95rem; color:#fff; font-weight:800; margin:16px 0 4px;">¿Qué día vas a entrenar hoy?</div>' +
-          (why ? '<div style="font-size:0.76rem; color:var(--muted); line-height:1.4; margin-bottom:8px;">' + why + ' Si hoy toca otro, tócalo aquí.</div>' : '') +
-          '<div class="med-chip-row" style="justify-content:center; flex-wrap:wrap; gap:8px;">' +
-          trainIdx.map(function(i) {
-            var t = days[i].title || ('Día ' + (i + 1)), tag = i === sug ? ' ⭐' : '', done = doneNames[normName(days[i].title)] ? ' ✓' : '';
-            return '<button type="button" class="med-chip' + (i === WKW.sel ? ' active' : '') + '" style="padding:10px 14px; font-size:0.88rem;" onclick="wkWelcomePick(' + i + ')">' + escHtml(t) + tag + done + '</button>';
-          }).join('') + '</div>' +
-          '<div style="font-size:0.68rem; color:var(--muted); margin-top:6px;">⭐ sugerido · ✓ ya lo hiciste esta semana</div>';
-      }
-      var fh = fraseDiaHtml(), hasNutri = !!(st.configFeatures && st.configFeatures.nutrition === true);
-      wkWelcomeEl().innerHTML = '<div class="modal-inner congrats-box">' +
-        '<div style="font-size:2.6rem; margin-bottom:6px;">💪</div>' +
-        '<div style="font-size:1.2rem; color:var(--primary); font-weight:900; margin-bottom:8px; line-height:1.25;">' + head + '</div>' +
-        '<div style="font-size:0.88rem; color:#f0f0f0; line-height:1.5;">' + line + '</div>' +
-        (fh ? '<div class="frase-dia" style="margin:14px auto 0;">' + fh + '</div>' : '') + chips +
-        '<button type="button" class="wk-btn" style="width:100%; margin-top:18px; padding:16px; font-size:1.05rem;" onclick="wkWelcomeStart()">▶ Iniciar entreno</button>' +
-        '<div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">' +
-          '<button type="button" class="wk-link" onclick="wkWelcomeReview()">👀 Repasar el entreno de hoy</button>' +
-          (hasNutri ? '<button type="button" class="wk-link" onclick="wkWelcomeNutri()">🍽 Nutrición de hoy</button>' : '') +
-          '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.74rem; margin-top:4px; cursor:pointer; text-decoration:underline;" onclick="wkWelcomeClose()">Ir a la pantalla principal</button>' +
-        '</div></div>';
+      if (!trainIdx.length) return -1;
+      var sess = loadWorkouts().slice().sort(function(a, b) { return a.t < b.t ? -1 : 1; }), last = sess.length ? sess[sess.length - 1] : null;
+      if (!last || !last.day) return wkWeekdayIndex(trainIdx);
+      days.forEach(function(d, i) { if (normName(d.title) === normName(last.day)) li = i; });
+      if (li < 0) return wkWeekdayIndex(trainIdx);
+      for (var k = 1; k <= days.length; k++) { var j = (li + k) % days.length; if (!days[j].rest) return j; }
+      return wkWeekdayIndex(trainIdx);
     }
-    // Entrar a ver el día elegido sin iniciar el entreno (los temporizadores y demostraciones funcionan igual)
-    function wkWelcomeReview() {
-      var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
-      closeModal('wk_welcome_modal');
-      if (!d) return;
-      openDay(d.id, true);
-      try { switchDaySection(d.id, 'rutina'); } catch (e) {}    }
-    // Entrar a ver la nutrición del día elegido; desde ahí puede pasar a "Rutina del Día" con el selector de arriba
-    function wkWelcomeNutri() {
-      var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
-      closeModal('wk_welcome_modal');
-      if (!d) return;
-      openDay(d.id, true);
-      try { switchDaySection(d.id, 'nutricion'); } catch (e) {}
+    // Sugerencia del día en la pantalla principal (sin ventana emergente): la tarjeta del día que le toca parpadea suave y dice «Te toca hoy».
+    // Si hoy ya entrenó, está entrenando ahora o es la vista del coach, no se marca nada (no se le insiste).
+    function wkSuggestPaint() {
+      var cards = document.querySelectorAll('#ath_capsuleGroup .cap-card[data-day]');
+      for (var i = 0; i < cards.length; i++) cards[i].classList.remove('day-sug');
+      try {
+        if (!cards.length || !athleteActiveState || isCoachView() || WK.start) return;
+        var days = athleteActiveState.routineDays || [], idx = wkNextDayIndex();
+        if (idx < 0 || !days[idx]) return;
+        var today = todayIso();
+        if (loadWorkouts().some(function(s) { return sessDateIso(s) === today; })) return;   // hoy ya entrenó: no se le insiste
+        for (var j = 0; j < cards.length; j++) if (cards[j].getAttribute('data-day') === days[idx].id) cards[j].classList.add('day-sug');
+      } catch (e) {}
     }
-    function wkWelcomePick(i) { WKW.sel = i; wkWelcomeRender(); }
-    function wkWelcomeClose() { closeModal('wk_welcome_modal'); }
-    function wkWelcomeStart() {
-      var d = ((athleteActiveState && athleteActiveState.routineDays) || [])[WKW.sel];
-      try { if (WKW.sel !== WKW.sug && d) wkToast('Entrenas hoy: ' + (d.title || 'otro día')); } catch (e) {}
-      closeModal('wk_welcome_modal');
-      if (!d) return;
-      openModal(d.id);
-      wkStart(d.id);
-    }
-    function wkWelcomeShow() {
-      if (WKW.shown || !athleteActiveState || isCoachView() || WK.start) return;
-      var scm = document.getElementById('wk_sc_modal'); if (scm && scm.classList.contains('active')) return;   // primero contesta cuánto duró su entreno anterior
-      var av = document.getElementById('athlete_client_view');
-      if (!av || av.style.display === 'none') return;
-      var idx = wkNextDayIndex();
-      if (idx < 0) { WKW.shown = true; return; }
-      var today = todayIso();
-      if (loadWorkouts().some(function(s) { return sessDateIso(s) === today; })) { WKW.shown = true; return; }   // hoy ya entrenó: no se le insiste
-      WKW.shown = true; WKW.sel = idx; WKW.sug = idx;
-      wkWelcomeRender();
-      openModal('wk_welcome_modal');
-    }
-    // Al llegar sesiones nuevas desde la hoja, la pantalla de inicio (si sigue abierta) se actualiza con los números correctos
+    // Al llegar sesiones nuevas desde la hoja, la pantalla principal (panel de la semana y día sugerido) se actualiza con los números correctos
     // Panel «Tu semana» en la pantalla principal del cliente: días de la semana (verde = fue al gym o entrenó en la app) + días de su rutina con ✓ los que ya hizo
     function athWeekPanel() {
       var box = document.getElementById('ath_weekPanel'); if (!box) return;
@@ -6764,10 +6702,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       box.style.cssText = 'display:block; text-align:center; margin:10px auto 0; font-size:0.9rem; font-weight:800; color:#e8e8e8;';
       box.innerHTML = '🚪 Días de gym: <b style="color:#06d6a0;">' + n + '</b>' + (goal ? (falta > 0 ? ' · faltan <b style="color:#ffd166;">' + falta + '</b>' : ' · <span style="color:#06d6a0;">¡meta cumplida! 🎉</span>') : '');
     }
-    function wkWelcomeRefresh() {
+    function wkHomeRefresh() {
       try { athWeekPanel(); } catch (e) {}
-      var m = document.getElementById('wk_welcome_modal');
-      if (m && m.classList.contains('active')) wkWelcomeRender();
+      wkSuggestPaint();
     }
     // Resumen de la semana para la ventana "Entrenamiento Guardado"
     function wkWeekSummaryHtml(todaySecs, todayKc) {
@@ -9874,7 +9811,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         try { localStorage.setItem(sessKey(), JSON.stringify(local)); } catch (e) {}
         var hm = document.getElementById('ath_modal_historial');
         if (added && hm && hm.classList.contains('active')) renderHistorial();
-        if (added) wkWelcomeRefresh();
+        if (added) wkHomeRefresh();
         try { var mm = document.getElementById('ath_modal_medidas'); if (added && mm && mm.classList.contains('active')) renderAthleteMeasures(); } catch (e) {}
         coachSummaryRefresh();
         if (up) flushPending();
@@ -10091,7 +10028,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         // Probar como cliente: se parte de cero, como un cliente que abre su rutina por primera vez (solo dentro de la prueba; lo real no se toca)
         Object.keys(PRUEBA.data).forEach(function(k) { if (k.indexOf(TRK_NS) === 0) delete PRUEBA.data[k]; });
         [RESUME_KEY, WK_KEY, ANN_SEEN, PENDING_KEY].forEach(function(k) { delete PRUEBA.data[k]; });
-        try { WK.start = 0; WK.dayId = ''; WKW.shown = false; ANN_CHECKED = false; } catch (e) {}
+        try { WK.start = 0; WK.dayId = ''; ANN_CHECKED = false; } catch (e) {}
       }
       if (!keepSnap) coachSnapTake(id, state);   // foto del estado tal como estaba al abrirla
       try {
@@ -10500,7 +10437,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var all = (j && j.ok && j.p) ? annDecodeAll(j.p) : null; if (!all) return;
         FR_REMOTE = all.f || [];
         try { localStorage.setItem(FR_KEY, JSON.stringify(FR_REMOTE)); } catch (e) {}
-        fraseDiaPaint(); wkWelcomeRefresh(); frLowPaint();
+        fraseDiaPaint(); wkHomeRefresh(); frLowPaint();
       }).catch(function() { /* sin internet: queda la frase guardada */ });
     }
     function annIsActive(a, today) { return a && a.m && (!a.d || a.d <= today) && (!a.h || a.h >= today); }
