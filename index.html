@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6063,7 +6063,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var s = document.getElementById('sec_nutri_' + dayId); if (s && s.scrollIntoView) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     // Repaso breve del día: cada bloque con sus ejercicios, cuántas series/reps y el video de demostración (solo lo que toca esta semana)
-    function dayReview(dayId) {
+    function dayReview(dayId, exitAfter) {
       var sec = document.getElementById('sec_rutina_' + dayId); if (!sec) return;
       var rows = '', nEx = 0;
       sec.querySelectorAll('.exercise-variant').forEach(function(el) {
@@ -6090,7 +6090,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         (rows || '<div style="font-size:0.85rem; color:#ccc;">No hay ejercicios para mostrar.</div>') +
         (hasN ? '<button type="button" class="nutri-hoy-link" style="margin-top:6px;" onclick="closeModal(\'day_review_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición de hoy</button>' : '') +
         ((WK.start && WK.dayId === dayId) ? '' : '<button type="button" class="wk-btn" style="width:100%; margin:10px 0 6px; padding:14px; font-size:1rem;" onclick="closeModal(\'day_review_modal\'); wkStart(\'' + dayId + '\')">▶ Iniciar entreno</button>') +
-        '<button type="button" class="btn-action-primary" onclick="closeModal(\'day_review_modal\')">Cerrar</button></div>';
+        '<button type="button" class="btn-action-primary" onclick="closeModal(\'day_review_modal\')' + (exitAfter ? '; closeModal(\'' + dayId + '\')' : '') + '">' + (exitAfter ? 'Cerrar y volver al inicio' : 'Cerrar') + '</button></div>';
       openModal('day_review_modal');
     }
     // Registra (una vez al día por día de rutina) que el cliente abrió su rutina; el coach lo ve como 👁 aparte de «entrenó»
@@ -6124,7 +6124,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="font-size:0.85rem; color:#f0f0f0; line-height:1.45; margin-bottom:16px;">Inícialo para que queden registrados tu tiempo y tus calorías estimadas.</div>' +
           '<button type="button" class="wk-btn" style="width:100%; padding:15px; font-size:1rem;" onclick="wkNagStart(\'' + dayId + '\')">▶ Iniciar entreno</button>' +
           '<div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">' +
-            '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); dayReview(\'' + dayId + '\')">👀 Solo quiero ver qué toca hoy</button>' +
+            '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); dayReview(\'' + dayId + '\', true)">👀 Solo quiero ver qué toca hoy</button>' +
             (nutriOn() ? '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición del día</button>' : '') +
             '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.74rem; margin-top:6px; cursor:pointer; text-decoration:underline;" onclick="wkNagExit(\'' + dayId + '\')">↩ Volver al inicio</button>' +
             (isCoachView() ? '<button type="button" style="background:none; border:none; color:var(--muted); font-size:0.72rem; margin-top:4px; cursor:pointer; text-decoration:underline;" onclick="closeModal(\'wk_nag_modal\')">Cerrar</button>' : '') +
