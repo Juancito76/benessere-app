@@ -386,6 +386,7 @@
     .wk-bar .wk-lbl { flex: 1; font-size: 0.72rem; font-weight: 800; color: var(--muted); }
     .wk-btn { padding: 11px 12px; border: none; border-radius: 10px; font-size: 0.85rem; font-weight: 900; cursor: pointer; background: #06d6a0; color: #000; }
     .wk-btn.wk-end { background: #ff453a; color: #fff; }
+    .wk-btn.wk-cancel { background: #262626; color: #ffb4ab; border: 1.5px solid #ff6b5e; }
     .phase-badge { font-size: 0.68rem; font-weight: 800; color: var(--primary); background: #1b282c; border: 1px solid var(--primary); border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
     input.prefilled { color: var(--muted) !important; font-style: italic; }
     .pick-item { width: 100%; text-align: left; padding: 12px; margin-top: 8px; border-radius: 10px; border: 1px solid #333; background: #1c1c1c; color: #fff; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
@@ -5941,17 +5942,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function wkFmt(sec) { sec = Math.max(0, Math.floor(sec)); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return (h ? h + ':' + pad2(m) : m) + ':' + pad2(s); }
     function wkBarHtml(dayId) {
       return '<div class="wk-bar" id="wk_bar_' + dayId + '"><div class="wk-time" id="wk_time_' + dayId + '">0:00</div><div class="wk-lbl" id="wk_lbl_' + dayId + '">Tiempo total de entreno</div>' +
-        '<button type="button" class="wk-btn" id="wk_btn_' + dayId + '" onclick="wkToggle(\'' + dayId + '\')">▶ Iniciar entreno</button></div>' +
-        '<div style="text-align:center;"><button type="button" class="wk-link" id="wk_cancel_' + dayId + '" style="display:none; margin:2px auto 6px;" onclick="wkCancel(\'' + dayId + '\')">✖ Cancelar entreno (lo inicié sin querer)</button></div>';
+        '<button type="button" class="wk-btn" id="wk_btn_' + dayId + '" onclick="wkToggle(\'' + dayId + '\')">▶ Iniciar entreno</button></div>';
     }
     function wkToggle(dayId) {
-      if (WK.dayId === dayId && WK.start) wkEnd(dayId); else wkStart(dayId);
+      if (WK.dayId === dayId && WK.start) { if (Date.now() - WK.start < 600000) wkCancel(dayId); else wkEnd(dayId); } else wkStart(dayId);
     }
     // Descarta un entreno abierto por error: no se registra nada (ni tiempo ni sesión)
-    // «Cancelar entreno»: solo mientras corre y lleva menos de 10 min (igual que el cierre, que por debajo de 10 min no registra nada); después ya cuenta como entreno
-    function wkCancelPaint(dayId) {
-      var c = document.getElementById('wk_cancel_' + dayId); if (!c) return;
-      c.style.display = (WK.start && WK.dayId === dayId && Date.now() - WK.start < 600000) ? 'inline-block' : 'none';
+    // Los primeros 10 min el botón del cronómetro es «Cancelar entreno» (por si lo inició sin querer: no se registra nada); después pasa a «Final del entrenamiento»
+    // (a los 10 min el entreno ya cuenta, igual que el cierre, que por debajo de 10 min no registra nada)
+    function wkBtnPaint(dayId) {
+      var b = document.getElementById('wk_btn_' + dayId); if (!b || !(WK.start && WK.dayId === dayId)) return;
+      var early = Date.now() - WK.start < 600000, txt = early ? '✖ Cancelar entreno' : '🏁 Final del entrenamiento', cls = early ? 'wk-btn wk-cancel' : 'wk-btn wk-end';
+      if (b.innerText !== txt) b.innerText = txt;
+      if (b.className !== cls) b.className = cls;
     }
     function wkCancel(dayId) {
       if (!(WK.start && WK.dayId === dayId)) return;
@@ -5998,16 +6001,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       WK.tick = setInterval(wkTick, 1000);
       tmrWakeOn();
     }
-    function wkTick() { if (WK.start && Date.now() - WK.start > WK_MAX) { wkAutoClose(WK.dayId, WK.start); return; } if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); try { dcPaint(WK.dayId); wkCancelPaint(WK.dayId); } catch (e) {} } }
+    function wkTick() { if (WK.start && Date.now() - WK.start > WK_MAX) { wkAutoClose(WK.dayId, WK.start); return; } if (WK.start) { var t = document.getElementById('wk_time_' + WK.dayId); if (t) t.innerText = wkFmt((Date.now() - WK.start) / 1000); try { dcPaint(WK.dayId); wkBtnPaint(WK.dayId); } catch (e) {} } }
     function wkPaint(dayId) {
       var t = document.getElementById('wk_time_' + dayId), b = document.getElementById('wk_btn_' + dayId), l = document.getElementById('wk_lbl_' + dayId);
       if (!t || !b) return;
       var running = WK.start && WK.dayId === dayId;
       var done = parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10);
-      if (running) { t.innerText = wkFmt((Date.now() - WK.start) / 1000); b.innerText = '🏁 Final del entrenamiento'; b.className = 'wk-btn wk-end'; l.innerText = 'Entrenando…'; }
+      if (running) { t.innerText = wkFmt((Date.now() - WK.start) / 1000); l.innerText = 'Entrenando…'; wkBtnPaint(dayId); }
       else if (done > 0) { t.innerText = wkFmt(done); b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total del entreno ✔'; }
       else { t.innerText = '0:00'; b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total de entreno'; }
-      try { wkCancelPaint(dayId); } catch (e) {}
       try { dcPaint(dayId); } catch (e) {}
     }
     // Al abrir un día de entreno sin el cronómetro en marcha, se le recuerda iniciarlo (también en modo coach). Una vez por día y por apertura de la app.
