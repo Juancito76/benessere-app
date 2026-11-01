@@ -10838,7 +10838,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (d.yaEstaban) t.push(d.yaEstaban + ' ya tenían su resumen');
       if (d.sinVincular.length) t.push(d.sinVincular.length + ' sin vincular con el Excel (' + d.sinVincular.slice(0, 4).join(', ') + (d.sinVincular.length > 4 ? '…' : '') + '): vincúlalos en 🚪 Asistencia');
       if (d.sinRutina.length) t.push(d.sinRutina.length + ' sin rutina vigente en ' + mes + ' (' + d.sinRutina.slice(0, 3).join(', ') + (d.sinRutina.length > 3 ? '…' : '') + ')');
-      showToastTop('📊 ' + t.join(' · '), 14000); asistLg('ℹ️ ' + t.join('\n• '));
+      showToastTop('📊 ' + t.join(' · '), 14000);
+      var L = ['ℹ️ Resultado:']; t.forEach(function(x) { L.push('• ' + x.replace(/ \(.*\)/, '')); });
+      if (d.sinVincular.length) { L.push('', '🔗 Sin vincular (no recibirán resumen hasta vincularlos en 🚪 Asistencia):'); d.sinVincular.forEach(function(n) { L.push('   – ' + n); }); }
+      if (d.sinRutina.length) { L.push('', 'Sin rutina vigente en ' + mes + ':'); d.sinRutina.forEach(function(n) { L.push('   – ' + n); }); }
+      asistLg(L.join('\n'));
     }
     var ASIST_LOGF = null;
     function asistLg(t) { try { if (ASIST_LOGF) ASIST_LOGF(t); } catch (e) {} }
