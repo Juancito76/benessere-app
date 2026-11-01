@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -4983,6 +4983,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var baseKey = b.id.replace('prev_', '');
         var p = lastMarkFor(baseKey);
         var btnRestore = document.getElementById('btn_restore_' + baseKey);
+        var blk = b.closest('.exercise-variant'), cT = blk && blk.querySelector('.circ-title');
+        if (cT && isWarmName(cT.innerText)) { b.style.display = 'none'; if (btnRestore) btnRestore.style.display = 'none'; return; }   // calentamiento / activación: sin «Última vez»
         if (p) {
           b.innerText = 'Última vez (' + (p.date || 'Previo') + '): ' + markSummary(p);
           if (btnRestore) btnRestore.style.display = 'inline-block';
@@ -8133,11 +8135,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (r) parts.push(/^\d+$/.test(r) ? r + (mk.tm ? ' s' : ' reps') : r);
       return 'Última vez: ' + parts.join(' × ');
     }
+    // Calentamiento y activación se repiten igual cada día: no tiene sentido mostrar «Última vez» ahí
+    function isWarmName(t) { return /calent|activaci/i.test(String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '')); }
     function ctPrevPaint(ph) {
       var pv = document.getElementById('tm_prev'); if (!pv) return;
       var txt = '';
       try {
-        if (!CT.cls && !CT.hiit && !CT.done && ph) {
+        if (!CT.cls && !CT.hiit && !CT.done && ph && !isWarmName(CT.title)) {
           var di = ph.list ? (CT.listSel || 0) : (ph.seq ? Math.min(CT.seqI, ph.steps.length - 1) : ph.si), wp = ph;
           if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; wp = CT.phases[q]; break; } } }
           var key = (CT.keys || [])[di];
