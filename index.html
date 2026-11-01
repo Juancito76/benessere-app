@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -381,6 +381,24 @@
     .ex-edit-modal summary { cursor: pointer; font-weight: 800; font-size: 0.8rem; color: var(--accent); }
     .upd-pill { position: fixed; top: 10px; left: 12px; right: 12px; max-width: 520px; margin: 0 auto; z-index: 100003; background: #12203a; border: 2px solid #2f69ff; color: #fff; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 18px rgba(0,0,0,0.6); font-size: 0.82rem; font-weight: 700; }
     .upd-pill button { border-radius: 8px; padding: 7px 10px; font-weight: 800; font-size: 0.78rem; cursor: pointer; }
+    /* Rutina en espera: avisos y ventanas */
+    .pend-card { background: #12203a; border: 2px solid #2f69ff; border-radius: 14px; padding: 12px 14px; margin: 12px auto 0; max-width: 520px; text-align: center; }
+    .pend-card .pend-ttl { font-weight: 900; font-size: 0.95rem; color: #fff; }
+    .pend-card .pend-txt { font-size: 0.84rem; color: #c9d6f2; line-height: 1.45; margin-top: 4px; }
+    .pend-card.pend-coach { background: #2a2208; border-color: #ffb703; }
+    .pend-card.pend-coach .pend-txt { color: #f1dca0; }
+    .pend-box { background: #161a22; border: 2px solid #2f69ff; border-radius: 16px; padding: 20px; max-width: 380px; width: 100%; max-height: 92vh; overflow-y: auto; color: #fff; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
+    .pend-box .pend-ttl { font-weight: 900; font-size: 1.1rem; margin-bottom: 8px; }
+    .pend-box .pend-txt { font-size: 0.88rem; color: #cfd6e6; line-height: 1.5; margin-bottom: 10px; }
+    .pend-box .pend-sub { font-size: 0.76rem; color: #8e99b0; line-height: 1.4; margin: -4px 0 12px; }
+    .pend-box .pend-lbl { display: block; font-size: 0.78rem; font-weight: 800; color: #aab4cc; margin: 6px 0 4px; text-align: left; }
+    .pend-box .pend-in { width: 100%; background: #0d0f14; color: #fff; border: 1px solid #3a4258; border-radius: 10px; padding: 11px; font-size: 1rem; margin-bottom: 12px; }
+    .pend-box .pend-btn { display: block; width: 100%; border: none; border-radius: 10px; padding: 13px; font-weight: 900; font-size: 0.95rem; cursor: pointer; margin-bottom: 10px; }
+    .pend-box .pend-ok { background: #06d6a0; color: #04251c; }
+    .pend-box .pend-go { background: #ff6d00; color: #fff; }
+    .pend-box .pend-warn { background: #3a2a0a; color: #ffd166; border: 1px solid #ffb703; }
+    .pend-box .pend-cancel { background: transparent; color: #aab4cc; border: 1px solid #444; }
+    .pend-box .pend-err { font-size: 0.8rem; color: #ff8a80; min-height: 1em; margin-bottom: 8px; }
     .wk-bar { margin: 4px 0 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid #2c2c2c; background: #141414; display: flex; align-items: center; gap: 10px; }
     .wk-bar .wk-time { font-size: 1.5rem; font-weight: 900; font-variant-numeric: tabular-nums; min-width: 78px; }
     .wk-bar .wk-lbl { flex: 1; font-size: 0.72rem; font-weight: 800; color: var(--muted); }
@@ -945,6 +963,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       </div>
       <div class="week-tracker-pill" id="ath_weekDisplay">Semana 1</div>
       <div id="ath_weekPanel" style="display:none;"></div>
+      <div id="ath_pend_box" style="display:none;"></div>
       <div class="frase-dia" id="ath_frase" style="display:none;"></div>
       <div class="capsule-group" id="ath_capsuleGroup"></div>
       <div style="text-align:center; margin:14px 0 6px;">
@@ -2616,6 +2635,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         .then(function(j) {
           var st = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
           if (!st) return alert('No se pudo cargar esa rutina desde el enlace corto (puede haber sido eliminada de la hoja).');
+          if (pendDue(st)) st = pendPromote(st);   // si ya empezó su rutina nueva, se carga esa
           applyRestoredState(st);
           alert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
           switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
@@ -3603,10 +3623,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!COACH || clientExportBusy) return;
       clientExportBusy = true;
       var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Preparando el texto de ' + name + '… puede tardar unos segundos';
-      var state = null, ownFail = false;
+      var state = null, ownFail = false, waitInfo = '';
       fetchRoutine(id).then(function(j) {
         state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
         if (!state) throw new Error('lectura');
+        if (state.next && !pendDue(state)) waitInfo = ' ⏳ Este cliente tiene una rutina EN ESPERA (empieza el ' + fechaLargaEs(state.next.startDate) + '): este texto es solo de la rutina actual y, al subirlo de nuevo con «Actualizar rutina», la que está en espera se conserva. Para editar la que está en espera, usa ✏️ Editar y elige «la que está en espera».';
+        if (pendDue(state)) state = pendPromote(state);   // si ya empezó su rutina nueva, el texto es de esa
         return fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).catch(function() { ownFail = true; return null; });
       }).then(function(h) {
         var best = null;
@@ -3614,7 +3636,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var own = best ? normalizeMeasureLog(best.md) : [];
         var txt = buildExportTextFromState(state, own);
         var nMeas = normalizeMeasureLog(state.measureLog).length + own.filter(function(e) { return indexOfDate(normalizeMeasureLog(state.measureLog), e.d) < 0; }).length;
-        var info = name + ': ' + expStatsText(state.routineDays, nMeas) + 'Es lo último guardado de este cliente (cambios del coach incluidos) en el formato de "📥 Importación Rápida de Texto". Las medidas de las que anotó el propio cliente vienen marcadas con «Origen».' + (ownFail ? ' ⚠️ No pude traer las medidas que anotó el cliente (sin conexión con la hoja): vuelve a intentarlo si las necesitas.' : '') + (state.off ? ' Este cliente está desconectado.' : '');
+        var info = name + ': ' + expStatsText(state.routineDays, nMeas) + 'Es lo último guardado de este cliente (cambios del coach incluidos) en el formato de "📥 Importación Rápida de Texto". Las medidas de las que anotó el propio cliente vienen marcadas con «Origen».' + (ownFail ? ' ⚠️ No pude traer las medidas que anotó el cliente (sin conexión con la hoja): vuelve a intentarlo si las necesitas.' : '') + (state.off ? ' Este cliente está desconectado.' : '') + waitInfo;
         if (st) st.innerText = '';
         showExportModal(txt, info, name, id);
       }).catch(function(e) {
@@ -3699,7 +3721,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // Matriz pura sin llaves JSON repetidas para lograr el enlace más corto posible
     function buildUltraCompactState(full) {
-      return [
+      var out = [
         full.clientName,
         full.clientGender,
         full.startDate,
@@ -3764,6 +3786,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           return [e.d].concat(MEASURE_FIELDS.map(function(f) { return e.v[f.k] == null ? '' : e.v[f.k]; }));
         })
       ];
+      // Rutina en espera (posición 12): la próxima rutina del cliente, con su propia fecha de inicio. Sin ella, el enlace queda igual que siempre.
+      if (full.next && full.next.routineDays) {
+        var nx = {}; Object.keys(full.next).forEach(function(k) { nx[k] = full.next[k]; }); nx.next = null;   // no se anidan más rutinas
+        out[12] = buildUltraCompactState(nx);
+      }
+      return out;
     }
 
     function expandUltraCompactState(c) {
@@ -3787,6 +3815,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       var m = c[7] || [];
       var feats = c[6] || [0, 0];
+      var nxState = null;   // rutina en espera (posición 12), si el coach dejó una cargada
+      if (Array.isArray(c[12]) && c[12].length >= 9) {
+        try { var c12 = c[12].slice(0, 12); nxState = expandUltraCompactState(c12); if (!nxState || !Array.isArray(nxState.routineDays)) nxState = null; } catch (eNx) { nxState = null; }
+      }
       return {
         clientName: c[0] || 'Atleta',
         clientGender: c[1] || 'o',
@@ -3796,6 +3828,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         coachMsgBody: c[5] || '',
         coachName: c[9] || '',
         coachPhone: c[10] || '',
+        next: nxState,
         measureLog: normalizeMeasureLog((Array.isArray(c[11]) ? c[11] : []).filter(Array.isArray).map(function(r) {
           var v = {};
           MEASURE_FIELDS.forEach(function(f, i) { if (r[i + 1] !== '' && r[i + 1] != null) v[f.k] = r[i + 1]; });
@@ -3882,6 +3915,61 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return (st && Array.isArray(st.routineDays)) ? st : null;
       } catch (e) { return null; }
     }
+    // ================= RUTINA EN ESPERA =================
+    // La próxima rutina de un cliente viaja DENTRO del mismo registro (posición 12 del arreglo, con su propia fecha de inicio).
+    // El cliente sigue con la actual y el día que llega esa fecha la app cambia sola a la nueva (mismo enlace, sin mandar otro).
+    var PEND_IDX = 12, PEND_MAX = 45000;   // tope de tamaño de un registro de la hoja (el mismo que usan las clases)
+    var PEND_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    var PEND_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    function fechaLargaEs(iso) { if (!isIsoDate(iso)) return String(iso || ''); var d = new Date(iso + 'T12:00:00'); return PEND_DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + PEND_MESES[d.getMonth()]; }
+    function addDaysIso(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    function routineEndIso(st) { var w = parseInt(st && st.durationWeeks, 10) || 4; return (st && isIsoDate(st.startDate)) ? addDaysIso(st.startDate, w * 7 - 1) : ''; }   // último día del ciclo
+    // Abre el texto guardado de una rutina como arreglo (conserva el prefijo OFF_ de los clientes desconectados)
+    function payloadSplit(p) {
+      var off = false, s = String(p || '');
+      if (s.indexOf(OFF_PREFIX) === 0) { off = true; s = s.slice(OFF_PREFIX.length); }
+      try { var arr = JSON.parse(fflate.strFromU8(fflate.inflateSync(b64urlToBytes(s)))); return Array.isArray(arr) ? { off: off, arr: arr } : null; } catch (e) { return null; }
+    }
+    function payloadJoin(sp) { return (sp.off ? OFF_PREFIX : '') + encodePayload(sp.arr); }
+    function payloadNextArr(p) { var sp = payloadSplit(p); return (sp && Array.isArray(sp.arr[PEND_IDX])) ? sp.arr[PEND_IDX] : null; }
+    // Devuelve el mismo texto guardado pero con la rutina en espera puesta (nextArr) o quitada (null)
+    function payloadWithNext(p, nextArr) {
+      var sp = payloadSplit(p); if (!sp) return null;
+      if (nextArr) { while (sp.arr.length < PEND_IDX) sp.arr.push(''); sp.arr[PEND_IDX] = nextArr; }
+      else if (sp.arr.length > PEND_IDX) sp.arr.length = PEND_IDX;
+      return payloadJoin(sp);
+    }
+    // ¿Ya llegó el día de inicio de la rutina en espera?
+    function pendDue(st) { return !!(st && st.next && isIsoDate(st.next.startDate) && st.next.startDate <= todayIso()); }
+    // La rutina en espera pasa a ser la rutina del cliente (no toca ningún dato guardado: solo cambia lo que se muestra)
+    function pendPromote(st) {
+      if (!pendDue(st)) return st;
+      var n = st.next;
+      n.promoted = true;
+      if (st.clientName) n.clientName = st.clientName;   // mismo nombre de siempre: el historial del cliente va por nombre
+      try {   // el historial de medidas del coach se conserva: se suman las mediciones anteriores que la nueva no trae
+        var have = {}; (n.measureLog || []).forEach(function(e) { have[e.d] = 1; });
+        n.measureLog = normalizeMeasureLog((n.measureLog || []).concat((st.measureLog || []).filter(function(e) { return !have[e.d]; })));
+      } catch (e) {}
+      n.next = null;
+      return n;
+    }
+    // Arreglo base para guardar una rutina nueva en espera sobre lo que ya tiene el cliente: lo que él ve hoy pasa a ser la rutina principal
+    function pendBase(curP) {
+      var sp = payloadSplit(curP), cur = decodePayload('q', curP);
+      if (!sp || !cur) return null;
+      var arr = sp.arr.slice(0, PEND_IDX);
+      if (pendDue(cur)) arr = buildUltraCompactState(pendPromote(cur));   // la que estaba en espera ya empezó: esa es la actual
+      return { off: sp.off, arr: arr };
+    }
+    function pendOverlay(id, html) {
+      var old = document.getElementById(id); if (old) old.remove();
+      var m = document.createElement('div'); m.id = id; m.className = 'modal-overlay active'; m.style.zIndex = '100010';
+      m.innerHTML = '<div class="pend-box">' + html + '</div>';
+      document.body.appendChild(m); return m;
+    }
+    function pendCloseOverlay(id) { var m = document.getElementById(id); if (m) m.remove(); }
+
     function readPayloadFromUrl() {
       var hash = window.location.hash || '';
       var search = window.location.search || '';
@@ -4053,16 +4141,28 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       openModal('modal_share');
     }
 
+    // Mensaje cuando la rutina nueva quedó en espera: el cliente ya tiene su enlace de siempre
+    function buildWaTextPending(state, link) {
+      return '¡Hola ' + state.clientName + '! 💪 Te saluda ' + displayCoach(state.coachName) + ' de Benessere Gym.\n\n' +
+        'Ya está cargada tu nueva rutina y iniciará el ' + fechaLargaEs(state.startDate) + '. 🗓️\n' +
+        'Hasta ese día sigue con la que tienes. Es el mismo enlace de siempre (no hay que hacer nada más):\n' +
+        '🔗 ' + link + '\n\n' +
+        '¡Juntos somos más fuertes! 🔥';
+    }
+
     function finishShare(state, link, reason, modo) {
       var phone = cleanPhone(document.getElementById('clientPhone').value);
-      var text = buildWaText(state, link);
+      var text = (modo === 'espera') ? buildWaTextPending(state, link) : buildWaText(state, link);
       var enc = encodeURIComponent(text);
       var waUrl = phone ? ('https://wa.me/' + phone + '?text=' + enc) : ('https://wa.me/?text=' + enc);
       lastShare = { text: text, waUrl: waUrl };
 
       var isShort = link.indexOf('#i=') !== -1;
       var title, note;
-      if (isShort && modo === 'mismo') {
+      if (isShort && modo === 'espera') {
+        title = '⏳ Rutina nueva en espera';
+        note = state.clientName + ' sigue con su rutina actual. La nueva quedó cargada en su mismo enlace y empieza sola el ' + fechaLargaEs(state.startDate) + '. Al abrir su enlace le sale el aviso «Ya está cargada tu nueva rutina», y ese día «Hoy iniciamos nueva rutina». Toca "Abrir WhatsApp" para avisarle.';
+      } else if (isShort && modo === 'mismo') {
         title = '✅ Mismo enlace actualizado';
         note = state.clientName + ' ya tenía un enlace: se actualizó la rutina en ese mismo enlace (no se creó otro). Toca "Abrir WhatsApp" para avisarle.';
       } else if (isShort) {
@@ -4139,11 +4239,67 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!pin) { crearNuevo('sin-pin'); return; }
       lastLinkFor(state.clientName, pin).then(function(id) {
         if (!id) { crearNuevo(''); return; }
-        postJson({ a: 'actualizar', id: id, p: payloadText, pin: pin }).then(function(j) {
-          if (j && j.ok) finishShare(state, baseUrl + '#i=' + id, '', 'mismo');
-          else crearNuevo('no-actualizo');
-        }).catch(function() { crearNuevo('no-actualizo'); });
+        // Si el cliente tiene una rutina en curso, se pregunta si la nueva se deja en espera hasta que termine la actual
+        pendSendCheck(id, state, pin).then(function(r) {
+          if (r === 'cancel') { closeModal('modal_share'); return; }
+          if (r === 'espera') { finishShare(state, baseUrl + '#i=' + id, '', 'espera'); return; }
+          if (r === 'fallo') { closeModal('modal_share'); return; }
+          postJson({ a: 'actualizar', id: id, p: payloadText, pin: pin }).then(function(j) {
+            if (j && j.ok) finishShare(state, baseUrl + '#i=' + id, '', 'mismo');
+            else crearNuevo('no-actualizo');
+          }).catch(function() { crearNuevo('no-actualizo'); });
+        });
       });
+    }
+    // ¿El cliente ya está entrenando con una rutina? Entonces se ofrece dejar la nueva en espera. Responde: 'reemplazar' (como siempre), 'espera' (ya guardada), 'cancel' o 'fallo'
+    function pendSendCheck(id, state, pin) {
+      return fetchRoutine(id).then(function(j) {
+        var cur = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
+        if (!cur || cur.off) return 'reemplazar';
+        var eff = pendDue(cur) ? pendPromote(cur) : cur, today = todayIso(), endIso = routineEndIso(eff);
+        if (!isIsoDate(eff.startDate) || eff.startDate > today || !endIso || endIso < today) return 'reemplazar';   // no tiene una rutina en curso: la nueva la reemplaza como siempre
+        return new Promise(function(resolve) { pendSendModal(id, j.p, cur, eff, endIso, state, pin, resolve); });
+      }).catch(function() { return 'reemplazar'; });
+    }
+    function pendSendModal(id, curP, cur, eff, endIso, state, pin, resolve) {
+      var today = todayIso(), name = state.clientName || 'El cliente';
+      var sug = (isIsoDate(state.startDate) && state.startDate > today) ? state.startDate : addDaysIso(endIso, 1);
+      if (sug <= today) sug = addDaysIso(today, 1);
+      var wk = Math.max(1, Math.floor((dayNum(today) - dayNum(eff.startDate)) / 7) + 1), tot = parseInt(eff.durationWeeks, 10) || 4;
+      var ya = (cur.next && !pendDue(cur)) ? '<div class="pend-txt" style="color:#ffd166;">Ya hay otra rutina en espera (inicia el ' + escHtml(fechaLargaEs(cur.next.startDate)) + '): la nueva la reemplazaría.</div>' : '';
+      pendOverlay('pend_send', '<div class="pend-ttl">📅 ' + escHtml(name) + ' ya tiene una rutina en curso</div>' +
+        '<div class="pend-txt">Va en la semana <b>' + wk + ' de ' + tot + '</b> y su ciclo termina el <b>' + escHtml(fechaLargaEs(endIso)) + '</b>.</div>' + ya +
+        '<div class="pend-txt">¿Qué hacemos con la rutina nueva?</div>' +
+        '<label class="pend-lbl" for="pend_date_in">La nueva inicia el</label>' +
+        '<input type="date" id="pend_date_in" class="pend-in" value="' + sug + '" min="' + addDaysIso(today, 1) + '">' +
+        '<div class="pend-err" id="pend_send_err"></div>' +
+        '<button type="button" class="pend-btn pend-ok" id="pend_b_wait">⏳ Dejarla en espera</button>' +
+        '<div class="pend-sub">Sigue con la actual y la nueva empieza sola ese día, en su mismo enlace. Le sale el aviso de que ya está cargada.</div>' +
+        '<button type="button" class="pend-btn pend-warn" id="pend_b_now">⚡ Reemplazar la actual ya</button>' +
+        '<button type="button" class="pend-btn pend-cancel" id="pend_b_cancel">Cancelar</button>');
+      var err = function(t) { var e = document.getElementById('pend_send_err'); if (e) e.innerText = t || ''; };
+      var busy = false;
+      document.getElementById('pend_b_cancel').onclick = function() { pendCloseOverlay('pend_send'); resolve('cancel'); };
+      document.getElementById('pend_b_now').onclick = function() { pendCloseOverlay('pend_send'); resolve('reemplazar'); };
+      document.getElementById('pend_b_wait').onclick = function() {
+        if (busy) return;
+        var d = document.getElementById('pend_date_in').value;
+        if (!isIsoDate(d) || d <= today) { err('Elige una fecha de inicio desde mañana.'); return; }
+        var base = pendBase(curP);
+        if (!base) { err('No pude leer la rutina actual del cliente. Inténtalo de nuevo.'); return; }
+        state.startDate = d;   // la rutina nueva cuenta sus semanas desde ese día
+        var nextArr; try { nextArr = buildUltraCompactState(state); } catch (e) { err('No se pudo preparar la rutina nueva.'); return; }
+        base.arr[PEND_IDX] = nextArr;
+        var newP = payloadJoin(base);
+        if (newP.length > PEND_MAX) { err('Las dos rutinas juntas pesan demasiado para un solo enlace. Reemplaza la actual o acorta una de las dos.'); return; }
+        busy = true; err(''); document.getElementById('pend_b_wait').innerText = 'Guardando…';
+        postJson({ a: 'actualizar', id: id, p: newP, pin: pin }).then(function(j) {
+          if (j && j.ok) { try { coachCacheSet(id, newP); } catch (e) {} pendCloseOverlay('pend_send'); resolve('espera'); return; }
+          busy = false; document.getElementById('pend_b_wait').innerText = '⏳ Dejarla en espera';
+          if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          err('No se pudo guardar: ' + updateErrorText(j && j.error));
+        }).catch(function(e) { busy = false; document.getElementById('pend_b_wait').innerText = '⏳ Dejarla en espera'; err('No se pudo guardar: ' + updateErrorText(e && e.message)); });
+      };
     }
     // Último enlace enviado a un cliente: la rutina más nueva con su nombre en la hoja (la lista llega de la más nueva a la más vieja)
     function lastLinkFor(name, pin) {
@@ -4158,6 +4314,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (state && state.off && !isCoachView()) { try { if (CT.active && typeof ctClose === 'function') ctClose(); } catch (e) {} showAthleteMessage('off', ''); return; }   // cliente desconectado: solo ve el mensaje de despedida
       if (state && state.coachMsgTitle === '__CLASES__') { try { clsPing(athleteRoutineId); } catch (e) {} renderClassApp(state); return; }   // link único de clases: portada de clases
       CLS_VIEW = false; var clsBox = document.getElementById('cls_app'); if (clsBox) clsBox.style.display = 'none';
+      // Rutina en espera: el día que llega su fecha de inicio, la app muestra la nueva sola (la primera vez en este celular se limpian las marcas de la rutina anterior)
+      if (pendDue(state)) {
+        state = pendPromote(state);
+        var pFirst = false;
+        try { pFirst = !isCoachView() && localStorage.getItem(tk('promo_seen')) !== state.startDate; } catch (ePf) {}
+        if (pFirst) { pendClearTracker(); state.promoFirst = true; }
+      }
       athleteActiveState = state;
       setTimeout(syncHistorial, 600);   // trae/une el historial de la hoja (si hay enlace corto)
       setTimeout(frasesFetch, 900);   // frases del día programadas por el coach
@@ -4191,6 +4354,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var usoCli = (state.configFeatures && state.configFeatures.uso) || 'r';
       if (usoCli === 'rc' || usoCli === 'c') capsuleHtml += capCard('#b388ff', '🎓', 'Clases', 'Clase de hoy, anteriores y retos', 'openClasesTab()');
       capsuleHtml += capCard('#00e5ff', '📋', 'Historial de Cargas', 'Tus pesos y marcas anteriores', 'openHistorialModal()');
+      if (isCoachView() && state.next && !pendDue(state)) capsuleHtml += capCard('#ffb703', '⏳', 'Rutina en espera', 'Inicia el ' + fechaLargaEs(state.next.startDate) + ' · solo lo ve el coach', 'pendCoachMenu()');
       if (isCoachView()) capsuleHtml += capCard('#b388ff', '⚙️', 'Qué usa: ' + (usoCli === 'c' ? 'Clases' : (usoCli === 'rc' ? 'Rutina y clases' : 'Rutina')), 'Solo lo ve el coach', 'coachUsoOpen()');
       if (isCoachView()) capsuleHtml += capCard('#ffb703', '📊', 'Resumen del cliente', 'Solo lo ve el coach', 'openCoachSummary()');
       capsuleHtml += capCard('#8d99ae', '📏', 'Ficha Antropométrica', 'Tus medidas y objetivo', "openModal('ath_modal_medidas')");
@@ -4408,6 +4572,68 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       autoPrefillAll();
       wkRestore();
       try { guidePaintAll(); } catch (e) {}   // bloques cerrados en pestañas; el primero parpadea "inicia aquí"
+      try { pendAfterRender(state); } catch (ePa) { console.error(ePa); }   // avisos de rutina en espera / "hoy iniciamos nueva rutina"
+    }
+
+    // ----- Rutina en espera: avisos al cliente -----
+    // Borra las marcas y los "completado" de la rutina anterior (el Historial de Cargas no se toca: ahí quedan sus pesos)
+    function pendClearTracker() {
+      var pre = ['pw_', 'pr_', 'alc_', 'nsets_', 'wkdur_', 'wknm_', 'wkwatch_', 'wksc_pend', 'wklast_', 'gdst_', 'hist_'].map(function(x) { return tk(x); }), kill = [];
+      try {
+        for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && pre.some(function(p) { return k.indexOf(p) === 0; })) kill.push(k); }
+        kill.forEach(function(k) { localStorage.removeItem(k); });
+      } catch (e) {}
+    }
+    function pendAfterRender(st) {
+      var box = document.getElementById('ath_pend_box');
+      if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+      if (!st || st.off) return;
+      var coach = isCoachView();
+      if (st.promoted) {   // llegó el día: «hoy iniciamos nueva rutina» (una sola vez por celular)
+        if (st.promoFirst && !coach) {
+          try { localStorage.setItem(tk('promo_seen'), st.startDate); } catch (e) {}
+          setTimeout(function() { pendPromoModal(st); }, 1800);
+        }
+        return;
+      }
+      var nx = st.next;
+      if (!nx || !isIsoDate(nx.startDate) || !box) return;
+      var when = fechaLargaEs(nx.startDate);
+      if (coach) {
+        box.className = 'pend-card pend-coach';
+        box.innerHTML = '<div class="pend-ttl">⏳ Rutina en espera</div><div class="pend-txt">La rutina nueva de ' + escHtml(st.clientName || 'este cliente') + ' empieza sola el <b>' + escHtml(when) + '</b>. Hasta entonces sigue con esta.</div>';
+      } else {
+        box.className = 'pend-card';
+        box.innerHTML = '<div class="pend-ttl">🗓️ ¡Ya está cargada tu nueva rutina!</div><div class="pend-txt">Iniciará el <b>' + escHtml(when) + '</b>. Hasta entonces sigue con tu rutina actual.</div>';
+        var seen = ''; try { seen = localStorage.getItem(tk('pend_seen')) || ''; } catch (e2) {}
+        if (seen !== nx.startDate) {
+          try { localStorage.setItem(tk('pend_seen'), nx.startDate); } catch (e3) {}
+          setTimeout(function() { pendNoticeModal(nx); }, 1800);
+        }
+      }
+      box.style.display = 'block';
+    }
+    // Aviso al cargar la rutina: «Ya está cargada tu nueva rutina e iniciará…» (una vez por cada fecha de inicio)
+    function pendNoticeModal(nx) {
+      var m = pendOverlay('pend_notice', '<div style="font-size:2.4rem;">🗓️</div>' +
+        '<div class="pend-ttl">¡Ya está cargada tu nueva rutina!</div>' +
+        '<div class="pend-txt">Tu coach ya dejó lista tu rutina nueva y <b>iniciará el ' + escHtml(fechaLargaEs(nx.startDate)) + '</b>.<br>Hasta ese día sigue entrenando con la actual 💪</div>' +
+        '<button type="button" class="pend-btn pend-ok" id="pend_notice_ok">¡Entendido!</button>');
+      document.getElementById('pend_notice_ok').onclick = function() { pendCloseOverlay('pend_notice'); };
+    }
+    // Aviso del día de inicio: «Hoy iniciamos nueva rutina»
+    function pendPromoModal(st) {
+      var today = todayIso(), isToday = st.startDate === today;
+      var weeks = parseInt(st.durationWeeks, 10) || 4;
+      var title = isToday ? '¡Hoy iniciamos nueva rutina!' : '¡Ya empezó tu nueva rutina!';
+      var sub = isToday ? 'Arranca un nuevo ciclo de <b>' + weeks + ' semanas</b>.' : 'Desde el <b>' + escHtml(fechaLargaEs(st.startDate)) + '</b> estás en un nuevo ciclo de <b>' + weeks + ' semanas</b>.';
+      pendOverlay('pend_promo', '<div style="font-size:2.6rem;">🔥</div>' +
+        '<div class="pend-ttl">' + title + '</div>' +
+        '<div class="pend-txt">' + sub + '<br>Tus pesos y marcas anteriores siguen guardados en tu Historial de Cargas.</div>' +
+        '<button type="button" class="pend-btn pend-go" id="pend_promo_note">💬 Leer la nota de ' + escHtml(displayCoach(st.coachName)) + '</button>' +
+        '<button type="button" class="pend-btn pend-ok" id="pend_promo_ok">¡Vamos! 💪</button>');
+      document.getElementById('pend_promo_ok').onclick = function() { pendCloseOverlay('pend_promo'); };
+      document.getElementById('pend_promo_note').onclick = function() { pendCloseOverlay('pend_promo'); openModal('ath_modal_coach'); };
     }
 
     // ----- Recordatorios: pesaje cada 4 semanas (cliente + aviso al coach) y alarma al coach cuando falta 1 semana del ciclo -----
@@ -4425,6 +4651,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!state || !isIsoDate(state.startDate)) return;
       var diff = Math.floor((new Date(todayIso() + 'T12:00:00') - new Date(state.startDate + 'T12:00:00')) / 86400000);
       if (diff < 0) return;
+      if (state.promoted) { var R0 = remLoad(); if (R0.promo !== state.startDate) remSave({ promo: state.startDate }); }   // rutina nueva: los avisos de pesaje y de ciclo empiezan de cero
       var total = parseInt(state.durationWeeks, 10) || 4, cur = Math.floor(diff / 7) + 1, R = remLoad(), coachV = isCoachView(), name = state.clientName || 'el cliente';
       var k = Math.floor(diff / 28);   // 1 = ya van 4 semanas, 2 = 8 semanas…
       var msgs = [];
@@ -4433,7 +4660,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else remPesoModal(k);
         if (!coachV && !R['sp' + k]) { R['sp' + k] = 1; remSave(R); remQueue('pesaje', 'Pesaje cada 4 semanas (semana ' + (k * 4) + ')'); }
       }
-      if (total >= 2 && cur >= total) {
+      if (total >= 2 && cur >= total && !state.next) {   // si ya hay una rutina en espera, no hace falta avisar que falta preparar la nueva
         if (coachV) msgs.push('⏰ A ' + name + ' le queda ' + (cur > total ? 'el ciclo terminado' : 'la última semana del ciclo') + ': prepara su nueva rutina.');
         else if (!R.cyc) { R.cyc = 1; remSave(R); remQueue('ciclo', cur > total ? 'Ciclo terminado' : 'Falta 1 semana para terminar el ciclo'); }
       }
@@ -4903,11 +5130,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var dayEl = box && box.closest('.view-screen'), dt = dayEl ? normName(dayEl.getAttribute('data-day-title')) : '';
       var arr = loadSessions().slice().sort(function(a, b) { return String(b.t || b.d || '').localeCompare(String(a.t || a.d || '')); });
       var nameOnly = null;
+      var promoFrom = (athleteActiveState && athleteActiveState.promoted && isIsoDate(athleteActiveState.startDate)) ? athleteActiveState.startDate : '';   // rutina nueva: las marcas de la anterior solo valen si es el mismo ejercicio
       for (var i = 0; i < arr.length; i++) {
         var exs = arr[i].ex || [];
         for (var j = 0; j < exs.length; j++) {
           var e = exs[j];
-          if (e.k === fieldId || (nm && normName(e.n) === nm && normName(arr[i].day) === dt)) return mkMark(e, arr[i].hd || '');
+          var keyHit = e.k === fieldId;
+          if (keyHit && promoFrom && nm && e.n && normName(e.n) !== nm && String(sessDateIso(arr[i]) || '') < promoFrom) keyHit = false;
+          if (keyHit || (nm && normName(e.n) === nm && normName(arr[i].day) === dt)) return mkMark(e, arr[i].hd || '');
           if (!nameOnly && nm && normName(e.n) === nm) nameOnly = mkMark(e, arr[i].hd || '');
         }
       }
@@ -10313,16 +10543,32 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
         if (!state) { if (st) st.innerText = 'No se pudo abrir esa rutina.'; return; }
         if (state.off && !confirm('Este cliente está desconectado.\n\nSi guardas cambios y los envías, volverá a ver su rutina (se reconecta).\n\n¿Seguir editando?')) { if (st) st.innerText = ''; return; }
-        applyRestoredState(state);
-        editingRoutine = { id: id, name: state.clientName || '', coach: state.coachName || '' };
-        closeModal('modal_clients');
-        showEditBanner('');
-        switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-        if (afterTab === 'tab_import') {   // viene del texto plano del cliente: lo deja en la pestaña donde se pega el texto corregido
-          switchGenTab('tab_import', document.querySelectorAll('.gen-tab-btn')[2]);
-          showToastTop('✏️ ' + (state.clientName || 'Cliente') + ' cargado. Pega aquí el texto corregido, toca importar y luego «Actualizar rutina» (se guarda en su mismo enlace).');
-        }
-        window.scrollTo(0, 0);
+        // Rutina en espera: si ya empezó, esa es la rutina del cliente; si todavía no, se elige cuál de las dos editar
+        var pendRaw = payloadNextArr(j.p), waiting = (state.next && !pendDue(state)) ? state.next : null;
+        if (pendDue(state)) state = pendPromote(state);
+        var go = function(which) {
+          var target = (which === 'pend') ? waiting : state;
+          applyRestoredState(target);
+          editingRoutine = { id: id, name: state.clientName || '', coach: state.coachName || '', target: which, nextRaw: (which === 'cur' && waiting) ? pendRaw : null };
+          closeModal('modal_clients');
+          showEditBanner('');
+          switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
+          if (afterTab === 'tab_import') {   // viene del texto plano del cliente: lo deja en la pestaña donde se pega el texto corregido
+            switchGenTab('tab_import', document.querySelectorAll('.gen-tab-btn')[2]);
+            showToastTop('✏️ ' + (state.clientName || 'Cliente') + ' cargado' + (which === 'pend' ? ' (su rutina en espera)' : '') + '. Pega aquí el texto corregido, toca importar y luego «Actualizar rutina» (se guarda en su mismo enlace).');
+          }
+          window.scrollTo(0, 0);
+        };
+        if (!waiting) { go('cur'); return; }
+        if (st) st.innerText = '';
+        var m = pendOverlay('pend_edit_pick', '<div class="pend-ttl">✏️ ' + escHtml(state.clientName || 'Este cliente') + ' tiene dos rutinas</div>' +
+          '<div class="pend-txt">La que está en espera empieza el <b>' + escHtml(fechaLargaEs(waiting.startDate)) + '</b>. ¿Cuál quieres editar?</div>' +
+          '<button type="button" class="pend-btn pend-ok" id="pend_pick_cur">La actual (la que está entrenando)</button>' +
+          '<button type="button" class="pend-btn pend-go" id="pend_pick_wait">⏳ La que está en espera</button>' +
+          '<button type="button" class="pend-btn pend-cancel" id="pend_pick_cancel">Cancelar</button>');
+        document.getElementById('pend_pick_cur').onclick = function() { pendCloseOverlay('pend_edit_pick'); go('cur'); };
+        document.getElementById('pend_pick_wait').onclick = function() { pendCloseOverlay('pend_edit_pick'); go('pend'); };
+        document.getElementById('pend_pick_cancel').onclick = function() { pendCloseOverlay('pend_edit_pick'); };
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
     // Clonar: abre la rutina de un cliente como base para otro. Deja en blanco todo lo personal y crea un enlace NUEVO al enviarla (la original no se toca).
@@ -10333,6 +10579,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       fetchRoutine(id).then(function(j) {
         var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
         if (!state) { if (st) st.innerText = 'No se pudo abrir esa rutina.'; return; }
+        if (pendDue(state)) state = pendPromote(state);   // si ya empezó su rutina nueva, esa es la que se clona
         var origen = state.clientName || 'otro cliente';
         applyRestoredState(state);
         // Todo lo personal queda en blanco
@@ -10356,36 +10603,103 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function showEditBanner(done) {
       var b = document.getElementById('edit_banner'), u = document.getElementById('btn_update_routine');
       if (!editingRoutine) { if (b) b.style.display = 'none'; if (u) u.style.display = 'none'; return; }
-      document.getElementById('edit_banner_name').innerText = editingRoutine.name || 'este cliente';
+      var waitTag = editingRoutine.target === 'pend' ? ' (su rutina EN ESPERA)' : '';
+      document.getElementById('edit_banner_name').innerText = (editingRoutine.name || 'este cliente') + waitTag;
       document.getElementById('edit_banner_done').innerText = done || '';
       b.style.display = 'block';
-      u.innerText = '🔄 Actualizar rutina de ' + (editingRoutine.name || 'cliente');
+      u.innerText = (editingRoutine.target === 'pend' ? '🔄 Actualizar la rutina en espera de ' : '🔄 Actualizar rutina de ') + (editingRoutine.name || 'cliente');
       u.style.display = 'inline-block';
     }
     function cancelEditRoutine() { editingRoutine = null; showEditBanner(''); }
     function updateEditingRoutine() {
       if (!editingRoutine) return;
       if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
-      if (!confirm('¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
+      if (!confirm(editingRoutine.target === 'pend'
+        ? '¿Actualizar la rutina EN ESPERA de ' + editingRoutine.name + '? Su rutina actual no se toca; este cambio lo verá cuando empiece la nueva.'
+        : '¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
       if (!videoGuard()) return;
       if (!treadmillGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
       if (editingRoutine.coach) state.coachName = editingRoutine.coach;   // se conserva el coach original de la rutina
-      var payloadText = encodePayload(buildUltraCompactState(state));
+      var editWaiting = editingRoutine.target === 'pend';
+      var payloadText = '';
+      try {
+        payloadText = encodePayload(buildUltraCompactState(state));
+        if (!editWaiting && editingRoutine.nextRaw) payloadText = payloadWithNext(payloadText, editingRoutine.nextRaw) || payloadText;   // la rutina en espera se conserva
+      } catch (eP) { alert('No se pudo preparar el cambio.'); return; }
       var btn = document.getElementById('btn_update_routine');
       btn.disabled = true; btn.innerText = 'Actualizando…';
-      postJson({ a: 'actualizar', id: editingRoutine.id, p: payloadText, pin: COACH.pin }).then(function(j) {
+      // Editando la que está en espera: se parte de lo último que tiene el cliente en la hoja y solo se cambia la rutina en espera
+      var prep = !editWaiting ? Promise.resolve(payloadText) : fetchRoutine(editingRoutine.id).then(function(jj) {
+        if (!jj || !jj.ok || !jj.p) throw new Error('respuesta');
+        var np = payloadWithNext(jj.p, buildUltraCompactState(state));
+        if (!np) throw new Error('respuesta');
+        return np;
+      });
+      prep.then(function(finalP) {
+        if (finalP.length > PEND_MAX) { var er = new Error('grande'); er.big = true; throw er; }
+        payloadText = finalP;
+        return postJson({ a: 'actualizar', id: editingRoutine.id, p: finalP, pin: COACH.pin });
+      }).then(function(j) {
         btn.disabled = false;
         if (j && j.ok) {
+          try { coachCacheSet(editingRoutine.id, payloadText); } catch (eC) {}
           var t = new Date();
-          showEditBanner('✅ Actualizada a las ' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + '. ' + (editingRoutine.name || 'El cliente') + ' la verá al abrir su enlace.');
+          showEditBanner('✅ Actualizada a las ' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + '. ' + (editingRoutine.name || 'El cliente') + (editWaiting ? ' verá la rutina nueva cuando llegue su fecha de inicio.' : ' la verá al abrir su enlace.'));
         } else {
           showEditBanner('');
           if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
           alert('No se pudo actualizar: ' + updateErrorText(j && j.error));
         }
-      }).catch(function(e) { btn.disabled = false; showEditBanner(''); alert('No se pudo actualizar: ' + updateErrorText(e && e.message)); });
+      }).catch(function(e) {
+        btn.disabled = false; showEditBanner('');
+        if (e && e.big) { alert('No se pudo actualizar: la rutina actual y la que está en espera juntas pesan demasiado para un solo enlace. Acorta una de las dos.'); return; }
+        alert('No se pudo actualizar: ' + updateErrorText(e && e.message));
+      });
+    }
+
+    // ----- Rutina en espera: menú del coach (cambiar la fecha de inicio o quitarla) -----
+    function pendCoachMenu() {
+      var st = athleteActiveState; if (!st || !st.next || !COACH || !athleteRoutineId) return;
+      var id = athleteRoutineId, nx = st.next, today = todayIso();
+      pendOverlay('pend_coach', '<div class="pend-ttl">⏳ Rutina en espera de ' + escHtml(st.clientName || 'este cliente') + '</div>' +
+        '<div class="pend-txt">Empieza el <b>' + escHtml(fechaLargaEs(nx.startDate)) + '</b> (' + (parseInt(nx.durationWeeks, 10) || 4) + ' semanas). Hasta entonces sigue con la actual.</div>' +
+        '<label class="pend-lbl" for="pend_coach_date">Cambiar la fecha de inicio</label>' +
+        '<input type="date" id="pend_coach_date" class="pend-in" value="' + escHtml(nx.startDate) + '" min="' + addDaysIso(today, 1) + '">' +
+        '<div class="pend-err" id="pend_coach_err"></div>' +
+        '<button type="button" class="pend-btn pend-ok" id="pend_coach_save">Guardar la nueva fecha</button>' +
+        '<button type="button" class="pend-btn pend-warn" id="pend_coach_del">🗑️ Quitar la rutina en espera</button>' +
+        '<button type="button" class="pend-btn pend-cancel" id="pend_coach_close">Cerrar</button>');
+      var err = function(t) { var e = document.getElementById('pend_coach_err'); if (e) { e.style.color = '#ff8a80'; e.innerText = t || ''; } };
+      var busy = false;
+      // Siempre se parte de lo último que hay en la hoja, y solo se cambia la rutina en espera
+      var apply = function(mut, okMsg) {
+        if (busy) return; busy = true; err('Guardando…');
+        fetchRoutine(id).then(function(j) {
+          if (!j || !j.ok || !j.p) throw new Error('respuesta');
+          var sp = payloadSplit(j.p); if (!sp) throw new Error('respuesta');
+          var arr = Array.isArray(sp.arr[PEND_IDX]) ? sp.arr[PEND_IDX] : null;
+          if (!arr) throw new Error('sin-espera');
+          var np = payloadWithNext(j.p, mut(arr.slice()));
+          if (!np) throw new Error('respuesta');
+          return postJson({ a: 'actualizar', id: id, p: np, pin: COACH.pin }).then(function(r) { return { r: r, np: np }; });
+        }).then(function(o) {
+          busy = false;
+          if (o.r && o.r.ok) { try { coachCacheSet(id, o.np); } catch (e) {} pendCloseOverlay('pend_coach'); coachApplyPayload(id, o.np); showToastTop(okMsg); return; }
+          err('No se pudo guardar: ' + updateErrorText(o.r && o.r.error));
+        }).catch(function(e) { busy = false; err((e && e.message === 'sin-espera') ? 'Ya no hay una rutina en espera para este cliente.' : 'No se pudo guardar: ' + updateErrorText(e && e.message)); });
+      };
+      document.getElementById('pend_coach_close').onclick = function() { pendCloseOverlay('pend_coach'); };
+      document.getElementById('pend_coach_save').onclick = function() {
+        var d = document.getElementById('pend_coach_date').value;
+        if (!isIsoDate(d) || d <= today) { err('Elige una fecha desde mañana.'); return; }
+        apply(function(arr) { arr[2] = d; return arr; }, '✅ La rutina nueva ahora empieza el ' + fechaLargaEs(d) + '.');
+      };
+      document.getElementById('pend_coach_del').onclick = function() {
+        if (!confirm('¿Quitar la rutina en espera de ' + (st.clientName || 'este cliente') + '? Seguirá solo con la actual.')) return;
+        apply(function() { return null; }, '🗑️ Se quitó la rutina en espera.');
+      };
     }
 
     // ================= ANUNCIOS PARA TODOS LOS CLIENTES (etapa 2) =================
