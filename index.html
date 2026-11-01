@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6308,7 +6308,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:1.1rem; font-weight:900; color:var(--primary); margin-bottom:6px;">¡Entreno terminado!</div>' +
         '<div style="font-size:0.9rem; margin-bottom:4px;">Tiempo total: <b>' + wkFmt(secs) + '</b></div>' +
         '<div style="font-size:0.9rem; margin-bottom:12px;">Calorías estimadas: <b>~' + kc + ' kcal</b></div>' +
-        wkSummarySafe(secs, kc) +
+        ((closing && dayHasMarks(dayId)) ? '' : wkSummarySafe(0, 0)) +   // si al tocar «Listo» sigue la ventana «Entrenamiento guardado», el resumen de la semana sale solo ahí (una pantalla, no dos)
         '<div style="text-align:left; font-size:0.72rem; color:var(--muted); margin-bottom:4px;">¿Usas reloj? Anota lo que marcó (opcional):</div>' +
         '<div style="display:flex; gap:8px; margin-bottom:12px;">' +
           '<input type="number" inputmode="numeric" id="wke_cal" placeholder="Calorías" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
