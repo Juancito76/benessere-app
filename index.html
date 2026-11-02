@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9960,7 +9960,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Avisos propios del coach: toca pesaje / se acaba el ciclo -----
     // La app revisa por su cuenta las rutinas de los clientes (no depende de que ellos abran su app) y deja el aviso en «Mis clientes»
     // hasta que lo marques como atendido, igual que los videos reportados. Se guardan en este dispositivo.
-    var ALERTS_KEY = 'bn_alerts_v1', ALERTS_BUSY = false;
+    var ALERTS_KEY = 'bn_alerts_v1', ALERTS_BUSY = false, ALERTS_SHOW = false;   // «Por atender» arranca cerrado
     function alertsLoad() { try { var o = JSON.parse(localStorage.getItem(ALERTS_KEY) || '{}') || {}; return { list: Array.isArray(o.list) ? o.list : [], done: o.done || {}, ts: o.ts || 0 }; } catch (e) { return { list: [], done: {}, ts: 0 }; } }
     function alertsSave(o) { try { localStorage.setItem(ALERTS_KEY, JSON.stringify(o)); } catch (e) {} }
     function alertsOpen() {
@@ -10013,15 +10013,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var a = alertsOpen(); if (!a.length) return;
       var d = document.createElement('div'); d.id = 'cl_alerts';
       d.innerHTML = '<div style="background:#2a2512; border:1px solid #8a7a30; border-radius:10px; padding:10px 12px; margin-bottom:12px;">' +
-        '<div style="font-size:0.85rem; font-weight:900; color:#ffd166; margin-bottom:6px;">⏰ Por atender (' + a.length + ')</div>' +
-        a.map(function(x, i) {
+        '<div onclick="ALERTS_SHOW=!ALERTS_SHOW; alertsPaint();" style="font-size:0.85rem; font-weight:900; color:#ffd166; cursor:pointer; display:flex; justify-content:space-between; align-items:center;"><span>⏰ Por atender (' + a.length + ')</span><span>' + (ALERTS_SHOW ? '▾' : '▸') + '</span></div>' +
+        (!ALERTS_SHOW ? '' : a.map(function(x, i) {
           return '<div style="border-top:1px solid #5a4d1f; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
             '<div><b>' + escHtml(x.name) + '</b> · ' + (x.tipo === 'pesaje' ? '⚖️ Toca pesaje' : '⏰ Fin de ciclo cerca') + '</div>' +
             '<div style="color:#ffd166;">' + escHtml(x.mot) + '</div>' +
             '<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">' +
             '<button type="button" onclick="' + (x.tipo === 'pesaje' ? 'coachOpenDatos' : 'openClientRoutine') + '(\'' + escHtml(x.id) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">' + (x.tipo === 'pesaje' ? '📋 Datos y medidas' : 'Abrir cliente') + '</button>' +
             '<button type="button" onclick="alertsDone(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">' + (x.tipo === 'pesaje' ? '✔ Ya se pesó' : '✔ Ya está su rutina actualizada') + '</button></div></div>';
-        }).join('') + '</div>';
+        }).join('')) + '</div>';
       box.appendChild(d);
     }
     function alertsDone(i) {
