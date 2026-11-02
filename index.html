@@ -8583,7 +8583,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (ph.t === 'rest' || ph.t === 'trans') { for (var q = CT.i + 1; q < CT.phases.length; q++) { if (CT.phases[q].t === 'work') { di = CT.phases[q].si; break; } } }
         CT.demoUrl = (CT.videos && di >= 0 && CT.videos[di]) ? CT.videos[di] : '';
         if (ph.preList) { var pcv = clsPreCur(ph, remain); CT.demoUrl = (pcv && pcv.video) || ''; }
-        if (ph.nextVideo) CT.demoUrl = ph.nextVideo;   // pausa: se ve el primer ejercicio del siguiente bloque
+        if (ph.nextVideo && !ph.preList) CT.demoUrl = ph.nextVideo;   // pausa: se ve el primer ejercicio del siguiente bloque
         CT.demoName = ph.nextVideo ? (ph.nextName || '') : ((CT.names && di >= 0 && CT.names[di]) || '');
         if (ph.preList) { var pcn = clsPreCur(ph, remain); CT.demoName = (pcn && pcn.name) || ''; }   // para el aviso "el video no se ve"
         ctVidSync(false);
@@ -8970,7 +8970,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function clsPreCur(ph, remain) {
       var L = ph.preList || [], N = L.length; if (!N) return null;
       var el = Math.max(0, ph.d - remain), idx = Math.floor(el / CLS_PRE_DWELL) % N;   // cada ejercicio unos segundos y vuelve a empezar hasta que se acabe el tiempo
+      if (CT.preSel != null && CT.preSelPh === CT.i && CT.preSel < N) idx = CT.preSel;   // el coach/alumno tocó un ejercicio de la lista: se queda ahí hasta que lo vuelva a tocar
       var o = L[idx]; o.i = idx; o.n = N; return o;
+    }
+    function clsPrePick(i) {   // toque en un botón de la lista de la previa/pausa: muestra ese ejercicio (video e instrucciones); tocarlo otra vez retoma el recorrido automático
+      if (CT.preSel != null && CT.preSelPh === CT.i && CT.preSel === i) CT.preSel = null; else { CT.preSel = i; CT.preSelPh = CT.i; }
+      CT.listKey = ''; ctTick();
     }
     function clsRepsTxt(sub, rep) { return ctRepsText({ reps: rep != null ? rep : (sub ? sub.reps : '') }, false); }
     // Convierte un bloque de la clase en las fases del temporizador (mismo formato que buildCircuitPhases)
@@ -9252,7 +9257,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
               var sel = i === pc.i, head = '';
               if (o.bn && o.bn !== lastBn && (ph.preList || []).some(function(x) { return x.bn !== o.bn; })) head = '<div style="font-size:0.72rem; color:#888; margin:6px 0 3px;">' + escHtml(o.bn) + '</div>';
               lastBn = o.bn;
-              return head + '<div style="padding:4px 8px; margin-bottom:3px; border-radius:8px; border:1px solid ' + (sel ? pcol : '#2a2a2a') + '; background:' + (sel ? pbg : '#181818') + '; opacity:' + (sel ? 1 : 0.55) + ';"><b>' + (o.k || (i + 1)) + '.</b> ' + escHtml(ctShort(o.name || '')) + (o.reps ? ' <span style="color:#ffd60a;">· ' + escHtml(o.reps) + '</span>' : '') + '</div>';
+              return head + '<div onclick="clsPrePick(' + i + ')" style="cursor:pointer; padding:4px 8px; margin-bottom:3px; border-radius:8px; border:1px solid ' + (sel ? pcol : '#2a2a2a') + '; background:' + (sel ? pbg : '#181818') + '; opacity:' + (sel ? 1 : 0.55) + ';"><b>' + (o.k || (i + 1)) + '.</b> ' + escHtml(ctShort(o.name || '')) + (o.reps ? ' <span style="color:#ffd60a;">· ' + escHtml(o.reps) + '</span>' : '') + '</div>';
             }).join('');
           }
           el('tm_list').style.display = 'block';
