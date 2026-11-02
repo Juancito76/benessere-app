@@ -1139,6 +1139,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <input type="search" id="draftSearch" oninput="drawDraftList()" placeholder="Buscar borrador por nombre…" autocomplete="off" style="width:100%; padding:11px; border-radius:8px; border:1px solid var(--border); background:#111; color:#fff; font-size:0.95rem; margin-bottom:6px;">
       <div id="draftCount" style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;"></div>
       <div id="draftListBody" style="max-height:340px; overflow-y:auto; margin-bottom:10px;"></div>
+      <button type="button" class="btn btn-danger" id="draftDelAll" style="width:100%; margin-bottom:8px; display:none;" onclick="deleteAllDrafts()">🗑️ Borrar todos los borradores</button>
       <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_drafts')">Cerrar</button>
     </div>
   </div>
@@ -2853,6 +2854,31 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var DRAFTS_PREFIX = 'benessere_draft_';
     var AUTOSAVE_KEY = 'benessere_autosave';
 
+    // Los borradores se guardan comprimidos (LZString, sin perder nada) para que no llenen la memoria del navegador.
+    // Los borradores viejos sin comprimir se siguen leyendo igual y se convierten solos al abrir la app.
+    var DRAFT_ZIP = 'LZ1:';
+    function draftPack(obj) {
+      var txt = JSON.stringify(obj);
+      try { var z = LZString.compressToUTF16(txt); if (z && LZString.decompressFromUTF16(z) === txt) return DRAFT_ZIP + z; } catch (e) {}
+      return txt;
+    }
+    function draftUnpack(raw) {
+      if (raw && raw.indexOf(DRAFT_ZIP) === 0) { var t = LZString.decompressFromUTF16(raw.slice(DRAFT_ZIP.length)); if (t == null || t === '') throw new Error('borrador dañado'); return JSON.parse(t); }
+      return JSON.parse(raw);
+    }
+    function draftsCompressOld() {
+      try {
+        getDraftsIndex().forEach(function(d) {
+          var k = DRAFTS_PREFIX + d.id, raw = localStorage.getItem(k);
+          if (!raw || raw.indexOf(DRAFT_ZIP) === 0) return;
+          try {
+            var packed = draftPack(JSON.parse(raw));
+            if (packed.indexOf(DRAFT_ZIP) === 0 && packed.length < raw.length) localStorage.setItem(k, packed);
+          } catch (e) {}
+        });
+      } catch (e) {}
+    }
+
     function getDraftsIndex() {
       try { return JSON.parse(localStorage.getItem(DRAFTS_INDEX_KEY) || '[]'); } catch (e) { return []; }
     }
@@ -2873,7 +2899,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try {
         var state = getBuilderState();
         var id = 'd' + Date.now();
-        localStorage.setItem(DRAFTS_PREFIX + id, JSON.stringify(state));
+        localStorage.setItem(DRAFTS_PREFIX + id, draftPack(state));
         var idx = getDraftsIndex();
         idx.unshift({ id: id, label: label, savedAt: new Date().toISOString() });
         setDraftsIndex(idx);
@@ -2909,6 +2935,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var qEl = document.getElementById('draftSearch'), q = normName(qEl ? qEl.value : '');
       var idx = q ? all.filter(function(d) { return normName(d.label).indexOf(q) !== -1; }) : all;
       var cnt = document.getElementById('draftCount');
+      var delAll = document.getElementById('draftDelAll'); if (delAll) delAll.style.display = all.length ? '' : 'none';
       if (cnt) cnt.innerText = all.length ? (q ? idx.length + ' de ' + all.length + ' borradores' : all.length + ' borrador' + (all.length === 1 ? '' : 'es')) : '';
       var auto = null;
       if (!q) { try { auto = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch (e) {} }   // el auto-guardado solo se muestra sin búsqueda
@@ -2946,7 +2973,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var raw = localStorage.getItem(DRAFTS_PREFIX + id);
       if (!raw) { setDraftStatus('⚠️ Ese borrador ya no está disponible.'); closeModal('modal_drafts'); return; }
       try {
-        var state = JSON.parse(raw);
+        var state = draftUnpack(raw);
         applyRestoredState(state);
         closeModal('modal_drafts');
         setDraftStatus('✅ Borrador cargado.');
@@ -2973,6 +3000,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var idx = getDraftsIndex().filter(function(d) { return d.id !== id; });
       setDraftsIndex(idx);
       drawDraftList();   // refresca la lista abierta (conserva lo que se buscó)
+    }
+
+    function deleteAllDrafts() {
+      var n = getDraftsIndex().length;
+      if (!n) return;
+      if (!confirm('¿Borrar los ' + n + ' borradores guardados en este dispositivo? No se puede deshacer.')) return;
+      if (!confirm('Última confirmación: se borrarán TODOS los borradores (' + n + '). ¿Seguro?')) return;
+      try {
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(DRAFTS_PREFIX) === 0) keys.push(k); }
+        keys.forEach(function(k) { localStorage.removeItem(k); });
+        localStorage.removeItem(DRAFTS_INDEX_KEY);
+      } catch (e) {}
+      setDraftStatus('🗑️ Se borraron ' + n + ' borradores.');
+      drawDraftList();
     }
 
     // Descargar/cargar como archivo .json (para respaldo fuera del navegador o pasar a otra compu)
@@ -3020,7 +3062,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         try {
           var state = getBuilderState();
           var id = 'd' + Date.now();
-          localStorage.setItem(DRAFTS_PREFIX + id, JSON.stringify(state));
+          localStorage.setItem(DRAFTS_PREFIX + id, draftPack(state));
           var idx = getDraftsIndex();
           idx.unshift({ id: id, label: label, savedAt: new Date().toISOString() });
           setDraftsIndex(idx);
@@ -11495,7 +11537,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { var o = JSON.parse(localStorage.getItem(CLS_KEY) || 'null'); if (o && Array.isArray(o.lista)) { CLS = { lista: o.lista, hoy: o.hoy || '', hoyD: o.hoyD || '', dirty: !!o.dirty }; return; } } catch (e) {}
       CLS = { lista: [], hoy: '', hoyD: '', dirty: false };
     }
-    function clsSave(clean) { if (!clean) CLS.dirty = true; try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); } catch (e) { alert('No se pudo guardar (¿memoria del navegador llena?).'); } }
+    function clsSave(clean) { if (!clean) CLS.dirty = true; try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); return true; } catch (e) { alert('No se pudo guardar la clase: la memoria del navegador está llena. Tu texto sigue en pantalla. Libera espacio (borra borradores viejos desde «Borradores») y vuelve a tocar Guardar.'); return false; } }
     function clsProps(str) {
       var out = {};
       String(str || '').split('|').forEach(function(pr) {
@@ -11666,7 +11708,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (ex) { rec.id = ex.id; if (ex.para && ex.para.length) rec.para = ex.para; CLS.lista[CLS.lista.indexOf(ex)] = rec; actual++; }
         else { rec.id = 'c' + stamp + i; CLS.lista.push(rec); nuevas++; }
       });
-      clsSave();
+      if (!clsSave()) { clsLoad(); return; }   // no se pudo guardar: se deja todo en pantalla para reintentar
       var n = CLS_BATCH.length;
       clsClearForm(); clsRender();
       var m = document.getElementById('clsMsg');
@@ -11807,7 +11849,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else { rec.vis = !rec.prog && rec.f <= todayIso(); CLS.lista.push(rec); }   // clase o reto nuevo con fecha de hoy o pasada: queda disponible para los clientes (se oculta desde la casilla)
       if (asToday && rec.k === 'c') { CLS.hoy = rec.id; CLS.hoyD = rec.f > todayIso() ? rec.f : todayIso(); }
       if (CLS.hoy === rec.id && rec.k !== 'c') CLS.hoy = '';
-      clsSave();
+      if (!clsSave()) { clsLoad(); return; }   // no se pudo guardar: se deja todo en pantalla para reintentar
       document.getElementById('clsMsg').style.color = '#06d6a0';
       document.getElementById('clsMsg').innerText = '✅ Guardada: ' + rec.t + (CLS.hoy === rec.id ? ' (clase de hoy)' : (rec.vis ? ' (ya está disponible para tus clientes, ordenada por su fecha)' : '')) + '.';
       clsClearForm(); clsRender();
@@ -12466,6 +12508,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function loadAthletePayload() { try { return JSON.parse(localStorage.getItem(ATHLETE_KEY) || 'null'); } catch (e) { return null; } }
 
     window.onload = function() {
+      setTimeout(draftsCompressOld, 1500);   // convierte los borradores viejos a comprimidos (sin perder nada)
       var where = (window.location.hash || '') + (window.location.search || '');
 
       // 0) Enlace de recepción (#recepcion): solo ve la pestaña de Recepción, con su propio PIN
