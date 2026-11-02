@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -11006,9 +11006,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { u: 250, one: 'una dona', many: 'donas' },
       { u: 500, one: 'una bolsa grande de papas fritas', many: 'bolsas grandes de papas fritas' }
     ];
+    // Calorías que el cliente SÍ anotó en la app durante un mes (entrenos con su reloj o estimadas + pasos + actividad extra)
+    function monthKcalReg(ym) {
+      var r = { kc: 0, days: 0 };
+      try {
+        var seen = {};
+        loadWorkouts().forEach(function(w) { var d = sessDateIso(w); if (d && d.slice(0, 7) === ym) { r.kc += sessKcal(w); seen[d] = 1; } });
+        r.days = Object.keys(seen).length;
+        var y = +ym.slice(0, 4), m = +ym.slice(5, 7), n = new Date(y, m, 0).getDate();
+        for (var i = 1; i <= n; i++) {
+          var d2 = ym + '-' + (i < 10 ? '0' : '') + i, rc = dailyFor(d2);
+          if (rc) r.kc += dailyStepsKcal(rc) + dailyActKcal(rc);
+        }
+      } catch (x) {}
+      return r;
+    }
     function asistMsg(e, name) {
       var ym = e[0], v = e[1], ex = e[2], pct = Math.round(v / ex * 100), mes = ATT_MESES[+ym.slice(5, 7) - 1];
       var kc = 0; try { kc = kcalEstimate(3600) * v; } catch (x) { kc = 0; }
+      var reg = monthKcalReg(ym), usaReg = reg.kc > 0 && reg.days >= Math.max(1, Math.ceil(v * 0.5)) && reg.kc >= kc * 0.5;   // si anotó casi todo lo que entrenó, se usan sus calorías reales
+      if (usaReg) kc = Math.round(reg.kc);
       var q = ASIST_EQ[(parseInt(asistHash(name + ym), 36) || 0) % ASIST_EQ.length], n = Math.max(1, Math.round(kc / q.u));
       var eq = n === 1 ? q.one : (n + ' ' + q.many);
       var tier, ttl, txt;
@@ -11019,7 +11036,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else if (pct > 100) { tier = 6; ttl = '¡Fuiste la milla extra! 🚀'; txt = 'En ' + mes + ' viniste ' + v + ' veces cuando tu rutina pedía ' + ex + ': ¡' + pct + '% de lo planeado! Entrenaste más de lo que te tocaba, y eso solo lo hace quien de verdad se compromete con sus metas. ¡Eres un ejemplo de constancia y entrega para todo Benessere! Cuida también tu descanso para que tu cuerpo aproveche todo ese esfuerzo.'; }
       else { tier = 5; ttl = '¡Mes espectacular! 🏆'; txt = 'En ' + mes + ' cumpliste ' + pct + '% de tu rutina (' + v + ' de ' + ex + ' veces). ¡Felicitaciones! Tu constancia es admirable y es la que construye los resultados de verdad. Eres un ejemplo para todo Benessere. ¡Gracias por tanta entrega!'; }
       var extra = '';
-      if (kc > 0 && v > 0) extra = '<div class="pend-txt" style="margin-top:8px;">🔥 En total gastaste cerca de <b>' + kc.toLocaleString('es-CR') + ' calorías</b> entrenando en el gym. ¡Eso equivale a <b>' + eq + '</b>! Y además ganaste fuerza, energía y salud (corazón, huesos y músculos más fuertes).</div>';
+      if (kc > 0 && v > 0) extra = '<div class="pend-txt" style="margin-top:8px;">🔥 ' + (usaReg ? 'Con todo lo que registraste en tu app (entrenos, pasos y actividad extra) gastaste <b>' + kc.toLocaleString('es-CR') + ' calorías</b> en el mes.' : 'En total gastaste cerca de <b>' + kc.toLocaleString('es-CR') + ' calorías</b> entrenando en el gym.') + ' ¡Eso equivale a <b>' + eq + '</b>! Y además ganaste fuerza, energía y salud (corazón, huesos y músculos más fuertes).</div>';
       return { pct: pct, tier: tier, ttl: ttl, txt: txt, extra: extra, mes: mes, v: v, ex: ex };
     }
     function asistShow(manual) {
