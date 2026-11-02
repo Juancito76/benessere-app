@@ -8978,6 +8978,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CT.listKey = ''; CT.rKey = '';   // fuerza el repintado ya (la llave de ctRenderThrottled no cambia con este toque y esperaba al siguiente segundo)
       if (CT.paused) ctRender(Math.ceil(CT.remain || 0)); else ctTick();
     }
+    // Pirámide: "Reps: 10-9-8-7-6-5-4-3-2-1" (o 1-2-3...) en un AMRAP = una cantidad por ronda (nivel); al terminar el último nivel vuelve al primero
+    function clsPyr(str) {
+      var t = String(str == null ? '' : str).trim();
+      if (!/^\d+(\s*[-–]\s*\d+){2,}$/.test(t)) return null;
+      return t.split(/\s*[-–]\s*/).map(function(x) { return parseInt(x, 10); });
+    }
+    function clsPyrLevels() { var L = 0; (CT.pyr || []).forEach(function(p) { if (p && p.length > L) L = p.length; }); return L; }
+    function clsRepNow(i, off) {   // reps del ejercicio i en el nivel actual (+off niveles); si no es pirámide, el texto normal
+      var p = CT.pyr && CT.pyr[i];
+      if (p) return p[((CT.amrapN || 0) + (off || 0)) % p.length] + ' reps';
+      return (CT.repsTxt && CT.repsTxt[i]) || '';
+    }
     function clsRepsTxt(sub, rep) { return ctRepsText({ reps: rep != null ? rep : (sub ? sub.reps : '') }, false); }
     // Convierte un bloque de la clase en las fases del temporizador (mismo formato que buildCircuitPhases)
     function buildClassPhases(it, nextIt) {
@@ -8986,7 +8998,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var videos = subs.map(function(sb) { return sb.video || ''; });
       var repsTxt = subs.map(function(sb) { return isTimeText(sb.reps) ? '' : clsRepsTxt(sb); });
       var n = names.length, label = 'Ronda', rounds = parseInt(c.rondas, 10) || 1, phases = [];
-      var pack = function() { return { phases: phases, rounds: rounds, nSt: Math.max(n, 1), names: names, openSt: names.map(function() { return false; }), hasOpen: false, hiit: false, label: label, videos: videos, repsTxt: repsTxt }; };
+      var pack = function() { return { pyr: (tp === 'amrap') ? subs.map(function(sb) { return clsPyr(sb.reps); }) : null, phases: phases, rounds: rounds, nSt: Math.max(n, 1), names: names, openSt: names.map(function() { return false; }), hasOpen: false, hiit: false, label: label, videos: videos, repsTxt: repsTxt }; };
       var blockName = c.nombre || 'Bloque';
       if (tp === 'pausa') {
         var pd = clsSecs(c.total) || 60, nx0 = nextIt && nextIt.sub && nextIt.sub[0];
@@ -9107,7 +9119,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         built.phases[0].preList = pg.length ? pg : null;
       }
       tmrAudio(); rtClose();
-      CT.cls = true; CT.keys = []; CT.acc = {}; CT.videos = built.videos; CT.repsTxt = built.repsTxt; CT.ci = -1; CT.srId = 0; CT.doneBefore = 0;
+      CT.cls = true; CT.keys = []; CT.acc = {}; CT.videos = built.videos; CT.repsTxt = built.repsTxt; CT.pyr = built.pyr || null; CT.ci = -1; CT.srId = 0; CT.doneBefore = 0;
       CT.phases = built.phases; CT.rounds = built.rounds; CT.roundLabel = built.label; CT.title = it.circ.nombre || 'Bloque';
       ctGuideClear(); CT.guide = G;
       CT.nSt = built.nSt; CT.hasOpen = false; CT.names = built.names; CT.openSt = built.openSt; CT.log = []; CT.hiit = false;
@@ -9214,11 +9226,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (ph.t === 'ready' || ph.list || ph.pausa) el('tm_round').innerText = '';
       if (ph.t === 'trans' && ph.lbl) el('tm_phase').innerText = ph.lbl.toUpperCase();
       if (ph.list && ph.t === 'work') {
-        var key = CT.i + '|' + (CT.listSel || 0);
+        var key = CT.i + '|' + (CT.listSel || 0) + '|' + (CT.amrapN || 0);
         if (CT.listKey !== key) {
           CT.listKey = key;
           el('tm_list').innerHTML = CT.names.map(function(nm, i) {
-            var sel = i === (CT.listSel || 0), rt = (CT.repsTxt && CT.repsTxt[i]) || '';
+            var sel = i === (CT.listSel || 0), rt = clsRepNow(i);
             return '<div onclick="clsListPick(' + i + ')" style="padding:4px 8px; margin-bottom:3px; border-radius:8px; border:1px solid ' + (sel ? '#06d6a0' : '#2a2a2a') + '; background:' + (sel ? '#0d2318' : '#181818') + ';"><b>' + (i + 1) + '.</b> ' + escHtml(ctShort(nm)) + (rt ? ' <span style="color:#ffd60a;">· ' + escHtml(rt) + '</span>' : '') + ((CT.videos && CT.videos[i]) ? ' 🎥' : '') + '</div>';
           }).join('');
         }
@@ -9229,10 +9241,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         el('tm_next').innerText = '';
         if (CT.names && CT.names.length) {   // se muestra el ejercicio de turno (con su video y reps)
           var cur = Math.min(CT.listSel || 0, CT.names.length - 1), nxI = cur + 1 < CT.names.length ? cur + 1 : (ph.amrap ? 0 : -1);
-          var curReps = (CT.repsTxt && CT.repsTxt[cur]) || '', nxReps = nxI >= 0 ? ((CT.repsTxt && CT.repsTxt[nxI]) || '') : '';
+          var curReps = clsRepNow(cur), nxReps = nxI >= 0 ? clsRepNow(nxI, nxI <= cur ? 1 : 0) : '', pyL = clsPyrLevels();
           el('tm_station').style.display = ''; el('tm_station').innerText = ctShort(CT.names[cur]);
           el('tm_rnd').style.display = 'none';   // la ronda del AMRAP se cuenta sola al terminar el último ejercicio
-          el('tm_reps').innerText = [ph.amrap ? 'Rondas: ' + (CT.amrapN || 0) : (ph.cap ? 'Límite ' + tmrFmt(ph.cap) : ''), curReps].filter(Boolean).join(' · ');
+          el('tm_reps').innerText = [ph.amrap ? 'Rondas: ' + (CT.amrapN || 0) : (ph.cap ? 'Límite ' + tmrFmt(ph.cap) : ''), (ph.amrap && pyL) ? 'Nivel ' + ((CT.amrapN || 0) % pyL + 1) + ' de ' + pyL : '', curReps].filter(Boolean).join(' · ');
           el('tm_next').innerText = nxI >= 0 ? 'Sigue: ' + ctShort(CT.names[nxI]) + (nxReps ? ' · ' + ctRepsClean(nxReps) : '') : 'Último ejercicio del reto';
           el('tm_done').style.display = '';
         }
