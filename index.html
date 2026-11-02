@@ -9243,6 +9243,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           el('tm_station').innerText = pc.name; el('tm_reps').innerText = pc.reps + (pc.nota ? (pc.reps ? ' · ' : '') + pc.nota : '');
           el('tm_prog').innerHTML = pc.info + (pc.notas ? '<br><span style="color:#ffd60a;">' + escHtml(pc.notas) + '</span>' : ''); el('tm_prog').style.display = ''; el('tm_prog').style.color = '#ccc';
           el('tm_next').innerText = (ph.pre ? 'Inicia: ' : 'Sigue: ') + pc.bn + ' · ejercicio ' + pc.k + ' de ' + pc.kn;
+          // Lista de botones con TODOS los ejercicios del bloque que viene (como en los AMRAP): el que se está mostrando va resaltado y los demás semitransparentes
+          var plk = 'pre|' + CT.i + '|' + pc.i;
+          if (CT.listKey !== plk) {
+            CT.listKey = plk;
+            var pcol = ph.pre ? '#ffd60a' : '#4d8bff', pbg = ph.pre ? '#2a2508' : '#0d1a33', lastBn = null;
+            el('tm_list').innerHTML = (ph.preList || []).map(function(o, i) {
+              var sel = i === pc.i, head = '';
+              if (o.bn && o.bn !== lastBn && (ph.preList || []).some(function(x) { return x.bn !== o.bn; })) head = '<div style="font-size:0.72rem; color:#888; margin:6px 0 3px;">' + escHtml(o.bn) + '</div>';
+              lastBn = o.bn;
+              return head + '<div style="padding:4px 8px; margin-bottom:3px; border-radius:8px; border:1px solid ' + (sel ? pcol : '#2a2a2a') + '; background:' + (sel ? pbg : '#181818') + '; opacity:' + (sel ? 1 : 0.55) + ';"><b>' + (o.k || (i + 1)) + '.</b> ' + escHtml(ctShort(o.name || '')) + (o.reps ? ' <span style="color:#ffd60a;">· ' + escHtml(o.reps) + '</span>' : '') + '</div>';
+            }).join('');
+          }
+          el('tm_list').style.display = 'block';
         }
       }
     }
