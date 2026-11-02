@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10931,7 +10931,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { u: 500, one: 'una bolsa grande de papas fritas', many: 'bolsas grandes de papas fritas' }
     ];
     function asistMsg(e, name) {
-      var ym = e[0], v = e[1], ex = e[2], pct = Math.min(100, Math.round(v / ex * 100)), mes = ATT_MESES[+ym.slice(5, 7) - 1];
+      var ym = e[0], v = e[1], ex = e[2], pct = Math.round(v / ex * 100), mes = ATT_MESES[+ym.slice(5, 7) - 1];
       var kc = 0; try { kc = kcalEstimate(3600) * v; } catch (x) { kc = 0; }
       var q = ASIST_EQ[(parseInt(asistHash(name + ym), 36) || 0) % ASIST_EQ.length], n = Math.max(1, Math.round(kc / q.u));
       var eq = n === 1 ? q.one : (n + ' ' + q.many);
@@ -10940,6 +10940,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else if (pct <= 50) { tier = 2; ttl = 'Ya diste el primer paso 💛'; txt = 'En ' + mes + ' viniste ' + v + ' de ' + ex + ' veces (' + pct + '%). Ya tienes una base y eso es lo más difícil de conseguir. Si este mes sumas una sesión más por semana, vas a sentir la diferencia en energía y fuerza. ¡Tú puedes!'; }
       else if (pct <= 75) { tier = 3; ttl = 'Vas por buen camino 💪'; txt = 'En ' + mes + ' cumpliste ' + pct + '% de tu rutina (' + v + ' de ' + ex + ' veces). Eso es constancia de verdad. Estás a pocos entrenamientos de tu mejor mes; con un día más por semana lo logras.'; }
       else if (pct < 90) { tier = 4; ttl = '¡Qué gran mes! 🔥'; txt = 'En ' + mes + ' cumpliste ' + pct + '% de tu rutina (' + v + ' de ' + ex + ' veces). Tu disciplina se nota y los resultados también. Estás muy cerca de la perfección: ¡vamos por ese 100% este mes!'; }
+      else if (pct > 100) { tier = 6; ttl = '¡Fuiste la milla extra! 🚀'; txt = 'En ' + mes + ' viniste ' + v + ' veces cuando tu rutina pedía ' + ex + ': ¡' + pct + '% de lo planeado! Entrenaste más de lo que te tocaba, y eso solo lo hace quien de verdad se compromete con sus metas. ¡Eres un ejemplo de constancia y entrega para todo Benessere! Cuida también tu descanso para que tu cuerpo aproveche todo ese esfuerzo.'; }
       else { tier = 5; ttl = '¡Mes espectacular! 🏆'; txt = 'En ' + mes + ' cumpliste ' + pct + '% de tu rutina (' + v + ' de ' + ex + ' veces). ¡Felicitaciones! Tu constancia es admirable y es la que construye los resultados de verdad. Eres un ejemplo para todo Benessere. ¡Gracias por tanta entrega!'; }
       var extra = '';
       if (kc > 0 && v > 0) extra = '<div class="pend-txt" style="margin-top:8px;">🔥 En total gastaste cerca de <b>' + kc.toLocaleString('es-CR') + ' calorías</b> entrenando en el gym. ¡Eso equivale a <b>' + eq + '</b>! Y además ganaste fuerza, energía y salud (corazón, huesos y músculos más fuertes).</div>';
@@ -10948,7 +10949,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function asistShow(manual) {
       var e = ASIST_CUR; if (!e) return;
       var nm = (athleteActiveState && athleteActiveState.clientName) || '', m = asistMsg(e, nm), first = attFirst(nm);
-      var col = m.tier >= 5 ? '#06d6a0' : (m.tier >= 3 ? '#ffd166' : '#ff9f1c');
+      var col = m.tier >= 5 ? (m.tier === 6 ? '#b388ff' : '#06d6a0') : (m.tier >= 3 ? '#ffd166' : '#ff9f1c');
       pendOverlay('asist_mes', '<div class="pend-ttl">📊 Tu ' + escHtml(m.mes) + (first ? ', ' + escHtml(first) : '') + '</div>' +
         '<div style="text-align:center; margin:6px 0 10px;"><div style="font-size:2.6rem; font-weight:900; color:' + col + '; line-height:1;">' + m.pct + '%</div><div style="font-size:0.78rem; color:var(--muted);">' + m.v + ' de ' + m.ex + ' entrenamientos</div></div>' +
         '<div class="pend-txt" style="font-weight:800;">' + escHtml(m.ttl) + '</div>' +
