@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9868,10 +9868,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).catch(function() {});
     }
     function vrepBadge() {
-      var n = VREP_INBOX.length, b = document.querySelector('.gen-tab-btn[onclick="openCoachClients()"]');
+      var n = VREP_INBOX.length + (typeof alertsOpen === 'function' ? alertsOpen().length : 0), b = document.querySelector('.gen-tab-btn[onclick="openCoachClients()"]');
       if (b) b.innerText = '👥 Mis clientes' + (n ? ' · 🔔 ' + n : '');
     }
-    function vrepInboxRender() {
+    function vrepInboxRender() { vrepInboxRender0(); try { alertsPaint(); vrepBadge(); } catch (e) {} }
+    function vrepInboxRender0() {
       var box = document.getElementById('cl_reports'); if (!box) return;
       if (!VREP_INBOX.length) { box.innerHTML = ''; return; }
       box.innerHTML = '<div style="background:#2a1512; border:1px solid #8a3b30; border-radius:10px; padding:10px 12px; margin-bottom:12px;">' +
@@ -9891,7 +9892,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
               '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + (r.tipo === 'pesaje' ? '⚖️ Toca pesaje' : '⏰ Fin de ciclo cerca') + '</div>' +
               '<div style="color:#ff9a93;">' + escHtml(r.mot || '') + '</div>' +
               '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + '</div>' +
-              '<div style="display:flex; gap:8px; margin-top:6px;"><button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Listo</button></div></div>';
+              '<div style="display:flex; gap:8px; margin-top:6px;"><button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">' + (r.tipo === 'pesaje' ? '✔ Ya se pesó' : '✔ Ya está su rutina actualizada') + '</button></div></div>';
           }
           return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
             '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + escHtml(r.dia || 'día sin nombre') + '</div>' +
@@ -9951,6 +9952,80 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var r = VREP_INBOX[i], pin = vrepPin(); if (!r || !pin) return;
       VREP_INBOX.splice(i, 1); vrepBadge(); vrepInboxRender();
       postJson({ a: 'reporte_ok', pin: pin, t: r.t }).catch(function() {});
+    }
+
+
+    // ----- Avisos propios del coach: toca pesaje / se acaba el ciclo -----
+    // La app revisa por su cuenta las rutinas de los clientes (no depende de que ellos abran su app) y deja el aviso en «Mis clientes»
+    // hasta que lo marques como atendido, igual que los videos reportados. Se guardan en este dispositivo.
+    var ALERTS_KEY = 'bn_alerts_v1', ALERTS_BUSY = false;
+    function alertsLoad() { try { var o = JSON.parse(localStorage.getItem(ALERTS_KEY) || '{}') || {}; return { list: Array.isArray(o.list) ? o.list : [], done: o.done || {}, ts: o.ts || 0 }; } catch (e) { return { list: [], done: {}, ts: 0 }; } }
+    function alertsSave(o) { try { localStorage.setItem(ALERTS_KEY, JSON.stringify(o)); } catch (e) {} }
+    function alertsOpen() {
+      var o = alertsLoad(), inbox = VREP_INBOX || [];
+      return o.list.filter(function(a) {
+        if (o.done[a.key]) return false;
+        return !inbox.some(function(r) { return r.tipo === a.tipo && normName(r.cli) === normName(a.name); });   // si el propio cliente ya avisó, sale solo ese
+      });
+    }
+    // Revisa un cliente: devuelve los avisos que le tocan hoy
+    function alertsFor(c, st) {
+      var out = [], today = todayIso();
+      if (!st || st.off) return out;
+      if (pendDue(st)) st = pendPromote(st);
+      if (!isIsoDate(st.startDate)) return out;
+      var diff = dayNum(today) - dayNum(st.startDate); if (diff < 0) return out;
+      var total = parseInt(st.durationWeeks, 10) || 4, cur = Math.floor(diff / 7) + 1;
+      var k = Math.floor(diff / 28);
+      if (k >= 1 && diff <= total * 7 + 14) {
+        var due = addDaysIso(st.startDate, 28 * k), measured = normalizeMeasureLog(st.measureLog || []).some(function(e) { return e.d >= due; });
+        if (!measured) out.push({ key: c.id + '|pesaje|' + st.startDate + '|' + k, id: c.id, name: c.name, tipo: 'pesaje', mot: 'Van ' + (k * 4) + ' semanas desde que empezó su rutina: toca pesarlo y medirlo.', t: due });
+      }
+      if (total >= 2 && cur >= total && cur <= total + 3 && !st.next) {
+        out.push({ key: c.id + '|ciclo|' + st.startDate, id: c.id, name: c.name, tipo: 'ciclo', mot: (cur > total ? 'Su ciclo ya terminó' : 'Está en la última semana de su ciclo') + ': prepara su nueva rutina.', t: addDaysIso(st.startDate, (total - 1) * 7) });
+      }
+      return out;
+    }
+    function alertsScan(force) {
+      if (!COACH || ALERTS_BUSY) return;
+      var o = alertsLoad();
+      if (!force && Date.now() - o.ts < 3 * 3600 * 1000) { alertsPaint(); return; }
+      ALERTS_BUSY = true;
+      var clients = attClients(), list = [], i = 0, running = 0;
+      function one(c) {
+        return fetchRoutine(c.id).then(function(j) {
+          var st = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
+          alertsFor(c, st).forEach(function(a) { list.push(a); });
+        }).catch(function() {});
+      }
+      function worker() { if (i >= clients.length) return Promise.resolve(); return one(clients[i++]).then(worker); }
+      Promise.all([worker(), worker(), worker(), worker()]).then(function() {
+        var fresh = alertsLoad(); fresh.list = list; fresh.ts = Date.now();
+        var keep = {}; list.forEach(function(a) { if (fresh.done[a.key]) keep[a.key] = fresh.done[a.key]; }); fresh.done = keep;   // se olvidan los atendidos que ya no aplican
+        alertsSave(fresh); ALERTS_BUSY = false; vrepBadge(); alertsPaint();
+      }).catch(function() { ALERTS_BUSY = false; });
+    }
+    function alertsPaint() {
+      var box = document.getElementById('cl_reports'); if (!box) return;
+      var old = document.getElementById('cl_alerts'); if (old) old.remove();
+      var a = alertsOpen(); if (!a.length) return;
+      var d = document.createElement('div'); d.id = 'cl_alerts';
+      d.innerHTML = '<div style="background:#2a2512; border:1px solid #8a7a30; border-radius:10px; padding:10px 12px; margin-bottom:12px;">' +
+        '<div style="font-size:0.85rem; font-weight:900; color:#ffd166; margin-bottom:6px;">⏰ Por atender (' + a.length + ')</div>' +
+        a.map(function(x, i) {
+          return '<div style="border-top:1px solid #5a4d1f; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
+            '<div><b>' + escHtml(x.name) + '</b> · ' + (x.tipo === 'pesaje' ? '⚖️ Toca pesaje' : '⏰ Fin de ciclo cerca') + '</div>' +
+            '<div style="color:#ffd166;">' + escHtml(x.mot) + '</div>' +
+            '<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">' +
+            '<button type="button" onclick="' + (x.tipo === 'pesaje' ? 'coachOpenDatos' : 'openClientRoutine') + '(\'' + escHtml(x.id) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">' + (x.tipo === 'pesaje' ? '📋 Datos y medidas' : 'Abrir cliente') + '</button>' +
+            '<button type="button" onclick="alertsDone(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">' + (x.tipo === 'pesaje' ? '✔ Ya se pesó' : '✔ Ya está su rutina actualizada') + '</button></div></div>';
+        }).join('') + '</div>';
+      box.appendChild(d);
+    }
+    function alertsDone(i) {
+      var a = alertsOpen(), x = a[i]; if (!x) return;
+      var o = alertsLoad(); o.done[x.key] = todayIso(); alertsSave(o);
+      vrepBadge(); alertsPaint();
     }
 
     // ----- Sincronización del historial con la hoja de Google + modo coach -----
@@ -10094,6 +10169,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           clientRows = j.rutinas || [];
           renderClientList();
           try { attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e) {}
+          try { alertsScan(false); } catch (e4) {}
         } else {
           if (j && j.error === 'pin') { try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
           showClientLogin(clientsErrorText(j && j.error));
@@ -10106,7 +10182,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pinAtStart = COACH.pin;
       postJson({ a: 'listar', pin: pinAtStart }).then(function(j) {
         if (!COACH || COACH.pin !== pinAtStart) return;   // cerró sesión o cambió de coach mientras tanto
-        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { ASIST_MANUAL = true; ASIST_DONE = ''; attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e2) {} }
+        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { alertsScan(true); } catch (e5) {} try { ASIST_MANUAL = true; ASIST_DONE = ''; attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e2) {} }
         else { var s2 = document.getElementById('cl_status'); if (s2) s2.innerText = clientsErrorText(j && j.error); }
       }).catch(function(e) { if (!COACH || COACH.pin !== pinAtStart) return; var s3 = document.getElementById('cl_status'); if (s3) s3.innerText = clientsErrorText(e && e.message); });
     }
