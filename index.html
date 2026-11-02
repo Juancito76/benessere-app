@@ -8975,7 +8975,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function clsPrePick(i) {   // toque en un botón de la lista de la previa/pausa: muestra ese ejercicio (video e instrucciones); tocarlo otra vez retoma el recorrido automático
       if (CT.preSel != null && CT.preSelPh === CT.i && CT.preSel === i) CT.preSel = null; else { CT.preSel = i; CT.preSelPh = CT.i; }
-      CT.listKey = ''; ctTick();
+      CT.listKey = ''; CT.rKey = '';   // fuerza el repintado ya (la llave de ctRenderThrottled no cambia con este toque y esperaba al siguiente segundo)
+      if (CT.paused) ctRender(Math.ceil(CT.remain || 0)); else ctTick();
     }
     function clsRepsTxt(sub, rep) { return ctRepsText({ reps: rep != null ? rep : (sub ? sub.reps : '') }, false); }
     // Convierte un bloque de la clase en las fases del temporizador (mismo formato que buildCircuitPhases)
