@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-01-t';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -4871,17 +4871,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function vsStem(t) { return t.length > 5 ? t.slice(0, 5) : t; }
     // Devuelve { names: [...], partial: bool }: primero los que contienen TODAS las palabras; si no hay, los que contienen alguna (los de más coincidencias arriba)
     function vsSearch(names, query) {
-      var toks = vsNorm(query).split(' ').filter(function(t) { return t.length > 2 && ['con', 'del', 'las', 'los', 'para', 'sin', 'una', 'por'].indexOf(t) < 0; });
-      if (!toks.length) return { names: names.slice(), partial: false };
+      var qn = vsNorm(query);
+      var toks = qn.split(' ').filter(function(t) { return t.length > 2 && ['con', 'del', 'las', 'los', 'para', 'sin', 'una', 'por'].indexOf(t) < 0; });
+      if (!toks.length) return { names: names.slice(), partial: false, starts: 0 };
+      // cada palabra buscada debe estar al INICIO de una palabra del nombre (así «flexion» no trae «reflexion»)
       var scored = names.map(function(n) {
-        var nn = vsNorm(n), sc = 0;
-        toks.forEach(function(t) { if (nn.indexOf(vsStem(t)) !== -1) sc++; });
-        return { n: n, sc: sc };
+        var nn = vsNorm(n), words = nn.split(' '), sc = 0;
+        toks.forEach(function(t) { var st = vsStem(t); if (words.some(function(w) { return w.indexOf(st) === 0; })) sc++; });
+        var rank = nn.indexOf(qn) === 0 ? 0 : (words[0].indexOf(vsStem(toks[0])) === 0 ? 1 : 2);   // 0: empieza igual que lo escrito · 1: empieza con la 1.ª palabra · 2: la contiene más adelante
+        return { n: n, sc: sc, rank: rank };
       });
-      var full = scored.filter(function(x) { return x.sc === toks.length; }).map(function(x) { return x.n; });
-      if (full.length) return { names: full, partial: false };
-      var part = scored.filter(function(x) { return x.sc > 0; }).sort(function(a, b) { return b.sc - a.sc || a.n.localeCompare(b.n, 'es'); }).map(function(x) { return x.n; });
-      return { names: part, partial: part.length > 0 };
+      var byRank = function(a, b) { return a.rank - b.rank || a.n.localeCompare(b.n, 'es'); };
+      var full = scored.filter(function(x) { return x.sc === toks.length; }).sort(byRank);
+      if (full.length) return { names: full.map(function(x) { return x.n; }), partial: false, starts: full.filter(function(x) { return x.rank < 2; }).length };
+      var part = scored.filter(function(x) { return x.sc > 0; }).sort(function(a, b) { return b.sc - a.sc || byRank(a, b); }).map(function(x) { return x.n; });
+      return { names: part, partial: part.length > 0, starts: 0 };
     }
 
     function renderPickVideo() {
@@ -4908,7 +4912,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return;
       }
       var html = (vs.partial ? '<div style="font-size:0.72rem; color:var(--muted); margin:0 0 6px;">No hay uno con todas esas palabras; estos se parecen:</div>' : '') + '<div class="pick-ex-list">';
-      names.forEach(function(n) { html += pickVideoRow(n, lib[n], false); });
+      names.forEach(function(n, i) {
+        if (vs.starts > 0 && i === vs.starts && i < names.length) html += '</div><div style="font-size:0.72rem; color:var(--muted); margin:10px 0 6px;">También lo contienen en otra parte del nombre:</div><div class="pick-ex-list">';
+        html += pickVideoRow(n, lib[n], false);
+      });
       html += '</div>';
       body.innerHTML = sameHtml + html;
     }
