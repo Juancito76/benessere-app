@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8319,6 +8319,76 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (resume) ctApplyResume(resume);
     }
 
+    // ----- Temporizador en burbuja: siempre abre grande (casi toda la pantalla); se minimiza a una burbuja con el tiempo que se arrastra; al terminar el bloque vuelve a abrirse sola -----
+    var CT_MINPOS_KEY = 'benessere_tm_minpos';
+    function ctMiniCss() {
+      if (document.getElementById('tm_min_css')) return;
+      var cs = document.createElement('style'); cs.id = 'tm_min_css';
+      cs.textContent = '#tm_overlay.tm-min{display:block !important; right:auto !important; bottom:auto !important; width:128px; height:auto !important; padding:8px 10px !important; border-radius:20px; box-shadow:0 6px 22px rgba(0,0,0,.75) !important; overflow:hidden; touch-action:none; cursor:grab;} ' +
+        '#tm_overlay.tm-min > *:not(#tm_mini){display:none !important;} #tm_overlay.tm-min #tm_mini{display:block !important; text-align:center; pointer-events:none;} ' +
+        '#tm_mini_p{font-size:.7rem; font-weight:900; letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} #tm_mini_t{font-size:2rem; font-weight:900; line-height:1.1; font-variant-numeric:tabular-nums;} ' +
+        '#tm_mini_b{height:6px; background:#2a2a2a; border-radius:4px; overflow:hidden; margin-top:4px;} #tm_mini_b i{display:block; height:100%; width:0; background:#fff;}';
+      document.head.appendChild(cs);
+    }
+    function ctMiniPos(o) {   // posición guardada (o esquina inferior derecha), siempre dentro de la pantalla
+      var W = window.innerWidth, H = window.innerHeight, w = o.offsetWidth || 128, h = o.offsetHeight || 90, pos = null;
+      try { pos = JSON.parse(localStorage.getItem(CT_MINPOS_KEY) || 'null'); } catch (e) {}
+      var x = pos ? pos.x : W - w - 12, y = pos ? pos.y : H - h - 90;
+      o.style.left = Math.max(6, Math.min(W - w - 6, x)) + 'px'; o.style.top = Math.max(6, Math.min(H - h - 6, y)) + 'px';
+    }
+    function ctMiniSync(o) {
+      var el = function(id) { return document.getElementById(id); };
+      var ph = el('tm_phase'), tm = el('tm_time'), bar = el('tm_bar');
+      if (!ph || !tm) return;
+      var col = ph.style.color || '#fff';
+      el('tm_mini_p').innerText = ph.innerText || ''; el('tm_mini_p').style.color = col;
+      el('tm_mini_t').innerText = tm.innerText || ''; el('tm_mini_t').style.color = tm.style.color || col;
+      var mb = el('tm_mini_b').firstChild; mb.style.width = (bar ? bar.style.width : '0') || '0'; mb.style.background = (bar && bar.style.background) || col;
+      o.style.borderColor = col;
+    }
+    function ctMiniExpand() {
+      var o = document.getElementById('tm_overlay'); if (!o || !o.classList.contains('tm-min')) return;
+      o.classList.remove('tm-min'); o.style.left = o.style.top = o.style.width = ''; 
+      o.style.top = 'max(8px, env(safe-area-inset-top))'; o.style.left = '8px';
+      var b = document.getElementById('tm_minb'); if (b) b.blur();
+    }
+    function ctMiniMinimize() {
+      var o = document.getElementById('tm_overlay'); if (!o || CT.done) return;
+      document.body.classList.remove('tm-extra-open');
+      var ex = document.getElementById('tm_extra'); if (ex) ex.classList.remove('on');
+      o.classList.add('tm-min'); ctMiniSync(o); ctMiniPos(o);
+    }
+    function ctMiniInit(o) {
+      ctMiniCss();
+      document.getElementById('tm_minb').onclick = ctMiniMinimize;
+      var sx = 0, sy = 0, ox = 0, oy = 0, drag = false, down = false;
+      o.addEventListener('pointerdown', function(e) {
+        if (!o.classList.contains('tm-min')) return;
+        down = true; drag = false; sx = e.clientX; sy = e.clientY; ox = o.offsetLeft; oy = o.offsetTop;
+        try { o.setPointerCapture(e.pointerId); } catch (x) {}
+      });
+      o.addEventListener('pointermove', function(e) {
+        if (!down || !o.classList.contains('tm-min')) return;
+        var dx = e.clientX - sx, dy = e.clientY - sy;
+        if (!drag && Math.abs(dx) + Math.abs(dy) > 8) drag = true;
+        if (drag) {
+          var W = window.innerWidth, H = window.innerHeight;
+          o.style.left = Math.max(4, Math.min(W - o.offsetWidth - 4, ox + dx)) + 'px'; o.style.top = Math.max(4, Math.min(H - o.offsetHeight - 4, oy + dy)) + 'px';
+          e.preventDefault();
+        }
+      });
+      var end = function(e) {
+        if (!down) return; down = false;
+        if (!o.classList.contains('tm-min')) return;
+        if (drag) { try { localStorage.setItem(CT_MINPOS_KEY, JSON.stringify({ x: o.offsetLeft, y: o.offsetTop })); } catch (x) {} }
+        else ctMiniExpand();   // un toque sin arrastrar: se abre grande otra vez
+      };
+      o.addEventListener('pointerup', end); o.addEventListener('pointercancel', function() { down = false; });
+      var iv = setInterval(function() {
+        if (!document.body.contains(o)) { clearInterval(iv); return; }
+        if (o.classList.contains('tm-min')) { if (CT.done) ctMiniExpand(); else ctMiniSync(o); }   // al terminar el bloque se abre sola para anotar las cargas
+      }, 250);
+    }
     function ctOpen() {
       CT.rKey = ''; CT.prevCache = {};   // pantalla nueva: se pinta completa la primera vez y se vuelve a buscar la marca anterior
       var old = document.getElementById('tm_overlay'); if (old) old.remove();
@@ -8351,10 +8421,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         document.head.appendChild(cs);
       }
       o.id = 'tm_overlay';
-      o.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; z-index:100000; background:#111; display:flex; flex-direction:column; padding:18px 16px calc(18px + env(safe-area-inset-bottom)); color:#fff; text-align:center; overflow:auto;' + (PRUEBA.on ? ' padding-bottom:calc(60px + env(safe-area-inset-bottom));' : '');
+      o.style.cssText = 'position:fixed; top:max(8px, env(safe-area-inset-top)); left:8px; right:8px; bottom:max(8px, env(safe-area-inset-bottom)); border-radius:22px; border:2px solid #333; box-shadow:0 0 0 100vmax rgba(0,0,0,.6); z-index:100000; background:#111; display:flex; flex-direction:column; padding:18px 16px calc(18px + env(safe-area-inset-bottom)); color:#fff; text-align:center; overflow:auto;' + (PRUEBA.on ? ' padding-bottom:calc(60px + env(safe-area-inset-bottom));' : '');
       o.innerHTML = '<div id="tm_g" style="display:none; text-align:left; margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:800;"><span id="tm_gtxt" style="color:#ccc;"></span><span id="tm_gpct" style="color:#ccc;"></span></div><div style="height:6px; background:#2a2a2a; border-radius:4px; overflow:hidden; margin-top:4px;"><div id="tm_gbar" style="height:100%; width:0; background:#4d8bff;"></div></div></div>' +
         '<div id="tm_top"><div id="tm_left">' +
-        '<div id="tm_head" style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary); text-align:left;"></div><div id="tm_round" style="font-size:0.85rem; color:#ccc; font-weight:700; flex:none;"></div></div>' +
+        '<div id="tm_head" style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary); text-align:left;"></div><div id="tm_round" style="font-size:0.85rem; color:#ccc; font-weight:700; flex:none;"></div><button type="button" id="tm_minb" aria-label="Minimizar" style="flex:none; background:#1c1c1c; color:#fff; border:2px solid #fff; border-radius:10px; font-size:.8rem; font-weight:900; padding:6px 9px;">➖ Minimizar</button></div>' +
         '<div id="tm_phase" style="margin-top:10px; font-size:1.2rem; font-weight:900; letter-spacing:2px;"></div>' +
         '<div id="tm_prog" style="display:none; margin-top:2px; font-size:0.9rem; font-weight:800; color:#ccc;"></div>' +
         '<div id="tm_station" style="margin-top:4px; font-size:1.35rem; font-weight:800; line-height:1.2;"></div>' +
@@ -8386,12 +8456,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="tm-btn tm-sm" id="tm_exit">✖ Salir</button>' +
         '</div>' +
         '</div>' +
+        '<div id="tm_mini" style="display:none;"><div id="tm_mini_p"></div><div id="tm_mini_t"></div><div id="tm_mini_b"><i></i></div></div>' +
         '<div id="tm_guide" style="display:none; margin-top:12px; background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; text-align:center;"></div>' +
         '<div id="tm_vid" style="display:none; position:relative; background:#000; border-radius:10px; overflow:hidden; min-height:200px;"></div>' +
         '<button type="button" id="tm_vrep">⚠️ El video no se ve</button>' +
         '<div id="tm_bd" style="display:none; margin-top:14px; text-align:left;"></div>' +
         '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>';
       document.body.appendChild(o);
+      try { ctMiniInit(o); } catch (e) { console.error(e); }
       document.getElementById('tm_pause').onclick = ctTogglePause;
       document.getElementById('tm_skip').onclick = ctSkip;
       document.getElementById('tm_done').onclick = ctSkip;   // en una fase por reps, "Terminé" cierra la serie y pasa a lo que sigue
