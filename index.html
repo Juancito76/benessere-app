@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-01-t';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -945,6 +945,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <button type="button" id="btn_update_routine" class="btn btn-accent" style="display:none;" onclick="updateEditingRoutine()">🔄 Actualizar rutina</button>
         <button type="button" id="btn_queue_routine" class="btn" style="display:none; border:1px solid #ffb703; color:#ffb703; background:transparent;" onclick="queueEditingRoutine()">⏳ Guardar como rutina en espera</button>
         <button type="button" class="btn btn-accent" style="font-size:0.85rem; padding:12px 14px;" onclick="saveAndResetBuilder()" title="Guarda un borrador y deja el constructor limpio para el próximo cliente">💾➡️🧹 Guardar y reiniciar</button>
+        <button type="button" class="btn btn-secondary" style="color:#ffd60a; border-color:#ffd60a;" onclick="previewBuilderRoutine()" title="Abre la rutina que estás armando como la vería el cliente. Nada se guarda ni se envía.">👁️ Vista previa</button>
         <button type="button" class="btn btn-export-pdf" onclick="generateGymPDF()">📄 PDF Ficha</button>
         <button type="button" class="btn btn-export-download" onclick="downloadManualHTML()">💾 Guardar HTML</button>
         <button type="button" class="btn btn-export-wa" onclick="generateDirectWhatsAppLink()">📲 Enviar por WhatsApp</button>
@@ -4085,7 +4086,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= MODO PRUEBA (coach): se puede abrir y usar cualquier perfil, pero NADA se guarda ni se envía =================
     // Mientras está activo, el almacenamiento del celular se simula en memoria (se parte de una copia de lo real) y las
     // escrituras al servidor se bloquean. Al salir se recarga la app y todo queda exactamente como estaba.
-    var PRUEBA = { on: false, data: null, client: false };   // client: el perfil se abrió con «🧪 Probar» y funciona exactamente como lo vería el cliente
+    var PRUEBA = { on: false, data: null, client: false, preview: false, previewOwns: false };   // preview: «👁️ Vista previa» de la rutina que se está armando en el constructor (previewOwns: esa vista previa fue la que activó el modo prueba)   // client: el perfil se abrió con «🧪 Probar» y funciona exactamente como lo vería el cliente
     function pruebaAsClient() { return !!(PRUEBA.on && PRUEBA.client); }
     (function() {
       try {
@@ -4108,9 +4109,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         b.style.cssText = 'position:fixed; left:10px; bottom:10px; z-index:100020; background:#ffd60a; color:#000; border:2px solid #000; border-radius:999px; padding:6px 12px; font-weight:900; font-size:0.7rem; box-shadow:0 2px 10px rgba(0,0,0,.6); cursor:pointer;';
         b.onclick = pruebaToggle; document.body.appendChild(b);
       }
-      b.innerText = '🧪 PRUEBA · no se guarda · Salir ✖';
+      b.innerText = PRUEBA.preview ? '👁️ VISTA PREVIA · no se guarda · Volver ✖' : '🧪 PRUEBA · no se guarda · Salir ✖';
     }
     function pruebaToggle() {
+      if (PRUEBA.preview) { previewExit(); return; }   // en la vista previa no se recarga la app: se vuelve al constructor tal como estaba
       if (!PRUEBA.on) {
         if (!confirm('🧪 Modo prueba\n\nPodrás abrir los perfiles de los clientes y experimentar (marcar pesos, cerrar entrenos, editar).\nNada se guarda en el celular ni se envía a la hoja.\n\n¿Activarlo?')) return;
         try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar el modo prueba.'); return; }
@@ -4130,6 +4132,63 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         showToastTop('🧪 Modo prueba: nada se guarda ni se envía. Para salir toca «Salir ✖» abajo a la izquierda.');
       }
       openClientRoutine(id, true);   // true = abrirlo como lo ve el cliente (sin herramientas de coach)
+    }
+    // ----- «👁️ Vista previa» (barra inferior del constructor): abre la rutina que se está armando, tal como la vería el cliente, en modo prueba.
+    // No necesita enlace ni enviarla: se arma el mismo paquete que iría en el enlace y se abre desde ahí. Nada se guarda ni se envía.
+    // Para volver al constructor (con todo lo que había escrito, sin recargar): «← Constructor» o «Volver ✖». -----
+    function previewBuilderRoutine() {
+      if (PRUEBA.preview) return;
+      var st = null;
+      try {
+        autosaveSilently();   // respaldo real del borrador antes de entrar al modo prueba (dentro de la prueba el guardado se simula)
+        var bs = getBuilderState();
+        if (editingRoutine && editingRoutine.coach) bs.coachName = editingRoutine.coach;   // editando una ya enviada: como al actualizarla, se conserva el coach original
+        var payloadText = encodePayload(buildUltraCompactState(bs));
+        st = decodePayload('q', payloadText);   // igual que lo recibiría el cliente
+      } catch (e) { console.error(e); st = null; }
+      if (!st || !(st.routineDays || []).length) { alert('Agrega al menos un día de entrenamiento para ver la vista previa.'); return; }
+      PRUEBA.previewOwns = !PRUEBA.on;
+      if (!PRUEBA.on) {
+        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar la vista previa.'); return; }
+        PRUEBA.on = true;
+      }
+      PRUEBA.client = true; PRUEBA.preview = true;
+      TRK_NS = 'c:' + normName(st.clientName) + '|';
+      athleteRoutineId = '';   // la rutina aún no tiene enlace
+      // se parte de cero, como un cliente que abre su rutina por primera vez (solo dentro de la prueba; lo real no se toca)
+      Object.keys(PRUEBA.data || {}).forEach(function(k) { if (k.indexOf(TRK_NS) === 0) delete PRUEBA.data[k]; });
+      [RESUME_KEY, WK_KEY, ANN_SEEN, PENDING_KEY].forEach(function(k) { delete PRUEBA.data[k]; });
+      try { WK.start = 0; WK.dayId = ''; ANN_CHECKED = false; } catch (e) {}
+      GD_OPEN = {}; GD_DEMO = {};
+      try { renderAthleteApp(st); } catch (e) { console.error(e); previewExit(); alert('No se pudo mostrar la vista previa.'); return; }
+      pruebaBanner();
+      var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
+      var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'none';
+      var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'none';
+      var bp = document.getElementById('prev_back_pill');
+      if (!bp) {
+        bp = document.createElement('button'); bp.type = 'button'; bp.id = 'prev_back_pill';
+        bp.style.cssText = 'position:fixed; top:12px; right:12px; z-index:100020; background:#ffd60a; color:#000; border:2px solid #000; border-radius:999px; padding:7px 12px; font-weight:900; font-size:0.75rem; box-shadow:0 2px 10px rgba(0,0,0,.6); cursor:pointer;';
+        bp.onclick = previewExit; document.body.appendChild(bp);
+      }
+      bp.innerText = '← Constructor';
+      window.scrollTo(0, 0);
+    }
+    function previewExit() {
+      try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
+      try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
+      document.querySelectorAll('.view-screen.active, .modal-overlay.active').forEach(function(el) { el.classList.remove('active'); });
+      var owns = PRUEBA.previewOwns;
+      PRUEBA.preview = false; PRUEBA.previewOwns = false; PRUEBA.client = false;
+      if (owns) { PRUEBA.on = false; PRUEBA.data = null; }   // si la prueba la activó la vista previa, se apaga; si ya estaba activa, sigue como estaba
+      TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null; GD_OPEN = {}; GD_DEMO = {};
+      pruebaBanner();
+      var bp = document.getElementById('prev_back_pill'); if (bp) bp.remove();
+      var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
+      document.getElementById('athlete_client_view').style.display = 'none';
+      document.getElementById('athlete_message_view').style.display = 'none';
+      document.getElementById('coach_builder_view').style.display = 'block';
+      window.scrollTo(0, 0);
     }
     function pruebaLabel() { var b = document.getElementById('cl_prueba'); if (b) { b.innerText = PRUEBA.on ? '🧪 Prueba: ACTIVA' : '🧪 Prueba'; b.style.background = PRUEBA.on ? '#ffd60a' : 'transparent'; b.style.color = PRUEBA.on ? '#000' : '#ffd60a'; } }
 
@@ -10166,6 +10225,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Trae el historial del atleta desde la hoja y lo une con el del celular (sin duplicar por id de sesión)
     function syncHistorial(manual) {
       if (!athleteActiveState) return;
+      if (PRUEBA.preview) { HSYNC = { s: 'noid' }; histSyncUi(); return; }   // vista previa: rutina sin enlace, no se trae el historial de ningún cliente real
       var name = athleteActiveState.clientName, id = athleteRoutineId;
       try { if (id) localStorage.setItem(ridKey(name), id); else id = localStorage.getItem(ridKey(name)) || ''; } catch (e) {}   // si este celular abrió la app sin enlace, se usa el último código conocido de esta persona
       if (!id) { HSYNC = { s: 'noid' }; histSyncUi(); return; }
@@ -10481,6 +10541,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Botón «Salir»: en modo coach vuelve a la lista de clientes; en el celular del cliente intenta cerrar la app y, si el navegador no lo permite, deja una pantalla de despedida
     function salirApp() {
+      if (PRUEBA.preview) { previewExit(); return; }
       if (isCoachView()) { exitClientRoutine(); return; }
       if (WK.start && !confirm('Tu entreno sigue corriendo y se conserva al volver. ¿Salir de la app?')) return;
       try { window.close(); } catch (e) {}
