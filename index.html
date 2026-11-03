@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8348,7 +8348,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function ctMiniExpand() {
       var o = document.getElementById('tm_overlay'); if (!o || !o.classList.contains('tm-min')) return;
-      o.classList.remove('tm-min'); o.style.left = o.style.top = o.style.width = ''; 
+      o.classList.remove('tm-min'); o.style.left = o.style.top = o.style.width = '';
+      try { if (PIP.fromMin) { PIP.fromMin = false; if (PIP.on) ctPipStop(true); } } catch (e) {}   // la flotante abierta al minimizar se cierra al volver a la grande
+
       o.style.top = 'max(8px, env(safe-area-inset-top))'; o.style.left = '8px';
       var b = document.getElementById('tm_minb'); if (b) b.blur();
     }
@@ -8357,6 +8359,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.body.classList.remove('tm-extra-open');
       var ex = document.getElementById('tm_extra'); if (ex) ex.classList.remove('on');
       o.classList.add('tm-min'); ctMiniSync(o); ctMiniPos(o);
+      try {   // además de la burbuja, el tiempo sigue en la ventana flotante del celular si la soporta (así te acompaña aunque salgas de la app)
+        if (ctPipSupported() && !PIP.on) {
+          var ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || '') || (/Macintosh/i.test(navigator.userAgent || '') && navigator.maxTouchPoints > 1);
+          if (ios) { ctPipToggle(); PIP.fromMin = true; }   // en iPhone solo se abre con un toque tuyo: este es ese toque
+          else { if (!PIP.prep) ctPipPrepare(); wkToast('Si sales de la app, el tiempo sigue en una ventana flotante.'); }   // en Android se abre sola al salir
+        }
+      } catch (e) {}
     }
     function ctMiniInit(o) {
       ctMiniCss();
