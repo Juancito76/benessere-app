@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10436,7 +10436,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!j || !j.ok || !j.p) { CV.err = 'No se pudo abrir la rutina activa.'; cvRender(); return; }
         var st = null; try { st = decodePayload('q', j.p); } catch (e) { st = null; }
         if (!st) { CV.err = 'Los datos de la rutina activa están dañados o el cliente está desconectado.'; cvRender(); return; }
-        CV.state = st; cvRender();
+        CV.state = st; CV.raw = j.p; CV.id = id; cvRender();
       }).catch(function(e) { CV.err = clientsErrorText(e && e.message); cvRender(); });
       fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(h) {
         if (CV.k !== k) return;
@@ -10454,40 +10454,127 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function cvSetWhich(x) { CV.which = x; CV.week = 1; cvRender(); }
     function cvItemSig(it) { try { return JSON.stringify([it.slot, (it.sub || []).map(function(s) { return [s.name, s.series, s.reps, s.notes]; }), it.circ || null]); } catch (e) { return ''; } }
     function cvActive(it, w) { var d = parseInt(it.vigenciaDesde, 10) || 1, h = (it.vigenciaHasta == null) ? null : (parseInt(it.vigenciaHasta, 10) || null); return d <= w && (h === null || w <= h); }
-    function cvItemHtml(it, isNew) {
+    function cvWeekNow(src) {   // semana en la que va el cliente hoy (si aún no empieza, 1); las semanas anteriores quedan solo para ver
+      try { if (!isIsoDate(src.startDate)) return 1; var n = Math.floor((new Date(todayIso() + 'T12:00:00') - new Date(src.startDate + 'T12:00:00')) / 86400000 / 7) + 1; return Math.max(1, n); } catch (e) { return 1; }
+    }
+    function cvEditable(src) { return CV.which === 'cur' && CV.state && !pendDue(CV.state) && CV.week >= cvWeekNow(src) && !CV.busy; }
+    function cvItemHtml(it, isNew, di, ii, canEdit) {
+      var editing = CV.edit && CV.edit.di === di && CV.edit.ii === ii;
       var badge = it.type === 'normal' ? '' : (it.type === 'biserie' ? 'BISERIE' : it.type === 'triserie' ? 'TRISERIE' : (it.circ && it.circ.tipo === 'hiit' ? 'HIIT' : 'CIRCUITO'));
-      var h = '<div style="border-left:3px solid ' + (isNew ? '#ffd60a' : '#333') + ';padding:4px 0 4px 9px;margin:6px 0;">';
-      if (badge || isNew) h += '<div style="font-size:.66rem;font-weight:800;color:' + (isNew ? '#ffd60a' : '#8d99ae') + ';">' + badge + (badge && isNew ? ' · ' : '') + (isNew ? '🆕 cambia esta semana' : '') + '</div>';
-      if (it.circ && (it.circ.nombre || it.circ.rondas)) h += '<div style="font-size:.76rem;color:#cfd6e0;">' + cvEsc(it.circ.nombre || '') + (it.circ.rondas ? ' · ' + cvEsc(it.circ.rondas) + ' rondas' : '') + (it.circ.trabajo ? ' · ' + cvEsc(it.circ.trabajo) + ' trabajo' : '') + (it.circ.descanso ? ' / ' + cvEsc(it.circ.descanso) + ' descanso' : '') + '</div>';
+      var inp = 'background:#0f0f0f;color:#fff;border:1px solid #444;border-radius:6px;padding:6px;font-size:.8rem;box-sizing:border-box;';
+      var h = '<div style="border-left:3px solid ' + (editing ? '#4d8bff' : (isNew ? '#ffd60a' : '#333')) + ';padding:4px 0 4px 9px;margin:6px 0;">';
+      if (badge || isNew || canEdit) h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;"><div style="font-size:.66rem;font-weight:800;color:' + (isNew ? '#ffd60a' : '#8d99ae') + ';">' + badge + (badge && isNew ? ' · ' : '') + (isNew ? '🆕 cambia esta semana' : '') + '</div>' + ((canEdit && !editing) ? '<button type="button" onclick="cvEdit(' + di + ',' + ii + ')" style="background:transparent;border:1px solid #4d8bff;color:#4d8bff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:800;">✏️ Editar</button>' : '') + '</div>';
+      if (it.circ && (it.circ.nombre || it.circ.rondas)) {
+        if (editing) h += '<div style="font-size:.76rem;color:#cfd6e0;margin:4px 0;">' + cvEsc(it.circ.nombre || '') + ' · rondas: <input id="cve_rondas" value="' + cvEsc(it.circ.rondas || '') + '" style="' + inp + 'width:70px;"></div>';
+        else h += '<div style="font-size:.76rem;color:#cfd6e0;">' + cvEsc(it.circ.nombre || '') + (it.circ.rondas ? ' · ' + cvEsc(it.circ.rondas) + ' rondas' : '') + (it.circ.trabajo ? ' · ' + cvEsc(it.circ.trabajo) + ' trabajo' : '') + (it.circ.descanso ? ' / ' + cvEsc(it.circ.descanso) + ' descanso' : '') + '</div>';
+      }
       (it.sub || []).forEach(function(sb, i) {
         var lt = (it.type === 'normal') ? '' : (it.type === 'circuito' ? (i + 1) + '. ' : ['A', 'B', 'C'][i] + '. ');
-        h += '<div style="font-size:.84rem;color:#fff;"><b>' + lt + cvEsc(sb.name || '(sin nombre)') + '</b>' + ((sb.series || sb.reps) ? ' <span style="color:#06d6a0;">' + cvEsc(sb.series || '-') + ' × ' + cvEsc(sb.reps || '-') + '</span>' : '') + (sb.video ? ' <span title="Tiene video" style="font-size:.7rem;">🎥</span>' : '') + '</div>';
-        if (sb.notes) h += '<div style="font-size:.72rem;color:#8d99ae;">' + cvEsc(sb.notes) + '</div>';
+        h += '<div style="font-size:.84rem;color:#fff;"><b>' + lt + cvEsc(sb.name || '(sin nombre)') + '</b>';
+        if (editing) {
+          h += '<div style="display:flex;gap:6px;margin:4px 0;align-items:center;"><input id="cve_s' + i + '" value="' + cvEsc(sb.series || '') + '" placeholder="series" style="' + inp + 'width:60px;"> × <input id="cve_r' + i + '" value="' + cvEsc(sb.reps || '') + '" placeholder="reps" style="' + inp + 'width:70px;"></div><input id="cve_n' + i + '" value="' + cvEsc(sb.notes || '') + '" placeholder="notas" style="' + inp + 'width:100%;margin-bottom:4px;">';
+        } else {
+          h += ((sb.series || sb.reps) ? ' <span style="color:#06d6a0;">' + cvEsc(sb.series || '-') + ' × ' + cvEsc(sb.reps || '-') + '</span>' : '') + (sb.video ? ' <span title="Tiene video" style="font-size:.7rem;">🎥</span>' : '');
+        }
+        h += '</div>';
+        if (sb.notes && !editing) h += '<div style="font-size:.72rem;color:#8d99ae;">' + cvEsc(sb.notes) + '</div>';
       });
+      if (editing) h += '<div style="font-size:.74rem;color:#cfd6e0;margin:6px 0;"><label style="display:block;margin-bottom:3px;"><input type="radio" name="cve_scope" value="from" checked> Esta semana (' + CV.week + ') <b>en adelante</b></label><label><input type="radio" name="cve_scope" value="only"> Solo la semana ' + CV.week + '</label></div><div style="display:flex;gap:6px;"><button type="button" onclick="cvSave()" style="flex:1;background:#06d6a0;color:#000;border:0;border-radius:8px;padding:8px;font-weight:800;font-size:.8rem;">💾 Guardar</button><button type="button" onclick="cvCancelEdit()" style="background:transparent;color:#aaa;border:1px solid #555;border-radius:8px;padding:8px 12px;font-weight:800;font-size:.8rem;">Cancelar</button></div>';
       return h + '</div>';
+    }
+    function cvEdit(di, ii) { CV.edit = { di: di, ii: ii }; cvRender(); }
+    function cvCancelEdit() { CV.edit = null; cvRender(); }
+    // Aplica el cambio a una copia del estado: parte el ejercicio en tramos de vigencia (antes / esta semana / después) y vuelve a unir los iguales
+    function cvApplyEdit(st, di, ii, w, scope, patch) {
+      var d = st.routineDays[di], it = d.items[ii];
+      var dd = parseInt(it.vigenciaDesde, 10) || 1, hh = (it.vigenciaHasta == null) ? null : (parseInt(it.vigenciaHasta, 10) || null);
+      var cl = function(x) { return JSON.parse(JSON.stringify(x)); };
+      var segs = [];
+      if (dd <= w - 1) { var a = cl(it); a.vigenciaDesde = dd; a.vigenciaHasta = w - 1; segs.push(a); }
+      var m = cl(it); m.vigenciaDesde = w; m.vigenciaHasta = (scope === 'only') ? w : hh;
+      (m.sub || []).forEach(function(sb, i) { if (patch.subs[i]) { sb.series = patch.subs[i].series; sb.reps = patch.subs[i].reps; sb.notes = patch.subs[i].notes; } });
+      if (m.circ && patch.rondas != null) m.circ.rondas = patch.rondas;
+      segs.push(m);
+      if (scope === 'only' && (hh === null || w + 1 <= hh)) { var z = cl(it); z.vigenciaDesde = w + 1; z.vigenciaHasta = hh; segs.push(z); }
+      Array.prototype.splice.apply(d.items, [ii, 1].concat(segs));
+      for (var j = 0; j < d.items.length - 1; j++) {   // unir tramos contiguos idénticos del mismo bloque
+        var A = d.items[j], B = d.items[j + 1];
+        if (A.slot === B.slot && A.vigenciaHasta != null && (parseInt(A.vigenciaHasta, 10) + 1) === (parseInt(B.vigenciaDesde, 10) || 1) && cvItemSig(A) === cvItemSig(B)) {
+          A.vigenciaHasta = (B.vigenciaHasta == null) ? null : B.vigenciaHasta; d.items.splice(j + 1, 1); j--;
+        }
+      }
+      return st;
+    }
+    function cvSave() {
+      if (!CV.edit || !CV.state || CV.busy) return;
+      var di = CV.edit.di, ii = CV.edit.ii, w = CV.week;
+      var it0 = CV.state.routineDays[di].items[ii], patch = { subs: [], rondas: null }, changed = false;
+      (it0.sub || []).forEach(function(sb, i) {
+        var s1 = (document.getElementById('cve_s' + i) || {}).value, r1 = (document.getElementById('cve_r' + i) || {}).value, n1 = (document.getElementById('cve_n' + i) || {}).value;
+        s1 = String(s1 == null ? sb.series : s1).trim(); r1 = String(r1 == null ? sb.reps : r1).trim(); n1 = String(n1 == null ? sb.notes : n1).trim();
+        patch.subs[i] = { series: s1, reps: r1, notes: n1 };
+        if (s1 !== String(sb.series || '') || r1 !== String(sb.reps || '') || n1 !== String(sb.notes || '')) changed = true;
+      });
+      if (it0.circ) { var rd = document.getElementById('cve_rondas'); if (rd) { patch.rondas = String(rd.value).trim(); if (patch.rondas !== String(it0.circ.rondas || '')) changed = true; } }
+      if (!changed) { showToastTop('No cambiaste nada.'); return; }
+      var scopeEl = document.querySelector('input[name=cve_scope]:checked'), scope = scopeEl ? scopeEl.value : 'from';
+      if (!confirm('Guardar el cambio para ' + CV.name + ':\n\n' + (scope === 'only' ? 'Solo la semana ' + w : 'Desde la semana ' + w + ' en adelante') + '\n\nSe actualiza su mismo link y lo verá la próxima vez que abra la app. Si te equivocas, puedes deshacerlo desde este visor.')) return;
+      var np, ns;
+      try {
+        ns = decodePayload('q', CV.raw); if (!ns) throw new Error('x');
+        cvApplyEdit(ns, di, ii, w, scope, patch);
+        np = encodePayload(buildUltraCompactState(ns));
+        var chk = decodePayload('q', np); if (!chk || !(chk.routineDays || []).length) throw new Error('x');
+      } catch (e) { console.error(e); alert('No se pudo preparar el cambio. No se guardó nada.'); return; }
+      CV.busy = true; showToastTop('Guardando…'); cvRender();
+      fetchRoutine(CV.id).then(function(j) {   // si alguien cambió la rutina mientras tanto, no se pisa
+        if (!j || !j.ok || j.p !== CV.raw) throw new Error('cambio');
+        return postJson({ a: 'actualizar', id: CV.id, p: np, pin: COACH.pin });
+      }).then(function(r2) {
+        if (!r2 || !r2.ok) { if (r2 && r2.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} } throw new Error((r2 && r2.error) || 'guardado'); }
+        CV.undoP = CV.raw; CV.raw = np; CV.state = decodePayload('q', np); CV.edit = null; CV.busy = false;
+        coachCacheSet(CV.id, np); showToastTop('✅ Guardado. Link actualizado.'); cvRender();
+      }).catch(function(e) {
+        CV.busy = false; cvRender();
+        alert((e && e.message === 'cambio') ? 'Esa rutina cambió mientras la editabas (otro coach o una actualización). No se guardó nada: ciérrala y ábrela de nuevo.' : 'No se pudo guardar: ' + updateErrorText(e && e.message));
+      });
+    }
+    function cvUndo() {
+      if (!CV.undoP || CV.busy) return;
+      if (!confirm('¿Deshacer el último cambio hecho desde este visor y volver la rutina de ' + CV.name + ' a como estaba?')) return;
+      CV.busy = true; cvRender();
+      postJson({ a: 'actualizar', id: CV.id, p: CV.undoP, pin: COACH.pin }).then(function(r2) {
+        if (!r2 || !r2.ok) throw new Error((r2 && r2.error) || 'guardado');
+        CV.raw = CV.undoP; CV.state = decodePayload('q', CV.raw); CV.undoP = null; CV.busy = false; coachCacheSet(CV.id, CV.raw); showToastTop('↩️ Cambio deshecho.'); cvRender();
+      }).catch(function(e) { CV.busy = false; cvRender(); alert('No se pudo deshacer: ' + updateErrorText(e && e.message)); });
     }
     function cvWeeksHtml(st) {
       var src = st, waiting = null;
+      if (pendDue(st)) { try { src = pendPromote(decodePayload('q', CV.raw)) || st; } catch (e) { src = st; } }   // ya empezó la rutina que estaba en espera: esa es la actual
       if (st.next && st.next.routineDays && !pendDue(st)) waiting = st.next;
       var h = '';
       if (waiting) h += '<div style="display:flex;gap:6px;margin-bottom:8px;"><button type="button" onclick="cvSetWhich(\'cur\')" style="flex:1;padding:8px;border-radius:8px;font-weight:800;font-size:.78rem;border:1px solid #06d6a0;background:' + (CV.which === 'cur' ? '#06d6a0' : 'transparent') + ';color:' + (CV.which === 'cur' ? '#000' : '#06d6a0') + ';">Rutina actual</button><button type="button" onclick="cvSetWhich(\'next\')" style="flex:1;padding:8px;border-radius:8px;font-weight:800;font-size:.78rem;border:1px solid #ffb703;background:' + (CV.which === 'next' ? '#ffb703' : 'transparent') + ';color:' + (CV.which === 'next' ? '#000' : '#ffb703') + ';">⏳ En espera · inicia ' + cvEsc(fechaLargaEs(waiting.startDate)) + '</button></div>';
       else if (st.next && st.next.startDate) h += '<div style="font-size:.74rem;color:#ffb703;margin-bottom:8px;">⏳ Tiene una rutina en espera (inicia ' + cvEsc(fechaLargaEs(st.next.startDate)) + '), pero el visor no pudo leer su contenido.</div>';
       if (waiting && CV.which === 'next') src = waiting;
-      var days = (src.routineDays || []).filter(function(d) { return !d.rest; });
+      var days = (src.routineDays || []).map(function(d, di) { d._di = di; return d; }).filter(function(d) { return !d.rest; });
+      var canEdit = cvEditable(src), wNow = cvWeekNow(src);
+      if (pendDue(st) && CV.which === 'cur') h += '<div style="font-size:.72rem;color:#ffb703;margin-bottom:8px;">Esta rutina ya cambió a la que estaba en espera. Para editarla usa ✏️ Editar del cliente.</div>';
+      else if (CV.which === 'cur' && wNow > 1) h += '<div style="font-size:.72rem;color:#8d99ae;margin-bottom:8px;">El cliente va en la semana ' + wNow + ': las semanas anteriores son solo para ver (🔒).</div>';
       var maxW = parseInt(src.durationWeeks, 10) || 0;
       (src.routineDays || []).forEach(function(d) { (d.items || []).forEach(function(it) { var v = parseInt(it.vigenciaHasta, 10) || parseInt(it.vigenciaDesde, 10) || 0; if (v > maxW) maxW = v; }); });
       maxW = Math.max(1, Math.min(maxW, 24));
       if (CV.week > maxW) CV.week = 1;
       h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">';
-      for (var w = 1; w <= maxW; w++) h += '<button type="button" onclick="cvSetWeek(' + w + ')" style="padding:7px 12px;border-radius:8px;font-weight:800;font-size:.8rem;border:1px solid #4d8bff;background:' + (CV.week === w ? '#4d8bff' : 'transparent') + ';color:' + (CV.week === w ? '#fff' : '#4d8bff') + ';">Sem ' + w + '</button>';
+      for (var w = 1; w <= maxW; w++) h += '<button type="button" onclick="cvSetWeek(' + w + ')" style="padding:7px 12px;border-radius:8px;font-weight:800;font-size:.8rem;border:1px solid #4d8bff;background:' + (CV.week === w ? '#4d8bff' : 'transparent') + ';color:' + (CV.week === w ? '#fff' : '#4d8bff') + ';">' + ((CV.which === 'cur' && w < cvWeekNow(src)) ? '🔒 ' : '') + 'Sem ' + w + '</button>';
       h += '</div>';
       if (!days.length) return h + '<div style="color:#8d99ae;font-size:.8rem;">Esta rutina no tiene días de entreno.</div>';
       days.forEach(function(d) {
-        var cur = (d.items || []).filter(function(it) { return cvActive(it, CV.week); });
+        var curIdx = []; (d.items || []).forEach(function(it, ix) { if (cvActive(it, CV.week)) curIdx.push(ix); });
+        var cur = curIdx.map(function(ix) { return d.items[ix]; });
         var prevSigs = {};
         if (CV.week > 1) (d.items || []).filter(function(it) { return cvActive(it, CV.week - 1); }).forEach(function(it) { prevSigs[cvItemSig(it)] = true; });
         var nNew = 0, body = '';
-        cur.forEach(function(it) { var isNew = CV.week > 1 && !prevSigs[cvItemSig(it)]; if (isNew) nNew++; body += cvItemHtml(it, isNew); });
+        cur.forEach(function(it, ci) { var isNew = CV.week > 1 && !prevSigs[cvItemSig(it)]; if (isNew) nNew++; body += cvItemHtml(it, isNew, d._di, curIdx[ci], canEdit); });
         h += '<div style="background:#161616;border:1px solid #2c2c2c;border-radius:10px;padding:10px;margin-bottom:8px;"><div style="font-weight:800;color:#fff;font-size:.9rem;">' + cvEsc(ctShort(d.title)) + ' <span style="font-weight:600;color:#8d99ae;font-size:.74rem;">· ' + cur.length + ' bloque' + (cur.length === 1 ? '' : 's') + (nNew ? ' · <span style="color:#ffd60a;">' + nNew + ' con cambio</span>' : '') + '</span></div>' + (body || '<div style="color:#8d99ae;font-size:.78rem;">Sin ejercicios esta semana.</div>') + '</div>';
       });
       return h;
@@ -10497,7 +10584,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var rows = CV.rows, act = rows[0];
       var sec = function(t) { return '<div style="font-weight:800;color:#06d6a0;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;margin:16px 0 6px;">' + t + '</div>'; };
       var btn = 'background:transparent;border-radius:8px;padding:7px 10px;font-weight:800;font-size:.76rem;cursor:pointer;';
-      var h = '<div style="max-width:720px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div><div style="font-weight:800;color:#fff;font-size:1.05rem;">🔎 ' + cvEsc(CV.name) + '</div><div style="font-size:.72rem;color:#8d99ae;">Coach: ' + cvEsc(displayCoach(act.coach)) + ' · solo para ver, nada se cambia aquí</div></div><button type="button" onclick="cvClose()" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;padding:8px 12px;">✖ Cerrar</button></div>';
+      var h = '<div style="max-width:720px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div><div style="font-weight:800;color:#fff;font-size:1.05rem;">🔎 ' + cvEsc(CV.name) + '</div><div style="font-size:.72rem;color:#8d99ae;">Coach: ' + cvEsc(displayCoach(act.coach)) + ' · los links, el historial y las semanas pasadas son solo para ver</div></div><button type="button" onclick="cvClose()" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;padding:8px 12px;">✖ Cerrar</button></div>';
       h += sec('Link activo (el más reciente)');
       h += '<div style="background:#161616;border:1px solid #06d6a0;border-radius:10px;padding:10px;"><div style="font-size:.76rem;color:#cfd6e0;word-break:break-all;">' + cvEsc(cvLink(act.id)) + '</div><div style="font-size:.7rem;color:#8d99ae;margin:4px 0 8px;">Creado: ' + cvEsc(String(act.f || '').slice(0, 10)) + '</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button type="button" onclick="cvCopy(\'' + cvEsc(act.id) + '\')" style="' + btn + 'border:1px solid #06d6a0;color:#06d6a0;">📋 Copiar</button><button type="button" onclick="cvWa(\'' + cvEsc(act.id) + '\')" style="' + btn + 'border:1px solid #25d366;color:#25d366;">📲 WhatsApp</button><button type="button" onclick="cvClose();openClientRoutine(\'' + cvEsc(act.id) + '\')" style="' + btn + 'border:1px solid #4d8bff;color:#4d8bff;">Abrir</button></div></div>';
       if (rows.length > 1) {
@@ -10508,6 +10595,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         h += '<div style="font-size:.68rem;color:#8d99ae;">Cada envío guarda una fila nueva en la hoja; todas siguen abriendo. Más adelante se podrá limpiar las que no se usan.</div>';
       }
       h += sec('Semana por semana');
+      if (CV.undoP) h += '<button type="button" onclick="cvUndo()" style="background:transparent;border:1px solid #ffb703;color:#ffb703;border-radius:8px;padding:7px 10px;font-weight:800;font-size:.76rem;margin-bottom:8px;">↩️ Deshacer el último cambio</button>';
       if (CV.err) h += '<div style="color:#ff9a93;font-size:.8rem;">' + cvEsc(CV.err) + '</div>';
       else if (!CV.state) h += '<div style="color:#8d99ae;font-size:.8rem;">⏳ Cargando la rutina…</div>';
       else h += cvWeeksHtml(CV.state);
