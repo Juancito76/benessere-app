@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -192,7 +192,7 @@
     .export-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: rgba(18,18,18,0.96); backdrop-filter: blur(10px);
-      border-top: 2px solid var(--accent); padding: 14px 20px;
+      border-top: 2px solid var(--accent); padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
       display: flex; justify-content: space-between; align-items: center;
       z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.7);
     }
@@ -200,10 +200,10 @@
     #tab_class .edx-sub label { display:block; margin:8px 0 3px; font-size:0.7rem; font-weight:800; color:var(--muted); text-transform:uppercase; }
     #tab_class .edx-sub input[type=text], #tab_class .edx-sub input[type=date], #tab_class .edx-sub select { display:block; width:100%; box-sizing:border-box; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:9px; font-size:0.88rem; }
     #tab_class .edx-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .export-bar .btn { flex: 1 1 auto; }
     @media (max-width: 640px) {   /* celular: sin el texto de marca y con los botones en 2 columnas, para que la barra no se coma la pantalla */
       .export-bar { flex-direction: column; align-items: stretch; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
-      .export-bar > div:first-child { display: none; }
-      .export-bar > div:last-child { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
+      .export-bar > div { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
       .export-bar .btn { padding: 11px 6px !important; font-size: 0.8rem !important; }
       .export-bar #btn_update_routine { grid-column: 1 / -1; }
       #coach_builder_view { padding-bottom: 150px; }
@@ -937,11 +937,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     <!-- BARRA INFERIOR FIJA -->
     <div class="export-bar">
-      <div>
-        <div style="font-weight: 800; color: #fff; font-size: 0.95rem;">Benessere Gym Pro</div>
-        <div style="font-size: 0.75rem; color: var(--muted);">Enlace Ultra-Corto sin Servidores Externos</div>
-      </div>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
         <button type="button" id="btn_update_routine" class="btn btn-accent" style="display:none;" onclick="updateEditingRoutine()">🔄 Actualizar rutina</button>
         <button type="button" id="btn_queue_routine" class="btn" style="display:none; border:1px solid #ffb703; color:#ffb703; background:transparent;" onclick="queueEditingRoutine()">⏳ Guardar como rutina en espera</button>
         <button type="button" class="btn btn-accent" style="font-size:0.85rem; padding:12px 14px;" onclick="saveAndResetBuilder()" title="Guarda un borrador y deja el constructor limpio para el próximo cliente">💾➡️🧹 Guardar y reiniciar</button>
