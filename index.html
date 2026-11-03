@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -4915,6 +4915,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       val = String(val).trim();
       if (!val) { alert('Ese campo todavía no tiene ningún link de video.'); return; }
       if (!/^https?:\/\//i.test(val)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (demoFloatOpen(val, true)) return;
       window.open(val, '_blank', 'noopener');
     }
 
@@ -5029,6 +5030,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function pickVideoTest(link) {
       link = String(link || '').trim();
       if (!/^https?:\/\//i.test(link)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (demoFloatOpen(link, true)) return;
       window.open(link, '_blank', 'noopener');
     }
     // Quita un video de la biblioteca (compartida entre coaches: se borra para todos). Pide confirmación.
@@ -8672,7 +8674,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return m ? m[1] : '';
     }
     // ----- Demostración en ventana flotante: el video se ve dentro de la app, sin abrir otra pestaña -----
-    function demoFloatOpen(url) {
+    function demoFloatOpen(url, check) {
       var id = ytIdStrict(url); if (!id) return false;
       demoFloatClose();
       var safe = String(url).replace(/[^A-Za-z0-9_\-.~:\/?#\[\]@!$&'()*+,;=%]/g, '');
@@ -8686,10 +8688,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '</div>' +
         '<div style="position:relative;width:100%;padding-top:56.25%;background:#000;">' +
           '<iframe title="Demostración" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam() + '"></iframe>' +
+        (check ? '<div id="demo_float_st" style="padding:8px 10px;font-size:.78rem;font-weight:700;color:#aaa;">⏳ Revisando si se puede mostrar en la app…</div>' : '') +
         '</div></div>';
       w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
       document.body.appendChild(w);
       document.getElementById('demo_float_x').onclick = demoFloatClose;
+      if (check) {   // desde el constructor: además del video, dice si la app lo podrá mostrar a los clientes
+        try { vidCheckQ(id).then(function(st) {
+          var el = document.getElementById('demo_float_st'); if (!el || !document.getElementById('demo_float')) return;
+          var i = vidStInfo(st, ''); el.style.color = i.c; el.innerText = i.t.replace(/ \(el problema.*$/, '').replace(' Pruébalo con "Ver video".', ' Mira si el video de arriba reproduce.');
+        }); } catch (e) {}
+      }
       return true;
     }
     function demoFloatClose() { var w = document.getElementById('demo_float'); if (w) w.remove(); }
@@ -11936,6 +11945,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var el = document.getElementById('clsV_' + bi + '_' + si); if (el && el.value.trim() && el.value.trim() !== v) { clsSetVideo(bi, si, el.value); v = el.value.trim(); }
       if (!v) { alert('Ese ejercicio todavía no tiene ningún link de video.'); return; }
       if (!/^https?:\/\//i.test(v)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (demoFloatOpen(v, true)) return;
       window.open(v, '_blank', 'noopener');
     }
     function clsReadHead() {
