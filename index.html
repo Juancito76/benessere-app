@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5030,7 +5030,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function pickVideoTest(link) {
       link = String(link || '').trim();
       if (!/^https?:\/\//i.test(link)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
-      if (demoFloatOpen(link, true)) return;
+      if (demoFloatOpen(link, true, true)) return;
       window.open(link, '_blank', 'noopener');
     }
     // Quita un video de la biblioteca (compartida entre coaches: se borra para todos). Pide confirmación.
@@ -8674,7 +8674,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return m ? m[1] : '';
     }
     // ----- Demostración en ventana flotante: el video se ve dentro de la app, sin abrir otra pestaña -----
-    function demoFloatOpen(url, check) {
+    function demoFloatOpen(url, check, useIt) {
       var id = ytIdStrict(url); if (!id) return false;
       demoFloatClose();
       var safe = String(url).replace(/[^A-Za-z0-9_\-.~:\/?#\[\]@!$&'()*+,;=%]/g, '');
@@ -8683,7 +8683,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       w.innerHTML = '<div style="width:100%;max-width:560px;background:#111;border:2px solid #ff1744;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.8);">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#1a1a1a;">' +
           '<b style="color:#fff;font-size:.85rem;">🎥 Demostración</b>' +
-          '<span><a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:12px;">Abrir en YouTube ↗</a>' +
+          '<span>' + (useIt ? '<button type="button" id="demo_float_use" style="background:#06d6a0;color:#000;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;margin-right:8px;">✔ Usar</button>' : '') + '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:12px;">Abrir en YouTube ↗</a>' +
           '<button type="button" id="demo_float_x" aria-label="Cerrar" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;">✖ Cerrar</button></span>' +
         '</div>' +
         '<div style="position:relative;width:100%;padding-top:56.25%;background:#000;">' +
@@ -8693,6 +8693,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
       document.body.appendChild(w);
       document.getElementById('demo_float_x').onclick = demoFloatClose;
+      if (useIt) document.getElementById('demo_float_use').onclick = function() { demoFloatClose(); try { pickVideoChoose(String(url).trim()); } catch (e) { console.error(e); } };
       if (check) {   // desde el constructor: además del video, dice si la app lo podrá mostrar a los clientes
         try { vidCheckQ(id).then(function(st) {
           var el = document.getElementById('demo_float_st'); if (!el || !document.getElementById('demo_float')) return;
