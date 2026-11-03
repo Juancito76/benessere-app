@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8671,6 +8671,33 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var m = String(url || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^#\s]*&)?v=|embed\/|shorts\/|v\/))([A-Za-z0-9_-]{11})/);
       return m ? m[1] : '';
     }
+    // ----- Demostración en ventana flotante: el video se ve dentro de la app, sin abrir otra pestaña -----
+    function demoFloatOpen(url) {
+      var id = ytIdStrict(url); if (!id) return false;
+      demoFloatClose();
+      var safe = String(url).replace(/[^A-Za-z0-9_\-.~:\/?#\[\]@!$&'()*+,;=%]/g, '');
+      var w = document.createElement('div'); w.id = 'demo_float';
+      w.style.cssText = 'position:fixed;inset:0;z-index:100015;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;';
+      w.innerHTML = '<div style="width:100%;max-width:560px;background:#111;border:2px solid #ff1744;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.8);">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#1a1a1a;">' +
+          '<b style="color:#fff;font-size:.85rem;">🎥 Demostración</b>' +
+          '<span><a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:12px;">Abrir en YouTube ↗</a>' +
+          '<button type="button" id="demo_float_x" aria-label="Cerrar" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;">✖ Cerrar</button></span>' +
+        '</div>' +
+        '<div style="position:relative;width:100%;padding-top:56.25%;background:#000;">' +
+          '<iframe title="Demostración" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam() + '"></iframe>' +
+        '</div></div>';
+      w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
+      document.body.appendChild(w);
+      document.getElementById('demo_float_x').onclick = demoFloatClose;
+      return true;
+    }
+    function demoFloatClose() { var w = document.getElementById('demo_float'); if (w) w.remove(); }
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') demoFloatClose(); });
+    document.addEventListener('click', function(e) {   // «Ver demostración»: ventana flotante; si el link no es de YouTube, abre como siempre
+      var a = e.target && e.target.closest ? e.target.closest('.btn-yt-demo') : null; if (!a) return;
+      if (demoFloatOpen(a.getAttribute('href'))) e.preventDefault();
+    }, true);
     function ytOriginParam() { return /^https?:$/.test(location.protocol) ? '&origin=' + encodeURIComponent(location.origin) : ''; }
     function ctVidOn() { try { return localStorage.getItem('benessere_ct_video') !== 'off'; } catch (e) { return true; } }
     function ctVidLabel() { var b = document.getElementById('tm_vtog'); if (b) b.innerText = ctVidOn() ? '🎬 Video: sí' : '🎬 Video: no'; }
@@ -8860,6 +8887,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     function ctOpenDemo() {
       if (!CT.demoUrl) return;
+      if (demoFloatOpen(CT.demoUrl)) return;
       try { window.open(CT.demoUrl, '_blank', 'noopener'); } catch (e) {}
     }
     function ctTogglePause() {
