@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10398,7 +10398,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
           '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:#ffd60a; border:1px solid #ffd60a; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
-        html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="coachOpenDatos(\'' + escHtml(last.id) + '\')" title="Ficha, medidas, asistencia y datos de contacto" style="background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📋 Datos y asistencia</button><button type="button" onclick="clientExportText(\'' + escHtml(last.id) + '\', ' + jsArg(g.name) + ')" title="Sacar todo lo guardado de este cliente como texto para corregirlo y volver a subirlo" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📤 Exportar a texto plano</button><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button></div>';
+        html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="cvOpen(\'' + escHtml(k) + '\')" title="Link del cliente, todas sus rutinas, semana por semana e historial (solo ver)" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-weight:800; cursor:pointer;">🔎 Visor</button><button type="button" onclick="coachOpenDatos(\'' + escHtml(last.id) + '\')" title="Ficha, medidas, asistencia y datos de contacto" style="background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📋 Datos y asistencia</button><button type="button" onclick="clientExportText(\'' + escHtml(last.id) + '\', ' + jsArg(g.name) + ')" title="Sacar todo lo guardado de este cliente como texto para corregirlo y volver a subirlo" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📤 Exportar a texto plano</button><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button></div>';
         if (g.days.length > 1) {
           html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">';
           g.days.slice(1, 6).forEach(function(r) {
@@ -10411,6 +10411,121 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!shown.length) html = '<div style="text-align:center; color:var(--muted); font-size:0.85rem; padding:24px 8px;">' + (order.length ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay rutinas enviadas' + (COACH.todos ? '.' : ' a tu nombre.')) + '</div>';
       document.getElementById('cl_list').innerHTML = html;
       vrepInboxRender();
+    }
+
+    // ================= VISOR DEL CLIENTE (solo ver): links, semanas e historial =================
+    var CV = { k: '', rows: [], state: null, week: 1, which: 'cur' };
+    function cvLink(id) { return getAppBaseUrl() + '#i=' + id; }
+    function cvEsc(t) { return escHtml(String(t == null ? '' : t)); }
+    function cvOpen(k) {
+      if (!COACH) return;
+      var rows = (clientRows || []).filter(function(r) { return r && r.id && normName(r.atleta) === k; });
+      if (!rows.length) { showToastTop('No encontré rutinas de ese cliente.'); return; }
+      CV = { k: k, rows: rows, state: null, week: 1, which: 'cur', name: rows[0].atleta };
+      var w = document.getElementById('cv_screen');
+      if (!w) {
+        w = document.createElement('div'); w.id = 'cv_screen';
+        w.style.cssText = 'position:fixed;inset:0;z-index:99980;background:#0d0d0d;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 60px;';
+        document.body.appendChild(w);
+      }
+      w.style.display = 'block'; document.body.style.overflow = 'hidden';
+      cvRender();
+      var id = rows[0].id;
+      fetchRoutine(id).then(function(j) {
+        if (CV.k !== k) return;
+        if (!j || !j.ok || !j.p) { CV.err = 'No se pudo abrir la rutina activa.'; cvRender(); return; }
+        var st = null; try { st = decodePayload('q', j.p); } catch (e) { st = null; }
+        if (!st) { CV.err = 'Los datos de la rutina activa están dañados o el cliente está desconectado.'; cvRender(); return; }
+        CV.state = st; cvRender();
+      }).catch(function(e) { CV.err = clientsErrorText(e && e.message); cvRender(); });
+      fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).then(function(h) {
+        if (CV.k !== k) return;
+        CV.hist = (h && h.ok && Array.isArray(h.sesiones)) ? h.sesiones.filter(function(x) { return x && !isMetaSess(x); }) : [];
+        cvRender();
+      }).catch(function() { CV.hist = null; CV.histErr = true; cvRender(); });
+    }
+    function cvClose() { var w = document.getElementById('cv_screen'); if (w) w.style.display = 'none'; document.body.style.overflow = ''; }
+    function cvCopy(id) { copyTextSilently(cvLink(id)); showToastTop('📋 Link copiado.'); }
+    function cvWa(id) {
+      var msg = 'Hola ' + (CV.name || '') + ', este es el link de tu rutina:\n' + cvLink(id);
+      try { window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener'); } catch (e) {}
+    }
+    function cvSetWeek(w) { CV.week = w; cvRender(); }
+    function cvSetWhich(x) { CV.which = x; CV.week = 1; cvRender(); }
+    function cvItemSig(it) { try { return JSON.stringify([it.slot, (it.sub || []).map(function(s) { return [s.name, s.series, s.reps, s.notes]; }), it.circ || null]); } catch (e) { return ''; } }
+    function cvActive(it, w) { var d = parseInt(it.vigenciaDesde, 10) || 1, h = (it.vigenciaHasta == null) ? null : (parseInt(it.vigenciaHasta, 10) || null); return d <= w && (h === null || w <= h); }
+    function cvItemHtml(it, isNew) {
+      var badge = it.type === 'normal' ? '' : (it.type === 'biserie' ? 'BISERIE' : it.type === 'triserie' ? 'TRISERIE' : (it.circ && it.circ.tipo === 'hiit' ? 'HIIT' : 'CIRCUITO'));
+      var h = '<div style="border-left:3px solid ' + (isNew ? '#ffd60a' : '#333') + ';padding:4px 0 4px 9px;margin:6px 0;">';
+      if (badge || isNew) h += '<div style="font-size:.66rem;font-weight:800;color:' + (isNew ? '#ffd60a' : '#8d99ae') + ';">' + badge + (badge && isNew ? ' · ' : '') + (isNew ? '🆕 cambia esta semana' : '') + '</div>';
+      if (it.circ && (it.circ.nombre || it.circ.rondas)) h += '<div style="font-size:.76rem;color:#cfd6e0;">' + cvEsc(it.circ.nombre || '') + (it.circ.rondas ? ' · ' + cvEsc(it.circ.rondas) + ' rondas' : '') + (it.circ.trabajo ? ' · ' + cvEsc(it.circ.trabajo) + ' trabajo' : '') + (it.circ.descanso ? ' / ' + cvEsc(it.circ.descanso) + ' descanso' : '') + '</div>';
+      (it.sub || []).forEach(function(sb, i) {
+        var lt = (it.type === 'normal') ? '' : (it.type === 'circuito' ? (i + 1) + '. ' : ['A', 'B', 'C'][i] + '. ');
+        h += '<div style="font-size:.84rem;color:#fff;"><b>' + lt + cvEsc(sb.name || '(sin nombre)') + '</b>' + ((sb.series || sb.reps) ? ' <span style="color:#06d6a0;">' + cvEsc(sb.series || '-') + ' × ' + cvEsc(sb.reps || '-') + '</span>' : '') + (sb.video ? ' <span title="Tiene video" style="font-size:.7rem;">🎥</span>' : '') + '</div>';
+        if (sb.notes) h += '<div style="font-size:.72rem;color:#8d99ae;">' + cvEsc(sb.notes) + '</div>';
+      });
+      return h + '</div>';
+    }
+    function cvWeeksHtml(st) {
+      var src = st, waiting = null;
+      if (st.next && st.next.routineDays && !pendDue(st)) waiting = st.next;
+      var h = '';
+      if (waiting) h += '<div style="display:flex;gap:6px;margin-bottom:8px;"><button type="button" onclick="cvSetWhich(\'cur\')" style="flex:1;padding:8px;border-radius:8px;font-weight:800;font-size:.78rem;border:1px solid #06d6a0;background:' + (CV.which === 'cur' ? '#06d6a0' : 'transparent') + ';color:' + (CV.which === 'cur' ? '#000' : '#06d6a0') + ';">Rutina actual</button><button type="button" onclick="cvSetWhich(\'next\')" style="flex:1;padding:8px;border-radius:8px;font-weight:800;font-size:.78rem;border:1px solid #ffb703;background:' + (CV.which === 'next' ? '#ffb703' : 'transparent') + ';color:' + (CV.which === 'next' ? '#000' : '#ffb703') + ';">⏳ En espera · inicia ' + cvEsc(fechaLargaEs(waiting.startDate)) + '</button></div>';
+      else if (st.next && st.next.startDate) h += '<div style="font-size:.74rem;color:#ffb703;margin-bottom:8px;">⏳ Tiene una rutina en espera (inicia ' + cvEsc(fechaLargaEs(st.next.startDate)) + '), pero el visor no pudo leer su contenido.</div>';
+      if (waiting && CV.which === 'next') src = waiting;
+      var days = (src.routineDays || []).filter(function(d) { return !d.rest; });
+      var maxW = parseInt(src.durationWeeks, 10) || 0;
+      (src.routineDays || []).forEach(function(d) { (d.items || []).forEach(function(it) { var v = parseInt(it.vigenciaHasta, 10) || parseInt(it.vigenciaDesde, 10) || 0; if (v > maxW) maxW = v; }); });
+      maxW = Math.max(1, Math.min(maxW, 24));
+      if (CV.week > maxW) CV.week = 1;
+      h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">';
+      for (var w = 1; w <= maxW; w++) h += '<button type="button" onclick="cvSetWeek(' + w + ')" style="padding:7px 12px;border-radius:8px;font-weight:800;font-size:.8rem;border:1px solid #4d8bff;background:' + (CV.week === w ? '#4d8bff' : 'transparent') + ';color:' + (CV.week === w ? '#fff' : '#4d8bff') + ';">Sem ' + w + '</button>';
+      h += '</div>';
+      if (!days.length) return h + '<div style="color:#8d99ae;font-size:.8rem;">Esta rutina no tiene días de entreno.</div>';
+      days.forEach(function(d) {
+        var cur = (d.items || []).filter(function(it) { return cvActive(it, CV.week); });
+        var prevSigs = {};
+        if (CV.week > 1) (d.items || []).filter(function(it) { return cvActive(it, CV.week - 1); }).forEach(function(it) { prevSigs[cvItemSig(it)] = true; });
+        var nNew = 0, body = '';
+        cur.forEach(function(it) { var isNew = CV.week > 1 && !prevSigs[cvItemSig(it)]; if (isNew) nNew++; body += cvItemHtml(it, isNew); });
+        h += '<div style="background:#161616;border:1px solid #2c2c2c;border-radius:10px;padding:10px;margin-bottom:8px;"><div style="font-weight:800;color:#fff;font-size:.9rem;">' + cvEsc(ctShort(d.title)) + ' <span style="font-weight:600;color:#8d99ae;font-size:.74rem;">· ' + cur.length + ' bloque' + (cur.length === 1 ? '' : 's') + (nNew ? ' · <span style="color:#ffd60a;">' + nNew + ' con cambio</span>' : '') + '</span></div>' + (body || '<div style="color:#8d99ae;font-size:.78rem;">Sin ejercicios esta semana.</div>') + '</div>';
+      });
+      return h;
+    }
+    function cvRender() {
+      var w = document.getElementById('cv_screen'); if (!w) return;
+      var rows = CV.rows, act = rows[0];
+      var sec = function(t) { return '<div style="font-weight:800;color:#06d6a0;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;margin:16px 0 6px;">' + t + '</div>'; };
+      var btn = 'background:transparent;border-radius:8px;padding:7px 10px;font-weight:800;font-size:.76rem;cursor:pointer;';
+      var h = '<div style="max-width:720px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div><div style="font-weight:800;color:#fff;font-size:1.05rem;">🔎 ' + cvEsc(CV.name) + '</div><div style="font-size:.72rem;color:#8d99ae;">Coach: ' + cvEsc(displayCoach(act.coach)) + ' · solo para ver, nada se cambia aquí</div></div><button type="button" onclick="cvClose()" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;padding:8px 12px;">✖ Cerrar</button></div>';
+      h += sec('Link activo (el más reciente)');
+      h += '<div style="background:#161616;border:1px solid #06d6a0;border-radius:10px;padding:10px;"><div style="font-size:.76rem;color:#cfd6e0;word-break:break-all;">' + cvEsc(cvLink(act.id)) + '</div><div style="font-size:.7rem;color:#8d99ae;margin:4px 0 8px;">Creado: ' + cvEsc(String(act.f || '').slice(0, 10)) + '</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button type="button" onclick="cvCopy(\'' + cvEsc(act.id) + '\')" style="' + btn + 'border:1px solid #06d6a0;color:#06d6a0;">📋 Copiar</button><button type="button" onclick="cvWa(\'' + cvEsc(act.id) + '\')" style="' + btn + 'border:1px solid #25d366;color:#25d366;">📲 WhatsApp</button><button type="button" onclick="cvClose();openClientRoutine(\'' + cvEsc(act.id) + '\')" style="' + btn + 'border:1px solid #4d8bff;color:#4d8bff;">Abrir</button></div></div>';
+      if (rows.length > 1) {
+        h += sec('Todos los links de este cliente (' + rows.length + ')');
+        rows.forEach(function(r, i) {
+          h += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#161616;border:1px solid #2c2c2c;border-radius:8px;padding:7px 9px;margin-bottom:5px;"><div style="flex:1 1 150px;min-width:0;font-size:.76rem;color:#cfd6e0;">' + cvEsc(String(r.f || '').slice(0, 16).replace('T', ' ')) + ' · ' + cvEsc(displayCoach(r.coach)) + (i === 0 ? ' <b style="color:#06d6a0;">ACTIVO</b>' : '') + '<div style="font-size:.64rem;color:#666;word-break:break-all;">' + cvEsc(r.id) + '</div></div><button type="button" onclick="cvCopy(\'' + cvEsc(r.id) + '\')" style="' + btn + 'border:1px solid #444;color:#aaa;">📋</button><button type="button" onclick="cvClose();openClientRoutine(\'' + cvEsc(r.id) + '\')" style="' + btn + 'border:1px solid #444;color:#aaa;">Abrir</button></div>';
+        });
+        h += '<div style="font-size:.68rem;color:#8d99ae;">Cada envío guarda una fila nueva en la hoja; todas siguen abriendo. Más adelante se podrá limpiar las que no se usan.</div>';
+      }
+      h += sec('Semana por semana');
+      if (CV.err) h += '<div style="color:#ff9a93;font-size:.8rem;">' + cvEsc(CV.err) + '</div>';
+      else if (!CV.state) h += '<div style="color:#8d99ae;font-size:.8rem;">⏳ Cargando la rutina…</div>';
+      else h += cvWeeksHtml(CV.state);
+      h += sec('Historial de entrenos (rutina activa)');
+      if (CV.histErr) h += '<div style="color:#ff9a93;font-size:.8rem;">No se pudo leer el historial ahora.</div>';
+      else if (CV.hist == null) h += '<div style="color:#8d99ae;font-size:.8rem;">⏳ Cargando…</div>';
+      else if (!CV.hist.length) h += '<div style="color:#8d99ae;font-size:.8rem;">Todavía no hay entrenos registrados.</div>';
+      else {
+        var hs = CV.hist.slice().sort(function(a, b) { return String(b.d || b.t) < String(a.d || a.t) ? -1 : 1; });
+        h += '<div style="font-size:.76rem;color:#cfd6e0;margin-bottom:6px;"><b>' + hs.length + '</b> entreno' + (hs.length === 1 ? '' : 's') + ' · último: ' + cvEsc(String(hs[0].d || hs[0].t).slice(0, 10)) + '</div>';
+        hs.slice(0, 30).forEach(function(x) {
+          var dur = x.dur ? ' · ⏱ ' + Math.round(x.dur / 60) + ' min' : '';
+          h += '<div style="font-size:.78rem;color:#cfd6e0;background:#161616;border:1px solid #2c2c2c;border-radius:8px;padding:6px 9px;margin-bottom:4px;">' + cvEsc(String(x.d || x.t).slice(0, 10)) + ' · <b style="color:#fff;">' + cvEsc(ctShort(x.day || 'Entreno')) + '</b>' + dur + ((x.ex || []).length ? ' · ' + x.ex.length + (x.ex.length === 1 ? ' ejercicio' : ' ejercicios') : '') + '</div>';
+        });
+        if (hs.length > 30) h += '<div style="font-size:.7rem;color:#8d99ae;">…y ' + (hs.length - 30) + ' anteriores.</div>';
+      }
+      h += '</div>';
+      var top = w.scrollTop; w.innerHTML = h; w.scrollTop = top;
     }
 
     // ----- Desconectar / Reconectar clientes (los que ya no están en el gym) -----
