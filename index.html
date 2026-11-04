@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-04-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-04-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2343,6 +2343,40 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       return out;
     }
+    // ---- Botón flotante «🎥 Falta video»: lleva de uno en uno a los espacios de video vacíos (para armar rápido) ----
+    var VNEXT_I = 0;
+    function vidNextFabSync() {
+      var fab = document.getElementById('vid_next_fab');
+      try {
+        var demos = document.getElementById('featureDemos'), tb = document.getElementById('tab_builder');
+        var on = !!(demos && demos.checked && tb && tb.classList.contains('active') && !PRUEBA.on && typeof routineDays !== 'undefined');
+        var n = on ? missingVideos().length : 0;
+        if (!n) { if (fab) fab.style.display = 'none'; VNEXT_I = 0; return; }
+        if (!fab) {
+          fab = document.createElement('button'); fab.type = 'button'; fab.id = 'vid_next_fab';
+          fab.style.cssText = 'position:fixed;right:12px;bottom:calc(150px + env(safe-area-inset-bottom));z-index:9000;background:#ff1744;color:#fff;border:2px solid #fff;border-radius:28px;padding:12px 16px;font-weight:800;font-size:.9rem;box-shadow:0 6px 20px rgba(0,0,0,.6);cursor:pointer;';
+          fab.onclick = vidNextGo; document.body.appendChild(fab);
+        }
+        fab.style.display = '';
+        fab.innerText = '🎥 Falta video (' + n + ') ▶';
+      } catch (e) { if (fab) fab.style.display = 'none'; }
+    }
+    function vidNextGo() {
+      var miss = missingVideos(); if (!miss.length) { vidNextFabSync(); return; }
+      clearVideoMissingMarks();
+      for (var t = 0; t < miss.length; t++) {
+        var m = miss[(VNEXT_I + t) % miss.length];
+        var el = document.querySelector('input[oninput^="routineDays[' + m.di + '].items[' + m.ii + '].sub[' + m.k + '].video"]');
+        if (!el) continue;
+        VNEXT_I = (VNEXT_I + t + 1) % miss.length;
+        el.classList.add('video-missing');
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } catch (e) {}
+        showToastTop('🎥 ' + m.label, 2500);
+        return;
+      }
+      showToastTop('No encontré el espacio en pantalla; revisa que el día esté abierto.');
+    }
+    setInterval(vidNextFabSync, 1500);
     function clearVideoMissingMarks() {
       document.querySelectorAll('.video-missing').forEach(function(el) { el.classList.remove('video-missing'); });
     }
