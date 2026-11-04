@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-04-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-04-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2380,6 +2380,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var seen = {}, rs = [];
           idxs.forEach(function(ix) { var a = vigD(items[ix]), b = vigH(items[ix]); var id = a + '-' + (b === null ? '' : b); if (!seen[id]) { seen[id] = 1; rs.push({ d: a, h: b }); } });
           if (rs.length === idxs.length && rs.length >= 2 && !windows) { rs.sort(function(x, y) { return x.d - y.d; }); var ok = rs.every(function(r, i) { return !i || (rs[i - 1].h !== null && rs[i - 1].h < r.d); }); if (ok) windows = rs; }
+        });
+        // Caso «semana suelta»: un «Vigencia: semanas 7» mal leído quedó como «semana 1 en adelante» y repite el ejercicio en todas las semanas.
+        // Si las demás versiones dejan un solo hueco continuo (p. ej. la semana 7), la versión suelta pasa a ocupar justo ese hueco.
+        var Wk = vigMaxWeek(days, dur);
+        Object.keys(byKey).forEach(function(k) {
+          var idxs = byKey[k]; if (idxs.length < 3) return;
+          var strays = idxs.filter(function(ix) { return vigD(items[ix]) === 1 && vigH(items[ix]) === null; });
+          if (strays.length !== 1) return;
+          var others = idxs.filter(function(ix) { return ix !== strays[0]; });
+          var cov = {}, clash = false;
+          others.forEach(function(ix) { var a = vigD(items[ix]), b = vigH(items[ix]) === null ? Wk : vigH(items[ix]); for (var w = a; w <= b; w++) { if (cov[w]) clash = true; cov[w] = 1; } });
+          if (clash) return;
+          var gap = []; for (var w2 = 1; w2 <= Wk; w2++) if (!cov[w2]) gap.push(w2);
+          if (!gap.length || gap[gap.length - 1] - gap[0] + 1 !== gap.length) return;   // un solo hueco continuo
+          var st = items[strays[0]]; st.vigenciaDesde = gap[0]; st.vigenciaHasta = gap[gap.length - 1]; st.slot = items[others[0]].slot;
+          fixed++;
         });
         if (!windows) return;
         Object.keys(byKey).forEach(function(k) {
