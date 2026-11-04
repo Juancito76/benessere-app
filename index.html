@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-04-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-04-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2475,6 +2475,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var h = '<div class="pend-ttl">🔍 Revisión de Vigencia</div><div class="pend-txt">' + total + ' rutinas revisadas' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + '. Revisar no cambia nada.</div>';
       if (!VIGSCAN.res.length) h += '<div class="pend-txt">✅ Todo en orden: ningún ejercicio repetido ni rutinas en espera vencidas.</div>';
       else {
+        var nfix = VIGSCAN.res.filter(function(x) { return x.fixable && !x.done; }).length;
+        if (nfix) h += '<button type="button" class="pend-btn pend-ok" onclick="vigFixAll()">🛠 Arreglar todos los seguros (' + nfix + ')</button>';
         h += '<div style="text-align:left;max-height:55vh;overflow:auto;">';
         VIGSCAN.res.forEach(function(x, k) {
           h += '<div style="border-top:1px solid #333;padding:8px 0;font-size:.78rem;"><b>' + escHtml(x.name) + '</b><br>' + x.notes.map(function(n) { return '• ' + escHtml(n); }).join('<br>') +
@@ -2486,13 +2488,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       pendOverlay('vig_scan', h);
       document.getElementById('vig_scan_x2').onclick = function() { pendCloseOverlay('vig_scan'); };
     }
-    // Arregla la Vigencia de UN cliente (la actual y/o la en espera): parte de lo último de la hoja, solo toca los ejercicios repetidos y verifica antes de guardar
-    function vigFixClient(k) {
-      var x = VIGSCAN.res[k]; if (!x || x.busy || x.done) return;
-      if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
-      if (!confirm('Arreglar la Vigencia de ' + x.name + '?\n\n' + x.notes.join('\n') + '\n\nCada copia repetida pasa a ser una versión de su fase (1-2, 3-4, 5+…). No se cambian los ejercicios ni el texto. Si ya empezó, ella verá la rutina bien la próxima vez que la abra.')) return;
-      x.busy = true;
-      fetchRoutine(x.id).then(function(j) {
+    // Núcleo: arregla la Vigencia de UN cliente (la actual y/o la en espera). Parte de lo último de la hoja, solo toca los ejercicios repetidos y verifica antes de guardar.
+    // Devuelve una promesa con 'ok' o un texto de error ('verificacion', 'pin', …)
+    function vigFixCore(x) {
+      return fetchRoutine(x.id).then(function(j) {
         if (!j || !j.ok || !j.p) throw new Error('respuesta');
         var st = decodePayload('q', j.p); if (!st) throw new Error('respuesta');
         var before = { cur: (st.routineDays || []).length, nxt: st.next && st.next.routineDays ? st.next.routineDays.length : -1 };
@@ -2504,11 +2503,45 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (vigAudit(chk.routineDays, chk.durationWeeks).length || (chk.next && vigAudit(chk.next.routineDays, chk.next.durationWeeks).length)) throw new Error('verificacion');
         return postJson({ a: 'actualizar', id: x.id, p: np, pin: COACH.pin }).then(function(r) { return { r: r, np: np }; });
       }).then(function(o) {
+        if (o && o.r && o.r.ok) { try { coachCacheSet(x.id, o.np); } catch (e) {} return 'ok'; }
+        if (o && o.r && o.r.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} return 'pin'; }
+        return updateErrorText(o && o.r && o.r.error);
+      }).catch(function(e) { return (e && e.message === 'verificacion') ? 'verificacion' : updateErrorText(e && e.message); });
+    }
+    function vigFixClient(k) {
+      var x = VIGSCAN.res[k]; if (!x || x.busy || x.done) return;
+      if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
+      if (!confirm('Arreglar la Vigencia de ' + x.name + '?\n\n' + x.notes.join('\n') + '\n\nCada copia repetida pasa a ser una versión de su fase (1-2, 3-4, 5+…). No se cambian los ejercicios ni el texto.')) return;
+      x.busy = true;
+      vigFixCore(x).then(function(r) {
         x.busy = false;
-        if (o && o.r && o.r.ok) { try { coachCacheSet(x.id, o.np); } catch (e) {} x.done = true; showToastTop('✅ Vigencia de ' + x.name + ' arreglada.'); vigScanShow(VIGSCAN.total, VIGSCAN.fails); return; }
-        if (o && o.r && o.r.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
-        showToastTop('No se pudo guardar: ' + updateErrorText(o && o.r && o.r.error));
-      }).catch(function(e) { x.busy = false; showToastTop(e && e.message === 'verificacion' ? 'No lo arreglé: no pasó la verificación. Revisa ' + x.name + ' con ✏️ Editar.' : 'No se pudo: ' + updateErrorText(e && e.message)); });
+        if (r === 'ok') { x.done = true; showToastTop('✅ Vigencia de ' + x.name + ' arreglada.'); vigScanShow(VIGSCAN.total, VIGSCAN.fails); return; }
+        showToastTop(r === 'verificacion' ? 'No lo arreglé: no pasó la verificación. Revisa ' + x.name + ' con ✏️ Editar.' : 'No se pudo: ' + r);
+      });
+    }
+    // Todos los seguros de una vez, uno tras otro. Cada uno se verifica por separado: si alguno no pasa, se salta y queda marcado.
+    function vigFixAll() {
+      var list = VIGSCAN.res.filter(function(x) { return x.fixable && !x.done; });
+      if (!list.length || VIGSCAN.fixing) return;
+      if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
+      if (!confirm('Arreglar la Vigencia de ' + list.length + ' clientes?\n\n' + list.map(function(x) { return '• ' + x.name; }).join('\n') + '\n\nCada copia repetida pasa a ser una versión de su fase. No se cambian los ejercicios ni el texto, y cada cliente se verifica antes de guardar (si uno no pasa, se salta).')) return;
+      VIGSCAN.fixing = true;
+      var ok = 0, skipped = [], n = 0;
+      pendOverlay('vig_scan', '<div class="pend-ttl">🛠 Arreglando…</div><div class="pend-txt" id="vig_fix_txt">0 de ' + list.length + '</div>');
+      (function next() {
+        if (n >= list.length) {
+          VIGSCAN.fixing = false;
+          vigScanShow(VIGSCAN.total, VIGSCAN.fails);
+          showToastTop('✅ ' + ok + ' arregladas' + (skipped.length ? ' · ' + skipped.length + ' saltadas (' + skipped.join(', ') + ')' : ''));
+          return;
+        }
+        var x = list[n++];
+        vigFixCore(x).then(function(r) {
+          if (r === 'ok') { x.done = true; ok++; } else { skipped.push(x.name); if (r === 'pin') { n = list.length; } }
+          var t = document.getElementById('vig_fix_txt'); if (t) t.innerText = Math.min(n, list.length) + ' de ' + list.length;
+          next();
+        });
+      })();
     }
     // ---- Guardia de videos: con "Demostraciones en Video" activo, no se puede enviar si falta algún video ----
     // Cuenta como "con video" el que está escrito o el que se hereda de la misma posición (mismo ejercicio), igual que al generar el enlace.
