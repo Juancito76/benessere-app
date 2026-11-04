@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-04-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -4121,14 +4121,51 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Botón «🧪 Probar» del perfil de cada cliente: activa el modo prueba (si no lo estaba) y abre ese perfil; nada se guarda ni se envía.
     // Para cerrar la prueba y dejar todo como estaba: «Salir ✖» (abajo a la izquierda).
-    function pruebaClient(id) {
+    function pruebaClient(id, which) {
       if (!COACH) return;
+      if (!which) {   // primero se mira si el cliente tiene una rutina en espera: si la tiene, se pregunta cuál probar
+        var stEl = document.getElementById('cl_status');
+        var ask = function(p) {
+          var st = null; try { st = decodePayload('q', p); } catch (e) {}
+          if (st && st.next && st.next.routineDays && !pendDue(st)) pruebaAsk(id, st);
+          else pruebaClient(id, 'actual');
+        };
+        if (stEl) stEl.innerText = '⏳ Abriendo rutina…';
+        fetchRoutine(id).then(function(j) {
+          if (stEl) stEl.innerText = '';
+          if (j && j.ok && j.p) { try { coachCacheSet(id, j.p); } catch (e) {} ask(j.p); return; }
+          var c = coachCacheGet(id); if (c) ask(c); else pruebaClient(id, 'actual');
+        }).catch(function() { if (stEl) stEl.innerText = ''; var c = coachCacheGet(id); if (c) ask(c); else pruebaClient(id, 'actual'); });
+        return;
+      }
       if (!PRUEBA.on) {
         try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar el modo prueba.'); return; }
         PRUEBA.on = true; pruebaBanner();
         showToastTop('🧪 Modo prueba: nada se guarda ni se envía. Para salir toca «Salir ✖» abajo a la izquierda.');
       }
+      PRUEBA.queued = false;
+      if (which === 'espera') {
+        var pq = coachCacheGet(id);
+        if (pq) {
+          PRUEBA.client = true; PRUEBA.queued = true;
+          if (coachShowRoutine(id, pq, false, pendForceNow) === 'ok') return;
+          PRUEBA.queued = false;
+        }
+      }
       openClientRoutine(id, true);   // true = abrirlo como lo ve el cliente (sin herramientas de coach)
+    }
+    // La rutina en espera se ve como si hoy fuera su día de inicio (solo en la prueba; lo guardado no cambia)
+    function pendForceNow(st) { if (st && st.next) st.next.startDate = todayIso(); }
+    // Pregunta cuál probar cuando el cliente tiene una rutina actual y otra en espera
+    function pruebaAsk(id, st) {
+      pendOverlay('prueba_ask', '<div class="pend-ttl">🧪 ¿Cuál rutina quieres probar?</div>' +
+        '<div class="pend-txt">' + escHtml(st.clientName || 'Este cliente') + ' tiene una rutina en espera que empieza el <b>' + escHtml(fechaLargaEs(st.next.startDate)) + '</b>. Nada se guarda ni se envía.</div>' +
+        '<button type="button" class="pend-btn pend-ok" id="prueba_ask_a">▶ Rutina actual</button>' +
+        '<button type="button" class="pend-btn pend-ok" id="prueba_ask_e" style="background:#ffb703;color:#000;">⏳ Rutina en espera</button>' +
+        '<button type="button" class="pend-btn pend-cancel" id="prueba_ask_c">Cancelar</button>');
+      document.getElementById('prueba_ask_a').onclick = function() { pendCloseOverlay('prueba_ask'); pruebaClient(id, 'actual'); };
+      document.getElementById('prueba_ask_e').onclick = function() { pendCloseOverlay('prueba_ask'); pruebaClient(id, 'espera'); };
+      document.getElementById('prueba_ask_c').onclick = function() { pendCloseOverlay('prueba_ask'); };
     }
     // ----- «👁️ Vista previa» (barra inferior del constructor): abre la rutina que se está armando, tal como la vería el cliente, en modo prueba.
     // No necesita enlace ni enviarla: se arma el mismo paquete que iría en el enlace y se abre desde ahí. Nada se guarda ni se envía.
@@ -4176,7 +4213,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
       document.querySelectorAll('.view-screen.active, .modal-overlay.active').forEach(function(el) { el.classList.remove('active'); });
       var owns = PRUEBA.previewOwns;
-      PRUEBA.preview = false; PRUEBA.previewOwns = false; PRUEBA.client = false;
+      PRUEBA.preview = false; PRUEBA.previewOwns = false; PRUEBA.client = false; PRUEBA.queued = false;
       if (owns) { PRUEBA.on = false; PRUEBA.data = null; }   // si la prueba la activó la vista previa, se apaga; si ya estaba activa, sigue como estaba
       TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null; GD_OPEN = {}; GD_DEMO = {};
       pruebaBanner();
@@ -4916,9 +4953,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       val = String(val).trim();
       if (!val) { alert('Ese campo todavía no tiene ningún link de video.'); return; }
       if (!/^https?:\/\//i.test(val)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
-      if (demoFloatOpen(val, true)) return;
+      var nm = ''; try { nm = String(new Function('return ' + pvNamePath(path) + ';')() || '').trim(); } catch (e) {}
+      var inLib = nm ? findVideoInLibrary(nm) : '';
+      DEMO_FIELD = path;
+      if (demoFloatOpen(val, true, false, (inLib && String(inLib).trim() === val) ? libKeyFor(nm) : '')) return;
       window.open(val, '_blank', 'noopener');
     }
+    // Nombre exacto con que está guardado en la biblioteca (la búsqueda ignora mayúsculas y espacios)
+    function libKeyFor(name) { var lib = getVideoLibrary(), t = normKey(name); if (Object.prototype.hasOwnProperty.call(lib, name)) return name; for (var k in lib) { if (Object.prototype.hasOwnProperty.call(lib, k) && normKey(k) === t) return k; } return ''; }
 
     // Deja elegir cualquier video ya guardado en la biblioteca, no solo el del nombre
     // exacto del ejercicio — útil cuando el patrón de movimiento es casi el mismo
@@ -5023,15 +5065,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function pickVideoRow(name, link, star) {
       return '<div style="display:flex; gap:6px; align-items:stretch;">' +
         '<button type="button" class="pick-ex-btn" style="flex:1; min-width:0;' + (star ? ' border-color:var(--accent);' : '') + '" onclick="pickVideoChoose(' + jsArg(link) + ')" title="' + escHtml(link) + '">' + escHtml(name) + '</button>' +
-        '<button type="button" class="btn-pick-ex" style="margin-top:0;" onclick="pickVideoTest(' + jsArg(link) + ')" title="Abrir este video para verificarlo">▶ Probar</button>' +
+        '<button type="button" class="btn-pick-ex" style="margin-top:0;" onclick="pickVideoTest(' + jsArg(link) + ',' + jsArg(name) + ')" title="Abrir este video para verificarlo">▶ Probar</button>' +
         '<button type="button" class="btn-pick-ex" style="margin-top:0; border-color:var(--danger); color:var(--danger);" onclick="pickVideoDelete(' + jsArg(name) + ')" title="Eliminar de la biblioteca">🗑️ Eliminar</button>' +
       '</div>';
     }
     // Abre el link guardado en una pestaña nueva, sin elegirlo
-    function pickVideoTest(link) {
+    function pickVideoTest(link, name) {
       link = String(link || '').trim();
       if (!/^https?:\/\//i.test(link)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
-      if (demoFloatOpen(link, true, true)) return;
+      DEMO_FIELD = '';
+      if (demoFloatOpen(link, true, true, name || '')) return;
       window.open(link, '_blank', 'noopener');
     }
     // Quita un video de la biblioteca (compartida entre coaches: se borra para todos). Pide confirmación.
@@ -8756,7 +8799,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return m ? m[1] : '';
     }
     // ----- Demostración en ventana flotante: el video se ve dentro de la app, sin abrir otra pestaña -----
-    function demoFloatOpen(url, check, useIt) {
+    function demoFloatOpen(url, check, useIt, delName) {
       var id = ytIdStrict(url); if (!id) return false;
       demoFloatClose();
       var safe = String(url).replace(/[^A-Za-z0-9_\-.~:\/?#\[\]@!$&'()*+,;=%]/g, '');
@@ -8766,7 +8809,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       w.innerHTML = '<div style="width:100%;max-width:960px;background:#111;border:2px solid #ff1744;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.8);">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#1a1a1a;">' +
           '<b style="color:#fff;font-size:.85rem;">🎥 Demostración</b>' +
-          '<span>' + (useIt ? '<button type="button" id="demo_float_use" style="background:#06d6a0;color:#000;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;margin-right:8px;">✔ Usar</button>' : '') + '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:12px;">Abrir en YouTube ↗</a>' +
+          '<span>' + (check ? '<button type="button" id="demo_float_del" style="background:transparent;color:#ff8a80;border:1px solid #ff8a80;border-radius:8px;font-weight:800;font-size:.8rem;padding:6px 10px;margin-right:8px;">🗑️ Eliminar</button>' : '') + (useIt ? '<button type="button" id="demo_float_use" style="background:#06d6a0;color:#000;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;margin-right:8px;">✔ Usar</button>' : '') + '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:12px;">Abrir en YouTube ↗</a>' +
           '<button type="button" id="demo_float_x" aria-label="Cerrar" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;">✖ Cerrar</button></span>' +
         '</div>' +
         '<div style="position:relative;width:100%;' + (portrait ? 'height:min(78vh,' + Math.round(window.innerWidth * 1.3) + 'px);' : 'aspect-ratio:16/9;max-height:78vh;') + 'background:#000;">' +
@@ -8776,6 +8819,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
       document.body.appendChild(w);
       document.getElementById('demo_float_x').onclick = demoFloatClose;
+      if (check) document.getElementById('demo_float_del').onclick = function() { demoFloatDelete(url, delName); };
       if (useIt) document.getElementById('demo_float_use').onclick = function() { demoFloatClose(); try { pickVideoChoose(String(url).trim()); } catch (e) { console.error(e); } };
       if (check) {   // desde el constructor: además del video, dice si la app lo podrá mostrar a los clientes
         try { vidCheckQ(id).then(function(st) {
@@ -8785,6 +8829,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       return true;
     }
+    // «🗑️ Eliminar» en la ventana de prueba de un video: lo quita de la biblioteca (compartida entre coaches). Si el video venía de un campo de ejercicio, también lo vacía.
+    function demoFloatDelete(url, delName) {
+      var link = String(url || '').trim(), lib = getVideoLibrary(), names = [];
+      if (delName) names = [delName];
+      else Object.keys(lib).forEach(function(k) { if (String(lib[k] || '').trim() === link) names.push(k); });
+      var msg = names.length
+        ? '¿Eliminar de la biblioteca de videos?\n\n' + names.map(function(n) { return '• ' + n; }).join('\n') + '\n\nComo la biblioteca es compartida, se borra para todos los coaches. Los ejercicios que ya tienen ese link en una rutina no cambian.'
+        : 'Este video no está en la biblioteca. ¿Quitarlo solo del campo del ejercicio?';
+      if (!confirm(msg)) return;
+      names.forEach(function(n) { forgetExerciseVideo(n); });
+      if (DEMO_FIELD) { try { new Function('v', DEMO_FIELD + ' = v;')(''); } catch (e) {} try { renderDays(); setTimeout(vidBadgeAll, 150); } catch (e) {} }
+      DEMO_FIELD = '';
+      demoFloatClose();
+      try { if (document.getElementById('modal_pick_video') && document.getElementById('modal_pick_video').classList.contains('active')) renderPickVideo(); } catch (e) {}
+      try { if (document.getElementById('videoLibBody')) renderVideoLibrary(); } catch (e) {}
+      showToastTop('🗑️ Video eliminado.');
+    }
+    var DEMO_FIELD = '';   // ruta del campo de video desde el que se abrió la prueba (para vaciarlo al eliminar)
     function demoFloatClose() { var w = document.getElementById('demo_float'); if (w) w.remove(); }
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') demoFloatClose(); });
     document.addEventListener('click', function(e) {   // «Ver demostración»: ventana flotante; si el link no es de YouTube, abre como siempre
@@ -10780,12 +10842,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } catch (e) {}
       GD_OPEN = {}; GD_DEMO = {};
       var id = athleteRoutineId, p = coachCacheGet(id), snap = COACH_SNAP;
-      if (p && coachShowRoutine(id, p, true) === 'ok') { COACH_SNAP = snap; showToastTop('↺ Rutina reiniciada.'); }
+      if (p && coachShowRoutine(id, p, true, PRUEBA.queued ? pendForceNow : null) === 'ok') { COACH_SNAP = snap; showToastTop('↺ Rutina reiniciada.'); }
       else showToastTop('No se pudo reiniciar; sal a «Clientes» y ábrela de nuevo.');
     }
-    function coachShowRoutine(id, p, keepSnap) {
+    function coachShowRoutine(id, p, keepSnap, mut) {
       var state = decodePayload('q', p);
       if (!state) return 'bad';
+      if (mut) { try { mut(state); } catch (eMut) {} }   // «🧪 Probar» de la rutina en espera: se muestra como si ya fuera su día de inicio
       TRK_NS = 'c:' + normName(state.clientName) + '|';
       athleteRoutineId = id;
       if (PRUEBA.on && PRUEBA.client && !keepSnap && PRUEBA.data) {
@@ -10877,7 +10940,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function exitClientRoutine(noList) {
       document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { el.classList.remove('active'); });
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function') ctClose(); } catch (e) {}
-      TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null; PRUEBA.client = false;
+      TRK_NS = ''; athleteRoutineId = ''; athleteActiveState = null; PRUEBA.client = false; PRUEBA.queued = false;
       coachOpenClear();   // salió a propósito: ya no se reabre solo
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'none';
       var rp = document.getElementById('coach_reset_pill'); if (rp) rp.style.display = 'none'; COACH_SNAP = null;
@@ -12232,6 +12295,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var el = document.getElementById('clsV_' + bi + '_' + si); if (el && el.value.trim() && el.value.trim() !== v) { clsSetVideo(bi, si, el.value); v = el.value.trim(); }
       if (!v) { alert('Ese ejercicio todavía no tiene ningún link de video.'); return; }
       if (!/^https?:\/\//i.test(v)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      DEMO_FIELD = '';
       if (demoFloatOpen(v, true)) return;
       window.open(v, '_blank', 'noopener');
     }
