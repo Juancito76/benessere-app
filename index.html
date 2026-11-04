@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-04-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-04-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10622,6 +10622,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         cvRender();
       }).catch(function() { CV.hist = null; CV.histErr = true; cvRender(); });
     }
+    function cvAfterDate(np) { try { CV.raw = np; CV.state = decodePayload('q', np); cvRender(); } catch (e) {} }
     function cvClose() { var w = document.getElementById('cv_screen'); if (w) w.style.display = 'none'; document.body.style.overflow = ''; }
     function cvCopy(id) { copyTextSilently(cvLink(id)); showToastTop('📋 Link copiado.'); }
     function cvWa(id) {
@@ -10731,6 +10732,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (pendDue(st)) { try { src = pendPromote(decodePayload('q', CV.raw)) || st; } catch (e) { src = st; } }   // ya empezó la rutina que estaba en espera: esa es la actual
       if (st.next && st.next.routineDays && !pendDue(st)) waiting = st.next;
       var h = '';
+      if (st.next && st.next.routineDays && CV.id) h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:.76rem;color:#ffb703;">⏳ Rutina en espera: inicia ' + cvEsc(fechaLargaEs(st.next.startDate)) + (pendDue(st) ? ' (ya empezó)' : '') + ' <button type="button" onclick="pendChangeDateModal(CV.id, cvAfterDate)" style="padding:6px 10px;border-radius:8px;font-weight:800;font-size:.74rem;border:1px solid #ffb703;background:transparent;color:#ffb703;">📅 Cambiar fecha</button></div>';
       if (waiting) h += '<div style="display:flex;gap:6px;margin-bottom:8px;"><button type="button" onclick="cvSetWhich(\'cur\')" style="flex:1;padding:8px;border-radius:8px;font-weight:800;font-size:.78rem;border:1px solid #06d6a0;background:' + (CV.which === 'cur' ? '#06d6a0' : 'transparent') + ';color:' + (CV.which === 'cur' ? '#000' : '#06d6a0') + ';">Rutina actual</button><button type="button" onclick="cvSetWhich(\'next\')" style="flex:1;padding:8px;border-radius:8px;font-weight:800;font-size:.78rem;border:1px solid #ffb703;background:' + (CV.which === 'next' ? '#ffb703' : 'transparent') + ';color:' + (CV.which === 'next' ? '#000' : '#ffb703') + ';">⏳ En espera · inicia ' + cvEsc(fechaLargaEs(waiting.startDate)) + '</button></div>';
       else if (st.next && st.next.startDate) h += '<div style="font-size:.74rem;color:#ffb703;margin-bottom:8px;">⏳ Tiene una rutina en espera (inicia ' + cvEsc(fechaLargaEs(st.next.startDate)) + '), pero el visor no pudo leer su contenido.</div>';
       if (waiting && CV.which === 'next') src = waiting;
@@ -11195,6 +11197,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (state.off && !confirm('Este cliente está desconectado.\n\nSi guardas cambios y los envías, volverá a ver su rutina (se reconecta).\n\n¿Seguir editando?')) { if (st) st.innerText = ''; return; }
         // Rutina en espera: si ya empezó, esa es la rutina del cliente; si todavía no, se elige cuál de las dos editar
         var pendRaw = payloadNextArr(j.p), waiting = (state.next && !pendDue(state)) ? state.next : null;
+        var dueWait = pendDue(state);
         if (pendDue(state)) state = pendPromote(state);
         var go = function(which) {
           var target = (which === 'pend') ? waiting : state;
@@ -11209,15 +11212,29 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           }
           window.scrollTo(0, 0);
         };
+        if (!waiting && dueWait) {   // la rutina en espera ya empezó: se puede editar (es la actual) o moverle la fecha para que vuelva a verse la anterior
+          if (st) st.innerText = '';
+          pendOverlay('pend_edit_pick', '<div class="pend-ttl">✏️ ' + escHtml(state.clientName || 'Este cliente') + '</div>' +
+            '<div class="pend-txt">Su rutina nueva ya empezó, por eso hoy le sale esa. ¿Qué quieres hacer?</div>' +
+            '<button type="button" class="pend-btn pend-ok" id="pend_pick_cur">Editar la que tiene ahora</button>' +
+            '<button type="button" class="pend-btn pend-go" id="pend_pick_date">📅 Cambiar la fecha de inicio de la nueva</button>' +
+            '<button type="button" class="pend-btn pend-cancel" id="pend_pick_cancel">Cancelar</button>');
+          document.getElementById('pend_pick_cur').onclick = function() { pendCloseOverlay('pend_edit_pick'); go('cur'); };
+          document.getElementById('pend_pick_date').onclick = function() { pendCloseOverlay('pend_edit_pick'); pendChangeDateModal(id); };
+          document.getElementById('pend_pick_cancel').onclick = function() { pendCloseOverlay('pend_edit_pick'); };
+          return;
+        }
         if (!waiting) { go('cur'); return; }
         if (st) st.innerText = '';
         var m = pendOverlay('pend_edit_pick', '<div class="pend-ttl">✏️ ' + escHtml(state.clientName || 'Este cliente') + ' tiene dos rutinas</div>' +
           '<div class="pend-txt">La que está en espera empieza el <b>' + escHtml(fechaLargaEs(waiting.startDate)) + '</b>. ¿Cuál quieres editar?</div>' +
           '<button type="button" class="pend-btn pend-ok" id="pend_pick_cur">La actual (la que está entrenando)</button>' +
           '<button type="button" class="pend-btn pend-go" id="pend_pick_wait">⏳ La que está en espera</button>' +
+          '<button type="button" class="pend-btn pend-go" id="pend_pick_date">📅 Cambiar la fecha de inicio de la que está en espera</button>' +
           '<button type="button" class="pend-btn pend-cancel" id="pend_pick_cancel">Cancelar</button>');
         document.getElementById('pend_pick_cur').onclick = function() { pendCloseOverlay('pend_edit_pick'); go('cur'); };
         document.getElementById('pend_pick_wait').onclick = function() { pendCloseOverlay('pend_edit_pick'); go('pend'); };
+        document.getElementById('pend_pick_date').onclick = function() { pendCloseOverlay('pend_edit_pick'); pendChangeDateModal(id); };
         document.getElementById('pend_pick_cancel').onclick = function() { pendCloseOverlay('pend_edit_pick'); };
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
@@ -11341,6 +11358,52 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     // ----- Rutina en espera: menú del coach (cambiar la fecha de inicio o quitarla) -----
+    // Cambiar la fecha de inicio de la rutina en espera de un cliente, desde donde sea (Editar, Visor): siempre parte de lo último de la hoja y solo toca esa fecha.
+    // Sirve aunque la fecha ya haya pasado (en ese caso la app ya le mostraba la nueva; al poner una fecha futura vuelve a verse la actual hasta ese día).
+    function pendChangeDateModal(id, onDone) {
+      if (!COACH) { showToastTop('Primero entra a Mis clientes con tu PIN.'); return; }
+      fetchRoutine(id).then(function(j) {
+        if (!j || !j.ok || !j.p) throw new Error('respuesta');
+        var st = decodePayload('q', j.p);
+        if (!st || !st.next || !st.next.routineDays) { showToastTop('Este cliente no tiene una rutina en espera.'); return; }
+        var nx = st.next, today = todayIso(), due = pendDue(st);
+        var eff = due ? null : st, endIso = null; try { endIso = routineEndIso(st); } catch (e0) {}
+        var sug = (isIsoDate(endIso) && addDaysIso(endIso, 1) > today) ? addDaysIso(endIso, 1) : addDaysIso(today, 1);   // el día siguiente al último de la actual
+        pendOverlay('pend_chdate', '<div class="pend-ttl">📅 Fecha de inicio de la rutina en espera</div>' +
+          '<div class="pend-txt"><b>' + escHtml(st.clientName || 'Este cliente') + '</b>: la nueva (' + (parseInt(nx.durationWeeks, 10) || 4) + ' semanas) tiene fecha de inicio <b>' + escHtml(fechaLargaEs(nx.startDate)) + '</b>' + (due ? ' <span style="color:#ffd166;">— esa fecha ya pasó, por eso hoy le sale la nueva</span>' : '') + '.</div>' +
+          (isIsoDate(endIso) ? '<div class="pend-txt">Su rutina actual termina el <b>' + escHtml(fechaLargaEs(endIso)) + '</b>.</div>' : '') +
+          '<label class="pend-lbl" for="pend_chdate_in">Nueva fecha de inicio</label>' +
+          '<input type="date" id="pend_chdate_in" class="pend-in" value="' + escHtml(sug) + '" min="' + addDaysIso(today, 1) + '">' +
+          '<div class="pend-err" id="pend_chdate_err"></div>' +
+          '<button type="button" class="pend-btn pend-ok" id="pend_chdate_save">Guardar la nueva fecha</button>' +
+          '<button type="button" class="pend-btn pend-cancel" id="pend_chdate_close">Cerrar</button>');
+        var err = function(t) { var e = document.getElementById('pend_chdate_err'); if (e) { e.style.color = '#ff8a80'; e.innerText = t || ''; } };
+        var busy = false;
+        document.getElementById('pend_chdate_close').onclick = function() { pendCloseOverlay('pend_chdate'); };
+        document.getElementById('pend_chdate_save').onclick = function() {
+          if (busy) return;
+          var d = document.getElementById('pend_chdate_in').value;
+          if (!isIsoDate(d) || d <= todayIso()) { err('Elige una fecha desde mañana.'); return; }
+          busy = true; err('Guardando…');
+          fetchRoutine(id).then(function(j2) {
+            if (!j2 || !j2.ok || !j2.p) throw new Error('respuesta');
+            var sp = payloadSplit(j2.p); if (!sp) throw new Error('respuesta');
+            var arr = Array.isArray(sp.arr[PEND_IDX]) ? sp.arr[PEND_IDX].slice() : null;
+            if (!arr) throw new Error('sin-espera');
+            arr[2] = d;
+            var np = payloadWithNext(j2.p, arr); if (!np) throw new Error('respuesta');
+            var chk = decodePayload('q', np);
+            if (!chk || !chk.next || chk.next.startDate !== d || !chk.routineDays || chk.routineDays.length !== (decodePayload('q', j2.p).routineDays || []).length) throw new Error('verificacion');
+            return postJson({ a: 'actualizar', id: id, p: np, pin: COACH.pin }).then(function(r) { return { r: r, np: np }; });
+          }).then(function(o) {
+            busy = false;
+            if (o.r && o.r.ok) { try { coachCacheSet(id, o.np); } catch (e1) {} pendCloseOverlay('pend_chdate'); showToastTop('✅ La rutina nueva empieza el ' + fechaLargaEs(d) + '. Hasta entonces sigue con la actual.'); if (onDone) { try { onDone(o.np); } catch (e2) {} } return; }
+            if (o.r && o.r.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e3) {} }
+            err('No se pudo guardar: ' + updateErrorText(o.r && o.r.error));
+          }).catch(function(e) { busy = false; err((e && e.message === 'sin-espera') ? 'Ya no hay una rutina en espera para este cliente.' : 'No se pudo guardar: ' + updateErrorText(e && e.message)); });
+        };
+      }).catch(function(e) { showToastTop('No se pudo abrir: ' + clientsErrorText(e && e.message)); });
+    }
     function pendCoachMenu() {
       var st = athleteActiveState; if (!st || !st.next || !COACH || !athleteRoutineId) return;
       var id = athleteRoutineId, nx = st.next, today = todayIso();
