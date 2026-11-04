@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-03-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-03-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9561,7 +9561,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var run = el.querySelector('.set-runner'); if (!run) return;
         var srId = parseInt(String(run.id).replace('sr_', ''), 10), ci = athSrCi[srId];
         if (ci == null) return;
-        var names = [].map.call(el.querySelectorAll('.ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean);
+        var names = [].map.call(el.querySelectorAll('.exercise-item-box:not(.alt-off) .ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean);
         var ct = el.querySelector('.circ-title');
         out.push({ ci: ci, srId: srId, key: (el.getAttribute('data-slot') || '') + '_' + (el.getAttribute('data-vig-desde') || ''), name: (ct ? ct.innerText : names.join(' + ')) || 'Bloque', el: el });
       });
@@ -9722,7 +9722,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           else if (inProc) { a.classList.add('gd-demo-wait'); demoWait = true; }
         });
         if (demoWait) el.classList.add('gd-demo-wait');
-        var names = [].map.call(el.querySelectorAll('.ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
+        var names = [].map.call(el.querySelectorAll('.exercise-item-box:not(.alt-off) .ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
         var gst = gdStore(dayId), nDone = gst.n[b.key] || 0, stK = gst.s[b.key] || 0, rr = SR[b.srId];
         var pill = inProc ? '🔥 EN PROCESO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
         var head = document.createElement('div'); head.className = 'gd-head';
