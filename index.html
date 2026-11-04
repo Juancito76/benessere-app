@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-04-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-04-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1085,6 +1085,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <span id="cl_who" style="font-size:0.78rem; color:var(--primary); font-weight:800;"></span>
         <span>
           <button type="button" onclick="asistManualRun()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📊 Resúmenes</button>
+          <button type="button" onclick="vigScanClients()" title="Revisa todas las rutinas: ejercicios repetidos y rutinas en espera vencidas (no cambia nada)" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🔍 Vigencias</button>
           <button type="button" onclick="openAttendance()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🚪 Asistencia</button>
           <button type="button" onclick="openCoachWeek()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📈 Esta semana</button>
           <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
@@ -2325,6 +2326,146 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!bad.length) return true;
       return confirm('⚠️ Hay caminadora dentro de una biserie, triserie o circuito:\n\n• ' + bad.join('\n• ') + '\n\nA veces está ocupada o la pierden al bajarse. Lo recomendado es cambiarla por skipping alto, saltos de tijera o cuerda, y dejar la caminadora sola como cardio.\n\n¿Enviar la rutina de todos modos?');
     }
+    // ---- Guardia de Vigencia: ningún ejercicio puede salir dos veces en la misma semana de un día ----
+    // Detecta (vigAudit), arregla lo que es seguro (vigAutoFix) y avisa antes de enviar (vigGuard). Revisa también a todos los clientes (vigScanClients, solo lectura).
+    function vigKey(it) {
+      if (!it) return '';
+      if (it.type === 'circuito') { var n = normKey((it.circ && it.circ.nombre) || ''); return n ? 'C:' + n : ''; }
+      var names = (it.sub || []).map(function(sb) { return normKey(sb && sb.name); });
+      return names.every(function(n) { return !n; }) ? '' : names.join(' + ');
+    }
+    function vigLabel(it) {
+      if (it.type === 'circuito') return (it.circ && it.circ.nombre) || 'Circuito';
+      return (it.sub || []).map(function(sb) { return (sb && sb.name) || ''; }).filter(Boolean).join(' + ');
+    }
+    function vigD(it) { return parseInt(it.vigenciaDesde, 10) || 1; }
+    function vigH(it) { var h = it.vigenciaHasta; return (h === null || h === undefined || h === '' || h === 0) ? null : (parseInt(h, 10) || null); }
+    function vigMaxWeek(days, dur) {
+      var m = parseInt(dur, 10) || 1;
+      (days || []).forEach(function(d) { (d.items || []).forEach(function(it) { m = Math.max(m, vigD(it), vigH(it) || 0); }); });
+      return Math.min(m, 52);
+    }
+    // Devuelve [{ di, day, name, weeks:[…], count }] (un renglón por día y ejercicio repetido)
+    function vigAudit(days, dur) {
+      var out = [], W = vigMaxWeek(days, dur);
+      (days || []).forEach(function(d, di) {
+        if (!d || d.rest) return;
+        var acc = {};
+        for (var w = 1; w <= W; w++) {
+          var cnt = {}, lab = {};
+          (d.items || []).forEach(function(it) {
+            var k = vigKey(it); if (!k) return;
+            var hasta = vigH(it);
+            if (w >= vigD(it) && (hasta === null || w <= hasta)) { cnt[k] = (cnt[k] || 0) + 1; lab[k] = vigLabel(it); }
+          });
+          Object.keys(cnt).forEach(function(k) {
+            if (cnt[k] > 1) { if (!acc[k]) acc[k] = { di: di, day: d.title || ('Día ' + (di + 1)), name: lab[k], weeks: [], count: 0 }; acc[k].weeks.push(w); acc[k].count = Math.max(acc[k].count, cnt[k]); }
+          });
+        }
+        Object.keys(acc).forEach(function(k) { out.push(acc[k]); });
+      });
+      return out;
+    }
+    // Caso seguro: el día quedó copiado una vez por fase (los ejercicios repetidos sin Vigencia) y hay un ejercicio/circuito bien versionado que marca las fases.
+    // Cada copia pasa a ser una versión del mismo puesto, con la Vigencia de su fase. Devuelve cuántos ejercicios arregló.
+    function vigAutoFix(days, dur) {
+      var fixed = 0;
+      (days || []).forEach(function(d) {
+        if (!d || d.rest) return;
+        var items = d.items || [], byKey = {};
+        items.forEach(function(it, ix) { var k = vigKey(it); if (k) (byKey[k] = byKey[k] || []).push(ix); });
+        var windows = null;   // fases: rangos distintos de un mismo ejercicio que sí venía versionado
+        Object.keys(byKey).forEach(function(k) {
+          var idxs = byKey[k]; if (idxs.length < 2) return;
+          var seen = {}, rs = [];
+          idxs.forEach(function(ix) { var a = vigD(items[ix]), b = vigH(items[ix]); var id = a + '-' + (b === null ? '' : b); if (!seen[id]) { seen[id] = 1; rs.push({ d: a, h: b }); } });
+          if (rs.length === idxs.length && rs.length >= 2 && !windows) { rs.sort(function(x, y) { return x.d - y.d; }); var ok = rs.every(function(r, i) { return !i || (rs[i - 1].h !== null && rs[i - 1].h < r.d); }); if (ok) windows = rs; }
+        });
+        if (!windows) return;
+        Object.keys(byKey).forEach(function(k) {
+          var idxs = byKey[k];
+          if (idxs.length !== windows.length) return;
+          var allSame = idxs.every(function(ix) { return vigD(items[ix]) === vigD(items[idxs[0]]) && vigH(items[ix]) === vigH(items[idxs[0]]); });
+          if (!allSame) return;   // los que ya están versionados distinto no se tocan
+          var slot = items[idxs[0]].slot;
+          idxs.forEach(function(ix, i) { items[ix].vigenciaDesde = windows[i].d; items[ix].vigenciaHasta = windows[i].h; items[ix].slot = slot; });
+          fixed++;
+        });
+      });
+      return fixed;
+    }
+    function vigIssuesText(iss) {
+      return iss.slice(0, 12).map(function(x) { var w = x.weeks; return '• ' + x.day + ': «' + x.name + '» sale ' + x.count + ' veces en ' + (w.length === 1 ? 'la semana ' + w[0] : 'las semanas ' + w[0] + (w.length > 2 ? ' a ' : ' y ') + w[w.length - 1]); }).join('\n') + (iss.length > 12 ? '\n… y ' + (iss.length - 12) + ' más' : '');
+    }
+    // Antes de enviar/guardar: true = seguir. Ofrece arreglar solo lo seguro; si no, deja decidir.
+    function vigGuard() {
+      var dur = (document.getElementById('durationWeeks') || {}).value;
+      var iss = vigAudit(routineDays, dur);
+      if (!iss.length) return true;
+      var msg = '⚠️ Vigencia: hay ejercicios que se repiten el mismo día, así que el cliente los vería dos o tres veces:\n\n' + vigIssuesText(iss) + '\n\n';
+      var snap = JSON.stringify(routineDays);
+      var n = vigAutoFix(routineDays, dur);
+      if (n && !vigAudit(routineDays, dur).length) {
+        if (confirm(msg + 'Puedo arreglarlo solo: cada copia pasa a ser una versión de su fase (' + n + ' ejercicios). Aceptar = arreglar ahora; luego revisa y vuelve a enviar.\nCancelar = no tocar nada.')) { try { renderDays(); } catch (e) {} alert('✅ Vigencia arreglada. Revisa los días y vuelve a tocar enviar.'); return false; }
+        routineDays = JSON.parse(snap);   // no aceptó: queda como estaba
+        return confirm('¿Enviar así de todos modos?\n\nAceptar = enviar con los ejercicios repetidos\nCancelar = volver a revisar');
+      }
+      routineDays = JSON.parse(snap);
+      return confirm(msg + 'No es un caso que pueda arreglar solo con seguridad. Revisa las líneas «Vigencia» de esos ejercicios.\n\nAceptar = enviar así de todos modos\nCancelar = volver a revisar');
+    }
+    // Al importar: avisa en el momento, con la opción de arreglar
+    function vigAfterImport() {
+      try {
+        var dur = (document.getElementById('durationWeeks') || {}).value;
+        var iss = vigAudit(routineDays, dur);
+        if (!iss.length) return;
+        var snap = JSON.stringify(routineDays), n = vigAutoFix(routineDays, dur);
+        var msg = '⚠️ Revisión de Vigencia: estos ejercicios salen repetidos el mismo día:\n\n' + vigIssuesText(iss) + '\n\n';
+        if (n && !vigAudit(routineDays, dur).length) {
+          if (confirm(msg + 'Puedo arreglarlo solo (' + n + ' ejercicios): cada copia pasa a ser una versión de su fase.\n\nAceptar = arreglar ahora\nCancelar = dejarlo como está')) { renderDays(); showToastTop('✅ Vigencia arreglada.'); return; }
+        } else { alert(msg + 'No lo puedo arreglar solo con seguridad: revisa las líneas «Vigencia» de esos ejercicios en el texto.'); }
+        routineDays = JSON.parse(snap); renderDays();
+      } catch (e) {}
+    }
+    // Revisión de todos los clientes (solo lectura): ejercicios repetidos y rutinas en espera con fecha vencida
+    var VIGSCAN = { busy: false };
+    function vigScanClients() {
+      if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
+      if (VIGSCAN.busy) return;
+      var rows = [], seen = {};
+      (clientRows || []).forEach(function(r) { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; rows.push(r); } });
+      if (!rows.length) { showToastTop('No hay clientes cargados.'); return; }
+      VIGSCAN.busy = true;
+      var done = 0, found = [], fails = 0, i = 0;
+      var m = pendOverlay('vig_scan', '<div class="pend-ttl">🔍 Revisando rutinas…</div><div class="pend-txt" id="vig_scan_txt">0 de ' + rows.length + '</div><button type="button" class="pend-btn pend-cancel" id="vig_scan_x">Cerrar</button>');
+      var closed = false;
+      document.getElementById('vig_scan_x').onclick = function() { closed = true; VIGSCAN.busy = false; pendCloseOverlay('vig_scan'); };
+      function check(r, st, tag) {
+        var iss = vigAudit(st.routineDays || [], st.durationWeeks);
+        if (iss.length) found.push('• ' + (r.atleta || r.id) + ' (' + tag + '): ' + iss.length + ' ejercicio' + (iss.length > 1 ? 's' : '') + ' repetido' + (iss.length > 1 ? 's' : '') + ' — ' + iss[0].day + ', «' + iss[0].name + '»');
+      }
+      function one(r) {
+        return fetchRoutine(r.id).then(function(j) {
+          if (!j || !j.ok || !j.p) { fails++; return; }
+          var st = null; try { st = decodePayload('q', j.p); } catch (e) {}
+          if (!st) { fails++; return; }
+          if (st.next && st.next.routineDays && pendDue(st)) found.push('• ' + (r.atleta || r.id) + ': su rutina en espera ya empezó (fecha ' + fechaLargaEs(st.next.startDate) + '). Si no era lo que querías, cambia la fecha desde el Visor.');
+          if (st.routineDays) check(r, st, 'actual');
+          if (st.next && st.next.routineDays) check(r, st.next, 'en espera');
+        }).catch(function() { fails++; }).then(function() { done++; var t = document.getElementById('vig_scan_txt'); if (t) t.innerText = done + ' de ' + rows.length; });
+      }
+      function worker() {
+        if (closed || i >= rows.length) return Promise.resolve();
+        var r = rows[i++]; return one(r).then(worker);
+      }
+      Promise.all([worker(), worker(), worker(), worker()]).then(function() {
+        VIGSCAN.busy = false; if (closed) return;
+        pendOverlay('vig_scan', '<div class="pend-ttl">🔍 Revisión de Vigencia</div><div class="pend-txt">' + rows.length + ' rutinas revisadas' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + '. No se cambió nada.</div>' +
+          (found.length ? '<div class="pend-txt" style="text-align:left;white-space:pre-wrap;max-height:50vh;overflow:auto;">' + escHtml(found.join('\n')) + '</div>' : '<div class="pend-txt">✅ Todo en orden: ningún ejercicio repetido ni rutinas en espera vencidas.</div>') +
+          '<button type="button" class="pend-btn pend-cancel" id="vig_scan_x2">Cerrar</button>');
+        document.getElementById('vig_scan_x2').onclick = function() { pendCloseOverlay('vig_scan'); };
+      });
+    }
     // ---- Guardia de videos: con "Demostraciones en Video" activo, no se puede enviar si falta algún video ----
     // Cuenta como "con video" el que está escrito o el que se hereda de la misma posición (mismo ejercicio), igual que al generar el enlace.
     function missingVideos() {
@@ -3472,6 +3613,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var nMeas = applyImportedMeasures(importMeas, importMeasDate || document.getElementById('startDate').value);
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
         alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días' + (nMeas ? ' y ' + nMeas + ' medidas (revísalas en "👤 Datos Atleta & Medidas").' : '.') + (nHist ? '\nTambién se cargaron ' + nHist + ' medición(es) anterior(es) en el historial.' : ''));
+        vigAfterImport();
       } else {
         alert('No se detectaron días válidos.');
       }
@@ -4383,6 +4525,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       if (!videoGuard()) return;
       if (!treadmillGuard()) return;
+      if (!vigGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
       var payloadText = encodePayload(buildUltraCompactState(state));
@@ -11286,6 +11429,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
       if (!videoGuard()) return;
       if (!treadmillGuard()) return;
+      if (!vigGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState(), id = editingRoutine.id, pin = COACH.pin;
       if (editingRoutine.coach) state.coachName = editingRoutine.coach;
@@ -11317,6 +11461,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         : '¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
       if (!videoGuard()) return;
       if (!treadmillGuard()) return;
+      if (!vigGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
       if (editingRoutine.coach) state.coachName = editingRoutine.coach;   // se conserva el coach original de la rutina
