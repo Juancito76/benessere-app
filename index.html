@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-05-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-05-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1847,10 +1847,47 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var target = normKey(name);
       if (!target) return '';
       if (Object.prototype.hasOwnProperty.call(lib, name)) return lib[name];
-      for (var k in lib) {
+      var k;
+      for (k in lib) {
         if (Object.prototype.hasOwnProperty.call(lib, k) && normKey(k) === target) return lib[k];
       }
+      // Segunda pasada, más tolerante: sin tildes, signos ni paréntesis (ej. "Sentadilla búlgara" = "Sentadilla bulgara")
+      var t2 = vsNorm(name);
+      if (!t2) return '';
+      for (k in lib) {
+        if (Object.prototype.hasOwnProperty.call(lib, k) && vsNorm(k) === t2) return lib[k];
+      }
+      // Tercera pasada: mismas palabras en cualquier orden y singular/plural (ej. "Remo con mancuernas" = "Remo con mancuerna")
+      var sig = vsSigKey(name);
+      if (sig) {
+        for (k in lib) {
+          if (Object.prototype.hasOwnProperty.call(lib, k) && vsSigKey(k) === sig) return lib[k];
+        }
+      }
       return '';
+    }
+    // Clave de palabras significativas (sin acentos, sin conectores, en singular aproximado y ordenadas)
+    function vsSigKey(s) {
+      var STOP = ['con', 'del', 'las', 'los', 'para', 'sin', 'una', 'por', 'de', 'en', 'el', 'la', 'a', 'y'];
+      var toks = vsNorm(s).split(' ').filter(function(t) { return t && STOP.indexOf(t) < 0; }).map(function(t) { return t.length > 3 ? t.replace(/(es|s)$/, '') : t; });
+      return toks.sort().join(' ');
+    }
+    // Rellena los videos vacíos de la rutina con los guardados en la biblioteca (por nombre).
+    // Devuelve cuántos rellenó. No pisa los que ya tienen link.
+    function autoFillVideosFromLibrary() {
+      var n = 0;
+      try {
+        (routineDays || []).forEach(function(d) {
+          (d.items || []).forEach(function(it) {
+            (it.sub || []).forEach(function(sb) {
+              if (!sb) return;
+              if (String(sb.name || '').trim() && !String(sb.video || '').trim()) { var kv = findVideoInLibrary(sb.name); if (kv) { sb.video = kv; n++; } }
+              if (String(sb.alt || '').trim() && !String(sb.altVideo || '').trim()) { var kva = findVideoInLibrary(sb.alt); if (kva) { sb.altVideo = kva; n++; } }
+            });
+          });
+        });
+      } catch (e) {}
+      return n;
     }
     // Al escribir el nombre de un ejercicio (y salir del campo), si ya hay un video
     // guardado en la biblioteca para ese nombre y el campo de video sigue vacío,
@@ -2075,6 +2112,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         Object.keys(local).forEach(function(n) { var k = normKey(n); if (!byKey[k] && !delKeys[k]) { merged[n] = local[n]; byKey[k] = n; } });
         var same = Object.keys(merged).length === Object.keys(remote).length && Object.keys(merged).every(function(n) { return remote[n] === merged[n]; });
         setVideoLibrary(merged);
+        // Si la rutina ya estaba armada antes de bajar la biblioteca compartida, completa los videos que quedaron vacíos
+        try { if (autoFillVideosFromLibrary() > 0) { renderDays(); setTimeout(vidBadgeAll, 150); } } catch (e) {}
         var count = Object.keys(merged).length;
         if (same && id) { vidSyncing = false; vidLibStatus('✅ Al día · ' + count + ' ejercicios en la biblioteca compartida.' + vidIdHint(id), '#06d6a0'); renderVideoLibrary(); return; }
         return vidWriteChunks(vidSplit(merged), recs).then(function(headId) {
@@ -2648,6 +2687,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function videoGuard() {
       var demos = document.getElementById('featureDemos');
       if (!demos || !demos.checked) { clearVideoMissingMarks(); return true; }
+      // Antes de avisar que falta un video, trae los que ya están guardados en la biblioteca con el mismo nombre
+      try { if (autoFillVideosFromLibrary() > 0) { renderDays(); setTimeout(vidBadgeAll, 150); } } catch (e) {}
       var miss = missingVideos();
       if (!miss.length) { clearVideoMissingMarks(); return embedGuard(); }
       switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
