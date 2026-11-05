@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-04-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-05-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5273,14 +5273,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       pickVideoState.targetPath = targetPath;
       var s = document.getElementById('pickVideoSearch');
       if (s) {
-        // Precarga la búsqueda con las primeras palabras del ejercicio que se está
-        // editando, para llegar directo a las opciones del mismo patrón de movimiento
-        // (ej: "Peso Muerto Rumano con Mancuerna" → busca "Peso Muerto").
+        // Precarga la búsqueda con el nombre COMPLETO del ejercicio que se está editando
+        // (ej: "Peso Muerto Rumano con Mancuerna"); si no hay uno igual, la lista muestra
+        // los que se parecen, y se puede borrar palabras para ampliar la búsqueda.
         var prefill = '';
         try {
           var namePath = pvNamePath(targetPath);
-          var curName = String(new Function('return ' + namePath + ';')() || '').trim();
-          prefill = curName.split(/\s+/).slice(0, 2).join(' ');
+          prefill = String(new Function('return ' + namePath + ';')() || '').trim();
         } catch (e) {}
         s.value = prefill;
       }
