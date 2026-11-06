@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-05-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-06-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -927,6 +927,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           <div class="form-group"><label>Muslo Izquierdo</label><input type="text" id="m_muslo_izq" placeholder="Ej: 57.5 cm"></div>
           <div class="form-group"><label>Pantorrilla Derecha</label><input type="text" id="m_pant_der" placeholder="Ej: 38 cm"></div>
           <div class="form-group"><label>Pantorrilla Izquierda</label><input type="text" id="m_pant_izq" placeholder="Ej: 38 cm"></div>
+          <div class="form-group"><label>Pecho</label><input type="text" id="m_pecho" placeholder="Ej: 95 cm"></div>
+          <div class="form-group"><label>Brazo Derecho</label><input type="text" id="m_brazo_der" placeholder="Ej: 32 cm"></div>
+          <div class="form-group"><label>Brazo Izquierdo</label><input type="text" id="m_brazo_izq" placeholder="Ej: 32 cm"></div>
         </div>
         <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center;">
           <button type="button" class="btn btn-secondary" onclick="saveMeasureEntry()">➕ Guardar medición en el historial</button>
@@ -1273,7 +1276,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { k: 'm_muslo_der', label: 'Muslo derecho',         short: 'Muslo D',   unit: 'cm' },
       { k: 'm_muslo_izq', label: 'Muslo izquierdo',       short: 'Muslo I',   unit: 'cm' },
       { k: 'm_pant_der',  label: 'Pantorrilla derecha',   short: 'Pant. D',   unit: 'cm' },
-      { k: 'm_pant_izq',  label: 'Pantorrilla izquierda', short: 'Pant. I',   unit: 'cm' }
+      { k: 'm_pant_izq',  label: 'Pantorrilla izquierda', short: 'Pant. I',   unit: 'cm' },
+      { k: 'm_pecho',     label: 'Pecho',                 short: 'Pecho',     unit: 'cm' },
+      { k: 'm_brazo_der', label: 'Brazo derecho',         short: 'Brazo D',   unit: 'cm' },
+      { k: 'm_brazo_izq', label: 'Brazo izquierdo',       short: 'Brazo I',   unit: 'cm' }
     ];
     var measureLog = [];     // constructor: mediciones guardadas [{ d: 'AAAA-MM-DD', v: { m_peso_kg: 78.5, ... } }]
     var coachMedKey = '';    // medida que se grafica en el constructor
@@ -3477,6 +3483,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (/^pant\w* d ?\/ ?i$|^pant\w* d i$/.test(key)) return pair('m_pant_der', 'm_pant_izq');
       if (/^pant\w* (der|d)/.test(key)) return one('m_pant_der');
       if (/^pant\w* (izq|i)/.test(key)) return one('m_pant_izq');
+      if (/^pecho|^torax|^busto/.test(key)) return one('m_pecho');
+      if (/^brazos? d ?\/ ?i$|^brazos? d i$|^brazos? der ?\/ ?izq$|^brazos$/.test(key)) return pair('m_brazo_der', 'm_brazo_izq');
+      if (/^brazo (izq|i)/.test(key)) return one('m_brazo_izq');
+      if (/^brazo( der| d)?$/.test(key)) return one('m_brazo_der');
       return false;
     }
     // Guarda las medidas importadas como una medición con fecha (en el historial) y las deja en el formulario
@@ -3838,7 +3848,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     // Líneas de medidas ("Peso: 78.5 kg", "Cintura 1: 84 cm"...) de una medición
-    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I' };
+    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I', m_pecho: 'Pecho', m_brazo_der: 'Brazo D', m_brazo_izq: 'Brazo I' };
     function expMeasureLines(L, vals) {
       MEASURE_FIELDS.forEach(function(f) { if (vals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(vals[f.k], f.unit)); });
     }
@@ -4097,7 +4107,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           m_muslo_der: document.getElementById('m_muslo_der').value.trim() || '-',
           m_muslo_izq: document.getElementById('m_muslo_izq').value.trim() || '-',
           m_pant_der: document.getElementById('m_pant_der').value.trim() || '-',
-          m_pant_izq: document.getElementById('m_pant_izq').value.trim() || '-'
+          m_pant_izq: document.getElementById('m_pant_izq').value.trim() || '-',
+          m_pecho: document.getElementById('m_pecho').value.trim() || '-',
+          m_brazo_der: document.getElementById('m_brazo_der').value.trim() || '-',
+          m_brazo_izq: document.getElementById('m_brazo_izq').value.trim() || '-'
         },
         routineDays: routineDays
       };
@@ -4127,6 +4140,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           ];
           // la edad va al final y solo si existe: los enlaces sin edad quedan idénticos a antes
           if (full.measures.m_edad && full.measures.m_edad !== '-') ma.push(full.measures.m_edad);
+          // pecho y brazos van después de la edad (posiciones 16-18), solo si existen: los enlaces sin ellos quedan idénticos a antes
+          var xm = [full.measures.m_pecho, full.measures.m_brazo_der, full.measures.m_brazo_izq];
+          if (xm.some(function(x) { return x && x !== '-'; })) {
+            if (ma.length < 16) ma.push('-');
+            xm.forEach(function(x) { ma.push(x || '-'); });
+          }
           return ma;
         })(),
         full.routineDays.map(function(d) {
@@ -4225,7 +4244,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           m_edad_meta: m[6]||'-', m_espalda: m[7]||'-', m_cintura1: m[8]||'-',
           m_cintura2: m[9]||'-', m_cadera: m[10]||'-', m_muslo_der: m[11]||'-',
           m_muslo_izq: m[12]||'-', m_pant_der: m[13]||'-', m_pant_izq: m[14]||'-',
-          m_edad: m[15]||'-'
+          m_edad: m[15]||'-',
+          m_pecho: m[16]||'-', m_brazo_der: m[17]||'-', m_brazo_izq: m[18]||'-'
         },
         routineDays: (c[8] || []).map(function(d) {
           var h = d[2] || [];
@@ -4857,7 +4877,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="metric-card"><div class="metric-title">Cintura 2</div><div class="metric-val">' + (m.m_cintura2||'-') + '</div></div>' +
         '<div class="metric-card"><div class="metric-title">Cadera</div><div class="metric-val">' + (m.m_cadera||'-') + '</div></div>' +
         '<div class="metric-card"><div class="metric-title">Muslos</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_muslo_der||'-') + ' / ' + (m.m_muslo_izq||'-') + '</div></div>' +
-        '<div class="metric-card"><div class="metric-title">Pantorrillas</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_pant_der||'-') + ' / ' + (m.m_pant_izq||'-') + '</div></div>';
+        '<div class="metric-card"><div class="metric-title">Pantorrillas</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_pant_der||'-') + ' / ' + (m.m_pant_izq||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Pecho</div><div class="metric-val">' + (m.m_pecho||'-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Brazos</div><div class="metric-val" style="font-size:0.85rem;">' + (m.m_brazo_der||'-') + ' / ' + (m.m_brazo_izq||'-') + '</div></div>';
       document.getElementById('ath_metricsGrid').innerHTML = gridHtml;
       athMedKey = '';
       renderAthleteMeasures();
