@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-06-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-07-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10965,8 +10965,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var msg = 'Hola ' + (CV.name || '') + ', este es el link de tu rutina:\n' + cvLink(id);
       try { window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener'); } catch (e) {}
     }
-    function cvSetWeek(w) { CV.week = w; cvRender(); }
-    function cvSetWhich(x) { CV.which = x; CV.week = 1; cvRender(); }
+    function cvSetWeek(w) { CV.week = w; CV.rem = null; cvRender(); }
+    function cvSetWhich(x) { CV.which = x; CV.week = 1; CV.rem = null; cvRender(); }
     function cvItemSig(it) { try { return JSON.stringify([it.slot, (it.sub || []).map(function(s) { return [s.name, s.series, s.reps, s.notes]; }), it.circ || null]); } catch (e) { return ''; } }
     function cvActive(it, w) { var d = parseInt(it.vigenciaDesde, 10) || 1, h = (it.vigenciaHasta == null) ? null : (parseInt(it.vigenciaHasta, 10) || null); return d <= w && (h === null || w <= h); }
     function cvWeekNow(src) {   // semana en la que va el cliente hoy (si aún no empieza, 1); las semanas anteriores quedan solo para ver
@@ -10975,10 +10975,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function cvEditable(src) { return CV.which === 'cur' && CV.state && !pendDue(CV.state) && CV.week >= cvWeekNow(src) && !CV.busy; }
     function cvItemHtml(it, isNew, di, ii, canEdit) {
       var editing = CV.edit && CV.edit.di === di && CV.edit.ii === ii;
+      var removing = CV.rem && CV.rem.di === di && CV.rem.ii === ii;
       var badge = it.type === 'normal' ? '' : (it.type === 'biserie' ? 'BISERIE' : it.type === 'triserie' ? 'TRISERIE' : (it.circ && it.circ.tipo === 'hiit' ? 'HIIT' : 'CIRCUITO'));
       var inp = 'background:#0f0f0f;color:#fff;border:1px solid #444;border-radius:6px;padding:6px;font-size:.8rem;box-sizing:border-box;';
       var h = '<div style="border-left:3px solid ' + (editing ? '#4d8bff' : (isNew ? '#ffd60a' : '#333')) + ';padding:4px 0 4px 9px;margin:6px 0;">';
-      if (badge || isNew || canEdit) h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;"><div style="font-size:.66rem;font-weight:800;color:' + (isNew ? '#ffd60a' : '#8d99ae') + ';">' + badge + (badge && isNew ? ' · ' : '') + (isNew ? '🆕 cambia esta semana' : '') + '</div>' + ((canEdit && !editing) ? '<button type="button" onclick="cvEdit(' + di + ',' + ii + ')" style="background:transparent;border:1px solid #4d8bff;color:#4d8bff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:800;">✏️ Editar</button>' : '') + '</div>';
+      if (badge || isNew || canEdit) h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;"><div style="font-size:.66rem;font-weight:800;color:' + (isNew ? '#ffd60a' : '#8d99ae') + ';">' + badge + (badge && isNew ? ' · ' : '') + (isNew ? '🆕 cambia esta semana' : '') + '</div>' + ((canEdit && !editing && !removing) ? '<span style="display:flex;gap:5px;"><button type="button" onclick="cvEdit(' + di + ',' + ii + ')" style="background:transparent;border:1px solid #4d8bff;color:#4d8bff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:800;">✏️ Editar</button><button type="button" onclick="cvRemoveAsk(' + di + ',' + ii + ')" title="Quitar este bloque de la rutina" style="background:transparent;border:1px solid #ff5252;color:#ff5252;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:800;">🗑️ Quitar</button></span>' : '') + '</div>';
       if (it.circ && (it.circ.nombre || it.circ.rondas)) {
         if (editing) h += '<div style="font-size:.76rem;color:#cfd6e0;margin:4px 0;">' + cvEsc(it.circ.nombre || '') + ' · rondas: <input id="cve_rondas" value="' + cvEsc(it.circ.rondas || '') + '" style="' + inp + 'width:70px;"></div>';
         else h += '<div style="font-size:.76rem;color:#cfd6e0;">' + cvEsc(it.circ.nombre || '') + (it.circ.rondas ? ' · ' + cvEsc(it.circ.rondas) + ' rondas' : '') + (it.circ.trabajo ? ' · ' + cvEsc(it.circ.trabajo) + ' trabajo' : '') + (it.circ.descanso ? ' / ' + cvEsc(it.circ.descanso) + ' descanso' : '') + '</div>';
@@ -10995,10 +10996,56 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (sb.notes && !editing) h += '<div style="font-size:.72rem;color:#8d99ae;">' + cvEsc(sb.notes) + '</div>';
       });
       if (editing) h += '<div style="font-size:.74rem;color:#cfd6e0;margin:6px 0;"><label style="display:block;margin-bottom:3px;"><input type="radio" name="cve_scope" value="from" checked> Esta semana (' + CV.week + ') <b>en adelante</b></label><label><input type="radio" name="cve_scope" value="only"> Solo la semana ' + CV.week + '</label></div><div style="display:flex;gap:6px;"><button type="button" onclick="cvSave()" style="flex:1;background:#06d6a0;color:#000;border:0;border-radius:8px;padding:8px;font-weight:800;font-size:.8rem;">💾 Guardar</button><button type="button" onclick="cvCancelEdit()" style="background:transparent;color:#aaa;border:1px solid #555;border-radius:8px;padding:8px 12px;font-weight:800;font-size:.8rem;">Cancelar</button></div>';
+      if (removing) h += '<div style="font-size:.74rem;color:#ffb3b3;margin:6px 0;background:#2a1212;border:1px solid #5a2323;border-radius:8px;padding:8px;"><b>¿Quitar este bloque?</b><label style="display:block;margin:6px 0 3px;color:#cfd6e0;"><input type="radio" name="cvr_scope" value="only" checked> Solo la semana ' + CV.week + '</label><label style="display:block;margin-bottom:6px;color:#cfd6e0;"><input type="radio" name="cvr_scope" value="from"> Desde la semana ' + CV.week + ' <b>en adelante</b></label><div style="display:flex;gap:6px;"><button type="button" onclick="cvRemoveSave()" style="flex:1;background:#ff5252;color:#000;border:0;border-radius:8px;padding:8px;font-weight:800;font-size:.8rem;">🗑️ Quitar</button><button type="button" onclick="cvRemoveCancel()" style="background:transparent;color:#aaa;border:1px solid #555;border-radius:8px;padding:8px 12px;font-weight:800;font-size:.8rem;">Cancelar</button></div></div>';
       return h + '</div>';
     }
-    function cvEdit(di, ii) { CV.edit = { di: di, ii: ii }; cvRender(); }
+    function cvEdit(di, ii) { CV.rem = null; CV.edit = { di: di, ii: ii }; cvRender(); }
     function cvCancelEdit() { CV.edit = null; cvRender(); }
+    function cvRemoveAsk(di, ii) { CV.edit = null; CV.rem = { di: di, ii: ii }; cvRender(); }
+    function cvRemoveCancel() { CV.rem = null; cvRender(); }
+    // Quita el bloque solo esta semana (parte la vigencia en antes / después) o de esta semana en adelante (incluye versiones posteriores del mismo bloque)
+    function cvApplyRemove(st, di, ii, w, scope) {
+      var d = st.routineDays[di], it = d.items[ii];
+      var dd = parseInt(it.vigenciaDesde, 10) || 1, hh = (it.vigenciaHasta == null) ? null : (parseInt(it.vigenciaHasta, 10) || null);
+      var cl = function(x) { return JSON.parse(JSON.stringify(x)); };
+      var segs = [];
+      if (dd <= w - 1) { var a = cl(it); a.vigenciaDesde = dd; a.vigenciaHasta = w - 1; segs.push(a); }
+      if (scope === 'only' && (hh === null || w + 1 <= hh)) { var z = cl(it); z.vigenciaDesde = w + 1; z.vigenciaHasta = hh; segs.push(z); }
+      var slot = it.slot;
+      Array.prototype.splice.apply(d.items, [ii, 1].concat(segs));
+      if (scope === 'from' && slot != null) {   // versiones posteriores del mismo bloque (cambios de fase) también se quitan
+        d.items = d.items.filter(function(o) { return !(o.slot === slot && (parseInt(o.vigenciaDesde, 10) || 1) >= w); });
+        st.routineDays[di].items = d.items;
+      }
+      return st;
+    }
+    function cvRemoveSave() {
+      if (!CV.rem || !CV.state || CV.busy) return;
+      var di = CV.rem.di, ii = CV.rem.ii, w = CV.week;
+      var it0 = CV.state.routineDays[di].items[ii];
+      var nm = (it0.sub || []).map(function(s) { return s.name || ''; }).filter(Boolean).join(' + ') || 'este bloque';
+      var scopeEl = document.querySelector('input[name=cvr_scope]:checked'), scope = scopeEl ? scopeEl.value : 'only';
+      if (!confirm('Quitar «' + nm + '» de la rutina de ' + CV.name + ':\n\n' + (scope === 'only' ? 'Solo la semana ' + w : 'Desde la semana ' + w + ' en adelante') + '\n\nSe actualiza su mismo link y lo verá la próxima vez que abra la app. Si te equivocas, puedes deshacerlo desde este visor.')) return;
+      var np, ns;
+      try {
+        ns = decodePayload('q', CV.raw); if (!ns) throw new Error('x');
+        cvApplyRemove(ns, di, ii, w, scope);
+        np = encodePayload(buildUltraCompactState(ns));
+        var chk = decodePayload('q', np); if (!chk || !(chk.routineDays || []).length) throw new Error('x');
+      } catch (e) { console.error(e); alert('No se pudo preparar el cambio. No se guardó nada.'); return; }
+      CV.busy = true; showToastTop('Guardando…'); cvRender();
+      fetchRoutine(CV.id).then(function(j) {   // si alguien cambió la rutina mientras tanto, no se pisa
+        if (!j || !j.ok || j.p !== CV.raw) throw new Error('cambio');
+        return postJson({ a: 'actualizar', id: CV.id, p: np, pin: COACH.pin });
+      }).then(function(r2) {
+        if (!r2 || !r2.ok) { if (r2 && r2.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} } throw new Error((r2 && r2.error) || 'guardado'); }
+        CV.undoP = CV.raw; CV.raw = np; CV.state = decodePayload('q', np); CV.rem = null; CV.busy = false;
+        coachCacheSet(CV.id, np); showToastTop('✅ Bloque quitado. Link actualizado.'); cvRender();
+      }).catch(function(e) {
+        CV.busy = false; cvRender();
+        alert((e && e.message === 'cambio') ? 'Esa rutina cambió mientras la editabas (otro coach o una actualización). No se guardó nada: ciérrala y ábrela de nuevo.' : 'No se pudo guardar: ' + updateErrorText(e && e.message));
+      });
+    }
     // Aplica el cambio a una copia del estado: parte el ejercicio en tramos de vigencia (antes / esta semana / después) y vuelve a unir los iguales
     function cvApplyEdit(st, di, ii, w, scope, patch) {
       var d = st.routineDays[di], it = d.items[ii];
