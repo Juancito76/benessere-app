@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-07-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -326,6 +326,9 @@
     .capsule-group .cap-card.day-sug { animation: vsIn .3s ease-out backwards, daySugGlow 2.6s ease-in-out .4s infinite; }
     .capsule-btn.cap-card.day-sug .cap-s { color: #ffd60a; font-weight: 800; }
     .capsule-btn.cap-card.day-sug .cap-s::before { content: '👉 Te toca hoy · '; }
+    .capsule-group .cap-card.day-on { position: relative; box-shadow: var(--shadow-card), 0 0 0 3px #06d6a0; }
+    .capsule-group .cap-card.day-on::after { content: '⏱ ENTRENANDO HOY'; position: absolute; top: -10px; right: 12px; background: #06d6a0; color: #000; font-weight: 900; font-size: 0.68rem; letter-spacing: .3px; padding: 3px 10px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+    .capsule-btn.cap-card.day-on .cap-s { color: #06d6a0; font-weight: 800; }
     @media (prefers-reduced-motion: reduce) { .capsule-group .cap-card.day-sug { animation: none; box-shadow: var(--shadow-card), 0 0 0 2px var(--c); } }
     .gd-legend { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin: 4px 0 10px; text-align: center; }
     .gd-guide { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 12px; margin: 8px 0 10px; text-align: left; font-size: 0.82rem; color: #eee; line-height: 1.5; }
@@ -6760,6 +6763,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else if (done > 0) { t.innerText = wkFmt(done); b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total del entreno ✔'; }
       else { t.innerText = '0:00'; b.innerText = '▶ Iniciar entreno'; b.className = 'wk-btn'; l.innerText = 'Tiempo total de entreno'; }
       try { dcPaint(dayId); } catch (e) {}
+      try { wkSuggestPaint(); } catch (e) {}   // pantalla principal: «Entrenando hoy» en el día en proceso
     }
     // Al abrir un día de entreno sin el cronómetro en marcha, se le recuerda iniciarlo (también en modo coach). Una vez por día y por apertura de la app.
     var WK_NAG = {};
@@ -7379,7 +7383,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Si hoy ya entrenó, está entrenando ahora o es la vista del coach, no se marca nada (no se le insiste).
     function wkSuggestPaint() {
       var cards = document.querySelectorAll('#ath_capsuleGroup .cap-card[data-day]');
-      for (var i = 0; i < cards.length; i++) cards[i].classList.remove('day-sug');
+      for (var i = 0; i < cards.length; i++) { cards[i].classList.remove('day-sug'); cards[i].classList.remove('day-on'); }
+      try {   // el día que está en proceso (cronómetro en marcha) se marca para que, si el cliente se sale, lo identifique al volver
+        if (WK.start && WK.dayId) for (var k = 0; k < cards.length; k++) if (cards[k].getAttribute('data-day') === WK.dayId) cards[k].classList.add('day-on');
+      } catch (eOn) {}
       try {
         if (!cards.length || !athleteActiveState || isCoachView() || WK.start) return;
         var days = athleteActiveState.routineDays || [], idx = wkNextDayIndex();
@@ -11250,7 +11257,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function coachSnapTake(id, state) {
       try { var d = {}; coachSnapKeys(state).forEach(function(k) { d[k] = localStorage.getItem(k); }); COACH_SNAP = { id: id, ns: TRK_NS, state: state, data: d }; } catch (e) { COACH_SNAP = null; }
     }
+    // «↺ Reiniciar rutina»: pregunta qué reiniciar. «Solo esta sesión» = lo de siempre; «Todo el ciclo» = el cliente vuelve a empezar desde la semana 1 (hoy)
+    var CYC_SIM = null;    // modo prueba: rutina con el ciclo reiniciado (solo en pantalla, no se guarda en la hoja)
+    var CYC_UNDO = null;   // último ciclo reiniciado desde este celular: { id, p } con la rutina tal como estaba, para deshacer
     function coachResetRoutine() {
+      if (!(isCoachView() || pruebaAsClient()) || !COACH_SNAP || COACH_SNAP.id !== athleteRoutineId) { showToastTop('No hay nada que reiniciar.'); return; }
+      var st = athleteActiveState || {}, total = parseInt(st.durationWeeks, 10) || 4, wk = (typeof ATH_WEEK === 'number' && ATH_WEEK) ? ATH_WEEK : 1;
+      var canUndo = !!(CYC_UNDO && CYC_UNDO.id === athleteRoutineId && !pruebaAsClient());
+      pendOverlay('coach_reset_menu', '<div class="pend-ttl">↺ Reiniciar rutina</div>' +
+        '<div class="pend-txt">' + escHtml(st.clientName || 'Este cliente') + ' va en la semana <b>' + wk + ' de ' + total + '</b>.</div>' +
+        '<button type="button" class="pend-btn pend-ok" onclick="coachRestartCycle()">🔄 Todo el ciclo (vuelve a la semana 1)</button>' +
+        '<div class="pend-txt" style="font-size:.78rem;opacity:.8;margin:-2px 0 10px;">Empieza de nuevo hoy. Se conservan sus marcas, entrenos y medidas' + (pruebaAsClient() ? '. En modo prueba no se guarda nada.' : '.') + '</div>' +
+        '<button type="button" class="pend-btn pend-warn" onclick="pendCloseOverlay(\'coach_reset_menu\'); coachResetSession()">↺ Solo esta sesión</button>' +
+        (canUndo ? '<button type="button" class="pend-btn pend-warn" onclick="coachUndoCycle()">↩️ Deshacer el último reinicio de ciclo</button>' : '') +
+        '<button type="button" class="pend-btn pend-cancel" onclick="pendCloseOverlay(\'coach_reset_menu\')">Cancelar</button>');
+    }
+    function coachResetSession() {
       if (!(isCoachView() || pruebaAsClient()) || !COACH_SNAP || COACH_SNAP.id !== athleteRoutineId) { showToastTop('No hay nada que reiniciar.'); return; }
       if (!confirm('↺ Reiniciar rutina\n\nLa rutina vuelve a como estaba cuando la abriste: se borran las marcas, los bloques completados y el cronómetro de esta sesión.\n\n(Lo que ya se haya enviado a la hoja del cliente no se borra desde aquí; para ensayar sin enviar nada usa 🧪 Probar en el perfil del cliente.)\n\n¿Reiniciar?')) return;
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
@@ -11260,9 +11282,85 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         Object.keys(COACH_SNAP.data).forEach(function(k) { if (COACH_SNAP.data[k] != null) localStorage.setItem(k, COACH_SNAP.data[k]); });
       } catch (e) {}
       GD_OPEN = {}; GD_DEMO = {};
-      var id = athleteRoutineId, p = coachCacheGet(id), snap = COACH_SNAP;
+      var id = athleteRoutineId, p = (pruebaAsClient() && CYC_SIM && CYC_SIM.id === id) ? CYC_SIM.p : coachCacheGet(id), snap = COACH_SNAP;
       if (p && coachShowRoutine(id, p, true, PRUEBA.queued ? pendForceNow : null) === 'ok') { COACH_SNAP = snap; showToastTop('↺ Rutina reiniciada.'); }
       else showToastTop('No se pudo reiniciar; sal a «Clientes» y ábrela de nuevo.');
+    }
+    // Devuelve la misma rutina con la fecha de inicio puesta en hoy ({ np }) o el motivo por el que no se puede ({ err })
+    function coachCycleP(p, today) {
+      var sp = payloadSplit(p); if (!sp) return { err: 'datos' };
+      if (Array.isArray(sp.arr[PEND_IDX])) return { err: 'espera' };   // con una rutina en espera, mover el inicio de la actual pisaría las fechas
+      var before = decodePayload('q', p); if (!before) return { err: 'datos' };
+      sp.arr[2] = today;
+      var np = payloadJoin(sp), chk = decodePayload('q', np);
+      if (!chk || chk.startDate !== today || (chk.routineDays || []).length !== (before.routineDays || []).length) return { err: 'datos' };
+      return { np: np };
+    }
+    // Deja la pantalla como el primer día de un ciclo nuevo: sin cronómetro ni bloques completados; las marcas (pesos y reps) se conservan para precargarlas
+    function coachCycleApply(id, np) {
+      try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
+      try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
+      try {
+        var pre = ['wkdur_', 'wknm_', 'wkwatch_', 'wksc_pend', 'wklast_', 'gdst_', 'nsets_'].map(function(x) { return tk(x); }), kill = [];
+        for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && (k === RESUME_KEY || k === tk(WK_KEY) || pre.some(function(q) { return k.indexOf(q) === 0; }))) kill.push(k); }
+        kill.forEach(function(k) { localStorage.removeItem(k); });
+        remSave({ promo: todayIso() });   // avisos de pesaje y de fin de ciclo empiezan de cero
+      } catch (e) {}
+      GD_OPEN = {}; GD_DEMO = {};
+      return coachShowRoutine(id, np, false, null) === 'ok';
+    }
+    function coachRestartCycle() {
+      pendCloseOverlay('coach_reset_menu');
+      var id = athleteRoutineId, sim = pruebaAsClient(), today = todayIso();
+      if (!id || !COACH_SNAP || COACH_SNAP.id !== id) { showToastTop('No hay nada que reiniciar.'); return; }
+      var name = (athleteActiveState && athleteActiveState.clientName) || 'este cliente', total = parseInt(athleteActiveState && athleteActiveState.durationWeeks, 10) || 4;
+      var esperaMsg = 'Este cliente tiene una rutina en espera, así que no se puede reiniciar el ciclo de la actual. Quita la rutina en espera o cámbiale la fecha (botón ⏳ en su pantalla) y vuelve a intentarlo.';
+      if (sim) {   // modo prueba: solo en pantalla
+        var base = (CYC_SIM && CYC_SIM.id === id) ? CYC_SIM.p : coachCacheGet(id), r0 = base ? coachCycleP(base, today) : { err: 'datos' };
+        if (r0.err === 'espera') { alert(esperaMsg); return; }
+        if (!r0.np) { showToastTop('No se pudo reiniciar el ciclo; sal a «Clientes» y ábrela de nuevo.'); return; }
+        CYC_SIM = { id: id, p: r0.np };
+        var snapS = COACH_SNAP;
+        if (coachCycleApply(id, r0.np)) { COACH_SNAP = snapS; showToastTop('🔄 Ciclo reiniciado (solo en la prueba): semana 1.'); }
+        return;
+      }
+      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
+      if (!confirm('🔄 Reiniciar el ciclo de ' + name + '\n\nEmpieza de nuevo HOY en la semana 1 de ' + total + '. Se actualiza su mismo enlace y lo verá la próxima vez que abra su rutina.\n\nSe conservan sus marcas, entrenos y medidas.\n\n¿Reiniciar el ciclo?')) return;
+      showToastTop('Reiniciando ciclo…');
+      fetchRoutine(id).then(function(j) {   // se parte siempre de lo último que hay en la hoja
+        if (!j || !j.ok || !j.p) throw new Error('respuesta');
+        var r = coachCycleP(j.p, today);
+        if (r.err === 'espera') throw new Error('espera');
+        if (!r.np) throw new Error('verificacion');
+        if (r.np.length > PEND_MAX) throw new Error('grande');
+        return postJson({ a: 'actualizar', id: id, p: r.np, pin: COACH.pin }).then(function(r2) {
+          if (!r2 || !r2.ok) { if (r2 && r2.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} } throw new Error((r2 && r2.error) || 'guardado'); }
+          return { old: j.p, np: r.np };
+        });
+      }).then(function(o) {
+        CYC_UNDO = { id: id, p: o.old };
+        coachCacheSet(id, o.np);
+        var snapR = COACH_SNAP;
+        if (coachCycleApply(id, o.np)) { COACH_SNAP = snapR; showToastTop('🔄 Ciclo de ' + name + ' reiniciado: semana 1 desde hoy.'); }
+        else showToastTop('Ciclo reiniciado en su enlace. Sal a «Clientes» y ábrela de nuevo para verla.');
+      }).catch(function(e) {
+        var m = e && e.message;
+        if (m === 'espera') alert(esperaMsg);
+        else alert('No se pudo reiniciar el ciclo. No se cambió nada: ' + (m === 'grande' ? 'la rutina pesa demasiado para guardarla.' : updateErrorText(m)));
+      });
+    }
+    function coachUndoCycle() {
+      pendCloseOverlay('coach_reset_menu');
+      var u = CYC_UNDO, id = athleteRoutineId;
+      if (!u || u.id !== id || !COACH) return;
+      if (!confirm('↩️ ¿Volver el ciclo de ' + ((athleteActiveState && athleteActiveState.clientName) || 'este cliente') + ' a como estaba antes del reinicio?')) return;
+      postJson({ a: 'actualizar', id: id, p: u.p, pin: COACH.pin }).then(function(r) {
+        if (!r || !r.ok) throw new Error((r && r.error) || 'guardado');
+        CYC_UNDO = null; coachCacheSet(id, u.p);
+        var snapU = COACH_SNAP;
+        if (coachShowRoutine(id, u.p, false, null) === 'ok') COACH_SNAP = snapU;
+        showToastTop('↩️ Ciclo vuelto a como estaba.');
+      }).catch(function(e) { alert('No se pudo deshacer: ' + updateErrorText(e && e.message)); });
     }
     function coachShowRoutine(id, p, keepSnap, mut) {
       var state = decodePayload('q', p);
