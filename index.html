@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8818,6 +8818,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!document.getElementById('tm_css')) {
         var cs = document.createElement('style'); cs.id = 'tm_css';
         cs.textContent = '#tm_top{display:flex; gap:8px; align-items:flex-start;}' +
+          '#tm_head{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:10px; justify-content:flex-start !important;}' +
+          '#tm_title{flex:1 0 100%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8rem !important; letter-spacing:.8px; text-transform:uppercase;}' +
+          '#tm_round{flex:none; font-family:inherit; font-size:0.9rem; font-weight:900; color:#cfe0ff; background:#14213d; border:2px solid #4d8bff; border-radius:999px; padding:7px 13px; cursor:pointer;} #tm_round:empty{display:none;} #tm_round:not(:empty):not(.tm-static)::after{content:" ▾"; opacity:.85;} #tm_round.tm-static{background:none; border-color:transparent; color:#ccc; padding:7px 0; pointer-events:none; cursor:default;}' +
+          '#tm_minb{flex:none; margin-left:auto;}' +
+          '#tm_where{display:none; position:fixed; left:0; right:0; bottom:0; z-index:100006; background:#17171c; border-top:1px solid #444; border-radius:20px 20px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); flex-direction:column; gap:10px; box-shadow:0 -10px 30px rgba(0,0,0,0.7); max-height:85vh; overflow:auto; text-align:left;} #tm_where.on{display:flex;}' +
+          '#tm_where .tw-t{font-weight:900; font-size:1.1rem; color:#fff;} #tm_where .tw-l{font-size:0.75rem; font-weight:800; color:#9aa3b2; letter-spacing:1px; text-transform:uppercase; margin-top:4px;}' +
+          '#tm_where .tw-chips{display:grid; grid-template-columns:repeat(auto-fill,minmax(58px,1fr)); gap:8px;}' +
+          '#tm_where .tw-chip{padding:13px 0; border-radius:12px; background:#23232b; border:2px solid #3a3a45; color:#fff; font-size:1.15rem; font-weight:900;} #tm_where .tw-chip.sel{background:#4d8bff; border-color:#4d8bff; color:#000;}' +
+          '#tm_where .tw-rows{display:flex; flex-direction:column; gap:8px;} #tm_where .tw-row{display:flex; gap:10px; align-items:center; padding:11px 12px; border-radius:12px; background:#23232b; border:2px solid #3a3a45; color:#fff; font-size:0.98rem; font-weight:800; text-align:left;} #tm_where .tw-row b{flex:none; width:26px; height:26px; border-radius:50%; background:#33333d; display:inline-flex; align-items:center; justify-content:center; font-size:0.85rem;} #tm_where .tw-row.sel{border-color:#06d6a0; background:#0d2a22;} #tm_where .tw-row.sel b{background:#06d6a0; color:#000;}' +
+          '#tm_where .tw-go{margin-top:4px; background:#06d6a0; color:#000; border:none; border-radius:14px; padding:15px; font-size:1.05rem; font-weight:900;} #tm_where .tw-x{background:#2a2a2a; color:#fff; border:none; border-radius:14px; padding:13px; font-size:0.95rem; font-weight:800;}' +
           '#tm_left{flex:1 1 0; min-width:0;}' +
           '#tm_side{display:flex; flex-direction:column; gap:6px; width:114px; flex:none; margin-top:2px;}' +
           '#tm_side .tm-btn{flex:none; padding:14px 3px; font-size:0.88rem; line-height:1.15; border-radius:12px;}' +
@@ -8839,14 +8849,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '@keyframes tmBlink{0%,100%{opacity:1} 50%{opacity:0.12}} .tm-blink{animation:tmBlink .6s linear infinite;}' +
           '#tm_vrep{display:none; flex:none; align-self:center; margin:4px auto 0; background:none; border:none; color:#ff9a93; font-size:0.8rem; font-weight:700; text-decoration:underline; padding:6px 8px; cursor:pointer;}' +
           '#tm_vid{width:100%; flex:none; height:calc(100vh - 380px); height:clamp(calc((100vw - 32px) * 0.5625), calc(100vh - 380px), calc((100vw - 32px) * 1.35)); min-height:200px; margin:12px 0 0;}' +
-          '@media (orientation:landscape) and (max-height:520px){#tm_overlay{display:grid !important; grid-template-columns:1fr 1fr; column-gap:14px; align-content:start; grid-auto-rows:min-content;} #tm_overlay > *{grid-column:1;} #tm_g{grid-column:1 / -1; grid-row:1;} #tm_top{grid-column:1; grid-row:2;} #tm_vid{grid-column:2; grid-row:2 / span 8; width:100%; height:calc(100vh - 70px); flex:none; margin:0; align-self:start;} #tm_time{font-size:min(18vh, 90px) !important;}}';
+          '@media (orientation:landscape) and (max-height:520px){#tm_overlay{display:grid !important; grid-template-columns:1fr 1fr; column-gap:14px; align-content:start; grid-auto-rows:min-content;} #tm_overlay > *{grid-column:1;} #tm_g{grid-column:1 / -1; grid-row:1;} #tm_head{grid-column:1; grid-row:2;} #tm_top{grid-column:1; grid-row:3;} #tm_vid{grid-column:2; grid-row:2 / span 9; width:100%; height:calc(100vh - 70px); flex:none; margin:0; align-self:start;} #tm_time{font-size:min(18vh, 90px) !important;}}';
         document.head.appendChild(cs);
       }
       o.id = 'tm_overlay';
       o.style.cssText = 'position:fixed; top:max(8px, env(safe-area-inset-top)); left:8px; right:8px; bottom:max(8px, env(safe-area-inset-bottom)); border-radius:22px; border:2px solid #333; box-shadow:0 0 0 100vmax rgba(0,0,0,.6); z-index:100000; background:#111; display:flex; flex-direction:column; padding:18px 16px calc(18px + env(safe-area-inset-bottom)); color:#fff; text-align:center; overflow:auto;' + (PRUEBA.on ? ' padding-bottom:calc(60px + env(safe-area-inset-bottom));' : '');
       o.innerHTML = '<div id="tm_g" style="display:none; text-align:left; margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:800;"><span id="tm_gtxt" style="color:#ccc;"></span><span id="tm_gpct" style="color:#ccc;"></span></div><div style="height:6px; background:#2a2a2a; border-radius:4px; overflow:hidden; margin-top:4px;"><div id="tm_gbar" style="height:100%; width:0; background:#4d8bff;"></div></div></div>' +
+        '<div id="tm_head"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary); text-align:left;"></div><button type="button" id="tm_round" aria-label="Estoy en…"></button><button type="button" id="tm_minb" aria-label="Minimizar" style="background:#1c1c1c; color:#fff; border:2px solid #fff; border-radius:10px; font-size:.8rem; font-weight:900; padding:7px 10px;">➖ Minimizar</button></div>' +
         '<div id="tm_top"><div id="tm_left">' +
-        '<div id="tm_head" style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary); text-align:left;"></div><div id="tm_round" style="font-size:0.85rem; color:#ccc; font-weight:700; flex:none;"></div><button type="button" id="tm_minb" aria-label="Minimizar" style="flex:none; background:#1c1c1c; color:#fff; border:2px solid #fff; border-radius:10px; font-size:.8rem; font-weight:900; padding:6px 9px;">➖ Minimizar</button></div>' +
         '<div id="tm_phase" style="margin-top:10px; font-size:1.2rem; font-weight:900; letter-spacing:2px;"></div>' +
         '<div id="tm_prog" style="display:none; margin-top:2px; font-size:0.9rem; font-weight:800; color:#ccc;"></div>' +
         '<div id="tm_station" style="margin-top:4px; font-size:1.35rem; font-weight:800; line-height:1.2;"></div>' +
@@ -8882,6 +8892,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="tm_guide" style="display:none; margin-top:12px; background:#0d2318; border:1px solid #06d6a0; border-radius:12px; padding:12px; text-align:center;"></div>' +
         '<div id="tm_vid" style="display:none; position:relative; background:#000; border-radius:10px; overflow:hidden; min-height:200px;"></div>' +
         '<button type="button" id="tm_vrep">⚠️ El video no se ve</button>' +
+        '<div id="tm_where"></div>' +
         '<div id="tm_bd" style="display:none; margin-top:14px; text-align:left;"></div>' +
         '<div id="tm_summary" style="display:none; margin-top:12px; font-size:0.95rem; color:#ddd; line-height:1.5;"></div>';
       document.body.appendChild(o);
@@ -8904,6 +8915,49 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (tmrSndVisible()) { var sndB = document.getElementById('tm_snd'); sndB.style.display = ''; sndB.onclick = tmrToggleMode; tmrModeLabel(); }
       document.getElementById('tm_blkb').onclick = clsBlocksOpen;
       document.getElementById('tm_more').onclick = ctMoreRound;
+      document.getElementById('tm_round').onclick = ctWhereOpen;
+    }
+
+    // ----- «📍 Estoy en…»: el cliente elige en qué ronda (y ejercicio) está, por si salió del temporizador y quiere volver a donde iba -----
+    var TW = { r: 1, s: 0 };
+    function ctWhereOk() { return !!(CT.active && !CT.done && !CT.cls && !CT.guide && CT.srId && SR[CT.srId] && SR[CT.srId].base >= 1 && CT.phases && CT.phases[CT.i]); }
+    function ctWhereOpen() {
+      if (!ctWhereOk()) return;
+      var total = SR[CT.srId].base, off = CT.doneBefore || 0, cur = null;
+      for (var j = CT.i; j < CT.phases.length; j++) if (CT.phases[j].t === 'work') { cur = CT.phases[j]; break; }
+      TW.r = Math.min(total, Math.max(1, off + (cur ? cur.r : 1)));
+      TW.s = (cur && cur.si >= 0 && !CT.hiit) ? Math.min(cur.si, Math.max(0, CT.nSt - 1)) : 0;
+      ctWherePaint();
+      var w = document.getElementById('tm_where'); if (w) w.classList.add('on'); document.body.classList.add('tm-extra-open');
+    }
+    function ctWhereClose() { var w = document.getElementById('tm_where'); if (w) w.classList.remove('on'); document.body.classList.remove('tm-extra-open'); }
+    function ctWhereSet(r, s) { if (r > 0) TW.r = r; if (s >= 0) TW.s = s; ctWherePaint(); }
+    function ctWherePaint() {
+      var w = document.getElementById('tm_where'); if (!w || !ctWhereOk()) return;
+      var total = SR[CT.srId].base, lab = CT.roundLabel || 'Ronda', h = '<div class="tw-t">📍 Estoy en…</div><div class="tw-l">' + escHtml(lab) + '</div><div class="tw-chips">';
+      for (var r = 1; r <= total; r++) h += '<button type="button" class="tw-chip' + (r === TW.r ? ' sel' : '') + '" onclick="ctWhereSet(' + r + ',-1)">' + r + '</button>';
+      h += '</div>';
+      if (!CT.hiit && CT.nSt > 1) {
+        h += '<div class="tw-l">Ejercicio</div><div class="tw-rows">';
+        for (var i = 0; i < CT.nSt; i++) h += '<button type="button" class="tw-row' + (i === TW.s ? ' sel' : '') + '" onclick="ctWhereSet(0,' + i + ')"><b>' + (i + 1) + '</b><span>' + escHtml(ctShort(CT.names[i] || ('Ejercicio ' + (i + 1)))) + '</span></button>';
+        h += '</div>';
+      }
+      h += '<button type="button" class="tw-go" onclick="ctWhereGo()">▶ Empezar aquí</button><button type="button" class="tw-x" onclick="ctWhereClose()">Cancelar</button>';
+      w.innerHTML = h;
+    }
+    function ctWhereGo() {
+      if (!ctWhereOk()) { ctWhereClose(); return; }
+      var ci = CT.ci, sid = CT.srId, gk = gdKeyOf(sid);
+      ctWhereClose();
+      if (!gk) return;
+      try {   // se deja guardado dónde está (también hacia atrás) y el temporizador se rearma desde ahí, igual que al retomar un bloque a medias
+        var o = gdStore(gk.dayId);
+        delete o.c[gk.key]; o.p[gk.key] = 1;
+        if (TW.r - 1 > 0) o.n[gk.key] = TW.r - 1; else delete o.n[gk.key];
+        if (TW.s > 0) o.s[gk.key] = TW.s; else delete o.s[gk.key];
+        localStorage.setItem(tk('gdst_' + gk.dayId), JSON.stringify(o));
+      } catch (e) {}
+      startCircuitTimerGo(ci, sid, undefined, null);
     }
 
     // «1 ronda más»: ya terminó el bloque -> arranca una ronda extra; todavía en la última ronda -> la agrega al final sin reiniciar nada
@@ -9045,7 +9099,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var hideTitle = !CT.title || (sBase && tShort.toLowerCase().indexOf(sBase.toLowerCase()) !== -1) || (CT.guide && CT.rounds > 0 && tShort.indexOf('+') !== -1);   // el nombre del ejercicio ya sale abajo: no se repite
       el('tm_title').innerText = hideTitle ? '' : tShort; el('tm_title').style.display = hideTitle ? 'none' : '';
       el('tm_head').style.justifyContent = hideTitle ? 'center' : 'space-between';
-      el('tm_round').innerText = ph.t === 'ready' ? '' : ((CT.roundLabel || 'Ronda') + ' ' + ph.r + ' de ' + CT.rounds);
+      var rOff = CT.doneBefore || 0, rAbsT = rOff + CT.rounds, rWhere = ctWhereOk(), rShowReady = !CT.cls && rWhere && (rAbsT > 1 || CT.nSt > 1);
+      el('tm_round').innerText = (ph.t === 'ready' && !rShowReady) ? '' : ((CT.roundLabel || 'Ronda') + ' ' + (rOff + ph.r) + ' de ' + rAbsT);   // cuenta real del bloque (al retomar, sigue en la ronda donde iba)
+      el('tm_round').classList.toggle('tm-static', !rWhere);
       el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
       var stationTxt = ctShort(ph.st);
       if (ph.t === 'rest' && CT.hiit) stationTxt = ph.nextName ? (ph.multi ? 'Sigue: ' + ctShort(ph.nextName) : ctShort(ph.nextName)) : 'Vuelta a la calma';
@@ -9148,6 +9204,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else if (nx.t === 'trans') nxTxt = 'Sigue: ' + (nx.kind === 'side' ? 'Cambio de lado' : (nx.lbl || 'Transición') + ' ' + nx.d + ' s');
         else nxTxt = 'Sigue: ' + ctShort(nx.st) + (nx.side ? ' · lado ' + nx.side : '') + (nx.open && nx.reps ? ' · ' + nx.reps : '');
       }
+      if (!CT.cls && ph.t === 'ready' && nx && nx.t === 'work') nxTxt = '';   // en el «Prepárate» el ejercicio de turno ya está arriba: no se repite abajo
       el('tm_next').innerText = CT.cls ? nxTxt : ctRepsClean(nxTxt);
       if (CT.cls) ctClsRender(ph); else if (el('tm_blkb')) el('tm_blkb').style.display = 'none';
       if (ph.seq) {   // qué sigue dentro del intervalo
