@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5165,9 +5165,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
           wkBarHtml(d.id) +
           ((!isRest && (d.items || []).length) ? '<div style="text-align:center; margin:-4px 0 8px;"><button type="button" class="wk-link" onclick="dayReview(\'' + d.id + '\')">📋 Qué toca hoy</button></div>' : '') +
-          ((!isRest && (d.items || []).length) ? gdGuideHtml() + '<div class="gd-legend">🟡 Amarillo: empieza aquí · 🟠 Naranja: te falta terminar · ✔ Opaca: completada</div>' : '') +
-          '<button type="button" class="btn-restore-all-day" onclick="restoreAllDayLoads(\'' + d.id + '\')">⚡ Montar Últimas Marcas en la Rutina</button>' +
-          '<button type="button" class="btn-restore-all-day" style="margin-top:6px;" onclick="openSessionPicker(\'' + d.id + '\')">📅 Montar marcas de otra fecha</button>' +
+          ((!isRest && (d.items || []).length) ? gdGuideHtml() : '') +
+          '<button type="button" class="btn-restore-all-day" onclick="marcasMenu(\'' + d.id + '\')">⚡ Montar marcas</button>' +
           exercisesHtml +
           '<div id="dc_card_' + d.id + '"></div>' +
           '<div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">' +
@@ -6978,6 +6977,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:1.05rem; font-weight:900; color:var(--primary); margin-bottom:2px;">📋 Qué toca hoy' + (dTitle ? ' · ' + escHtml(dTitle) : '') + '</div>' +
         '<div style="font-size:0.74rem; color:var(--muted); margin-bottom:10px;">' + nEx + ' ejercicio' + (nEx === 1 ? '' : 's') + ' en total. Solo repaso: el cronómetro no se inicia.</div>' +
         (rows || '<div style="font-size:0.85rem; color:#ccc;">No hay ejercicios para mostrar.</div>') +
+        '<div class="gd-legend" style="margin-top:10px;">Colores de los bloques en tu rutina: 🟡 Amarillo: empieza aquí · 🟠 Naranja: te falta terminar · ✔ Opaca: completada</div>' +
         (hasN ? '<button type="button" class="nutri-hoy-link" style="margin-top:6px;" onclick="closeModal(\'day_review_modal\'); nutriHoyGo(\'' + dayId + '\')">🍽 Nutrición de hoy</button>' : '') +
         ((WK.start && WK.dayId === dayId) ? '' : '<button type="button" class="wk-btn" style="width:100%; margin:10px 0 6px; padding:14px; font-size:1rem;" onclick="closeModal(\'day_review_modal\'); wkStart(\'' + dayId + '\')">▶ Iniciar entreno</button>') +
         '<button type="button" class="btn-action-primary" onclick="closeModal(\'day_review_modal\')' + (exitAfter ? '; delete WK_NAG[\'' + dayId + '\']; closeModal(\'' + dayId + '\')' : '') + '">' + (exitAfter ? 'Cerrar y volver al inicio' : 'Cerrar') + '</button></div>';
@@ -7027,6 +7027,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function openRestDayId(id) { try { pendCloseOverlay('rest_pick'); } catch (e) {} openDay(id, true); if (nutriOn()) { try { switchDaySection(id, 'nutricion'); } catch (e2) {} } }
     // «🛡️ Antes de empezar»: el protocolo de seguridad del día, justo cuando el cliente está por entrenar (ahí sí se lee)
+    // «⚡ Montar marcas»: un solo botón; pregunta si quiere las últimas o las de otra fecha
+    function marcasMenu(dayId) {
+      pendOverlay('marcas_menu', '<div class="pend-ttl">⚡ Montar marcas</div><div class="pend-txt">Llena tu rutina con pesos y repeticiones que ya anotaste.</div>' +
+        '<button type="button" class="pend-btn pend-ok" onclick="pendCloseOverlay(\'marcas_menu\'); restoreAllDayLoads(\'' + dayId + '\')">⚡ Las últimas marcas</button>' +
+        '<button type="button" class="pend-btn pend-ok" style="margin-top:6px;" onclick="pendCloseOverlay(\'marcas_menu\'); openSessionPicker(\'' + dayId + '\')">📅 De otra fecha</button>' +
+        '<button type="button" class="pend-btn pend-cancel" onclick="pendCloseOverlay(\'marcas_menu\')">Cerrar</button>');
+    }
     function nagSecHtml(dayId) {
       try {
         var el = document.querySelector('#' + dayId + ' .sec-items'), t = el ? el.textContent.trim() : '';
@@ -14007,7 +14014,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_upd_btn', t: 'Actualizar', x: 'Si tu coach cambió algo y no lo ves, toca aquí para traer lo más nuevo.' },
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
-      { t: 'Dentro de un día: tu meta y la seguridad', x: 'Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
+      { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
       { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo y dice «👇 Inicia con el botón de abajo»: el que lo arranca es el botón «⏱ Iniciar temporizador», no la franja de arriba. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
       { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
