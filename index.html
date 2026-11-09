@@ -468,6 +468,12 @@
 
     /* ===== Registro por serie (etapa 1, 07/10/2026) ===== */
     .set-box { margin-top: 8px; background: #141414; border-radius: 8px; padding: 8px; }
+    .set-box.set-mini { background: none; padding: 0; }
+    .set-open-btn { display: inline-flex; align-items: center; gap: 6px; background: #1b1b1b; border: 1px solid #444; color: #ddd; font-size: 0.74rem; font-weight: 800; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+    .set-open-btn .set-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; display: none; }
+    .set-open-btn.has .set-dot { display: inline-block; background: #777; }
+    .set-open-btn.real { border-color: #06d6a0; color: #9fe8c8; }
+    .set-open-btn.real .set-dot { background: #06d6a0; }
     details.set-box > summary { cursor: pointer; font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; padding: 4px 0; display: flex; align-items: center; gap: 6px; list-style: none; -webkit-tap-highlight-color: transparent; }
     details.set-box > summary::-webkit-details-marker { display: none; }
     details.set-box > summary::before { content: '▸'; font-size: 0.8rem; transition: transform 0.15s; flex: 0 0 auto; }
@@ -5590,8 +5596,33 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var body = '<div class="set-rows' + (usesW ? '' : ' no-w') + '" id="sets_' + key + '" data-key="' + key + '" data-timed="' + (timed ? 1 : 0) + '" data-base="' + n + '">' + head +
         '<div class="set-rows-list">' + rows + '</div>' +
         '<button type="button" class="btn-add-set" onclick="addSetRow(\'' + key + '\')">＋ Serie</button></div>';
-      // Siempre plegado: el resumen de lo anotado queda a la vista y se despliega solo al tocarlo
-      return '<details class="set-box" id="setbox_' + key + '"><summary><span class="set-lbl">📝 ' + 'Marcas anteriores' + '</span><span class="set-sum empty" id="ssum_' + key + '">Toca para anotar</span></summary>' + body + '</details>';
+      // Un botoncito: las marcas se abren en una ventana flotante para que la rutina ocupe menos espacio
+      return '<div class="set-box set-mini" id="setbox_' + key + '"><button type="button" class="set-open-btn" id="sobtn_' + key + '" onclick="setFloatOpen(\'' + key + '\')">📝 Marcas anteriores<i class="set-dot"></i></button>' +
+        '<span class="set-sum empty" id="ssum_' + key + '" style="display:none;">Toca para anotar</span><div class="set-home" id="sethome_' + key + '" style="display:none;">' + body + '</div></div>';
+    }
+    var SETFLOAT = '';
+    function setFloatOpen(key) {
+      var node = document.getElementById('sets_' + key); if (!node) return;
+      if (SETFLOAT) setFloatClose();
+      var name = '', box = document.getElementById('setbox_' + key), card = box && box.closest('.exercise-item-box');
+      var nm = card && card.querySelector('.ex-name'); name = nm ? nm.innerText.replace(/^[A-C1-9]\s/, '').trim() : '';
+      var o = document.createElement('div'); o.id = 'set_float';
+      o.style.cssText = 'position:fixed; inset:0; z-index:100020; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:14px;';
+      o.innerHTML = '<div style="background:#181818; border:1.5px solid var(--primary); border-radius:16px; width:100%; max-width:420px; max-height:86vh; display:flex; flex-direction:column; overflow:hidden;">' +
+        '<div style="padding:12px 14px; font-weight:900; color:var(--primary); font-size:.95rem;">📝 Marcas anteriores' + (name ? '<div style="font-size:.8rem; color:#fff; font-weight:700; margin-top:2px;">' + escHtml(name) + '</div>' : '') + '</div>' +
+        '<div id="set_float_body" style="padding:0 14px 8px; overflow:auto;"></div>' +
+        '<div style="padding:10px 14px 14px;"><button type="button" class="btn-action-primary" onclick="setFloatClose()">Listo</button></div></div>';
+      o.addEventListener('click', function(e) { if (e.target === o) setFloatClose(); });
+      document.body.appendChild(o);
+      document.getElementById('set_float_body').appendChild(node);
+      SETFLOAT = key;
+    }
+    function setFloatClose() {
+      var key = SETFLOAT; SETFLOAT = '';
+      var node = key ? document.getElementById('sets_' + key) : null, home = key ? document.getElementById('sethome_' + key) : null;
+      if (node && home) home.appendChild(node);
+      var o = document.getElementById('set_float'); if (o) o.remove();
+      if (key) { try { refreshSetSummary(key); } catch (e) {} try { saveTracker(); } catch (e2) {} }
     }
     // Resumen de una línea de lo anotado (o precargado en gris) para mostrarlo con el registro plegado
     function refreshSetSummary(key) {
@@ -5606,6 +5637,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (rv && timed && /^\d+$/.test(rv)) rv += ' s';
         parts.push('S' + (i + 1) + ' ' + (wv && rv ? wv + '×' + rv : (wv || rv)));
       });
+      var sb = document.getElementById('sobtn_' + key); if (sb) { sb.classList.toggle('has', parts.length > 0); sb.classList.toggle('real', real > 0); }
       if (!parts.length) { el.textContent = 'Toca para anotar'; el.className = 'set-sum empty'; }
       else if (!real) { el.textContent = 'Anterior: ' + parts.join(' · '); el.className = 'set-sum pre'; }
       else { el.textContent = parts.join(' · '); el.className = 'set-sum'; }
@@ -6681,7 +6713,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" class="btn-timer sr-btn" id="sr_btn_' + id + '" onclick="srTap(' + id + ')">▶ Iniciar ' + label.toLowerCase() + '</button>' +
           '<div id="sr_end_' + id + '" style="display:none; gap:8px; margin:6px 0 4px;"><button type="button" class="tm-btn" onclick="srMore(' + id + ')">➕ 1 ' + label.toLowerCase() + ' más</button><button type="button" class="tm-btn" onclick="srFinish(' + id + ')">✔ Terminar ya</button></div>';
       }
-      if (!fixedRest && !noPicker) {
+      if (!fixedRest && !noPicker && !isTimed) {   // en circuitos el descanso se ajusta dentro del temporizador (−15 / +15)
         html += '<div class="rest-row"><span>⏱ Descanso entre ' + (label === 'Ronda' ? 'rondas' : 'series') + '</span>' +
           restOptions(coachRest).map(function(sec) { return '<button type="button" class="rest-btn' + (sec === startRest ? ' sel' : '') + '" data-sr="' + id + '" onclick="srSetRest(' + id + ',' + sec + ')">' + sec + ' s</button>'; }).join('') +
           '</div>';
@@ -10348,7 +10380,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (demoWait) el.classList.add('gd-demo-wait');
         var names = [].map.call(el.querySelectorAll('.exercise-item-box:not(.alt-off) .ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
         var gst = gdStore(dayId), nDone = gst.n[b.key] || 0, stK = gst.s[b.key] || 0, rr = SR[b.srId];
-        var pill = inProc ? '🔥 EN PROCESO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
+        var pill = isHere ? '📍 EN CURSO' : (inProc && s !== 'pend') ? '👇 INICIA CON EL BOTÓN DE ABAJO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
         var head = document.createElement('div'); head.className = 'gd-head';
         head.innerHTML = (pill ? '<span class="gd-pill">' + pill + '</span>' : '') + '<span class="gd-names">' + escHtml(names) + '</span>' + ((s === 'pend' && !isHere) ? '<button type="button" class="gd-ok">✅ Completado</button>' : '') + (isHere ? '' : '<span class="gd-chev">' + (collapsed ? '▼' : '▲') + '</span>');
         var okBtn = head.querySelector('.gd-ok');   // bloque pendiente que en realidad ya hizo: lo marca completado (con ventanita de cargas si las hay)
@@ -13925,8 +13957,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_upd_btn', t: 'Actualizar', x: 'Si tu coach cambió algo y no lo ves, toca aquí para traer lo más nuevo.' },
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
-      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Al abrir un día, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
-      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio anota el peso y las repeticiones de cada serie. La app guarda tus marcas para el próximo entreno.' },
+      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo y dice «👇 Inicia con el botón de abajo»: el que lo arranca es el botón «⏱ Iniciar temporizador», no la franja de arriba. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
+      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
       { t: 'Circuitos con temporizador', x: 'En los circuitos, el temporizador te guía con sonido, vibración y voz: avisa cuando faltan 20 y 10 segundos del trabajo, y 20 segundos para iniciar tras el descanso.' },
