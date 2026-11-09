@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9493,7 +9493,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') demoFloatClose(); });
     document.addEventListener('click', function(e) {   // «Ver demostración»: ventana flotante; si el link no es de YouTube, abre como siempre
       var a = e.target && e.target.closest ? e.target.closest('.btn-yt-demo') : null; if (!a) return;
-      if (demoFloatOpen(a.getAttribute('href'))) e.preventDefault();
+      if (demoFloatOpen(a.getAttribute('href'))) {
+        e.preventDefault();
+        try {   // el cliente también puede avisar desde la ventana de la demostración si el video no se ve
+          if (!isCoachView()) {
+            var bx = a.closest('.exercise-item-box'), nmEl = bx && bx.querySelector('.ex-name'), dayEl = a.closest('.view-screen');
+            var hold = document.createElement('div'); hold.style.cssText = 'padding:8px 10px; text-align:center; background:#1a1a1a;';
+            hold.innerHTML = vrepMini(a.getAttribute('href'), nmEl ? nmEl.innerText.replace(/^[A-C1-9]\s/, '').trim() : 'Ejercicio', dayEl ? dayEl.id : '');
+            var bt = hold.firstChild; if (bt) { bt.style.display = 'inline-block'; bt.style.fontSize = '0.85rem'; bt.style.padding = '6px 4px'; }
+            var inner = document.querySelector('#demo_float > div'); if (inner && bt) inner.appendChild(hold);
+          }
+        } catch (er) {}
+      }
     }, true);
     function ytOriginParam() { return /^https?:$/.test(location.protocol) ? '&origin=' + encodeURIComponent(location.origin) : ''; }
     function ctVidOn() { try { return localStorage.getItem('benessere_ct_video') !== 'off'; } catch (e) { return true; } }
@@ -14060,7 +14071,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
       { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera. Si cierras el entreno con bloques sin hacer, la tarjeta del día dirá «Completado · N pendientes»: puedes volver a ese día hasta el domingo y terminarlos; ese día cuenta como una visita más.' },
       { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
-      { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
+      { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach», debajo del ejercicio o en la ventana del video, y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
       { t: 'Circuitos con temporizador', x: 'En los circuitos, el temporizador te guía con sonido, vibración y voz: avisa cuando faltan 20 y 10 segundos del trabajo, y 20 segundos para iniciar tras el descanso.' },
       { t: 'Si sales y vuelves: «Estoy en…»', x: 'Dentro del temporizador, toca «Estoy en…» para elegir en qué ronda y ejercicio vas y continuar donde te quedaste.' },
