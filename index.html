@@ -5080,7 +5080,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (item.type === 'circuito') {
             var cInfo = item.circ || {};
             var cStations = subList.map(function(s2) { return s2.name || ''; });
-            subsDetails = circuitHeaderHtml(item.circ) + '@@RUN@@' + subsDetails;
+            subsDetails = circuitHeaderHtml(item.circ) + subsDetails + '@@RUN@@';   // el temporizador va siempre al final del bloque (igual que en series, biseries y triseries)
             if (isTimeText(cInfo.trabajo)) {
               athCircuits.push({ dia: d.title || '', nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations, videos: subVideos, keys: subKeys, unis: subUnis, hiit: isHiit, lblT: cInfo.etqT || '', lblD: cInfo.etqD || '', rpeT: cInfo.rpeT || '', rpeD: cInfo.rpeD || '', ajuste: cInfo.ajuste || '' });
               // el circuito por tiempo también lleva la cuenta de rondas (para "1 ronda más" y el campo Series). En HIIT el descanso lo fija el coach (sin botones 30/60/90)
