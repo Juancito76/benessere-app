@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1002,6 +1002,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div class="capsule-group" id="ath_capsuleGroup"></div>
       <div style="text-align:center; margin:14px 0 6px;">
         <button type="button" id="ath_upd_btn" onclick="manualUpdate()" style="background:#161616; color:#fff; border:1px solid #444; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:700; cursor:pointer;">🔄 Actualizar</button>
+        <button type="button" id="ath_manual_btn" onclick="manualOpen()" style="background:#161616; color:#ffd166; border:1px solid #ffd166; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:800; cursor:pointer; margin-left:8px;">📖 Cómo usar la app</button>
+        <button type="button" id="ath_install_btn" onclick="installApp()" style="display:none; background:#0d2a22; color:#06d6a0; border:1px solid #06d6a0; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:800; cursor:pointer; margin-left:8px;">📲 Instalar la app</button>
         <button type="button" id="ath_exit_btn" onclick="salirApp()" style="background:#161616; color:#fff; border:1px solid #444; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:700; cursor:pointer; margin-left:8px;">✖ Salir</button>
         <div id="ath_upd_msg" style="font-size:0.78rem; color:var(--muted); margin-top:6px; min-height:1em;"></div>
       </div>
@@ -1122,6 +1124,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <span>
           <button type="button" onclick="asistManualRun()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📊 Resúmenes</button>
           <button type="button" onclick="vigScanClients()" title="Revisa todas las rutinas: ejercicios repetidos y rutinas en espera vencidas (no cambia nada)" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🔍 Vigencias</button>
+          <button type="button" onclick="linkScanClients()" title="Revisa los videos de todos los clientes: los que faltan y los que no funcionan (no cambia nada)" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🔗 Links</button>
           <button type="button" onclick="openAttendance()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🚪 Asistencia</button>
           <button type="button" onclick="openCoachWeek()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📈 Esta semana</button>
           <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
@@ -2565,6 +2568,92 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         VIGSCAN.fails = fails; vigScanShow(rows.length, fails);
       });
     }
+    // ----- 🔗 Revisor de links: recorre las rutinas de los clientes, anota los videos que FALTAN y prueba los que existen (no cambia nada) -----
+    var LNKSCAN = { busy: false };
+    function linkCollect(st) {   // ejercicios de una rutina (actual y en espera) con video faltante o por probar
+      var out = { miss: [], vids: [] };
+      [st, st && st.next].forEach(function(t, ti) {
+        if (!t || !t.routineDays) return;
+        t.routineDays.forEach(function(d, di) {
+          if (d.rest) return;
+          var dn = (d.title || d.name || ('Día ' + (di + 1))) + (ti ? ' (en espera)' : '');
+          (d.items || []).forEach(function(it) {
+            (it.sub || []).forEach(function(sb) {
+              if (!sb) return;
+              var nm = String(sb.name || '').trim(), v = String(sb.video || '').trim();
+              if (nm) { if (!v) out.miss.push(nm + ' — ' + dn); else out.vids.push({ nm: nm, v: v, dn: dn }); }
+              var an = String(sb.alt || '').trim(), av = String(sb.altVideo || '').trim();
+              if (an) { if (!av) out.miss.push('🔁 ' + an + ' (alternativa) — ' + dn); else out.vids.push({ nm: '🔁 ' + an, v: av, dn: dn }); }
+            });
+          });
+        });
+      });
+      return out;
+    }
+    function linkScanClients() {
+      if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
+      if (LNKSCAN.busy) return;
+      var rows = attClients();
+      if (!rows.length) { showToastTop('No hay clientes con rutina reciente.'); return; }
+      LNKSCAN.busy = true;
+      var closed = false, done = 0, fails = 0, i = 0, per = [], ids = {};
+      pendOverlay('lnk_scan', '<div class="pend-ttl">🔗 Revisando links…</div><div class="pend-txt" id="lnk_scan_txt">Leyendo rutinas: 0 de ' + rows.length + '</div><button type="button" class="pend-btn pend-cancel" id="lnk_scan_x">Cerrar</button>');
+      document.getElementById('lnk_scan_x').onclick = function() { closed = true; LNKSCAN.busy = false; pendCloseOverlay('lnk_scan'); };
+      function say(t) { var e = document.getElementById('lnk_scan_txt'); if (e) e.innerText = t; }
+      function one(r) {
+        return fetchRoutine(r.id).then(function(j) {
+          if (!j || !j.ok || !j.p) { fails++; return; }
+          var st = null; try { st = decodePayload('q', j.p); } catch (e) {}
+          if (!st) { fails++; return; }
+          var c = linkCollect(st); per.push({ name: r.name, miss: c.miss, vids: c.vids, bad: [] });
+          c.vids.forEach(function(x) { var id = ytIdStrict(x.v); if (id) ids[id] = 'wait'; });
+        }).catch(function() { fails++; }).then(function() { done++; say('Leyendo rutinas: ' + done + ' de ' + rows.length); });
+      }
+      function worker() { if (closed || i >= rows.length) return Promise.resolve(); return one(rows[i++]).then(worker); }
+      Promise.all([worker(), worker(), worker(), worker()]).then(function() {
+        if (closed) return;
+        var keys = Object.keys(ids), k = 0, tested = 0;
+        function w2() {
+          if (closed || k >= keys.length) return Promise.resolve();
+          var id = keys[k++];
+          return vidCheckOne(id).then(function(st2) { ids[id] = st2; tested++; say('Probando videos: ' + tested + ' de ' + keys.length); }).then(w2);
+        }
+        say('Probando videos: 0 de ' + keys.length);
+        return Promise.all([w2(), w2(), w2()]);
+      }).then(function() {
+        LNKSCAN.busy = false; if (closed) return;
+        var doubt = 0;
+        per.forEach(function(p) {
+          var seen = {};
+          p.vids.forEach(function(x) {
+            var id = ytIdStrict(x.v), st2 = id ? ids[id] : 'invalid';
+            if (st2 === 'ok') return;
+            if (st2 === 'timeout' || st2 === 'error') { doubt++; return; }
+            var key = x.nm + '|' + x.dn; if (seen[key]) return; seen[key] = 1;
+            p.bad.push(x.nm + ' — ' + x.dn + ': ' + (st2 === 'invalid' ? 'link no válido' : st2 === 'noembed' ? 'no permite incrustar' : 'privado, borrado o no existe'));
+          });
+        });
+        per = per.filter(function(p) { return p.miss.length || p.bad.length; }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name)); });
+        linkScanShow(rows.length, fails, per, doubt);
+      });
+    }
+    function linkScanShow(total, fails, per, doubt) {
+      var h = '<div class="pend-ttl">🔗 Revisión de links</div><div class="pend-txt">' + total + ' clientes revisados' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + (doubt ? ' · ' + doubt + ' videos no se pudieron probar por conexión' : '') + '. Revisar no cambia nada.</div>';
+      if (!per.length) h += '<div class="pend-txt">✅ Todo en orden: no falta ningún video y todos funcionan.</div>';
+      else {
+        h += '<div style="text-align:left;max-height:55vh;overflow:auto;">';
+        per.forEach(function(p) {
+          h += '<div style="border-top:1px solid #333;padding:8px 0;font-size:.78rem;"><b>' + escHtml(p.name) + '</b>';
+          if (p.miss.length) h += '<br><span style="color:#ffd166;">Faltan (' + p.miss.length + '):</span><br>' + p.miss.map(function(n) { return '• ' + escHtml(n); }).join('<br>');
+          if (p.bad.length) h += '<br><span style="color:#ff6b6b;">No funcionan (' + p.bad.length + '):</span><br>' + p.bad.map(function(n) { return '• ' + escHtml(n); }).join('<br>');
+          h += '</div>';
+        });
+        h += '</div>';
+      }
+      h += '<button type="button" class="pend-btn pend-cancel" id="lnk_scan_x2">Cerrar</button>';
+      pendOverlay('lnk_scan', h);
+      document.getElementById('lnk_scan_x2').onclick = function() { pendCloseOverlay('lnk_scan'); };
+    }
     function vigScanShow(total, fails) {
       var h = '<div class="pend-ttl">🔍 Revisión de Vigencia</div><div class="pend-txt">' + total + ' rutinas revisadas' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + '. Revisar no cambia nada.</div>';
       if (!VIGSCAN.res.length) h += '<div class="pend-txt">✅ Todo en orden: ningún ejercicio repetido ni rutinas en espera vencidas.</div>';
@@ -2651,6 +2740,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             var pos = it.type === 'normal' ? '' : (it.type === 'circuito' ? ' · estación ' + (k + 1) : ' · ejercicio ' + 'ABC'.charAt(k));
             out.push({ di: di, ii: ii, k: k, label: (d.title || ('Día ' + (di + 1))) + ' · posición ' + slotNumOf(d.items, ii) + pos + (sb.name ? ' — ' + sb.name : ' — (sin nombre)') });
           });
+          (it.sub || []).forEach(function(sb, k) {   // alternativa «¿Máquina ocupada?»: si tiene ejercicio, también exige su video
+            if (!sb || !String(sb.alt || '').trim() || String(sb.altVideo || '').trim()) return;
+            var pos2 = it.type === 'normal' ? '' : (it.type === 'circuito' ? ' · estación ' + (k + 1) : ' · ejercicio ' + 'ABC'.charAt(k));
+            out.push({ di: di, ii: ii, k: k, alt: true, label: (d.title || ('Día ' + (di + 1))) + ' · posición ' + slotNumOf(d.items, ii) + pos2 + ' — 🔁 alternativa: ' + sb.alt });
+          });
         });
       });
       return out;
@@ -2678,7 +2772,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       clearVideoMissingMarks();
       for (var t = 0; t < miss.length; t++) {
         var m = miss[(VNEXT_I + t) % miss.length];
-        var el = document.querySelector('input[oninput^="routineDays[' + m.di + '].items[' + m.ii + '].sub[' + m.k + '].video"]');
+        var el = document.querySelector('input[oninput^="routineDays[' + m.di + '].items[' + m.ii + '].sub[' + m.k + '].' + (m.alt ? 'altVideo' : 'video') + '"]');
         if (!el) continue;
         VNEXT_I = (VNEXT_I + t + 1) % miss.length;
         el.classList.add('video-missing');
@@ -2704,12 +2798,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       clearVideoMissingMarks();
       var first = null;
       miss.forEach(function(m) {
-        var sel = 'input[oninput^="routineDays[' + m.di + '].items[' + m.ii + '].sub[' + m.k + '].video"]';
+        var sel = 'input[oninput^="routineDays[' + m.di + '].items[' + m.ii + '].sub[' + m.k + '].' + (m.alt ? 'altVideo' : 'video') + '"]';
         var el = document.querySelector(sel);
         if (el) { el.classList.add('video-missing'); if (!first) first = el; }
       });
       var shown = miss.slice(0, 8).map(function(m) { return '• ' + m.label; }).join('\n');
-      alert('🎥 Falta el video de ' + miss.length + ' ejercicio' + (miss.length > 1 ? 's' : '') + ' (las demostraciones en video están activadas):\n\n' + shown + (miss.length > 8 ? '\n• … y ' + (miss.length - 8) + ' más' : '') + '\n\nPega el link de cada uno (o usa "🎥 Elegir"). Si no quieres demostraciones, desactiva "Activar Demostraciones en Video" en Perfil del Coach.');
+      alert('🎥 Falta el video de ' + miss.length + ' ejercicio' + (miss.length > 1 ? 's' : '') + ' o alternativa' + (miss.length > 1 ? 's' : '') + ' (las demostraciones en video están activadas):\n\n' + shown + (miss.length > 8 ? '\n• … y ' + (miss.length - 8) + ' más' : '') + '\n\nPega el link de cada uno (o usa "🎥 Elegir"). Si no quieres demostraciones, desactiva "Activar Demostraciones en Video" en Perfil del Coach.');
       if (first) { try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
       return false;
     }
@@ -4920,7 +5014,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
             subVideos[subIdx] = (isDemos && vOwn && /^https?:\/\/[^\s"'<>]+$/i.test(vOwn)) ? vOwn : '';
             var demoButtonHtml = isDemos ? (
-              '<div style="margin: 8px 0;"><a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a></div>'
+              '<div style="margin: 8px 0;"><a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a>' + (vOwn ? vrepMini(yLink, sub.name, d.id) : '') + '</div>'
             ) : '';
 
             var sUni = subIsUni(sub), sW = subUsesWeight(sub), cI = item.circ || {};
@@ -4956,7 +5050,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             if (!hasAlt) { subsDetails += mainBox; }
             else {
               var altV = String(sub.altVideo || '').trim(), altLink = (altV && /^https?:\/\/[^\s"'<>]+$/i.test(altV)) ? altV : 'https://www.youtube.com';
-              var altDemoHtml = isDemos ? '<div style="margin: 8px 0;"><a href="' + altLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a></div>' : '';
+              var altDemoHtml = isDemos ? '<div style="margin: 8px 0;"><a href="' + altLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a>' + (altV ? vrepMini(altLink, sub.alt, d.id) : '') + '</div>' : '';
               var altTimerVid = (isDemos && altV && /^https?:\/\/[^\s"'<>]+$/i.test(altV)) ? altV : '';
               var altBox = '<div class="exercise-item-box alt-box' + (altOn ? '' : ' alt-off') + '" id="exb_' + altKey + '"' + (altOn ? '' : ' style="display:none;"') + '>' +
                 '<div class="alt-tag">🔁 Alternativa (máquina ocupada)</div>' +
@@ -6831,7 +6925,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             '<div class="rp-n">' + escHtml(nm ? nm.innerText.trim() : 'Ejercicio') + '</div>' +
             (tg ? '<div class="rp-t">' + escHtml(tg.innerText.trim()) + '</div>' : '') +
             (nt ? '<div class="rp-t" style="color:var(--muted);">' + escHtml(nt.innerText.trim()) + '</div>' : '') +
-            (hasVid ? '<a href="' + escHtml(href) + '" target="_blank" rel="noopener noreferrer">▶ Ver video ↗</a>' : '') + '</div>';
+            (hasVid ? '<a href="' + escHtml(href) + '" target="_blank" rel="noopener noreferrer">▶ Ver video ↗</a>' + vrepMini(href, nm ? nm.innerText.trim() : 'Ejercicio', dayId) : '') + '</div>';
         });
       });
       var m = document.getElementById('day_review_modal');
@@ -9015,7 +9109,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var remain = Math.ceil((CT.end - now) / 1000);
       if (ctWarn10On(cph, remain) && CT.warnI !== CT.i) { CT.warnI = CT.i; tmrBeep(880, 200, 0); tmrBeep(880, 200, 300); tmrVibrate([200, 100, 200]); ctFlash('#6b4a0b'); }   // 10 s para iniciar
       if (remain <= 3 && remain >= 1 && CT.lastBeep !== CT.i + '-' + remain) { CT.lastBeep = CT.i + '-' + remain; tmrBeep(700, 140, 0); }
+      ctVoiceCue(cph, remain);
       ctRenderThrottled(remain, cph);
+    }
+    // Voz en el temporizador (solo si el tiempo de la fase alcanza): trabajo → «faltan 20 segundos» y «faltan 10 segundos»; descanso → «20 segundos para iniciar»
+    function ctVoiceCue(ph, remain) {
+      try {
+        if (CT.cls || !ph || (remain !== 20 && remain !== 10)) return;
+        var key = CT.i + '-v' + remain; if (CT.voiceK === key) return;
+        var d = ph.d || 0, say = '';
+        if (ph.t === 'work') { if (remain === 20 && d >= 30) say = 'Faltan 20 segundos'; else if (remain === 10 && d >= 15) say = 'Faltan 10 segundos'; }
+        else if (ph.t === 'rest' && remain === 20 && d >= 30) say = '20 segundos para iniciar';
+        if (!say) return;
+        CT.voiceK = key; tmrSpeak(say);
+      } catch (e) {}
     }
     // Texto bajo el ejercicio con el peso y las reps de la última vez (referencia para el cliente), o «Sin marcas» si no hay registro
     function ctRepsClean(t) { return String(t == null ? '' : t).replace(/\s*[—–-]+\s*EP\s*\d+(?:[.,]\d+)?/gi, '').trim(); }   // fuera el índice de esfuerzo (EP) de la pantalla del temporizador
@@ -10011,14 +10118,30 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       };
       ctGuideClear(); CT.gTimer = setInterval(tick, 500); tick();
     }
+    // Clase terminada desde la rutina del cliente: queda como un entreno más (cuenta para su mes, sus visitas y sus calorías estimadas)
+    function clsRecord(G, dur) {
+      try {
+        if (isCoachView() || !athleteActiveState || !athleteRoutineId || !athleteActiveState.clientName || dur < 600) return 0;
+        var tkey = new Date(G.t0).toISOString();
+        var dup = false; loadSessions().forEach(function(x) { if (x && x.t === tkey) dup = true; });
+        var kc = kcalEstimate(Math.round(dur));
+        if (dup) return kc;
+        var now = new Date(G.t0), hd = now.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+        var sess = { d: isoOfDate(now), t: tkey, hd: hd, day: 'Clase: ' + ((G.clase && G.clase.t) || ''), ex: [], nm: 1, cls: 1, dur: Math.round(dur), kc: kc };
+        addSession(sess); pushSession(sess);
+        return kc;
+      } catch (e) { return 0; }
+    }
     function clsFinalScreen(G) {
       resumeClear(); CT.gapPreview = false; ctVidSync(true);
       var box = document.getElementById('tm_guide'); if (!box) return;
       var gb = document.getElementById('tm_gbar'); if (document.getElementById('tm_g')) document.getElementById('tm_g').style.display = 'block';
       if (gb) gb.style.width = '100%'; if (document.getElementById('tm_gpct')) document.getElementById('tm_gpct').innerText = '100%';
       var dur = (Date.now() - G.t0) / 1000;
+      var kcCls = clsRecord(G, dur);
       var h = '<div style="font-size:1.2rem; font-weight:900; color:#06d6a0;">🏁 ¡Clase completa!</div>' +
-        '<div style="font-size:0.95rem; margin-top:8px;">⏱ Duración: <b>' + clsFmtDur(dur) + '</b></div>';
+        '<div style="font-size:0.95rem; margin-top:8px;">⏱ Duración: <b>' + clsFmtDur(dur) + '</b></div>' +
+        (kcCls ? '<div style="font-size:0.95rem; margin-top:4px;">🔥 Calorías estimadas: <b>~' + kcCls + ' kcal</b> <span style="font-size:0.75rem; color:#9fe8c8;">· ya cuenta en tu mes ✔</span></div>' : '');
       var tbl = (G.times || []).filter(Boolean);
       if (tbl.length) {   // tiempos por bloque y por ejercicio
         h += '<div style="font-size:0.95rem; font-weight:800; margin-top:12px; text-align:left;">⏱ Tus tiempos</div>';
@@ -10581,6 +10704,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return;
       }
       ctReportVideo();
+    }
+    // Botón «¿No se ve? Avisar al coach» junto a cada video fuera del temporizador (rutina, alternativas, repaso del día)
+    function vrepMini(url, name, dayId) {
+      if (isCoachView()) return '';
+      var done = vrepDone(url);
+      return '<button type="button" class="vrep-mini" data-u="' + escHtml(url) + '" data-n="' + escHtml(name || '') + '" data-d="' + escHtml(dayId || '') + '" onclick="vrepMiniClick(this)" style="display:block; background:none; border:none; padding:2px 0; margin-top:2px; font-size:0.74rem; font-weight:700; text-decoration:' + (done ? 'none' : 'underline') + '; color:' + (done ? '#9fe8c8' : '#ff9a93') + '; cursor:pointer;">' + (done ? '✅ Video reportado, gracias' : '⚠️ ¿El video no se ve? Avisar al coach') + '</button>';
+    }
+    function vrepMiniClick(b) {
+      var url = b.getAttribute('data-u'), nm = b.getAttribute('data-n'), did = b.getAttribute('data-d');
+      if (!url || vrepDone(url)) return;
+      var st = athleteActiveState || {}, de = did ? document.getElementById(did) : null, dia = de ? (de.getAttribute('data-day-title') || '') : '';
+      var rep = { t: new Date().toISOString(), k: 'rep', cli: st.clientName || '', dia: dia, ej: nm || '', url: url, rid: athleteRoutineId || '',
+        coach: st.coachName ? displayCoach(st.coachName) : '', mot: 'no se ve', n: 0 };
+      vrepMark(url);
+      document.querySelectorAll('.vrep-mini').forEach(function(x) { if (x.getAttribute('data-u') === url) { x.innerText = '✅ Video reportado, gracias'; x.style.textDecoration = 'none'; x.style.color = '#9fe8c8'; } });
+      try { wkToast('✅ Listo, le avisé a tu coach. ¡Gracias!'); } catch (e) {}
+      var q = vrepQ(); q.push(rep); vrepSaveQ(q); vrepFlush();
     }
     function ctReportVideo() {
       if (!CT.demoUrl || vrepDone(CT.demoUrl)) return;
@@ -12197,7 +12337,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return r;
     }
     function asistMsg(e, name) {
-      var ym = e[0], v = e[1], ex = e[2], pct = Math.round(v / ex * 100), mes = ATT_MESES[+ym.slice(5, 7) - 1];
+      var ym = e[0], v = e[1], ex = e[2], mes = ATT_MESES[+ym.slice(5, 7) - 1];
+      try { var cd = {}; loadWorkouts().forEach(function(w) { var d = sessDateIso(w); if (w.cls && d && d.slice(0, 7) === ym) cd[d] = 1; }); v += Object.keys(cd).length; } catch (x0) {}   // las clases hechas con la app también suman visitas
+      var pct = Math.round(v / ex * 100);
       var kc = 0; try { kc = kcalEstimate(3600) * v; } catch (x) { kc = 0; }
       var reg = monthKcalReg(ym), usaReg = reg.kc > 0 && reg.days >= Math.max(1, Math.ceil(v * 0.5)) && reg.kc >= kc * 0.5;   // si anotó casi todo lo que entrenó, se usan sus calorías reales
       if (usaReg) kc = Math.round(reg.kc);
@@ -12231,6 +12373,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var he = asistEntry(s[asistHash(athleteActiveState.clientName || '')]);
       if (he.w) { ASIST_W = he.w; try { localStorage.setItem(tk('asist_w'), JSON.stringify(he.w)); } catch (x) {} try { asistBoxPaint(); } catch (x2) {} }
       var e = he.m;
+      if (!isCoachView() && e && e.length >= 3 && e[0] === asistPrevMonth(todayIso()) && e[2] > 0) ASIST_CUR = e;
+      setTimeout(function() { try { wkMondayCheck(); } catch (x) {} }, 1500);
       if (isCoachView() || !e || e.length < 3 || e[0] !== asistPrevMonth(todayIso()) || !(e[2] > 0)) return;
       ASIST_CUR = e; asistCapsule();
       var seen = ''; try { seen = localStorage.getItem(tk(ASIST_SEEN_KEY)) || ''; } catch (x) {}
@@ -12367,6 +12511,86 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       b.innerHTML = '<span class="cap-ic">📊</span><span class="cap-tx"><span class="cap-t">Tu ' + escHtml(mes) + '</span><span class="cap-s">Cuánto viniste al gym</span></span><span class="cap-ch">›</span>';
       b.onclick = function() { asistShow(true); };
       g.appendChild(b);
+    }
+
+    // ================= VENTANA DE LOS LUNES: felicita si la semana pasada se cumplió la rutina; si no, sugiere cómo lograrlo =================
+    var WK_FELIC = [
+      'Cumpliste con todo lo que tocaba. Eso es disciplina de verdad, ¡sigue así!','Semana completa: tu constancia es la que construye resultados. ¡Orgullo!','No fue casualidad, fue compromiso. ¡Vamos por otra semana igual!','Cada entreno que sumaste es un voto a favor de tu salud. ¡Gracias por votar tanto!','Eres de los que cumplen su palabra con su propio cuerpo. ¡Admirable!','Tu esfuerzo de la semana pasada ya está trabajando a tu favor. ¡No lo sueltes!','Lo lograste: rutina cumplida. Hoy empieza otra oportunidad de repetirlo.','La constancia le gana al talento. Y tú acabas de demostrarlo. ¡Felicitaciones!','Semana redonda. Tu yo del futuro te lo agradece.','Cumplir no siempre es fácil y tú lo hiciste. ¡Excelente!',
+      'Tu cuerpo se fortalece con cada visita, y esta semana no faltó ninguna. ¡Bravo!','Eso es mantener la promesa que te hiciste. ¡Sigue brillando!','Entrenaste lo planeado: así se avanza de verdad. ¡Felicidades!','Cada semana cumplida suma a un gran cambio. ¡Esta ya está en tu cuenta!','Qué orgullo verte tan constante. ¡A repetirlo esta semana!','Disciplina en acción: lo que dijiste que harías, lo hiciste.','Tu compromiso inspira a todo Benessere. ¡Gracias por tanta entrega!','Una semana así se nota en la energía, el ánimo y la fuerza. ¡Sigue!','No te detuviste y se nota. ¡Felicitaciones por tu semana!','Hiciste lo que muchos solo planean. ¡Vamos con todo esta semana también!',
+      'Tu constancia es tu superpoder. ¡Úsalo otra vez esta semana!','Misión cumplida: todas tus visitas de la semana. ¡Qué nivel!','Los resultados llegan a quienes aparecen, y tú apareciste. ¡Muy bien!','Se te nota el hábito. Ya no es un esfuerzo, es parte de ti. ¡Sigue!','Tu semana fue un ejemplo de compromiso. ¡Que se repita!','Cumpliste, y cada cumplimiento hace más fácil el siguiente. ¡Adelante!','La mejor versión de ti se construye así, semana a semana. ¡Bien hecho!','Fuiste fiel a tu rutina y tu cuerpo lo va a reflejar. ¡Felicidades!','Una semana más que le ganas a la pereza. ¡Eres grande!','Entrenar cuando toca es lo que separa los deseos de los logros. ¡Lo lograste!',
+      'Esa constancia vale oro. ¡Gracias por confiar en tu proceso!','Tu semana fue impecable. ¡Que esta sea igual de buena!','Con cada visita demuestras cuánto te quieres. ¡Sigue cuidándote así!','Qué gusto verte cumplir. ¡Esta semana vamos por lo mismo!','Lo hiciste todo según el plan: así se llega lejos. ¡Felicitaciones!','Tu esfuerzo no pasa desapercibido. ¡Orgullosos de ti!','Hay semanas fáciles y semanas difíciles; tú cumpliste igual. ¡Respeto!','Tu rutina cumplida es una victoria. ¡Celébrala un momento y a seguir!','Cuerpo fuerte, mente fuerte: esta semana entrenaste las dos. ¡Bravo!','Te ganaste el título de constante de la semana. ¡Defiéndelo!',
+      'Sumaste todas tus sesiones. ¡Tu progreso te lo va a agradecer!','Eso es compromiso con mayúsculas. ¡Sigue!','Cada gota de sudor de la semana pasada cuenta. ¡Gracias por darlo todo!','Hiciste de tu salud una prioridad. ¡Y se nota!','Rutina cumplida, cabeza en alto. ¡A por otra semana!','Lo que haces cada semana pesa más que lo que haces un día. ¡Y tú lo haces!','Tu constancia es contagiosa. ¡Sigue inspirando!','Una semana completa es una gran semana. ¡Felicitaciones de corazón!','La disciplina que mostraste es lo que te llevará a tu meta. ¡Adelante!','Fuiste a cada entreno que te tocaba. ¡Qué ejemplo!',
+      'Hoy lunes empiezas con la satisfacción de haber cumplido. ¡Repite la hazaña!','Tu cuerpo y tu mente te dan las gracias por la semana. ¡Sigue!','Cumplir la rutina es un regalo que te haces. ¡Qué bien lo estás haciendo!','No hay atajos, y tú sigues el camino completo. ¡Admirable!','Tu semana habla de compromiso, y eso vale más que cualquier excusa. ¡Bravo!','Las metas se logran con semanas como la que tuviste. ¡Sigue sumando!','Eres constancia pura. ¡Felicitaciones!','Esa energía de la semana pasada, llévala a esta. ¡Tú puedes!','Cada entreno cumplido te acerca a tu mejor versión. ¡Ya vas muy bien!','Constancia, esfuerzo y ganas: la semana pasada los tuviste todos. ¡Felicidades!',
+      'Qué semana tan sólida. ¡Orgullo total!','Tu rutina al 100%: así se hace. ¡Vamos por más!','Quien cumple una semana puede cumplir un año. ¡Sigue!','Lo prometido es deuda, y tú le pagaste a tu salud. ¡Excelente!','Superaste la pereza, el cansancio y las excusas. ¡Eres admirable!','Tu esfuerzo consistente es la receta del éxito. ¡Felicitaciones!','Entrenaste como te propusiste. ¡Que no pare esta racha!','Esa racha se ve increíble. ¡Hagámosla crecer!','Cuando cumples, te demuestras que sí puedes. ¡Y tú puedes!','Una semana de pura disciplina. ¡Gracias por ser parte de Benessere!',
+      'Tu compromiso con tu salud es envidiable. ¡Sigue así!','Esta semana te toca repetir: ¡tienes todo para lograrlo!','Cumplir no es suerte, es decisión. ¡Y la tomaste!','Cada semana que cumples te hace más fuerte por dentro y por fuera. ¡Bien!','Lo lograste sin pretextos. ¡Eso tiene mucho mérito!','Se ve el trabajo constante. ¡Los resultados vienen en camino!','Ya van varias victorias seguidas. ¡No pares ahora!','Tu rutina es tu compromiso contigo, y lo estás honrando. ¡Felicitaciones!','Constante, firme, imparable. ¡Así eres!','Tu esfuerzo de la semana pasada es motivo de celebración. ¡Sigue!',
+      'Entrenar con constancia es de valientes. ¡Tú lo eres!','Te presentaste a cada cita contigo. ¡Qué bien!','Esa semana perfecta tiene tu firma. ¡Haz otra!','Los grandes cambios son la suma de semanas como esta. ¡Gracias por sumar!','Tu disciplina te hace un ejemplo. ¡Sigue inspirando a otros!','Hiciste que la semana valiera la pena. ¡Felicidades!','Tu energía y tus ganas se notan en tu constancia. ¡Adelante!','Rutina cumplida: ¡Eso se llama compromiso!','La semana pasada fuiste tu mejor aliado. ¡Repítelo!','Un aplauso para ti: cumpliste lo que te tocaba. ¡Vamos otra vez!',
+      'Lo difícil no es empezar, es sostenerlo, y tú lo sostienes. ¡Bravo!','Cada visita fue un paso hacia tus metas. ¡Diste todos los de la semana!','Qué ejemplo de constancia. ¡A mantener el ritmo!','Hoy es lunes y vienes con la medalla de la semana cumplida. ¡Vamos por otra!','Con esa constancia, tus metas están cada vez más cerca. ¡Sigue!','Tu semana fue digna de aplauso. ¡Felicitaciones!','Tu cuerpo ama la constancia, y tú se la das. ¡Gracias por cuidarte!','Cumpliste la semana, ahora a cumplir esta. ¡Tienes lo necesario!','Estás construyendo un hábito que dura toda la vida. ¡Qué orgullo!','¡Semana cumplida! Respira, celebra y vuelve con ganas.'
+    ];
+    var WK_SUGER = [
+      'Elige hoy mismo los días y la hora de tus entrenos de la semana y anótalos en tu calendario como si fueran citas.','Deja tu ropa deportiva lista la noche anterior: si está a la vista, es más fácil ir.','Programa una alarma en el celular a la hora de ir al gym, con el nombre «Mi cita conmigo».','Si te cuesta ir en la tarde, prueba un horario más temprano: hay menos imprevistos en la mañana.','Ve con alguien: un amigo o familiar que te espere hace que faltar sea más difícil.',
+      'Empieza con un compromiso pequeño: si un día no tienes ánimo, ve aunque sea 20 minutos. Casi siempre te quedas.','Deja el bolso del gym en el carro o junto a la puerta para no tener excusas de último minuto.','Elige los días de tu rutina que más fácil se te hacen y asegúralos primero; luego acomoda el resto.','Marca en la app cada día que vienes: ver tu racha te motiva a no romperla.','Avísale a tu coach cuando no puedas venir: juntos buscamos cómo reponer ese día en la semana.',
+      'Si un día se te complica, no lo pierdas: repónlo al día siguiente en lugar de dejarlo pasar.','Combina el gym con algo que disfrutes: tu música favorita o un podcast solo para entrenar.','Piensa en cómo te sientes después de entrenar, no antes. Esa sensación es tu mejor motivación.','Prepara tu desayuno o merienda del día de entreno con anticipación para llegar con energía.','Revisa tu horario del lunes y bloquea las horas del gym antes de que se llenen con otras cosas.',
+      'Duerme lo suficiente: cansado todo cuesta el doble. Intenta acostarte 30 minutos más temprano esta semana.','Pon un recordatorio visual: una nota en el espejo o en la nevera que diga tu meta.','Si el trabajo te complica la tarde, entrena en tu hora de almuerzo o antes de salir de casa.','Divide tu semana: «lunes, miércoles, viernes» es más fácil de recordar que «tres veces».','Celebra cada visita con algo pequeño: una ducha rica, tu canción favorita, un té.',
+      'Empieza la semana con fuerza: ir hoy lunes hace que las demás visitas sean más fáciles.','Si te da pereza, dítelo así: «solo calentar». Una vez dentro, lo demás fluye.','Escribe por qué empezaste a entrenar y léelo cuando te falte ganas.','Elige un horario fijo y respétalo dos semanas: el hábito se forma con repetición.','Si viajas o tienes un plan especial, avisa antes y ajustamos tu rutina para que no pierdas el ritmo.',
+      'Mide tu semana por visitas, no por perfección: venir cuenta más que hacerlo todo perfecto.','Lleva agua y una toalla extra: pequeños detalles que hacen el entreno más cómodo.','Evita cargar el día de compromisos justo después del gym; deja un respiro para no saltarte nada.','Si estás cansado de la rutina, díselo a tu coach: a veces un pequeño cambio devuelve las ganas.','Revisa con tu familia el horario de la semana para que te apoyen en tus entrenos.',
+      'Pon tu entreno antes de las tareas «urgentes»: después se acaban las energías y el tiempo.','Alterna días: un día entrenas, otro descansas, para llegar con ganas y sin acumular cansancio.','Si hoy no puedes ir al gym, haz 10 minutos de movimiento en casa: mantiene el hábito vivo.','Piensa en tu meta (bajar de peso, ganar fuerza, sentirte bien) y ponla de fondo de pantalla.','Hazte una promesa pequeña: «esta semana no falto el primer día». Lo demás se acomoda.',
+      'Si lloviznó o hay tráfico, sal 15 minutos antes: llegar es la mitad del trabajo.','Elige un compañero de entrenos y escríbanse cuando lleguen: la responsabilidad compartida funciona.','Revisa tu semana cada domingo y decide los días de gym antes de que empiece.','Entrena con el estómago listo: ni muy lleno ni vacío, para no tener excusas de malestar.','Piensa que cada entreno es una inversión: hoy cuesta, mañana rinde.',
+      'Prueba entrenar a la misma hora todos los días; tu cuerpo se acostumbra y te lo pide solo.','Si te cuesta cumplir cinco días, enfócate en cumplir cuatro todas las semanas. Constancia primero.','Pide a tu coach ajustar días o ejercicios si algo de tu rutina no te encaja. ¡Para eso estamos!','Deja el celular en modo «no molestar» durante tu entreno para que nada te distraiga.','Mira tu progreso: fotos, medidas o kilos levantados. Ver el avance te impulsa a seguir.',
+      'Empieza por lo más fácil de tu rutina cuando estés sin ganas; el ritmo lo trae el movimiento.','Recuerda que descansar bien también es parte del plan, pero no sustituye tu día de entreno.','Guarda en tu celular una playlist solo para el gym; es una señal para tu cerebro de que toca entrenar.','Conversa con alguien de tu casa sobre tu meta; que te apoyen hace toda la diferencia.','Si faltaste por enfermedad, descansa y vuelve con calma; avísanos y adaptamos tu semana.',
+      'Haz del gym tu momento: lo único de tu día que es solo para ti.','Ten un plan B: si no puedes en tu horario normal, decide cuál sería tu horario alternativo.','No esperes motivación: crea rutina. La motivación llega después de empezar.','Pon tu llave, bolso y botella juntos para salir de casa sin pensar.','Elige tu entreno favorito para el día más difícil de la semana; así ese día tendrás algo que esperas.',
+      'Comparte tu meta semanal con alguien de confianza; decirla en voz alta la hace real.','Anota cuántos días vendrás esta semana y táchalos conforme cumplas.','Recuérdate que 45 minutos son el 3% de tu día: sí hay tiempo, solo hay que reservarlo.','Si te cuesta salir de casa, deja tu ropa puesta desde que llegas del trabajo y vete directo.','Usa tus pausas del trabajo para planear tu entreno: ¿cuándo, con quién, qué llevar?',
+      'Cumple primero tus visitas y luego los planes opcionales de la semana.','Mide tus ganas del 1 al 10; si es bajo, ve a un entreno más suave en vez de faltar.','Pregúntale a tu coach cómo hacer tu rutina más corta en días muy ocupados, sin perder el día.','Piensa en tu energía: entrenar la da, no la quita. Esta semana pruébalo de nuevo.','Reserva un día fijo para repasar con tu coach cómo te va; ayuda a mantenerte enfocado.',
+      'Si te aburres, cambia el orden de tu rutina con tu coach o prueba una clase para mezclar.','Evita la trampa de «empiezo el lunes que viene»: empieza hoy, aunque sea con un poco.','Prepara el viernes lo del fin de semana: si tu rutina incluye sábado, deja todo listo.','Que tu primera visita de la semana sea la de hoy o mañana; el impulso inicial lo cambia todo.','Visualiza cómo te quieres sentir en un mes si cumples todas tus visitas. Esa imagen te empuja.',
+      'Cuando tengas ganas de faltar, recuerda cuánto te costó empezar. No pierdas lo avanzado.','Prueba entrenar con amigos en una clase: es una forma divertida de sumar visitas.','Anota qué te impidió venir la semana pasada y busca una solución concreta para esta.','Dedica los domingos a organizar tu semana: comidas, horarios y ropa de entreno.','Cumple tu primera visita temprano en la semana y verás cómo las otras se acomodan.',
+      'Evita comprometerte a otros planes a la hora de tu entreno; esa hora ya tiene dueño: tú.','Si el cansancio es el problema, revisa tu descanso y tu comida con tu coach.','Dale una recompensa semanal a tu constancia: algo que disfrutes si cumples todas tus visitas.','Si tienes hijos o familia, busca un horario en que alguien más cuide o ven juntos al gym.','Piensa en el entreno de hoy como una cita que no se cancela.',
+      'Reduce la fricción: ropa lista, botella llena y música cargada antes de salir.','Pon el gym en el camino de vuelta a casa: ir antes de llegar evita que el sofá te gane.','No te exijas perfección; exígete presencia. Ven aunque sea a medias.','Elige un solo día fijo que será «intocable» en tu semana, y a partir de ahí suma otros.','Mira tus logros pasados: ya has entrenado antes y lo volverás a lograr.',
+      'Pídele a alguien que te pregunte cada noche: «¿fuiste hoy?». La rendición de cuentas ayuda.','Si la rutina te parece larga, avísale a tu coach para ajustarla a tu tiempo real.','Cuando llegues, empieza por el calentamiento sin pensar en nada más.','Busca el motivo detrás de cada falta: cansancio, horario, ánimo. Con el motivo claro hay solución.','Cuéntale a tu coach cómo te sientes; podemos adaptar la semana a lo que necesitas.',
+      'Recuerda que la constancia es más importante que la intensidad: mejor poco y seguido.','Si no puedes ir tantos días, elige los dos o tres más importantes y cúmplelos sin falta.','Bloquea tu horario de entreno como una reunión de trabajo: no se mueve.','Imagina lo bien que te sentirás el domingo si cumples toda la semana. ¡Esa satisfacción te espera!','Esta semana, el reto es simple: ven a cada entreno que te toca. Tú puedes, y aquí te esperamos.','Si fallaste por falta de tiempo, acorta tu entreno con tu coach: una rutina corta cumplida vale más que una larga que no se hace.','Pon tu primer entreno de la semana en la agenda ahora mismo, con día y hora. Lo que se agenda se cumple.','Cuéntale a alguien cuántos días vas a venir esta semana; decirlo en voz alta te compromete.','Cambia de horario si el actual no te funciona: lo importante es venir, no la hora.','Cuando sientas que no puedes, recuerda que un entreno a medias sigue siendo un entreno cumplido.'
+    ];
+    function wkAsistHash(s) { try { return asistHash(String(s)); } catch (e) { return String(s); } }
+    function wkLastWeekStats() {   // semana pasada (lunes a domingo): visitas hechas frente a días de entreno de su rutina
+      var st = athleteActiveState; if (!st || st.off || !st.routineDays) return null;
+      var goal = st.routineDays.filter(function(d) { return !d.rest; }).length; if (!goal) return null;
+      var today = todayIso(), ws = addDaysIso(attWeekOf(today).from, -7), we = addDaysIso(ws, 6);
+      if (isIsoDate(st.startDate) && st.startDate > ws) return null;   // la rutina empezó después: no hay una semana completa que evaluar
+      var rEnd = routineEndIso(st); if (rEnd && rEnd < we) return null;
+      var days = {}, known = false, w = null;
+      try { w = ASIST_W || JSON.parse(localStorage.getItem(tk('asist_w')) || 'null'); } catch (e) {}
+      var wm = asistWMap(w), fromSheet = wm[ws] != null ? wm[ws] : null;
+      var cdays = {};
+      try { loadWorkouts().forEach(function(x) { var d = sessDateIso(x); if (d && d >= ws && d <= we) { if (x.cls) cdays[d] = 1; else days[d] = 1; } }); } catch (e) {}
+      var own = Object.keys(days).length, nc = Object.keys(cdays).length, v = Math.max(own, fromSheet || 0) + nc;
+      if (fromSheet == null && own === 0 && nc === 0) return null;   // sin datos confiables de esa semana: mejor no decir «0 días»
+      return { ws: ws, v: Math.min(v, 99), ex: Math.min(goal, 7) };
+    }
+    function wkMondayCheck() {
+      try {
+        if (isCoachView() || !athleteActiveState) return;
+        var now = new Date(); if (now.getDay() !== 1) return;
+        var s = wkLastWeekStats(); if (!s) return;
+        var seen = ''; try { seen = localStorage.getItem(tk('benessere_wk_seen')) || ''; } catch (e) {}
+        if (seen === s.ws) return;
+        // Lunes de inicio de mes: manda el resumen del mes (si existe), no esta ventana
+        if (now.getDate() <= 7 && ASIST_CUR && ASIST_CUR[0] === asistPrevMonth(todayIso())) return;
+        var tries = 0;
+        (function go() {
+          if (document.querySelector('.modal-overlay.active') || document.querySelector('.view-screen.active')) { if (++tries < 12) setTimeout(go, 2000); return; }
+          wkMondayShow(s);
+        })();
+      } catch (e) {}
+    }
+    function wkMondayShow(s) {
+      var nm = (athleteActiveState && athleteActiveState.clientName) || '', first = ''; try { first = attFirst(nm); } catch (e) {}
+      var ok = s.v >= s.ex, h = parseInt(wkAsistHash(nm + s.ws), 36) || 0, bank = ok ? WK_FELIC : WK_SUGER, msg = bank[h % bank.length];
+      var col = ok ? '#06d6a0' : '#ffd166';
+      var ttl = ok ? '¡Semana cumplida! 🏆' : 'Tu semana pasada 💪';
+      var line = ok ? 'Viniste <b>' + s.v + ' de ' + s.ex + '</b> entrenamientos programados.' : 'Viniste <b>' + s.v + (s.v === 1 ? ' día' : ' días') + ' de ' + s.ex + '</b> entrenamientos que tenías programados.';
+      pendOverlay('wk_monday', '<div class="pend-ttl">' + ttl + (first ? ' ' + escHtml(first) : '') + '</div>' +
+        '<div class="pend-txt" style="text-align:center; color:' + col + ';">' + line + '</div>' +
+        '<div class="pend-txt">' + (ok ? '' : '<b>Una idea para esta semana:</b> ') + escHtml(msg) + '</div>' +
+        '<button type="button" class="pend-btn pend-ok" id="wk_ok" style="margin-top:12px;">' + (ok ? '¡Vamos por otra! 🔥' : '¡Esta semana sí! 💪') + '</button>');
+      var b = document.getElementById('wk_ok'); if (b) b.onclick = function() { pendCloseOverlay('wk_monday'); };
+      try { localStorage.setItem(tk('benessere_wk_seen'), s.ws); } catch (e) {}
     }
 
     // Cliente: al abrir su rutina consulta los anuncios vigentes y muestra los que no ha visto
@@ -13660,6 +13884,79 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
       }).catch(function() { done('No pude actualizar. Revisa tu internet e inténtalo de nuevo.', '#ff9a93'); });
     }
+    // ================= 📖 MANUAL DEL CLIENTE: recorrido guiado botón por botón (solo para el usuario final) =================
+    // MANTENER AL DÍA: cada vez que un cambio afecte lo que ve o hace el cliente, se actualiza esta lista.
+    var MANUAL_STEPS = [
+      { sel: '#ath_weekDisplay', t: 'Tu semana', x: 'Aquí ves en qué semana de tu rutina vas. Cada semana puede traer cambios en las series o las repeticiones.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="ath_modal_coach"]', t: 'Nota del Coach', x: 'Un mensaje de tu coach para ti: objetivos, ajustes y recomendaciones.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[data-day]', t: 'Tus días de entreno', x: 'Cada tarjeta es un día de tu rutina. Tócala para ver tus ejercicios. El día que estás haciendo dice «Entrenando hoy», para que si sales de la app lo encuentres fácil.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openClasesTab"]', t: 'Clases', x: 'La clase de hoy, las anteriores y los retos, con cronómetro guiado. Al terminar una clase, queda anotada en tu mes con sus calorías estimadas.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openHistorialModal"]', t: 'Historial de Cargas', x: 'Los pesos y marcas de tus entrenos anteriores, para que sepas cuánto levantaste la última vez y puedas superarlo.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="asistShow"]', t: 'Tu mes', x: 'Cuántas veces viniste al gym el mes pasado frente a lo programado. Cada lunes también verás cómo te fue en la semana anterior.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openDatosTab"]', t: 'Datos y asistencia', x: 'Tus medidas, tu gráfico de asistencia y tus datos de contacto (teléfono y cumpleaños) para que tu coach te escriba y te felicite.' },
+      { sel: '#ath_upd_btn', t: 'Actualizar', x: 'Si tu coach cambió algo y no lo ves, toca aquí para traer lo más nuevo.' },
+      { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
+      { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
+      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Al abrir un día, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
+      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio anota el peso y las repeticiones de cada serie. La app guarda tus marcas para el próximo entreno.' },
+      { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
+      { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
+      { t: 'Circuitos con temporizador', x: 'En los circuitos, el temporizador te guía con sonido, vibración y voz: avisa cuando faltan 20 y 10 segundos del trabajo, y 20 segundos para iniciar tras el descanso.' },
+      { t: 'Si sales y vuelves: «Estoy en…»', x: 'Dentro del temporizador, toca «Estoy en…» para elegir en qué ronda y ejercicio vas y continuar donde te quedaste.' },
+      { t: '¡Listo!', x: 'Ya conoces la app. Puedes volver a ver este recorrido cuando quieras con «📖 Cómo usar la app».' }
+    ];
+    var MAN = { i: 0, list: [] };
+    function manualOpen() {
+      MAN.list = MANUAL_STEPS.filter(function(st) { if (!st.sel) return true; var e = document.querySelector(st.sel); return e && e.offsetParent !== null; });
+      MAN.i = 0; manualShow();
+    }
+    function manualClose() { ['man_ring', 'man_card'].forEach(function(id) { var e = document.getElementById(id); if (e) e.remove(); }); }
+    function manualGo(d) { MAN.i += d; if (MAN.i < 0) MAN.i = 0; if (MAN.i >= MAN.list.length) { manualClose(); return; } manualShow(); }
+    function manualShow() {
+      var st = MAN.list[MAN.i]; if (!st) return;
+      var ring = document.getElementById('man_ring'), card = document.getElementById('man_card');
+      if (!ring) { ring = document.createElement('div'); ring.id = 'man_ring'; ring.style.cssText = 'position:fixed; z-index:100010; border-radius:14px; pointer-events:none; transition:all .25s; box-shadow:0 0 0 9999px rgba(0,0,0,.72), 0 0 0 3px #ffd166;'; document.body.appendChild(ring); }
+      if (!card) { card = document.createElement('div'); card.id = 'man_card'; card.style.cssText = 'position:fixed; z-index:100011; left:12px; right:12px; max-width:420px; margin:0 auto; background:#1b1b1b; color:#fff; border:1.5px solid #ffd166; border-radius:14px; padding:14px; box-shadow:0 8px 30px rgba(0,0,0,.6);'; document.body.appendChild(card); }
+      var el = st.sel ? document.querySelector(st.sel) : null, onTop = false;
+      if (el) {
+        try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
+        var r = el.getBoundingClientRect(), pad = 5;
+        ring.style.display = 'block'; ring.style.left = (r.left - pad) + 'px'; ring.style.top = (r.top - pad) + 'px'; ring.style.width = (r.width + pad * 2) + 'px'; ring.style.height = (r.height + pad * 2) + 'px';
+        onTop = r.top > window.innerHeight / 2;
+      } else { ring.style.display = 'block'; ring.style.left = ring.style.top = '50%'; ring.style.width = ring.style.height = '0px'; }
+      card.style.top = (el && onTop) ? '16px' : 'auto'; card.style.bottom = (el && onTop) ? 'auto' : '16px';
+      var last = MAN.i === MAN.list.length - 1;
+      card.innerHTML = '<div style="font-size:.7rem; color:#ffd166; font-weight:800;">Paso ' + (MAN.i + 1) + ' de ' + MAN.list.length + '</div>' +
+        '<div style="font-size:1.05rem; font-weight:900; margin:3px 0 6px;">' + escHtml(st.t) + '</div>' +
+        '<div style="font-size:.88rem; line-height:1.45; color:#ddd;">' + escHtml(st.x) + '</div>' +
+        '<div style="display:flex; gap:8px; margin-top:12px;">' +
+        '<button type="button" onclick="manualClose()" style="flex:none; background:none; border:1px solid #555; color:#aaa; border-radius:8px; padding:9px 12px; font-size:.8rem; cursor:pointer;">Salir</button>' +
+        (MAN.i > 0 ? '<button type="button" onclick="manualGo(-1)" style="flex:none; background:#222; border:1px solid #555; color:#fff; border-radius:8px; padding:9px 12px; font-size:.8rem; cursor:pointer;">← Atrás</button>' : '') +
+        '<button type="button" onclick="manualGo(1)" style="flex:1; background:#ffd166; border:none; color:#000; border-radius:8px; padding:9px 12px; font-size:.9rem; font-weight:900; cursor:pointer;">' + (last ? 'Terminar ✔' : 'Siguiente →') + '</button></div>';
+    }
+    // ----- «📲 Instalar la app»: el botón sale solo si la app aún no está instalada; en Android abre la instalación directa y en iPhone explica los pasos -----
+    var INST_EVT = null;
+    function appIsInstalled() { try { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; } catch (e) { return false; } }
+    function installBtnSync() {
+      var b = document.getElementById('ath_install_btn'); if (!b) return;
+      b.style.display = (appIsInstalled() || (typeof isCoachView === 'function' && isCoachView())) ? 'none' : '';
+    }
+    window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); INST_EVT = e; installBtnSync(); });
+    window.addEventListener('appinstalled', function() { INST_EVT = null; installBtnSync(); try { showToastTop('✅ ¡App instalada! Búscala en tu pantalla de inicio.'); } catch (e) {} });
+    setInterval(installBtnSync, 2000); setTimeout(installBtnSync, 300);
+    function installApp() {
+      if (INST_EVT) {
+        var ev = INST_EVT; INST_EVT = null;
+        try { ev.prompt(); ev.userChoice.then(function() { installBtnSync(); }); } catch (e) {}
+        return;
+      }
+      var ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && 'ontouchend' in document);
+      var step = function(n, t) { return '<div style="display:flex; gap:10px; align-items:flex-start; margin:9px 0; text-align:left;"><b style="flex:none; width:26px; height:26px; border-radius:50%; background:#06d6a0; color:#000; display:inline-flex; align-items:center; justify-content:center;">' + n + '</b><span>' + t + '</span></div>'; };
+      var body = ios
+        ? step(1, 'Toca el botón <b>Compartir</b> <span style="font-size:1.1em;">⬆️</span> (el cuadro con la flecha, abajo o arriba en Safari).') + step(2, 'Desliza y toca <b>«Agregar a pantalla de inicio»</b>.') + step(3, 'Toca <b>«Agregar»</b>. Listo: queda el ícono de Benessere en tu pantalla.') + '<div class="pend-txt" style="font-size:.8rem; opacity:.8;">Si no ves esa opción, abre este enlace en <b>Safari</b> y repite los pasos.</div>'
+        : step(1, 'Toca el menú del navegador <b>⋮</b> (tres puntos, arriba a la derecha).') + step(2, 'Toca <b>«Instalar app»</b> o <b>«Agregar a la pantalla de inicio»</b>.') + step(3, 'Confirma con <b>«Instalar»</b>. Listo: queda el ícono de Benessere en tu pantalla.') + '<div class="pend-txt" style="font-size:.8rem; opacity:.8;">Si no aparece, abre este enlace en <b>Chrome</b> y repite los pasos.</div>';
+      pendOverlay('install_help', '<div class="pend-ttl">📲 Instalar la app</div><div class="pend-txt">Así la abres con un toque, como cualquier app:</div>' + body + '<button type="button" class="pend-btn pend-cancel" onclick="pendCloseOverlay(\'install_help\')">Entendido</button>');
+    }
     // Con la app abierta: revisa cada 5 minutos y cada vez que el cliente vuelve a ella
     function checkUpdatesWhileOpen() {
       var av = document.getElementById('athlete_client_view');
@@ -13673,7 +13970,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- Versión nueva de la app (el código): se detecta leyendo el propio index.html publicado -----
     // Marca los campos de video: rojo parpadeante si falta el link, verde si ya está
-    function isVideoInput(t) { var oi = t.getAttribute('oninput') || ''; return /_video$/.test(t.id || '') || /^clsV_/.test(t.id || '') || /\.video\s*=/.test(oi); }
+    function isVideoInput(t) { var oi = t.getAttribute('oninput') || ''; return /_video$/.test(t.id || '') || /^clsV_/.test(t.id || '') || /\.(video|altVideo)\s*=/.test(oi); }
     function refreshVideoMarks() {
       document.querySelectorAll('.pick-name-row input[type="text"]').forEach(function(t) {
         if (!isVideoInput(t)) return;
