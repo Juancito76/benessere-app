@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-x';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-y';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1869,8 +1869,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function rememberVideoFromPath(basePath) {
       try {
         var pair = new Function('return [' + basePath + '.name, ' + basePath + '.video];')();
-        rememberExerciseVideo(pair[0], pair[1]);
+        rememberExerciseVideo(pair[0], pair[1]); shareVideoSameName(pair[0], pair[1]);
       } catch (e) {}
+    }
+    // Al poner el video de un ejercicio o de una alternativa, lo copia a todos los demás de la rutina con ese mismo nombre (ejercicio o alternativa) que lo tengan vacío
+    function shareVideoSameName(name, video) {
+      var k = normKey(name), v = String(video || '').trim(); if (!k || !v) return 0;
+      var n = 0;
+      try {
+        (routineDays || []).forEach(function(d) { (d.items || []).forEach(function(it) { (it.sub || []).forEach(function(sb) {
+          if (!sb) return;
+          if (normKey(sb.name) === k && !String(sb.video || '').trim()) { sb.video = v; n++; }
+          if (normKey(sb.alt) === k && !String(sb.altVideo || '').trim()) { sb.altVideo = v; n++; }
+        }); }); });
+      } catch (e) {}
+      if (n) setTimeout(function() { try { renderDays(); setTimeout(vidBadgeAll, 150); showToastTop('🎥 Video copiado a ' + n + (n === 1 ? ' ejercicio más' : ' ejercicios más') + ' con el mismo nombre.'); } catch (e) {} }, 200);
+      return n;
     }
 
     // Busca un video en la biblioteca por nombre, sin importar mayúsculas/minúsculas ni
@@ -2408,7 +2422,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function rememberAltVideo(basePath) {
       try {
         var pair = new Function('return [' + basePath + '.alt, ' + basePath + '.altVideo];')();
-        rememberExerciseVideo(pair[0], pair[1]);
+        rememberExerciseVideo(pair[0], pair[1]); shareVideoSameName(pair[0], pair[1]);
       } catch (e) {}
     }
     // Al escribir el nombre de la alternativa: si ya hay un video guardado con ese nombre y el campo está vacío, lo trae solo
