@@ -2312,7 +2312,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
                 '<div class="form-group"><label>Series</label><input type="text" value="' + escHtml(sub.series || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].series = this.value"></div>' +
                 '<div class="form-group"><label>Reps</label><input type="text" value="' + escHtml(sub.reps || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].reps = this.value"></div>' +
                 '<div class="form-group" style="grid-column: span 2;"><label>Notas Técnicas</label><input type="text" value="' + escHtml(sub.notes || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].notes = this.value"></div>' +
-                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (!sharesVideoWithFirst(day.items, itemIndex, subIndex) ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">▶ Probar</button></div>' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') + '</div>' +
+                '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' + (!sharesVideoWithFirst(day.items, itemIndex, subIndex) ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sub.video || '') + '" oninput="routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video = this.value" onblur="rememberVideoFromPath(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']') + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')">▶ Probar</button><button type="button" class="btn-pick-ex" onclick="openYouTubeFor(' + jsArg('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + '].video') + ')" title="Buscar este ejercicio en YouTube">▶️ YouTube</button></div>' : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') + '</div>' +
               flagsHtml('routineDays[' + dayIndex + '].items[' + itemIndex + '].sub[' + subIndex + ']', sub) +
               '</div>' +
             '</div>';
@@ -2400,7 +2400,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<label>Video de la alternativa</label>' +
           '<div class="pick-name-row"><input type="text" value="' + escHtml(sub.altVideo || '') + '" oninput="' + path + '.altVideo = this.value" onblur="rememberAltVideo(' + jsArg(path) + ')">' +
           '<button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg(path + '.altVideo') + ')">🎥 Elegir</button>' +
-          '<button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg(path + '.altVideo') + ')">▶ Probar</button></div>' +
+          '<button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg(path + '.altVideo') + ')">▶ Probar</button><button type="button" class="btn-pick-ex" onclick="openYouTubeFor(' + jsArg(path + '.altVideo') + ')" title="Buscar este ejercicio en YouTube">▶️ YouTube</button></div>' +
         '</div>' +
       '</div>';
     }
@@ -3052,7 +3052,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           fld('Reps o Tiempo', sp + '.reps', sb.reps) +
           fld('Notas', sp + '.notes', sb.notes) +
           '<div class="form-group demo-field-box" style="grid-column: span 2; display:' + (showDemos ? 'block' : 'none') + ';">' +
-            (!shares ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg(sp + '.video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg(sp + '.video') + ')">▶ Probar</button></div>'
+            (!shares ? '<label>Video YouTube (1 por ejercicio)</label><div class="pick-name-row"><input type="text" value="' + escHtml(sb.video || '') + '" oninput="' + sp + '.video = this.value" onblur="rememberVideoFromPath(' + jsArg(sp) + ')"><button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg(sp + '.video') + ')">🎥 Elegir</button><button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg(sp + '.video') + ')">▶ Probar</button><button type="button" class="btn-pick-ex" onclick="openYouTubeFor(' + jsArg(sp + '.video') + ')" title="Buscar este ejercicio en YouTube">▶️ YouTube</button></div>'
                    : '<label>Video YouTube</label><div style="font-size:0.72rem; color:var(--muted);">Mismo ejercicio que la primera versión de esta posición — comparte su video.</div>') +
           '</div>' +
           flagsHtml(sp, sb) +
@@ -5464,6 +5464,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= SELECTOR DE VIDEO YA GUARDADO (biblioteca) =================
     // Abre en una pestaña nueva el link que hay ahora mismo en un campo de video,
     // para poder verificar rápido que es el video correcto antes de guardar/enviar.
+    // «▶️ YouTube»: abre YouTube en otra pestaña con el nombre del ejercicio ya buscado, para copiar el link del video
+    function openYouTubeFor(path) {
+      var nm = ''; try { nm = String(new Function('return ' + pvNamePath(path) + ';')() || '').trim(); } catch (e) {}
+      var url = nm ? 'https://www.youtube.com/results?search_query=' + encodeURIComponent(nm + ' ejercicio') : 'https://www.youtube.com/';
+      window.open(url, '_blank', 'noopener');
+    }
     function testVideoLink(path) {
       var val = '';
       try { val = new Function('return ' + path + ';')() || ''; } catch (e) { val = ''; }
@@ -13312,7 +13318,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           h += '<div style="margin-bottom:8px;"><div style="font-size:0.84rem; font-weight:700; color:#fff;">' + escHtml(sb.name) + (sb.reps ? ' <span style="color:#ffd60a;">· ' + escHtml(sb.reps) + '</span>' : '') + '</div>' +
             '<div class="pick-name-row" style="margin-top:4px;"><input type="text" id="clsV_' + bi + '_' + si + '" value="' + edxAttr(sb.video) + '" placeholder="Link de YouTube" onchange="clsSetVideo(' + bi + ',' + si + ',this.value)">' +
             '<button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg('CLS_WORK.items[' + bi + '].sub[' + si + '].video') + ')">🎥 Elegir</button>' +
-            '<button type="button" class="btn-pick-ex" onclick="clsTestVideo(' + bi + ',' + si + ')">▶ Probar</button></div>' +
+            '<button type="button" class="btn-pick-ex" onclick="clsTestVideo(' + bi + ',' + si + ')">▶ Probar</button><button type="button" class="btn-pick-ex" onclick="openYouTubeFor(' + jsArg('CLS_WORK.items[' + bi + '].sub[' + si + '].video') + ')" title="Buscar este ejercicio en YouTube">▶️ YouTube</button></div>' +
             (ok ? '' : '<div style="font-size:0.7rem; color:#ffd166;">Este link no parece de YouTube; se abrirá solo con «Ver demo».</div>') + '</div>';
         });
         h += '</div>';
