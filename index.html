@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-t';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -175,7 +175,15 @@
     textarea { resize: vertical; min-height: 75px; }
 
     .day-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
-    .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .day-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .day-toggle { background: #121212; color: var(--primary); border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; flex: 0 0 auto; font-size: .8rem; font-weight: 900; cursor: pointer; padding: 0; }
+    .day-sum { font-size: .7rem; color: var(--muted); white-space: nowrap; display: none; }
+    .day-card.day-closed .day-body { display: none; }
+    .day-card.day-closed .day-sum { display: inline; }
+    .day-header .day-title-input { flex: 1 1 auto; width: auto; min-width: 0; }
+    .day-header .btn-danger { white-space: nowrap; flex: 0 0 auto; }
+    @media (max-width: 480px) { .day-sum, .day-header .del-t { display: none !important; } }
+    .day-card.day-closed .day-header { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
     .day-title-input { font-size: 1rem; font-weight: 700; color: var(--primary); background: transparent; border: 1px dashed var(--border); width: 65%; padding: 6px 10px; }
     .habits-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; background: var(--card-inner); padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #333; }
     .diet-box, .security-box { background: #181818; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
@@ -2248,6 +2256,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
     }
 
+    // Cada día del constructor es una pestaña plegable (cerrada al cargar); el estado abierto/cerrado sobrevive a los redibujados
+    var DAYS_OPEN = new WeakMap();
+    function dayCardToggle(btn, di) {
+      var card = btn.closest('.day-card'), day = routineDays[di]; if (!card || !day) return;
+      var open = card.classList.contains('day-closed'); card.classList.toggle('day-closed', !open);
+      DAYS_OPEN.set(day, open); var c = card.querySelector('.day-chev'); if (c) c.innerText = open ? '▼' : '▶';
+    }
+    function dayEnsureOpen(el) {   // si el campo que se busca está en un día cerrado, lo abre
+      try {
+        var card = el && el.closest ? el.closest('.day-card') : null;
+        if (card && card.classList.contains('day-closed')) { var b = card.querySelector('.day-toggle'); if (b) b.click(); }
+      } catch (e) {}
+    }
     function renderDays() {
       var container = document.getElementById('daysList');
       if (!container) return;
@@ -2317,10 +2338,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '</div>';
         });
 
+        var dayOpen = DAYS_OPEN.get(day) === true, nEx = (day.items || []).length;
+        dayDiv.className = 'day-card' + (dayOpen ? '' : ' day-closed');
         dayDiv.innerHTML = '<div class="day-header">' +
+          '<button type="button" class="day-toggle" onclick="dayCardToggle(this, ' + dayIndex + ')" aria-label="Abrir o cerrar el día"><span class="day-chev">' + (dayOpen ? '▼' : '▶') + '</span></button>' +
           '<input type="text" class="day-title-input" value="' + escHtml(day.title || 'Día') + '" oninput="routineDays[' + dayIndex + '].title = this.value">' +
-          '<button type="button" class="btn btn-danger" style="font-size:0.75rem; padding:4px 8px;" onclick="removeDay(' + dayIndex + ')">🗑️ Eliminar Día</button>' +
+          '<span class="day-sum">' + (day.rest ? '🌙 descanso' : nEx + (nEx === 1 ? ' bloque' : ' bloques')) + '</span>' +
+          '<button type="button" class="btn btn-danger" style="font-size:0.75rem; padding:4px 8px;" onclick="removeDay(' + dayIndex + ')" title="Eliminar día">🗑️<span class="del-t"> Eliminar Día</span></button>' +
         '</div>' +
+        '<div class="day-body">' +
         '<div class="habits-bar">' +
           '<div class="form-group"><label>🎯 Calorías</label><input type="text" value="' + escHtml(day.habits ? day.habits.kcal || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.kcal = this.value"></div>' +
           '<div class="form-group"><label>💧 Hidratación</label><input type="text" value="' + escHtml(day.habits ? day.habits.agua || '' : '') + '" oninput="routineDays[' + dayIndex + '].habits.agua = this.value"></div>' +
@@ -2344,7 +2370,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'triserie\')">➕ Triserie</button>' +
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'circuito\')">➕ Circuito</button>' +
           '<button type="button" class="btn btn-secondary" onclick="addItem(' + dayIndex + ', \'hiit\')">🔥 HIIT / Finisher</button>' +
-        '</div>';
+        '</div></div>';
 
         if (day.rest) {
           var brw = dayDiv.querySelector('.btn-row'); if (brw) brw.style.display = 'none';
@@ -2794,7 +2820,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var el = document.querySelector('input[oninput^="routineDays[' + m.di + '].items[' + m.ii + '].sub[' + m.k + '].' + (m.alt ? 'altVideo' : 'video') + '"]');
         if (!el) continue;
         VNEXT_I = (VNEXT_I + t + 1) % miss.length;
-        el.classList.add('video-missing');
+        el.classList.add('video-missing'); dayEnsureOpen(el);
         try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } catch (e) {}
         showToastTop('🎥 ' + m.label, 2500);
         return;
@@ -2823,7 +2849,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       var shown = miss.slice(0, 8).map(function(m) { return '• ' + m.label; }).join('\n');
       alert('🎥 Falta el video de ' + miss.length + ' ejercicio' + (miss.length > 1 ? 's' : '') + ' o alternativa' + (miss.length > 1 ? 's' : '') + ' (las demostraciones en video están activadas):\n\n' + shown + (miss.length > 8 ? '\n• … y ' + (miss.length - 8) + ' más' : '') + '\n\nPega el link de cada uno (o usa "🎥 Elegir"). Si no quieres demostraciones, desactiva "Activar Demostraciones en Video" en Perfil del Coach.');
-      if (first) { try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
+      if (first) { dayEnsureOpen(first); try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
       return false;
     }
     // ---- Guardia de incrustación: antes de enviar/actualizar avisa de videos que no se pueden mostrar en la app y lleva a ellos ----
@@ -2860,7 +2886,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var go = confirm('🎥 ' + bad.length + (bad.length > 1 ? ' videos no se podrán mostrar' : ' video no se podrá mostrar') + ' dentro de la app:\n\n' + shown + (bad.length > 8 ? '\n• … y ' + (bad.length - 8) + ' más' : '') + '\n\nAceptar = ir a corregirlos\nCancelar = enviar de todos modos (el cliente solo verá el botón "Ver demostración")');
       if (!go) { clearVideoMissingMarks(); return true; }
       switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-      if (first) { try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
+      if (first) { dayEnsureOpen(first); try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
       return false;
     }
     // Banderas del texto de importación: "Unilateral: si" / "Unilateral: A,B" (letras del combo) y "Peso: no"
@@ -2896,6 +2922,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         diet: { desayuno: '', snack: '', almuerzo: '', cena: '' },
         items: [{ type: 'normal', slot: 1, vigenciaDesde: 1, vigenciaHasta: null, sub: [{ name: '', series: '', reps: '', notes: '', video: '' }] }]
       });
+      DAYS_OPEN.set(routineDays[routineDays.length - 1], true);
       renderDays();
     }
 
@@ -2986,6 +3013,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         diet: { desayuno: '', snack: '', almuerzo: '', cena: '' },
         items: []
       });
+      DAYS_OPEN.set(routineDays[routineDays.length - 1], true);
       renderDays();
     }
     function addStation(di, ii) { var itH = routineDays[di].items[ii]; if (itH.circ && itH.circ.tipo === 'hiit' && (itH.sub || []).length >= 3) { alert('Un HIIT lleva máximo 3 ejercicios (de preferencia peso corporal o peso libre).'); return; } itH.sub.push({ name: '', series: '', reps: '', notes: '', video: '' }); renderDays(); }
