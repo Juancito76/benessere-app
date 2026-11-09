@@ -468,6 +468,12 @@
 
     /* ===== Registro por serie (etapa 1, 07/10/2026) ===== */
     .set-box { margin-top: 8px; background: #141414; border-radius: 8px; padding: 8px; }
+    .set-box.set-mini { background: none; padding: 0; }
+    .set-open-btn { display: inline-flex; align-items: center; gap: 6px; background: #1b1b1b; border: 1px solid #444; color: #ddd; font-size: 0.74rem; font-weight: 800; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+    .set-open-btn .set-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; display: none; }
+    .set-open-btn.has .set-dot { display: inline-block; background: #777; }
+    .set-open-btn.real { border-color: #06d6a0; color: #9fe8c8; }
+    .set-open-btn.real .set-dot { background: #06d6a0; }
     details.set-box > summary { cursor: pointer; font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; padding: 4px 0; display: flex; align-items: center; gap: 6px; list-style: none; -webkit-tap-highlight-color: transparent; }
     details.set-box > summary::-webkit-details-marker { display: none; }
     details.set-box > summary::before { content: '▸'; font-size: 0.8rem; transition: transform 0.15s; flex: 0 0 auto; }
@@ -926,13 +932,14 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           <div class="form-group"><label>Cintura 1 (Estrecha)</label><input type="text" id="m_cintura1" placeholder="Ej: 84 cm"></div>
           <div class="form-group"><label>Cintura 2 (Ombligo)</label><input type="text" id="m_cintura2" placeholder="Ej: 81 cm"></div>
           <div class="form-group"><label>Cadera</label><input type="text" id="m_cadera" placeholder="Ej: 100 cm"></div>
-          <div class="form-group"><label>Muslo Derecho</label><input type="text" id="m_muslo_der" placeholder="Ej: 58 cm"></div>
-          <div class="form-group"><label>Muslo Izquierdo</label><input type="text" id="m_muslo_izq" placeholder="Ej: 57.5 cm"></div>
-          <div class="form-group"><label>Pantorrilla Derecha</label><input type="text" id="m_pant_der" placeholder="Ej: 38 cm"></div>
-          <div class="form-group"><label>Pantorrilla Izquierda</label><input type="text" id="m_pant_izq" placeholder="Ej: 38 cm"></div>
+          <div class="form-group"><label>Muslo (derecho | izquierdo)</label><div style="display:flex; gap:8px;"><input type="text" id="m_muslo_der" placeholder="Der. Ej: 58 cm"><input type="text" id="m_muslo_izq" placeholder="Izq."></div></div>
+          <div class="form-group"><label>Pantorrilla (derecho | izquierdo)</label><div style="display:flex; gap:8px;"><input type="text" id="m_pant_der" placeholder="Der. Ej: 38 cm"><input type="text" id="m_pant_izq" placeholder="Izq."></div></div>
           <div class="form-group"><label>Pecho</label><input type="text" id="m_pecho" placeholder="Ej: 95 cm"></div>
-          <div class="form-group"><label>Brazo Derecho</label><input type="text" id="m_brazo_der" placeholder="Ej: 32 cm"></div>
-          <div class="form-group"><label>Brazo Izquierdo</label><input type="text" id="m_brazo_izq" placeholder="Ej: 32 cm"></div>
+          <div class="form-group"><label>Brazo (derecho | izquierdo)</label><div style="display:flex; gap:8px;"><input type="text" id="m_brazo_der" placeholder="Der. Ej: 32 cm"><input type="text" id="m_brazo_izq" placeholder="Izq."></div></div>
+          <div class="form-group"><label>Agua (litros por día)</label><input type="text" id="m_agua" placeholder="Ej: 2.5 L"></div>
+          <div class="form-group"><label>Descanso (horas de sueño)</label><input type="text" id="m_descanso" placeholder="Ej: 7 h"></div>
+          <div class="form-group"><label>Neat (actividad diaria)</label><select id="m_neat"><option value="">—</option><option value="Bajo">↘ Bajo</option><option value="Medio">⇒ Medio</option><option value="Alto">↗ Alto</option></select></div>
+          <div class="form-group"><label>Estrés</label><select id="m_estres"><option value="">—</option><option value="Bajo">↘ Bajo</option><option value="Medio">⇒ Medio</option><option value="Alto">↗ Alto</option></select></div>
         </div>
         <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center;">
           <button type="button" class="btn btn-secondary" onclick="saveMeasureEntry()">➕ Guardar medición en el historial</button>
@@ -1044,6 +1051,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <div class="view-title">Datos y asistencia</div>
         <div style="width:50px;"></div>
       </div>
+      <div id="ath_month_box"></div>
       <div class="metrics-grid" id="ath_metricsGrid"></div>
       <div id="ath_medBody"></div>
       <div id="ath_asist_box"></div>
@@ -1285,8 +1293,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { k: 'm_pant_izq',  label: 'Pantorrilla izquierda', short: 'Pant. I',   unit: 'cm' },
       { k: 'm_pecho',     label: 'Pecho',                 short: 'Pecho',     unit: 'cm' },
       { k: 'm_brazo_der', label: 'Brazo derecho',         short: 'Brazo D',   unit: 'cm' },
-      { k: 'm_brazo_izq', label: 'Brazo izquierdo',       short: 'Brazo I',   unit: 'cm' }
+      { k: 'm_brazo_izq', label: 'Brazo izquierdo',       short: 'Brazo I',   unit: 'cm' },
+      { k: 'm_agua',      label: 'Agua',                  short: 'Agua',      unit: 'L' },
+      { k: 'm_descanso',  label: 'Descanso (sueño)',      short: 'Descanso',  unit: 'h' },
+      { k: 'm_neat',      label: 'Neat (actividad diaria)', short: 'Neat',    unit: 'nivel' },
+      { k: 'm_estres',    label: 'Estrés',                short: 'Estrés',    unit: 'nivel' }
     ];
+    var MEASURE_PAIRS = [['m_muslo_der', 'm_muslo_izq', 'Muslo'], ['m_pant_der', 'm_pant_izq', 'Pantorrilla'], ['m_brazo_der', 'm_brazo_izq', 'Brazo']];   // un solo espacio con dos celdas (derecha | izquierda)
+    var NIVEL_TXT = { 1: 'Bajo', 2: 'Medio', 3: 'Alto' }, NIVEL_ARW = { 1: '↘', 2: '⇒', 3: '↗' };
     var measureLog = [];     // constructor: mediciones guardadas [{ d: 'AAAA-MM-DD', v: { m_peso_kg: 78.5, ... } }]
     var coachMedKey = '';    // medida que se grafica en el constructor
     var athMedKey = '';      // medida que se grafica en la vista del atleta
@@ -1301,11 +1315,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function dayNum(iso) { return Date.parse(iso + 'T00:00:00Z') / 86400000; }
     // Saca el primer número de un texto: "78,5 kg" -> 78.5 ; "Nivel 4" -> 4 ; "15%" -> 15
     function parseNum(s) {
+      var kw = String(s == null ? '' : s).trim().toLowerCase();   // Neat y Estrés: alto / medio / bajo (o las flechas de la hoja)
+      if (kw === 'alto' || kw === '↗') return 3; if (kw === 'medio' || kw === '⇒') return 2; if (kw === 'bajo' || kw === '↘') return 1;
       var m = String(s == null ? '' : s).replace(',', '.').match(/-?\d+(?:\.\d+)?/);
       return m ? parseFloat(m[0]) : null;
     }
     function fmtNum(n) { return String(Math.round(n * 10) / 10); }
-    function withUnit(n, unit) { var t = fmtNum(n); return unit === '%' ? t + '%' : (unit ? t + ' ' + unit : t); }
+    function withUnit(n, unit) { if (unit === 'nivel') return NIVEL_TXT[Math.round(n)] || fmtNum(n); var t = fmtNum(n); return unit === '%' ? t + '%' : (unit ? t + ' ' + unit : t); }
     function fieldInfo(k) { for (var i = 0; i < MEASURE_FIELDS.length; i++) { if (MEASURE_FIELDS[i].k === k) return MEASURE_FIELDS[i]; } return null; }
     function byDate(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); }
     function indexOfDate(arr, d) { for (var i = 0; i < arr.length; i++) { if (arr[i].d === d) return i; } return -1; }
@@ -1317,6 +1333,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function deltaText(diff, unit) {
       var d = Math.round(diff * 10) / 10;
       if (d === 0) return 'sin cambio';
+      if (unit === 'nivel') return d > 0 ? '▲ sube' : '▼ baja';
       return (d > 0 ? '▲ +' : '▼ −') + fmtNum(Math.abs(d)) + (unit === '%' ? ' pts' : (unit ? ' ' + unit : ''));
     }
 
@@ -1375,46 +1392,33 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return ticks;
     }
 
-    function medChartSvg(series) {
-      var W = 340, H = 200, pl = 44, pr = 16, pt = 26, pb = 34;
-      var n = series.length;
-      var vals = series.map(function(s) { return s.n; });
-      var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
-      if (hi === lo) { lo -= 1; hi += 1; }
-      var margin = (hi - lo) * 0.18; lo -= margin; hi += margin;
-      var t0 = dayNum(series[0].d), t1 = dayNum(series[n - 1].d), span = Math.max(t1 - t0, 1);
-      var inset = 12, iw = W - pl - pr - 2 * inset, ih = H - pt - pb;   // los puntos no tocan el eje ni el borde
-      // Con pocas mediciones, los puntos no se estiran de borde a borde: el gráfico reserva espacio (hasta ~90 días) para las próximas.
-      // Cuando hay más datos o más tiempo, se va ocupando todo el ancho. Nunca se juntan a menos de ~60 px entre sí.
-      var minGap = Infinity;
-      for (var gi = 1; gi < n; gi++) { var gdd = dayNum(series[gi].d) - dayNum(series[gi - 1].d); if (gdd > 0 && gdd < minGap) minGap = gdd; }
-      var horizon = span;
-      if (n > 1 && isFinite(minGap)) horizon = Math.max(span, Math.min(90, minGap * iw / 60));
-      function X(d) { return n === 1 ? pl + inset + iw / 2 : pl + inset + (dayNum(d) - t0) / horizon * iw; }
+    function medChartSvg(series, unit) {   // barras: una por medición (las últimas 10); la más reciente va resaltada
+      var all = series.length; series = series.slice(-10);
+      var W = 340, H = 210, pl = 44, pr = 12, pt = 26, pb = 34, n = series.length, nivel = unit === 'nivel';
+      var vals = series.map(function(x) { return x.n; });
+      var lo, hi;
+      if (nivel) { lo = 0; hi = 3; }
+      else {
+        var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rg = (mx - mn) || Math.max(Math.abs(mx) * 0.1, 1);
+        lo = mn - rg * 0.7; hi = mx + rg * 0.25; if (mn >= 0 && lo < 0) lo = 0;
+      }
+      var iw = W - pl - pr, ih = H - pt - pb, slot = iw / Math.max(n, 4), bw = Math.min(slot * 0.62, 40);
       function Y(v) { return pt + (hi - v) / (hi - lo) * ih; }
-      var xs = series.map(function(s) { return X(s.d); });
-      var valIdx = pickLabelIdx(xs, 36), dateIdx = pickLabelIdx(xs, 50);
-
-      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; max-width:100%; height:auto;" role="img" aria-label="Gráfico de evolución">';
-      niceTicks(lo, hi).forEach(function(gv) {
+      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; max-width:100%; height:auto;" role="img" aria-label="Gráfico de barras de evolución">';
+      var ticks = nivel ? [1, 2, 3] : niceTicks(lo, hi);
+      ticks.forEach(function(gv) {
         var gy = Y(gv);
         s += '<line x1="' + pl + '" y1="' + gy.toFixed(1) + '" x2="' + (W - pr) + '" y2="' + gy.toFixed(1) + '" style="stroke:#333333; stroke-width:1;"/>';
-        s += '<text x="' + (pl - 6) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end" style="fill:#a3a3a3; font-size:10px;">' + fmtNum(gv) + '</text>';
+        s += '<text x="' + (pl - 6) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end" style="fill:#a3a3a3; font-size:10px;">' + (nivel ? NIVEL_TXT[gv] : fmtNum(gv)) + '</text>';
       });
-      if (n > 1) {
-        var path = '';
-        series.forEach(function(p, i) { path += (i ? 'L' : 'M') + xs[i].toFixed(1) + ',' + Y(p.n).toFixed(1) + ' '; });
-        s += '<path d="' + path + '" style="fill:none; stroke:#00e5ff; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round;"/>';
-      }
       series.forEach(function(p, i) {
-        var x = xs[i], y = Y(p.n);
-        var anchor = x > W - 26 ? 'end' : 'middle';
-        s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" style="fill:' + (p.src === 'a' ? '#0d0d0d' : '#00e5ff') + '; stroke:#00e5ff; stroke-width:2;"/>';
-        var crowded = (i === n - 1 && n > 1 && xs[i] - xs[i - 1] < 36);
-        if (valIdx[i]) s += '<text x="' + x.toFixed(1) + '" y="' + (crowded ? y + 17 : y - 9).toFixed(1) + '" text-anchor="' + anchor + '" style="fill:#ffffff; font-size:10.5px; font-weight:700;">' + fmtNum(p.n) + '</text>';
-        if (dateIdx[i]) s += '<text x="' + x.toFixed(1) + '" y="' + (H - 12) + '" text-anchor="' + anchor + '" style="fill:#a3a3a3; font-size:10px;">' + fmtDateShort(p.d) + '</text>';
+        var x = pl + slot * i + (slot - bw) / 2, y = Y(p.n), last = i === n - 1, h = Math.max(ih + pt - y, 2);
+        var own = p.src === 'a', col = last ? '#00e5ff' : '#2b6f7a';
+        s += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3" style="fill:' + (own ? 'none' : col) + '; stroke:' + (last ? '#00e5ff' : '#2b6f7a') + '; stroke-width:' + (own ? 2 : 0) + ';"/>';
+        s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (y - 6).toFixed(1) + '" text-anchor="middle" style="fill:#ffffff; font-size:' + (n > 7 ? 9 : 10.5) + 'px; font-weight:' + (last ? 800 : 600) + ';">' + (nivel ? NIVEL_ARW[Math.round(p.n)] : fmtNum(p.n)) + '</text>';
+        s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle" style="fill:#a3a3a3; font-size:' + (n > 7 ? 8.5 : 10) + 'px;">' + fmtDateShort(p.d) + '</text>';
       });
-      return s + '</svg>';
+      return s + '</svg>' + (all > 10 ? '<div class="med-sum">Se muestran las últimas 10 mediciones de ' + all + '.</div>' : '');
     }
 
     // Selector de medida + gráfico + resumen del cambio
@@ -1436,9 +1440,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var hasOwn = series.some(function(p) { return p.src === 'a'; });
       return '<div class="med-chip-row">' + chips + '</div>' +
         '<div class="med-panel"><div style="font-weight:800; font-size:0.9rem; margin-bottom:6px;">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</div>' +
-        medChartSvg(series) +
+        medChartSvg(series, f.unit) +
         '<div class="med-sum">' + summary + '</div>' +
-        (hasOwn ? '<div class="med-sum">● medición del coach &nbsp;&nbsp; ○ ' + (isCoachView() ? 'medición del cliente' : 'tu medición') + '</div>' : '') + '</div>';
+        (hasOwn ? '<div class="med-sum">▇ medición del coach &nbsp;&nbsp; ▯ ' + (isCoachView() ? 'medición del cliente' : 'tu medición') + '</div>' : '') + '</div>';
     }
 
     // Tabla de mediciones (más reciente primero)
@@ -1452,7 +1456,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var mark = e.src === 'a' ? ' 👤' : '';
         var del = (mode === 'athlete' && e.src === 'a') ? ' <button type="button" class="med-x" title="Borrar" onclick="deleteOwnMeasure(\'' + e.d + '\')">🗑</button>' : '';
         if (mode === 'cv' && e.src === 'c' && e.d !== entries[0].d) del = ' <button type="button" class="med-x" title="Borrar esta medición de seguimiento" onclick="coachDeleteMeasure(\'' + e.d + '\')">🗑</button>';   // la medición del inicio no se puede borrar desde aquí
-        var cells = keys.map(function(f) { return '<td>' + (e.v[f.k] != null ? fmtNum(e.v[f.k]) : '–') + '</td>'; }).join('');
+        var cells = keys.map(function(f) { return '<td>' + (e.v[f.k] != null ? (f.unit === 'nivel' ? (NIVEL_ARW[Math.round(e.v[f.k])] || fmtNum(e.v[f.k])) : fmtNum(e.v[f.k])) : '–') + '</td>'; }).join('');
         var acts = mode === 'coach'
           ? '<td><button type="button" class="med-x" title="Editar" onclick="editMeasureEntry(\'' + e.d + '\')">✏️</button><button type="button" class="med-x" title="Borrar" onclick="deleteMeasureEntry(\'' + e.d + '\')">🗑</button></td>'
           : '';
@@ -1566,59 +1570,59 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       list.sort(byDate);
       return list;
     }
+    function measureInputHtml(f, pre) {
+      var id = pre + f.k;
+      if (f.unit === 'nivel') return '<select class="med-in" id="' + id + '"><option value="">—</option><option value="Bajo">↘ Bajo</option><option value="Medio">⇒ Medio</option><option value="Alto">↗ Alto</option></select>';
+      return '<input type="text" inputmode="decimal" class="med-in" id="' + id + '" autocomplete="off">';
+    }
+    function measureFormHtml(pre) {   // formulario de medidas: derecha e izquierda comparten espacio (dos celdas)
+      var pairIn = {}, h = '';
+      MEASURE_PAIRS.forEach(function(p) { pairIn[p[0]] = p; pairIn[p[1]] = 'skip'; });
+      MEASURE_FIELDS.forEach(function(f) {
+        var pr = pairIn[f.k];
+        if (pr === 'skip') return;
+        if (pr) {
+          h += '<div style="grid-column:1 / -1;"><label class="med-lbl">' + pr[2] + ' (cm) · derecho | izquierdo</label><div style="display:flex; gap:8px;">' +
+            '<div style="flex:1;"><input type="text" inputmode="decimal" class="med-in" id="' + pre + pr[0] + '" placeholder="Der." autocomplete="off"></div>' +
+            '<div style="flex:1;"><input type="text" inputmode="decimal" class="med-in" id="' + pre + pr[1] + '" placeholder="Izq." autocomplete="off"></div></div></div>';
+          return;
+        }
+        h += '<div><label class="med-lbl">' + f.label + (f.unit && f.unit !== 'nivel' ? ' (' + f.unit + ')' : '') + '</label>' + measureInputHtml(f, pre) + '</div>';
+      });
+      return h;
+    }
     function ensureAddForm() {
       var box = document.getElementById('med_new_fields');
       if (!box || box.children.length) return;
-      box.innerHTML = MEASURE_FIELDS.map(function(f) {
-        return '<div><label class="med-lbl">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</label><input type="text" inputmode="decimal" class="med-in" id="med_new_' + f.k + '" autocomplete="off"></div>';
-      }).join('');
+      box.innerHTML = measureFormHtml('med_new_');
     }
     function selectMedMetric(k) {
       athMedKey = k;
       var st = athleteActiveState, box = document.getElementById('med_chart_box');
       if (st && box) box.innerHTML = medChartBlock(athleteEntries(st), athMedKey, 'selectMedMetric');
     }
-    // Gráfico con todas las medidas juntas: cada línea es el % de cambio respecto a la primera de esas fechas (así se comparan kg con cm)
+    // Barras con todas las medidas juntas: cada barra es el % de cambio de esa medida entre la primera y la última de estas fechas (así se comparan kg con cm)
     function last3Chart(entries, keys, dates) {
-      var COL = ['#00e5ff', '#ff6d00', '#06d6a0', '#ffd60a', '#ff4d8b', '#b388ff', '#8bc34a', '#ff9f1c'];
-      var lines = [];
+      var rows = [];
       keys.forEach(function(f) {
         var vals = dates.map(function(d) { for (var i = 0; i < entries.length; i++) { if (entries[i].d === d && entries[i].v[f.k] != null) return entries[i].v[f.k]; } return null; });
         var have = vals.filter(function(x) { return x != null; });
         if (have.length < 2 || !have[0]) return;
-        lines.push({ f: f, vals: vals, base: have[0], first: have[0], last: have[have.length - 1] });
+        rows.push({ f: f, pct: (have[have.length - 1] - have[0]) / Math.abs(have[0]) * 100 });
       });
-      if (!lines.length) return '';
-      var pc = function(l, v) { return (v - l.base) / Math.abs(l.base) * 100; };
-      var lo = 0, hi = 0;
-      lines.forEach(function(l) { l.vals.forEach(function(v) { if (v != null) { var p = pc(l, v); if (p < lo) lo = p; if (p > hi) hi = p; } }); });
-      if (hi - lo < 2) { hi += 1; lo -= 1; }
-      var mg = (hi - lo) * 0.15; lo -= mg; hi += mg;
-      var W = 340, H = 190, pl = 44, pr = 16, pt = 14, pb = 30, n = dates.length;
-      var stepX = n > 1 ? Math.min((W - pl - pr - 28) / (n - 1), 110) : 0;   // con pocas fechas los puntos quedan cerca; no se estiran de borde a borde
-      var X = function(i) { return pl + 14 + i * stepX; };
-      var Y = function(p) { return pt + (hi - p) / (hi - lo) * (H - pt - pb); };
-      var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; height:auto;" role="img" aria-label="Cambio de todas las medidas">';
-      niceTicks(lo, hi).forEach(function(t) {
-        g += '<line x1="' + pl + '" y1="' + Y(t).toFixed(1) + '" x2="' + (W - pr) + '" y2="' + Y(t).toFixed(1) + '" style="stroke:' + (t === 0 ? '#777' : '#333') + '; stroke-width:1;"/>' +
-          '<text x="' + (pl - 6) + '" y="' + (Y(t) + 3).toFixed(1) + '" text-anchor="end" style="fill:#a3a3a3; font-size:10px;">' + (t > 0 ? '+' : '') + fmtNum(t) + '%</text>';
+      if (!rows.length) return '';
+      var mx = 1; rows.forEach(function(r) { mx = Math.max(mx, Math.abs(r.pct)); });
+      var W = 340, lw = 104, rh = 26, H = rows.length * rh + 22, cx = lw + (W - lw - 40) / 2, half = (W - lw - 40) / 2 - 4;
+      var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; max-width:100%; height:auto;" role="img" aria-label="Cambio por medida">' +
+        '<line x1="' + cx.toFixed(1) + '" y1="4" x2="' + cx.toFixed(1) + '" y2="' + (H - 18) + '" style="stroke:#777; stroke-width:1;"/>';
+      rows.forEach(function(r, i) {
+        var y = 6 + i * rh, w = Math.max(Math.abs(r.pct) / mx * half, r.pct === 0 ? 0 : 2), up = r.pct >= 0, x = up ? cx : cx - w;
+        g += '<text x="' + (lw - 6) + '" y="' + (y + 13) + '" text-anchor="end" style="fill:#dddddd; font-size:10.5px;">' + escHtml(r.f.short) + '</text>' +
+          '<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="17" rx="3" style="fill:' + (up ? '#00e5ff' : '#ff9f1c') + ';"/>' +
+          '<text x="' + (up ? cx + w + 4 : cx - w - 4).toFixed(1) + '" y="' + (y + 13) + '" text-anchor="' + (up ? 'start' : 'end') + '" style="fill:#ffffff; font-size:10px; font-weight:700;">' + (r.pct > 0 ? '+' : '') + fmtNum(r.pct) + '%</text>';
       });
-      lines.forEach(function(l, li) {
-        var c = COL[li % COL.length], path = '', pts = '';
-        l.vals.forEach(function(v, i) {
-          if (v == null) return;
-          var x = X(i), y = Y(pc(l, v));
-          path += (path ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
-          pts += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4" style="fill:' + c + '; stroke:#0d0d0d; stroke-width:1;"/>';
-        });
-        g += '<path d="' + path + '" style="fill:none; stroke:' + c + '; stroke-width:2.2; stroke-linejoin:round; stroke-linecap:round;"/>' + pts;
-      });
-      dates.forEach(function(d, i) { g += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" style="fill:#a3a3a3; font-size:10px;">' + fmtDateShort(d) + '</text>'; });
-      g += '</svg>';
-      var leg = lines.map(function(l, li) {
-        return '<span style="display:inline-flex; align-items:center; gap:5px; margin:3px 10px 3px 0; font-size:0.74rem; color:#ddd;"><i style="width:10px; height:10px; border-radius:50%; background:' + COL[li % COL.length] + '; display:inline-block;"></i>' + l.f.short + ' ' + fmtNum(l.first) + ' → ' + fmtNum(l.last) + (l.f.unit ? ' ' + l.f.unit : '') + '</span>';
-      }).join('');
-      return '<div class="med-panel" style="margin-bottom:8px;">' + g + '<div style="margin-top:4px;">' + leg + '</div><div class="med-sum">Cada línea muestra cuánto cambió esa medida (en %) desde la primera de estas fechas; así se comparan kg con cm.</div></div>';
+      g += '<text x="' + cx.toFixed(1) + '" y="' + (H - 4) + '" text-anchor="middle" style="fill:#a3a3a3; font-size:9.5px;">' + fmtDateShort(dates[0]) + ' → ' + fmtDateShort(dates[dates.length - 1]) + '</text></svg>';
+      return '<div class="med-panel" style="margin-bottom:8px;">' + g + '<div class="med-sum">Cada barra muestra cuánto cambió esa medida (en %) desde la primera de estas fechas: <span style="color:#00e5ff;">▇ subió</span> · <span style="color:#ff9f1c;">▇ bajó</span>.</div></div>';
     }
     // Comparación compacta de las últimas 3 mediciones (por medida, las 3 fechas más recientes en que se midió)
     function last3Html(entries, keys) {
@@ -1634,7 +1638,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (have.length < 1) return '';
         var chg = have.length > 1 ? deltaText(have[have.length - 1] - have[0], f.unit) : '–';
         return '<tr><td style="text-align:left;">' + f.label + (f.unit ? ' <small>(' + f.unit + ')</small>' : '') + '</td>' +
-          vals.map(function(x) { return '<td>' + (x != null ? fmtNum(x) : '–') + '</td>'; }).join('') + '<td>' + chg + '</td></tr>';
+          vals.map(function(x) { return '<td>' + (x != null ? (f.unit === 'nivel' ? (NIVEL_ARW[Math.round(x)] || fmtNum(x)) : fmtNum(x)) : '–') + '</td>'; }).join('') + '<td>' + chg + '</td></tr>';
       }).join('');
       if (!rows) return '';
       return '<div class="med-h">Últimas ' + dates.length + ' mediciones</div>' + last3Chart(entries, keys, dates) + '<div class="med-table-wrap"><table class="med-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
@@ -3584,6 +3588,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (/^brazos? d ?\/ ?i$|^brazos? d i$|^brazos? der ?\/ ?izq$|^brazos$/.test(key)) return pair('m_brazo_der', 'm_brazo_izq');
       if (/^brazo (izq|i)/.test(key)) return one('m_brazo_izq');
       if (/^brazo( der| d)?$/.test(key)) return one('m_brazo_der');
+      function nivel(f) {   // Neat y Estrés: alto / medio / bajo (o las flechas de la hoja)
+        var w = importNorm(val), n = /^alt|↗/.test(w) || /↗/.test(val) ? 3 : (/^med|⇒/.test(w) || /⇒/.test(val) ? 2 : (/^baj|↘/.test(w) || /↘/.test(val) ? 1 : 0));
+        if (!n) return false; out[f] = n; return true;
+      }
+      if (/^agua/.test(key)) return one('m_agua');
+      if (/^(descanso|sueno)/.test(key)) return one('m_descanso');
+      if (/^neat/.test(key)) return nivel('m_neat');
+      if (/^estres/.test(key)) return nivel('m_estres');
       return false;
     }
     // Guarda las medidas importadas como una medición con fecha (en el historial) y las deja en el formulario
@@ -3945,7 +3957,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     // Líneas de medidas ("Peso: 78.5 kg", "Cintura 1: 84 cm"...) de una medición
-    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I', m_pecho: 'Pecho', m_brazo_der: 'Brazo D', m_brazo_izq: 'Brazo I' };
+    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I', m_pecho: 'Pecho', m_brazo_der: 'Brazo D', m_brazo_izq: 'Brazo I', m_agua: 'Agua', m_descanso: 'Descanso', m_neat: 'Neat', m_estres: 'Estres' };
     function expMeasureLines(L, vals) {
       MEASURE_FIELDS.forEach(function(f) { if (vals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(vals[f.k], f.unit)); });
     }
@@ -4958,8 +4970,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (isCoachView() && state.next && !pendDue(state)) capsuleHtml += capCard('#ffb703', '⏳', 'Rutina en espera', 'Inicia el ' + fechaLargaEs(state.next.startDate) + ' · solo lo ve el coach', 'pendCoachMenu()');
       if (isCoachView()) capsuleHtml += capCard('#b388ff', '⚙️', 'Qué usa: ' + (usoCli === 'c' ? 'Clases' : (usoCli === 'rc' ? 'Rutina y clases' : 'Rutina')), 'Solo lo ve el coach', 'coachUsoOpen()');
       if (isCoachView()) capsuleHtml += capCard('#ffb703', '📊', 'Resumen del cliente', 'Solo lo ve el coach', 'openCoachSummary()');
-      if (ASIST_CUR && !isCoachView()) capsuleHtml += capCard('#06d6a0', '📊', 'Tu ' + ATT_MESES[+ASIST_CUR[0].slice(5, 7) - 1], 'Cuánto viniste al gym', 'asistShow(true)');
-      capsuleHtml += capCard('#8d99ae', '📏', 'Datos y asistencia', isCoachView() ? 'Medidas, asistencia y contacto' : 'Tus medidas, asistencia y contacto', 'openDatosTab()');
+      capsuleHtml += capCard('#8d99ae', '📏', 'Datos y asistencia', isCoachView() ? 'Medidas, asistencia y contacto' : 'Cómo va tu mes, medidas y asistencia', 'openDatosTab()');
       document.getElementById('ath_capsuleGroup').innerHTML = capsuleHtml;
       wkSuggestPaint();
       if (usoCli === 'c' && !isCoachView()) setTimeout(function() { openClasesTab(true); }, 400);   // solo clases: entra directo a la portada de clases
@@ -5073,7 +5084,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (item.type === 'circuito') {
             var cInfo = item.circ || {};
             var cStations = subList.map(function(s2) { return s2.name || ''; });
-            subsDetails = circuitHeaderHtml(item.circ) + '@@RUN@@' + subsDetails;
+            subsDetails = circuitHeaderHtml(item.circ) + subsDetails + '@@RUN@@';   // el temporizador va siempre al final del bloque (igual que en series, biseries y triseries)
             if (isTimeText(cInfo.trabajo)) {
               athCircuits.push({ dia: d.title || '', nombre: cInfo.nombre || '', rondas: cInfo.rondas || '', trabajo: cInfo.trabajo || '', descanso: cInfo.descanso || '', stations: cStations, videos: subVideos, keys: subKeys, unis: subUnis, hiit: isHiit, lblT: cInfo.etqT || '', lblD: cInfo.etqD || '', rpeT: cInfo.rpeT || '', rpeD: cInfo.rpeD || '', ajuste: cInfo.ajuste || '' });
               // el circuito por tiempo también lleva la cuenta de rondas (para "1 ronda más" y el campo Series). En HIIT el descanso lo fija el coach (sin botones 30/60/90)
@@ -5589,8 +5600,33 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var body = '<div class="set-rows' + (usesW ? '' : ' no-w') + '" id="sets_' + key + '" data-key="' + key + '" data-timed="' + (timed ? 1 : 0) + '" data-base="' + n + '">' + head +
         '<div class="set-rows-list">' + rows + '</div>' +
         '<button type="button" class="btn-add-set" onclick="addSetRow(\'' + key + '\')">＋ Serie</button></div>';
-      // Siempre plegado: el resumen de lo anotado queda a la vista y se despliega solo al tocarlo
-      return '<details class="set-box" id="setbox_' + key + '"><summary><span class="set-lbl">📝 ' + 'Marcas anteriores' + '</span><span class="set-sum empty" id="ssum_' + key + '">Toca para anotar</span></summary>' + body + '</details>';
+      // Un botoncito: las marcas se abren en una ventana flotante para que la rutina ocupe menos espacio
+      return '<div class="set-box set-mini" id="setbox_' + key + '"><button type="button" class="set-open-btn" id="sobtn_' + key + '" onclick="setFloatOpen(\'' + key + '\')">📝 Marcas anteriores<i class="set-dot"></i></button>' +
+        '<span class="set-sum empty" id="ssum_' + key + '" style="display:none;">Toca para anotar</span><div class="set-home" id="sethome_' + key + '" style="display:none;">' + body + '</div></div>';
+    }
+    var SETFLOAT = '';
+    function setFloatOpen(key) {
+      var node = document.getElementById('sets_' + key); if (!node) return;
+      if (SETFLOAT) setFloatClose();
+      var name = '', box = document.getElementById('setbox_' + key), card = box && box.closest('.exercise-item-box');
+      var nm = card && card.querySelector('.ex-name'); name = nm ? nm.innerText.replace(/^[A-C1-9]\s/, '').trim() : '';
+      var o = document.createElement('div'); o.id = 'set_float';
+      o.style.cssText = 'position:fixed; inset:0; z-index:100020; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:14px;';
+      o.innerHTML = '<div style="background:#181818; border:1.5px solid var(--primary); border-radius:16px; width:100%; max-width:420px; max-height:86vh; display:flex; flex-direction:column; overflow:hidden;">' +
+        '<div style="padding:12px 14px; font-weight:900; color:var(--primary); font-size:.95rem;">📝 Marcas anteriores' + (name ? '<div style="font-size:.8rem; color:#fff; font-weight:700; margin-top:2px;">' + escHtml(name) + '</div>' : '') + '</div>' +
+        '<div id="set_float_body" style="padding:0 14px 8px; overflow:auto;"></div>' +
+        '<div style="padding:10px 14px 14px;"><button type="button" class="btn-action-primary" onclick="setFloatClose()">Listo</button></div></div>';
+      o.addEventListener('click', function(e) { if (e.target === o) setFloatClose(); });
+      document.body.appendChild(o);
+      document.getElementById('set_float_body').appendChild(node);
+      SETFLOAT = key;
+    }
+    function setFloatClose() {
+      var key = SETFLOAT; SETFLOAT = '';
+      var node = key ? document.getElementById('sets_' + key) : null, home = key ? document.getElementById('sethome_' + key) : null;
+      if (node && home) home.appendChild(node);
+      var o = document.getElementById('set_float'); if (o) o.remove();
+      if (key) { try { refreshSetSummary(key); } catch (e) {} try { saveTracker(); } catch (e2) {} }
     }
     // Resumen de una línea de lo anotado (o precargado en gris) para mostrarlo con el registro plegado
     function refreshSetSummary(key) {
@@ -5605,6 +5641,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (rv && timed && /^\d+$/.test(rv)) rv += ' s';
         parts.push('S' + (i + 1) + ' ' + (wv && rv ? wv + '×' + rv : (wv || rv)));
       });
+      var sb = document.getElementById('sobtn_' + key); if (sb) { sb.classList.toggle('has', parts.length > 0); sb.classList.toggle('real', real > 0); }
       if (!parts.length) { el.textContent = 'Toca para anotar'; el.className = 'set-sum empty'; }
       else if (!real) { el.textContent = 'Anterior: ' + parts.join(' · '); el.className = 'set-sum pre'; }
       else { el.textContent = parts.join(' · '); el.className = 'set-sum'; }
@@ -6409,7 +6446,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var chartKeys = pKeys.filter(function(f) { return medSeries(pEntries, f.k).length >= 2; }).slice(0, 6);
         if (!chartKeys.length) chartKeys = pKeys.slice(0, 1);
         var pCharts = chartKeys.map(function(f) {
-          var svg = medChartSvg(medSeries(pEntries, f.k)).replace(/#333333/g, '#dddddd').replace(/#a3a3a3/g, '#555555').replace(/#ffffff/g, '#111111').replace(/#0d0d0d/g, '#ffffff').replace(/#00e5ff/g, '#ff6d00');
+          var svg = medChartSvg(medSeries(pEntries, f.k), f.unit).replace(/#2b6f7a/g, '#ffb98a').replace(/#333333/g, '#dddddd').replace(/#a3a3a3/g, '#555555').replace(/#ffffff/g, '#111111').replace(/#0d0d0d/g, '#ffffff').replace(/#00e5ff/g, '#ff6d00');
           return '<div class="med-cell"><div class="med-cell-title">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</div>' + svg + '</div>';
         }).join('');
         medPrintHtml = '<div class="med-print"><h3 style="margin-bottom:4px; font-size:13px; text-transform:uppercase; color:#000; border-bottom:1px solid #000;">Medidas y evolución</h3><table><thead>' + pHead + '</thead><tbody>' + pRows + '</tbody></table><div class="med-grid">' + pCharts + '</div></div>';
@@ -6680,7 +6717,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" class="btn-timer sr-btn" id="sr_btn_' + id + '" onclick="srTap(' + id + ')">▶ Iniciar ' + label.toLowerCase() + '</button>' +
           '<div id="sr_end_' + id + '" style="display:none; gap:8px; margin:6px 0 4px;"><button type="button" class="tm-btn" onclick="srMore(' + id + ')">➕ 1 ' + label.toLowerCase() + ' más</button><button type="button" class="tm-btn" onclick="srFinish(' + id + ')">✔ Terminar ya</button></div>';
       }
-      if (!fixedRest && !noPicker) {
+      if (!fixedRest && !noPicker && !isTimed) {   // en circuitos el descanso se ajusta dentro del temporizador (−15 / +15)
         html += '<div class="rest-row"><span>⏱ Descanso entre ' + (label === 'Ronda' ? 'rondas' : 'series') + '</span>' +
           restOptions(coachRest).map(function(sec) { return '<button type="button" class="rest-btn' + (sec === startRest ? ' sel' : '') + '" data-sr="' + id + '" onclick="srSetRest(' + id + ',' + sec + ')">' + sec + ' s</button>'; }).join('') +
           '</div>';
@@ -10380,7 +10417,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (demoWait) el.classList.add('gd-demo-wait');
         var names = [].map.call(el.querySelectorAll('.exercise-item-box:not(.alt-off) .ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
         var gst = gdStore(dayId), nDone = gst.n[b.key] || 0, stK = gst.s[b.key] || 0, rr = SR[b.srId];
-        var pill = inProc ? '🔥 EN PROCESO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
+        var pill = isHere ? '📍 EN CURSO' : (inProc && s !== 'pend') ? '👇 INICIA CON EL BOTÓN DE ABAJO' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
         var head = document.createElement('div'); head.className = 'gd-head';
         head.innerHTML = (pill ? '<span class="gd-pill">' + pill + '</span>' : '') + '<span class="gd-names">' + escHtml(names) + '</span>' + ((s === 'pend' && !isHere) ? '<button type="button" class="gd-ok">✅ Completado</button>' : '') + (isHere ? '' : '<span class="gd-chev">' + (collapsed ? '▼' : '▲') + '</span>');
         var okBtn = head.querySelector('.gd-ok');   // bloque pendiente que en realidad ya hizo: lo marca completado (con ventanita de cargas si las hay)
@@ -12525,7 +12562,30 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         (coach && weeks.some(function(x) { return x.partial; }) ? '<div style="font-size:0.7rem; color:var(--muted); margin-top:3px;">La última barra (punteada) es la semana en curso.</div>' : '') + '</div>';
       el.innerHTML = h;
     }
+    // «Cómo va tu mes»: visitas del mes en curso (gym + entrenos y clases hechos en la app) frente a lo programado
+    function monthNowPaint() {
+      var el = document.getElementById('ath_month_box'); if (!el) return;
+      var st = athleteActiveState; if (!st || isCoachView() && false) { el.innerHTML = ''; return; }
+      var goal = (st.routineDays || []).filter(function(d) { return !d.rest; }).length, today = todayIso(), ym = today.slice(0, 7);
+      var mes = ATT_MESES[+ym.slice(5, 7) - 1], nDays = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), dNow = +today.slice(8, 10);
+      var set = {};
+      try { loadWorkouts().forEach(function(w) { var d = sessDateIso(w); if (d && d.slice(0, 7) === ym && d <= today) set[d] = 1; }); } catch (e) {}
+      try { loadSessions().forEach(function(x) { if (x && x.k === 'gym' && Array.isArray(x.gd)) x.gd.forEach(function(d) { if (String(d).slice(0, 7) === ym && d <= today) set[d] = 1; }); }); } catch (e) {}
+      var v = Object.keys(set).length, card = 'background:#101010; border:1px solid #2c2c2c; border-radius:12px; padding:12px; margin-top:6px;';
+      var h = '<div style="' + card + '"><div style="font-weight:900; color:var(--primary); margin-bottom:6px;">📊 Cómo va tu ' + escHtml(mes) + '</div>';
+      if (!goal) { h += '<div style="font-size:0.8rem; color:var(--muted);">Tu rutina no tiene días de entrenamiento.</div>'; }
+      else {
+        var total = Math.max(1, Math.round(goal * nDays / 7)), toDate = Math.max(1, Math.round(goal * dNow / 7)), pct = Math.min(100, Math.round(v / total * 100)), mark = Math.min(100, Math.round(toDate / total * 100));
+        var ok = v >= toDate, col = ok ? '#06d6a0' : (v >= toDate * 0.6 ? '#ffd166' : '#ff9f1c');
+        h += '<div style="display:flex; align-items:baseline; gap:8px;"><span style="font-size:2rem; font-weight:900; color:' + col + '; line-height:1;">' + v + '</span><span style="font-size:0.85rem; color:var(--muted);">de ' + total + ' entrenamientos del mes</span></div>' +
+          '<div style="position:relative; height:12px; background:#222; border-radius:8px; margin:10px 0 6px; overflow:hidden;"><div style="height:100%; width:' + pct + '%; background:' + col + '; border-radius:8px;"></div><div style="position:absolute; top:0; bottom:0; left:' + mark + '%; width:2px; background:#fff; opacity:.8;"></div></div>' +
+          '<div style="font-size:0.78rem; color:var(--muted);">La raya blanca marca dónde deberías ir hoy (' + toDate + '). ' + (ok ? '¡Vas al día! 💪' : 'Te faltan ' + (toDate - v) + ' para ir al día: ¡todavía llegas!') + '</div>';
+      }
+      if (ASIST_CUR && !isCoachView()) h += '<button type="button" class="btn-action-primary" style="margin-top:10px; padding:9px;" onclick="asistShow(true)">Ver el resumen de ' + escHtml(ATT_MESES[+ASIST_CUR[0].slice(5, 7) - 1]) + '</button>';
+      el.innerHTML = h + '</div>';
+    }
     function openDatosTab() {
+      try { monthNowPaint(); } catch (e) {}
       try { asistBoxPaint(); } catch (e) {}
       try { contactBoxPaint(); } catch (e) {}
       openModal('ath_modal_medidas');
@@ -12542,6 +12602,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     function asistCapsule() {
+      return;   // «Tu mes» ya no es una tarjeta aparte: vive dentro de «Datos y asistencia»
       var g = document.getElementById('ath_capsuleGroup'); if (!g || !ASIST_CUR || document.getElementById('asist_capsule')) return;
       var mes = ATT_MESES[+ASIST_CUR[0].slice(5, 7) - 1], b = document.createElement('button');
       b.id = 'asist_capsule'; b.type = 'button'; b.className = 'capsule-btn cap-card'; b.style.setProperty('--c', '#06d6a0');
@@ -13930,13 +13991,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openRestDays"]', t: 'Días de descanso', x: 'Una sola tarjeta para todos tus descansos: ahí encuentras tu nutrición y recomendaciones de recuperación. Si hoy toca descanso, te lo avisa.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openClasesTab"]', t: 'Clases', x: 'La clase de hoy, las anteriores y los retos, con cronómetro guiado. Al terminar una clase, queda anotada en tu mes con sus calorías estimadas.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openHistorialModal"]', t: 'Historial de Cargas', x: 'Los pesos y marcas de tus entrenos anteriores, para que sepas cuánto levantaste la última vez y puedas superarlo.' },
-      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="asistShow"]', t: 'Tu mes', x: 'Cuántas veces viniste al gym el mes pasado frente a lo programado. Cada lunes también verás cómo te fue en la semana anterior.' },
-      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openDatosTab"]', t: 'Datos y asistencia', x: 'Tus medidas, tu gráfico de asistencia y tus datos de contacto (teléfono y cumpleaños) para que tu coach te escriba y te felicite.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openDatosTab"]', t: 'Datos y asistencia', x: 'Cómo va tu mes (cuántos entrenamientos llevas frente a los programados), tus medidas con barras para comparar con las anteriores, tu asistencia por semana y tus datos de contacto. Aquí también puedes ver el resumen del mes pasado.' },
       { sel: '#ath_upd_btn', t: 'Actualizar', x: 'Si tu coach cambió algo y no lo ves, toca aquí para traer lo más nuevo.' },
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
-      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Al abrir un día, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
-      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio anota el peso y las repeticiones de cada serie. La app guarda tus marcas para el próximo entreno.' },
+      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo y dice «👇 Inicia con el botón de abajo»: el que lo arranca es el botón «⏱ Iniciar temporizador», no la franja de arriba. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
+      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
       { t: 'Circuitos con temporizador', x: 'En los circuitos, el temporizador te guía con sonido, vibración y voz: avisa cuando faltan 20 y 10 segundos del trabajo, y 20 segundos para iniciar tras el descanso.' },
