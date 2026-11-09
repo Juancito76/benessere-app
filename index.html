@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2619,7 +2619,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (!j || !j.ok || !j.p) { fails++; return; }
           var st = null; try { st = decodePayload('q', j.p); } catch (e) {}
           if (!st) { fails++; return; }
-          var c = linkCollect(st); per.push({ name: r.name, miss: c.miss, vids: c.vids, bad: [] });
+          var c = linkCollect(st); per.push({ id: r.id, name: r.name, miss: c.miss, vids: c.vids, bad: [] });
           c.vids.forEach(function(x) { var id = ytIdStrict(x.v); if (id) ids[id] = 'wait'; });
         }).catch(function() { fails++; }).then(function() { done++; say('Leyendo rutinas: ' + done + ' de ' + rows.length); });
       }
@@ -2651,6 +2651,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         linkScanShow(rows.length, fails, per, doubt);
       });
     }
+    function linkGoEdit(id) {   // desde la revisión de links: abre la rutina del cliente en el constructor para cambiar los videos
+      try { pendCloseOverlay('lnk_scan'); } catch (e) {}
+      editClientRoutine(id);
+      showToastTop('✏️ Abriendo la rutina… busca el ejercicio en su día y cambia el video con ✏️ Editar ejercicio.');
+    }
     function linkScanShow(total, fails, per, doubt) {
       var h = '<div class="pend-ttl">🔗 Revisión de links</div><div class="pend-txt">' + total + ' clientes revisados' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + (doubt ? ' · ' + doubt + ' videos no se pudieron probar por conexión' : '') + '. Revisar no cambia nada.</div>';
       if (!per.length) h += '<div class="pend-txt">✅ Todo en orden: no falta ningún video y todos funcionan.</div>';
@@ -2660,7 +2665,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           h += '<div style="border-top:1px solid #333;padding:8px 0;font-size:.78rem;"><b>' + escHtml(p.name) + '</b>';
           if (p.miss.length) h += '<br><span style="color:#ffd166;">Faltan (' + p.miss.length + '):</span><br>' + p.miss.map(function(n) { return '• ' + escHtml(n); }).join('<br>');
           if (p.bad.length) h += '<br><span style="color:#ff6b6b;">No funcionan (' + p.bad.length + '):</span><br>' + p.bad.map(function(n) { return '• ' + escHtml(n); }).join('<br>');
-          h += '</div>';
+          h += '<br><button type="button" class="pend-btn pend-ok" style="margin-top:6px;" onclick="linkGoEdit(\'' + escHtml(p.id) + '\')">✏️ Abrir su rutina para corregir</button></div>';
         });
         h += '</div>';
       }
