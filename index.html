@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-09-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-09-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2868,6 +2868,29 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       return out;
     }
+    // Videos que ya están puestos pero la app no podrá mostrar (privados, borrados o sin incrustación), según las comprobaciones en segundo plano
+    function brokenVideos() {
+      var out = [];
+      try {
+        routineDays.forEach(function(d, di) {
+          if (d.rest) return;
+          (d.items || []).forEach(function(it, ii) {
+            (it.sub || []).forEach(function(sb, k) {
+              if (!sb) return;
+              [['video', sb.video, sb.name, false], ['altVideo', sb.altVideo, sb.alt, true]].forEach(function(f) {
+                var id = ytIdStrict(String(f[1] || '').trim()); if (!id) return;
+                var st = (typeof VID_CHK !== 'undefined') ? VID_CHK[id] : '';
+                if (st !== 'noembed' && st !== 'missing') return;
+                var pos = it.type === 'normal' ? '' : (it.type === 'circuito' ? ' · estación ' + (k + 1) : ' · ejercicio ' + 'ABC'.charAt(k));
+                out.push({ di: di, ii: ii, k: k, alt: f[3], broken: true, label: '❌ ' + (st === 'missing' ? 'no existe o es privado' : 'no permite incrustar') + ' — ' + (d.title || ('Día ' + (di + 1))) + ' · posición ' + slotNumOf(d.items, ii) + pos + ' — ' + (f[3] ? '🔁 alternativa: ' : '') + (f[2] || '') });
+              });
+            });
+          });
+        });
+      } catch (e) {}
+      return out;
+    }
+    function videoIssues() { return missingVideos().concat(brokenVideos()); }
     // ---- Botón flotante «🎥 Falta video»: lleva de uno en uno a los espacios de video vacíos (para armar rápido) ----
     var VNEXT_I = 0;
     function vidNextFabSync() {
@@ -2875,7 +2898,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try {
         var demos = document.getElementById('featureDemos'), tb = document.getElementById('tab_builder');
         var on = !!(demos && demos.checked && tb && tb.classList.contains('active') && !PRUEBA.on && typeof routineDays !== 'undefined');
-        var n = on ? missingVideos().length : 0;
+        var n = on ? videoIssues().length : 0;
         if (!n) { if (fab) fab.style.display = 'none'; VNEXT_I = 0; return; }
         if (!fab) {
           fab = document.createElement('button'); fab.type = 'button'; fab.id = 'vid_next_fab';
@@ -2883,11 +2906,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           fab.onclick = vidNextGo; document.body.appendChild(fab);
         }
         fab.style.display = '';
-        fab.innerText = '🎥 Falta video (' + n + ') ▶';
+        fab.innerText = (brokenVideos().length ? '🎥 Videos por arreglar (' : '🎥 Falta video (') + n + ') ▶';
       } catch (e) { if (fab) fab.style.display = 'none'; }
     }
     function vidNextGo() {
-      var miss = missingVideos(); if (!miss.length) { vidNextFabSync(); return; }
+      var miss = videoIssues(); if (!miss.length) { vidNextFabSync(); return; }
       clearVideoMissingMarks();
       for (var t = 0; t < miss.length; t++) {
         var m = miss[(VNEXT_I + t) % miss.length];
