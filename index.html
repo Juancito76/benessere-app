@@ -2630,9 +2630,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       return out;
     }
-    function linkScanClients() {
+    // La última lista se guarda en este dispositivo: «🔗 Links» la vuelve a mostrar y «🔄 Revisar de nuevo» hace un escaneo nuevo
+    var LNK_KEY = 'benessere_lnk_last';
+    function linkSaveLast() {
+      try { var L = LNKSCAN.last; if (!L) return; L.at = L.at || Date.now();
+        localStorage.setItem(LNK_KEY, JSON.stringify({ total: L.total, fails: L.fails, doubt: L.doubt, at: L.at, per: L.per.map(function(p) { return { id: p.id, name: p.name, miss: p.miss, bad: p.bad, vids: p.vids }; }) })); } catch (e) {}
+    }
+    function linkLoadLast() {
+      if (LNKSCAN.last) return LNKSCAN.last;
+      try { var o = JSON.parse(localStorage.getItem(LNK_KEY) || 'null'); if (o && Array.isArray(o.per)) { o.ids = {}; LNKSCAN.last = o; } } catch (e) {}
+      return LNKSCAN.last;
+    }
+    function linkAgoTxt(at) {
+      var m = Math.max(0, Math.round((Date.now() - (at || 0)) / 60000));
+      return m < 1 ? 'hace un momento' : m < 60 ? 'hace ' + m + ' min' : m < 1440 ? 'hace ' + Math.round(m / 60) + ' h' : 'hace ' + Math.round(m / 1440) + ' día(s)';
+    }
+    function linkScanClients(force) {
       if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
       if (LNKSCAN.busy) return;
+      if (force !== true) { var Lp = linkLoadLast(); if (Lp) { linkScanShow(Lp.total, Lp.fails, Lp.per, Lp.doubt); return; } }
       var rows = attClients();
       if (!rows.length) { showToastTop('No hay clientes con rutina reciente.'); return; }
       LNKSCAN.busy = true;
@@ -2665,7 +2681,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var doubt = 0;
         per.forEach(function(p) { doubt += linkBadFor(p, ids); });
         per = per.filter(function(p) { return p.miss.length || p.bad.length; }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name)); });
-        LNKSCAN.last = { total: rows.length, fails: fails, per: per, doubt: doubt, ids: ids };
+        LNKSCAN.last = { total: rows.length, fails: fails, per: per, doubt: doubt, ids: ids, at: Date.now() };
+        linkSaveLast();
         linkScanShow(rows.length, fails, per, doubt);
       });
     }
@@ -2698,7 +2715,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         L.per = L.per.filter(function(x) { return x.id !== id; });
         if (p.miss.length || p.bad.length) { L.per.push(p); L.per.sort(function(a, b) { return String(a.name).localeCompare(String(b.name)); }); }
         else showToastTop('✅ ' + (nm || 'El cliente') + ' quedó en orden.');
-        linkScanShow(L.total, L.fails, L.per, L.doubt);
+        linkSaveLast(); linkScanShow(L.total, L.fails, L.per, L.doubt);
       }).catch(function() { showToastTop('No pude leer la rutina de ' + (nm || 'ese cliente') + '. Aquí está la lista de antes.'); linkScanShow(L.total, L.fails, L.per, L.doubt); });
     }
     function linkGoEdit(id) {   // desde la revisión de links: abre la rutina del cliente en el constructor para cambiar los videos
@@ -2708,7 +2725,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       showToastTop('✏️ Abriendo la rutina… busca el ejercicio en su día y cambia el video con ✏️ Editar ejercicio.');
     }
     function linkScanShow(total, fails, per, doubt) {
-      var h = '<div class="pend-ttl">🔗 Revisión de links</div><div class="pend-txt">' + total + ' clientes revisados' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + (doubt ? ' · ' + doubt + ' videos no se pudieron probar por conexión' : '') + '. Revisar no cambia nada.</div>';
+      var h = '<div class="pend-ttl">🔗 Revisión de links</div><div class="pend-txt">' + total + ' clientes revisados' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + (doubt ? ' · ' + doubt + ' videos no se pudieron probar por conexión' : '') + '. Revisar no cambia nada.' + ((LNKSCAN.last && LNKSCAN.last.at) ? ' <span style="color:#8d99ae;">Revisión de ' + linkAgoTxt(LNKSCAN.last.at) + '.</span>' : '') + '</div>' +
+        '<button type="button" class="pend-btn pend-go" onclick="pendCloseOverlay(\'lnk_scan\'); linkScanClients(true)">🔄 Revisar de nuevo</button>';
       if (!per.length) h += '<div class="pend-txt">✅ Todo en orden: no falta ningún video y todos funcionan.</div>';
       else {
         h += '<div style="text-align:left;max-height:55vh;overflow:auto;">';
