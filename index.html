@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-09-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-09-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2625,19 +2625,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- 🔗 Revisor de links: recorre las rutinas de los clientes, anota los videos que FALTAN y prueba los que existen (no cambia nada) -----
     var LNKSCAN = { busy: false, last: null, from: '' };
     function linkCollect(st) {   // ejercicios de una rutina (actual y en espera) con video faltante o por probar
-      var out = { miss: [], vids: [] };
+      var out = { miss: [], missLoc: [], vids: [] };
       [st, st && st.next].forEach(function(t, ti) {
         if (!t || !t.routineDays) return;
         t.routineDays.forEach(function(d, di) {
           if (d.rest) return;
           var dn = (d.title || d.name || ('Día ' + (di + 1))) + (ti ? ' (en espera)' : '');
-          (d.items || []).forEach(function(it) {
-            (it.sub || []).forEach(function(sb) {
+          (d.items || []).forEach(function(it, ii) {
+            (it.sub || []).forEach(function(sb, ki) {
               if (!sb) return;
-              var nm = String(sb.name || '').trim(), v = String(sb.video || '').trim();
-              if (nm) { if (!v) out.miss.push(nm + ' — ' + dn); else out.vids.push({ nm: nm, v: v, dn: dn }); }
-              var an = String(sb.alt || '').trim(), av = String(sb.altVideo || '').trim();
-              if (an) { if (!av) out.miss.push('🔁 ' + an + ' (alternativa) — ' + dn); else out.vids.push({ nm: '🔁 ' + an, v: av, dn: dn }); }
+              var nm = String(sb.name || '').trim(), v = String(sb.video || '').trim(), L0 = { di: di, ii: ii, k: ki, ti: ti };
+              if (nm) { if (!v) { out.miss.push(nm + ' — ' + dn); out.missLoc.push(L0); } else out.vids.push({ nm: nm, v: v, dn: dn, loc: L0 }); }
+              var an = String(sb.alt || '').trim(), av = String(sb.altVideo || '').trim(), L1 = { di: di, ii: ii, k: ki, ti: ti, alt: 1 };
+              if (an) { if (!av) { out.miss.push('🔁 ' + an + ' (alternativa) — ' + dn); out.missLoc.push(L1); } else out.vids.push({ nm: '🔁 ' + an, v: av, dn: dn, loc: L1 }); }
             });
           });
         });
@@ -2648,7 +2648,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var LNK_KEY = 'benessere_lnk_last';
     function linkSaveLast() {
       try { var L = LNKSCAN.last; if (!L) return; L.at = L.at || Date.now();
-        localStorage.setItem(LNK_KEY, JSON.stringify({ total: L.total, fails: L.fails, doubt: L.doubt, at: L.at, per: L.per.map(function(p) { return { id: p.id, name: p.name, miss: p.miss, bad: p.bad, vids: p.vids }; }) })); } catch (e) {}
+        localStorage.setItem(LNK_KEY, JSON.stringify({ total: L.total, fails: L.fails, doubt: L.doubt, at: L.at, per: L.per.map(function(p) { return { id: p.id, name: p.name, miss: p.miss, missLoc: p.missLoc, bad: p.bad, badLoc: p.badLoc, vids: p.vids }; }) })); } catch (e) {}
     }
     function linkLoadLast() {
       if (LNKSCAN.last) return LNKSCAN.last;
@@ -2675,7 +2675,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (!j || !j.ok || !j.p) { fails++; return; }
           var st = null; try { st = decodePayload('q', j.p); } catch (e) {}
           if (!st) { fails++; return; }
-          var c = linkCollect(st); per.push({ id: r.id, name: r.name, miss: c.miss, vids: c.vids, bad: [] });
+          var c = linkCollect(st); per.push({ id: r.id, name: r.name, miss: c.miss, missLoc: c.missLoc, vids: c.vids, bad: [], badLoc: [] });
           c.vids.forEach(function(x) { var id = ytIdStrict(x.v); if (id) ids[id] = 'wait'; });
         }).catch(function() { fails++; }).then(function() { done++; say('Leyendo rutinas: ' + done + ' de ' + rows.length); });
       }
@@ -2702,13 +2702,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Marca en p.bad los videos que no funcionan según el estado ya probado (ids); devuelve cuántos no se pudieron probar por conexión
     function linkBadFor(p, ids) {
-      var seen = {}, doubt = 0; p.bad = [];
+      var seen = {}, doubt = 0; p.bad = []; p.badLoc = [];
       p.vids.forEach(function(x) {
         var id = ytIdStrict(x.v), st2 = id ? ids[id] : 'invalid';
         if (st2 === 'ok') return;
         if (st2 === 'timeout' || st2 === 'error') { doubt++; return; }
         var key = x.nm + '|' + x.dn; if (seen[key]) return; seen[key] = 1;
-        p.bad.push(x.nm + ' — ' + x.dn + ': ' + (st2 === 'invalid' ? 'link no válido' : st2 === 'noembed' ? 'no permite incrustar' : 'privado, borrado o no existe'));
+        p.bad.push(x.nm + ' — ' + x.dn + ': ' + (st2 === 'invalid' ? 'link no válido' : st2 === 'noembed' ? 'no permite incrustar' : 'privado, borrado o no existe')); p.badLoc.push(x.loc || null);
       });
       return doubt;
     }
@@ -2720,7 +2720,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       pendOverlay('lnk_scan', '<div class="pend-ttl">🔗 Revisando a ' + escHtml(nm || 'este cliente') + ' otra vez…</div><div class="pend-txt">Un momento.</div>');
       fetchRoutine(id).then(function(j) {
         var st = (j && j.ok && j.p) ? decodePayload('q', j.p) : null; if (!st) throw new Error('lectura');
-        var c = linkCollect(st), p = { id: id, name: nm, miss: c.miss, vids: c.vids, bad: [] }, todo = [];
+        var c = linkCollect(st), p = { id: id, name: nm, miss: c.miss, missLoc: c.missLoc, vids: c.vids, bad: [], badLoc: [] }, todo = [];
         c.vids.forEach(function(x) { var v = ytIdStrict(x.v); if (v && !L.ids[v]) { L.ids[v] = 'wait'; todo.push(v); } else if (v && L.ids[v] === 'wait') todo.push(v); });
         var k = 0;
         function w() { if (k >= todo.length) return Promise.resolve(); var v = todo[k++]; return vidCheckOne(v).then(function(r) { L.ids[v] = r; }).then(w); }
@@ -2732,11 +2732,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         linkSaveLast(); linkScanShow(L.total, L.fails, L.per, L.doubt);
       }).catch(function() { showToastTop('No pude leer la rutina de ' + (nm || 'ese cliente') + '. Aquí está la lista de antes.'); linkScanShow(L.total, L.fails, L.per, L.doubt); });
     }
-    function linkGoEdit(id) {   // desde la revisión de links: abre la rutina del cliente en el constructor para cambiar los videos
+    var LNK_FOCUS = null;
+    function linkFocusApply() {   // abre el día y deja el cursor en el campo del video que marcó la revisión
+      var f = LNK_FOCUS; LNK_FOCUS = null; if (!f) return;
+      try {
+        var d = routineDays[f.di]; if (!d) return;
+        DAYS_OPEN.set(d, true); renderDays();
+        var el = document.querySelector('input[oninput^="routineDays[' + f.di + '].items[' + f.ii + '].sub[' + f.k + '].' + (f.alt ? 'altVideo' : 'video') + '"]');
+        if (!el) { showToastTop('No encontré ese video en la rutina; búscalo en ' + (d.title || 'su día') + '.'); return; }
+        clearVideoMissingMarks(); el.classList.add('video-missing');
+        setTimeout(function() { try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } catch (e) {} }, 150);
+        showToastTop('🎥 ' + (d.title || 'Día') + ': cambia el video aquí', 3500);
+      } catch (e) {}
+    }
+    function linkGoEdit(id, kind, idx) {
+      LNK_FOCUS = null;
+      try { var L = LNKSCAN.last; if (L && kind) L.per.forEach(function(p) { if (p.id === id) { var a = p[kind === 'm' ? 'missLoc' : 'badLoc']; if (a && a[idx]) LNK_FOCUS = a[idx]; } }); } catch (e) {}   // desde la revisión de links: abre la rutina del cliente en el constructor para cambiar los videos
       try { pendCloseOverlay('lnk_scan'); } catch (e) {}
       LNKSCAN.from = id;
       editClientRoutine(id);
-      showToastTop('✏️ Abriendo la rutina… busca el ejercicio en su día y cambia el video con ✏️ Editar ejercicio.');
+      showToastTop(LNK_FOCUS ? '✏️ Abriendo la rutina…' : '✏️ Abriendo la rutina… busca el ejercicio en su día y cambia el video con ✏️ Editar ejercicio.');
     }
     function linkScanShow(total, fails, per, doubt) {
       var h = '<div class="pend-ttl">🔗 Revisión de links</div><div class="pend-txt">' + total + ' clientes revisados' + (fails ? ' (' + fails + ' no se pudieron leer)' : '') + (doubt ? ' · ' + doubt + ' videos no se pudieron probar por conexión' : '') + '. Revisar no cambia nada.' + ((LNKSCAN.last && LNKSCAN.last.at) ? ' <span style="color:#8d99ae;">Revisión de ' + linkAgoTxt(LNKSCAN.last.at) + '.</span>' : '') + '</div>' +
@@ -2746,8 +2761,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         h += '<div style="text-align:left;max-height:55vh;overflow:auto;">';
         per.forEach(function(p) {
           h += '<div style="border-top:1px solid #333;padding:8px 0;font-size:.78rem;"><b>' + escHtml(p.name) + '</b>';
-          if (p.miss.length) h += '<br><span style="color:#ffd166;">Faltan (' + p.miss.length + '):</span><br>' + p.miss.map(function(n) { return '• ' + escHtml(n); }).join('<br>');
-          if (p.bad.length) h += '<br><span style="color:#ff6b6b;">No funcionan (' + p.bad.length + '):</span><br>' + p.bad.map(function(n) { return '• ' + escHtml(n); }).join('<br>');
+          var lnkLine = function(n, kind, i) { var ok = p[kind === 'm' ? 'missLoc' : 'badLoc'] && p[kind === 'm' ? 'missLoc' : 'badLoc'][i];
+            return ok ? '<span style="display:block; padding:3px 0; cursor:pointer; text-decoration:underline; text-underline-offset:2px;" onclick="linkGoEdit(\'' + escHtml(p.id) + '\',\'' + kind + '\',' + i + ')">• ' + escHtml(n) + ' <b>→</b></span>' : '<span style="display:block; padding:3px 0;">• ' + escHtml(n) + '</span>'; };
+          if (p.miss.length) h += '<br><span style="color:#ffd166;">Faltan (' + p.miss.length + ') · toca para ir al video:</span>' + p.miss.map(function(n, i) { return lnkLine(n, 'm', i); }).join('');
+          if (p.bad.length) h += '<br><span style="color:#ff6b6b;">No funcionan (' + p.bad.length + ') · toca para ir al video:</span>' + p.bad.map(function(n, i) { return lnkLine(n, 'b', i); }).join('');
           h += '<br><button type="button" class="pend-btn pend-ok" style="margin-top:6px;" onclick="linkGoEdit(\'' + escHtml(p.id) + '\')">✏️ Abrir su rutina para corregir</button></div>';
         });
         h += '</div>';
@@ -12142,7 +12159,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             showToastTop('✏️ ' + (state.clientName || 'Cliente') + ' cargado' + (which === 'pend' ? ' (su rutina en espera)' : '') + '. Pega aquí el texto corregido, toca importar y luego «Actualizar rutina» (se guarda en su mismo enlace).');
           }
           window.scrollTo(0, 0);
+          if (LNK_FOCUS) setTimeout(linkFocusApply, 200);
         };
+        if (LNK_FOCUS) {   // viene de la revisión de links: abre directo la rutina donde está el video, sin preguntar
+          if (dueWait && !LNK_FOCUS.ti) LNK_FOCUS = null;   // la rutina que se revisó ya fue reemplazada por la nueva: no hay posición que seguir
+          go((LNK_FOCUS && LNK_FOCUS.ti && waiting) ? 'pend' : 'cur'); return;
+        }
         if (!waiting && dueWait) {   // la rutina en espera ya empezó: se puede editar (es la actual) o moverle la fecha para que vuelva a verse la anterior
           if (st) st.innerText = '';
           pendOverlay('pend_edit_pick', '<div class="pend-ttl">✏️ ' + escHtml(state.clientName || 'Este cliente') + '</div>' +
