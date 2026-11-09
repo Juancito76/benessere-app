@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -433,6 +433,11 @@
     .phase-badge { font-size: 0.68rem; font-weight: 800; color: var(--primary); background: #1b282c; border: 1px solid var(--primary); border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
     input.prefilled { color: var(--muted) !important; font-style: italic; }
     .pick-item { width: 100%; text-align: left; padding: 12px; margin-top: 8px; border-radius: 10px; border: 1px solid #333; background: #1c1c1c; color: #fff; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+    .ex-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+    .ex-head .ex-name { flex: 0 1 auto; }
+    .ex-head .ex-target { margin-top: 0; margin-left: auto; text-align: right; }
+    .ex-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 2px; }
+    .ex-actions .btn-yt-demo, .ex-actions .set-open-btn { margin-top: 0; }
     .ex-name { font-size: 0.95rem; font-weight: 800; color: #fff; }
     .ex-target { font-size: 0.85rem; color: var(--primary); margin-top: 2px; }
     .ex-notes { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
@@ -473,7 +478,7 @@
     /* ===== Registro por serie (etapa 1, 07/10/2026) ===== */
     .set-box { margin-top: 8px; background: #141414; border-radius: 8px; padding: 8px; }
     .set-box.set-mini { background: none; padding: 0; }
-    .set-open-btn { display: inline-flex; align-items: center; gap: 6px; background: #1b1b1b; border: 1px solid #444; color: #ddd; font-size: 0.74rem; font-weight: 800; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+    .set-open-btn { display: inline-flex; align-items: center; gap: 6px; background: #121212; border: 1px solid var(--primary); color: #fff; font-size: 0.75rem; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; }
     .set-open-btn .set-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; display: none; }
     .set-open-btn.has .set-dot { display: inline-block; background: #777; }
     .set-open-btn.real { border-color: #06d6a0; color: #9fe8c8; }
@@ -5032,9 +5037,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             if (!/^https?:\/\/[^\s"'<>]+$/i.test(yLink)) yLink = 'https://www.youtube.com';
 
             subVideos[subIdx] = (isDemos && vOwn && /^https?:\/\/[^\s"'<>]+$/i.test(vOwn)) ? vOwn : '';
-            var demoButtonHtml = isDemos ? (
-              '<div style="margin: 8px 0;"><a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a>' + (vOwn ? vrepMini(yLink, sub.name, d.id) : '') + '</div>'
-            ) : '';
+            var demoAnchor = isDemos ? '<a href="' + yLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a>' : '';
+            var demoReport = (isDemos && vOwn) ? vrepMini(yLink, sub.name, d.id) : '';
 
             var sUni = subIsUni(sub), sW = subUsesWeight(sub), cI = item.circ || {};
             var circTimed = item.type === 'circuito' && isTimeText(cI.trabajo);
@@ -5052,31 +5056,33 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             var altOn = hasAlt && altIsOn(fieldId), altKey = fieldId + 'a';
             var exNameHtml = (!isNormal ? '<span style="color:var(--accent);">' + letter + '</span> ' : '');
             var targetHtml = '<div class="ex-target">' + targetTxt + (sUni ? escHtml(uniNote(sub.reps || (circTimed ? cI.trabajo : ''))) + '<span class="uni-badge">↔ UNILATERAL</span>' : '') + '</div>';
-            function mkRows(key) {
-              return (isHiit ? '<div style="display:none;">' : '') + setRowsHtml(key, sSets, sW, sTimed, item.type === 'circuito') +
+            function mkRows(key, homeOnly) {
+              var sr = setRowsHtml(key, sSets, sW, sTimed, item.type === 'circuito', true);
+              if (!homeOnly) return sr.btn;
+              return (isHiit ? '<div style="display:none;">' : '') + '<div class="set-box set-mini" id="setbox_' + key + '">' + sr.home + '</div>' +
                 '<div class="prev-load-badge-row">' +
                   '<span class="prev-load-badge" id="prev_' + key + '">Marca Anterior: -</span>' +
                   '<button type="button" class="btn-load-prev" id="btn_restore_' + key + '" onclick="restoreSingleLoad(\'' + key + '\')" style="display:none;">⤴️ Montar</button>' +
                 '</div>' + (isHiit ? '</div>' : '');
             }
             var mainBox = '<div class="exercise-item-box' + (altOn ? ' alt-off' : '') + '" id="exb_' + fieldId + '"' + (altOn ? ' style="display:none;"' : '') + '>' +
-              '<div class="ex-name">' + exNameHtml + escHtml(sub.name || 'Ejercicio') + '</div>' + targetHtml +
+              '<div class="ex-head"><div class="ex-name">' + exNameHtml + escHtml(sub.name || 'Ejercicio') + '</div>' + targetHtml + '</div>' +
               (sub.notes ? '<div class="ex-notes">📌 ' + escHtml(sub.notes) + '</div>' : '') +
-              demoButtonHtml +
+              '<div class="ex-actions">' + demoAnchor + mkRows(fieldId) + '</div>' + demoReport +
               (hasAlt ? '<button type="button" class="btn-alt" onclick="altSwap(\'' + fieldId + '\', true)">🔁 ¿Máquina ocupada?</button>' : '') +
-              mkRows(fieldId) +
+              mkRows(fieldId, true) +
             '</div>';
             if (!hasAlt) { subsDetails += mainBox; }
             else {
               var altV = String(sub.altVideo || '').trim(), altLink = (altV && /^https?:\/\/[^\s"'<>]+$/i.test(altV)) ? altV : 'https://www.youtube.com';
-              var altDemoHtml = isDemos ? '<div style="margin: 8px 0;"><a href="' + altLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a>' + (altV ? vrepMini(altLink, sub.alt, d.id) : '') + '</div>' : '';
+              var altDemoAnchor = isDemos ? '<a href="' + altLink + '" target="_blank" rel="noopener noreferrer" class="btn-yt-demo">Ver demostración ↗</a>' : '', altDemoReport = (isDemos && altV) ? vrepMini(altLink, sub.alt, d.id) : '';
               var altTimerVid = (isDemos && altV && /^https?:\/\/[^\s"'<>]+$/i.test(altV)) ? altV : '';
               var altBox = '<div class="exercise-item-box alt-box' + (altOn ? '' : ' alt-off') + '" id="exb_' + altKey + '"' + (altOn ? '' : ' style="display:none;"') + '>' +
                 '<div class="alt-tag">🔁 Alternativa (máquina ocupada)</div>' +
-                '<div class="ex-name">' + exNameHtml + escHtml(altName) + '</div>' + targetHtml +
-                altDemoHtml +
+                '<div class="ex-head"><div class="ex-name">' + exNameHtml + escHtml(altName) + '</div>' + targetHtml + '</div>' +
+                '<div class="ex-actions">' + altDemoAnchor + mkRows(altKey) + '</div>' + altDemoReport +
                 '<button type="button" class="btn-alt back" onclick="altSwap(\'' + fieldId + '\', false)">↩ Volver al ejercicio original</button>' +
-                mkRows(altKey) +
+                mkRows(altKey, true) +
               '</div>';
               subsDetails += '<div class="exercise-item-wrap">' + mainBox + altBox + '</div>';
               ALT_REG[fieldId] = { ci: athCircuits.length, k: subIdx, isCirc: item.type === 'circuito', isNormal: isNormal, name: sub.name || '', video: subVideos[subIdx], key: fieldId, aName: altName, aVideo: altTimerVid, aKey: altKey, on: altOn };
@@ -5594,7 +5600,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         (m.w ? '<input type="text" id="pw_' + key + '_' + i + '" placeholder="lbs" oninput="saveTracker()">' : '') +
         '<input type="text" id="pr_' + key + '_' + i + '" placeholder="' + (m.t ? 'seg' : 'reps') + '" oninput="saveTracker()"></div>';
     }
-    function setRowsHtml(key, n, usesW, timed, fold) {
+    function setRowsHtml(key, n, usesW, timed, fold, split) {
       SETMETA[key] = { w: usesW, t: timed, base: n };
       var head = '<div class="set-head"><span></span>' + (usesW ? '<span>Peso (lbs)</span>' : '') + '<span>' + (timed ? 'Segundos' : 'Reps') + '</span></div>';
       var rows = '';
@@ -5603,8 +5609,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="set-rows-list">' + rows + '</div>' +
         '<button type="button" class="btn-add-set" onclick="addSetRow(\'' + key + '\')">＋ Serie</button></div>';
       // Un botoncito: las marcas se abren en una ventana flotante para que la rutina ocupe menos espacio
-      return '<div class="set-box set-mini" id="setbox_' + key + '"><button type="button" class="set-open-btn" id="sobtn_' + key + '" onclick="setFloatOpen(\'' + key + '\')">📝 Marcas anteriores<i class="set-dot"></i></button>' +
-        '<span class="set-sum empty" id="ssum_' + key + '" style="display:none;">Toca para anotar</span><div class="set-home" id="sethome_' + key + '" style="display:none;">' + body + '</div></div>';
+      var btn = '<button type="button" class="set-open-btn" id="sobtn_' + key + '" onclick="setFloatOpen(\'' + key + '\')">📝 Marcas anteriores<i class="set-dot"></i></button>';
+      var home = '<span class="set-sum empty" id="ssum_' + key + '" style="display:none;">Toca para anotar</span><div class="set-home" id="sethome_' + key + '" style="display:none;">' + body + '</div>';
+      if (split) return { btn: btn, home: home };   // el botón va junto a «Ver demostración»
+      return '<div class="set-box set-mini" id="setbox_' + key + '">' + btn + home + '</div>';
     }
     var SETFLOAT = '';
     function setFloatOpen(key) {
