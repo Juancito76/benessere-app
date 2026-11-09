@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -4945,9 +4945,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       var dayColors = ['#2f69ff', '#8338ec', '#00b4d8', '#06d6a0', '#ef476f'];
       var capsuleHtml = capCard('#ff6d00', '💬', 'Nota del Coach', 'Un mensaje para ti', "openModal('ath_modal_coach')");
+      var nTr = 0, restIds = [];
       state.routineDays.forEach(function(d, i) {
-        capsuleHtml += capCard(dayColors[i % dayColors.length], d.rest ? '🌙' : '💪', 'Día ' + (i + 1), d.rest ? 'Descanso' : 'Tu entrenamiento', "openDay('" + d.id + "')", d.rest ? '' : d.id);
+        if (d.rest) { restIds.push(d.id); return; }   // los descansos van juntos en una sola tarjeta
+        nTr++;
+        capsuleHtml += capCard(dayColors[i % dayColors.length], '💪', 'Día de entrenamiento ' + nTr, dayNameOf(d) || 'Tu entrenamiento', "openDay('" + d.id + "')", d.id);
       });
+      if (restIds.length) capsuleHtml += capCard('#5c6b8a', '🌙', 'Días de descanso', restTodayIs(nTr) ? '¡Hoy descansas, recupérate bien!' : (isNutri ? 'Tu nutrición y recuperación' : 'Recuperación'), 'openRestDays()');
       var usoCli = (state.configFeatures && state.configFeatures.uso) || 'r';
       if (usoCli === 'rc' || usoCli === 'c') capsuleHtml += capCard('#b388ff', '🎓', 'Clases', 'Clase de hoy, anteriores y retos', 'openClasesTab()');
       capsuleHtml += capCard('#00e5ff', '📋', 'Historial de Cargas', 'Tus pesos y marcas anteriores', 'openHistorialModal()');
@@ -5139,7 +5143,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (d.loadPlan && d.loadPlan.length) dayScreen.setAttribute('data-load-plan', JSON.stringify(d.loadPlan));
         dayScreen.innerHTML = '<div class="top-nav-bar">' +
           '<button class="back-btn" onclick="closeModal(\'' + d.id + '\')">← Volver</button>' +
-          '<div class="view-title">' + escHtml(d.title) + '</div><div style="width:50px;"></div>' +
+          '<div class="view-title">' + escHtml(dayShownTitle(d, i, state.routineDays)) + '</div><div style="width:50px;"></div>' +
         '</div>' +
         '<details class="progression-banner fold-card"><summary><span class="prog-title">📈 Progresión Semanal</span></summary><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></details>' +
         '<details class="security-card fold-card"><summary><span class="sec-title">🛡️ Protocolo de Seguridad</span></summary><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></details>' +
@@ -6950,6 +6954,39 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         pushSession({ k: 'vis', d: today, t: new Date().toISOString(), day: d.title || '', ex: [], o: 'atleta' });
       } catch (e) {}
     }
+    // Nombre corto del día de entreno (lo que va después de «Día N:» en su título), si lo tiene
+    function dayNameOf(d) {
+      var m = String((d && d.title) || '').match(/^\s*d[ií]a\s*\d*\s*[:\-–]\s*(.+)$/i), n = m ? m[1].trim() : '';
+      return (n && !/^(entrenamiento|descanso)$/i.test(n)) ? n : '';
+    }
+    // Título que ve el cliente dentro del día: los entrenos y los descansos se numeran por separado
+    function dayShownTitle(d, di, days) {
+      days = days || (athleteActiveState && athleteActiveState.routineDays) || []; var k = 0;
+      for (var i = 0; i <= di && i < days.length; i++) if (!!days[i].rest === !!d.rest) k++;
+      if (d.rest) return days.filter(function(x) { return x.rest; }).length > 1 ? 'Día de descanso ' + k : 'Día de descanso';
+      var nm = dayNameOf(d);
+      return 'Día de entrenamiento ' + k + (nm ? ': ' + nm : '');
+    }
+    function restTodayIs(nTrain) {   // hoy toca descanso según el día de la semana (misma agenda que sugiere el día de entreno)
+      try {
+        if (isCoachView()) return false;
+        var sched = WK_SCHED[nTrain]; if (!sched) return false;
+        var dow = new Date().getDay(); if (sched.indexOf(dow) >= 0) return false;
+        var today = todayIso(); return !loadWorkouts().some(function(x) { return sessDateIso(x) === today; });
+      } catch (e) { return false; }
+    }
+    // Una sola tarjeta para todos los descansos: abre su nutrición (si hay varios descansos, se elige cuál)
+    function openRestDays() {
+      var days = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(function(d) { return d.rest; });
+      if (!days.length) return;
+      var go = function(id) { try { pendCloseOverlay('rest_pick'); } catch (e) {} openDay(id, true); if (nutriOn()) { try { switchDaySection(id, 'nutricion'); } catch (e2) {} } };
+      if (days.length === 1) { go(days[0].id); return; }
+      var h = '<div class="pend-ttl">🌙 Días de descanso</div><div class="pend-txt">¿Cuál quieres ver?</div>';
+      days.forEach(function(d, k) { h += '<button type="button" class="pend-btn pend-ok" style="margin-top:6px;" onclick="openRestDayId(\'' + d.id + '\')">🌙 Día de descanso ' + (k + 1) + '</button>'; });
+      h += '<button type="button" class="pend-btn pend-cancel" onclick="pendCloseOverlay(\'rest_pick\')">Cerrar</button>';
+      pendOverlay('rest_pick', h);
+    }
+    function openRestDayId(id) { try { pendCloseOverlay('rest_pick'); } catch (e) {} openDay(id, true); if (nutriOn()) { try { switchDaySection(id, 'nutricion'); } catch (e2) {} } }
     function openDay(dayId, review) {
       openModal(dayId);
       visPing(dayId);
@@ -13889,7 +13926,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var MANUAL_STEPS = [
       { sel: '#ath_weekDisplay', t: 'Tu semana', x: 'Aquí ves en qué semana de tu rutina vas. Cada semana puede traer cambios en las series o las repeticiones.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="ath_modal_coach"]', t: 'Nota del Coach', x: 'Un mensaje de tu coach para ti: objetivos, ajustes y recomendaciones.' },
-      { sel: '#ath_capsuleGroup .capsule-btn[data-day]', t: 'Tus días de entreno', x: 'Cada tarjeta es un día de tu rutina. Tócala para ver tus ejercicios. El día que estás haciendo dice «Entrenando hoy», para que si sales de la app lo encuentres fácil.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[data-day]', t: 'Tus días de entrenamiento', x: 'Cada tarjeta es un día de entrenamiento de tu rutina. Tócala para ver tus ejercicios. El día que estás haciendo dice «Entrenando hoy», para que si sales de la app lo encuentres fácil.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openRestDays"]', t: 'Días de descanso', x: 'Una sola tarjeta para todos tus descansos: ahí encuentras tu nutrición y recomendaciones de recuperación. Si hoy toca descanso, te lo avisa.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openClasesTab"]', t: 'Clases', x: 'La clase de hoy, las anteriores y los retos, con cronómetro guiado. Al terminar una clase, queda anotada en tu mes con sus calorías estimadas.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openHistorialModal"]', t: 'Historial de Cargas', x: 'Los pesos y marcas de tus entrenos anteriores, para que sepas cuánto levantaste la última vez y puedas superarlo.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="asistShow"]', t: 'Tu mes', x: 'Cuántas veces viniste al gym el mes pasado frente a lo programado. Cada lunes también verás cómo te fue en la semana anterior.' },
