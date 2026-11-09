@@ -3582,6 +3582,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (/^brazos? d ?\/ ?i$|^brazos? d i$|^brazos? der ?\/ ?izq$|^brazos$/.test(key)) return pair('m_brazo_der', 'm_brazo_izq');
       if (/^brazo (izq|i)/.test(key)) return one('m_brazo_izq');
       if (/^brazo( der| d)?$/.test(key)) return one('m_brazo_der');
+      function nivel(f) {   // Neat y Estrés: alto / medio / bajo (o las flechas de la hoja)
+        var w = importNorm(val), n = /^alt|↗/.test(w) || /↗/.test(val) ? 3 : (/^med|⇒/.test(w) || /⇒/.test(val) ? 2 : (/^baj|↘/.test(w) || /↘/.test(val) ? 1 : 0));
+        if (!n) return false; out[f] = n; return true;
+      }
+      if (/^agua/.test(key)) return one('m_agua');
+      if (/^(descanso|sueno)/.test(key)) return one('m_descanso');
+      if (/^neat/.test(key)) return nivel('m_neat');
+      if (/^estres/.test(key)) return nivel('m_estres');
       return false;
     }
     // Guarda las medidas importadas como una medición con fecha (en el historial) y las deja en el formulario
@@ -3943,7 +3951,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     // Líneas de medidas ("Peso: 78.5 kg", "Cintura 1: 84 cm"...) de una medición
-    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I', m_pecho: 'Pecho', m_brazo_der: 'Brazo D', m_brazo_izq: 'Brazo I' };
+    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I', m_pecho: 'Pecho', m_brazo_der: 'Brazo D', m_brazo_izq: 'Brazo I', m_agua: 'Agua', m_descanso: 'Descanso', m_neat: 'Neat', m_estres: 'Estres' };
     function expMeasureLines(L, vals) {
       MEASURE_FIELDS.forEach(function(f) { if (vals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(vals[f.k], f.unit)); });
     }
