@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10451,9 +10451,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (demoWait) el.classList.add('gd-demo-wait');
         var names = [].map.call(el.querySelectorAll('.exercise-item-box:not(.alt-off) .ex-name'), function(n) { return n.innerText.replace(/^[A-C1-9]\s/, '').trim(); }).filter(Boolean).join(' + ') || b.name;
         var gst = gdStore(dayId), nDone = gst.n[b.key] || 0, stK = gst.s[b.key] || 0, rr = SR[b.srId];
-        var startBtn = !isHere && inProc && s !== 'done' && !!el.querySelector('.sr-btn'), pill = isHere ? '📍 EN CURSO' : (inProc && s !== 'pend') ? '▶ INICIAR' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
+        var startBtn = !isHere && inProc && s !== 'done' && !!el.querySelector('.sr-btn'), pill = isHere ? '📍 EN CURSO' : inProc ? '▶ INICIAR' : s === 'done' ? '✔ COMPLETADA' : (s === 'pend' ? (rr && stK > 0 ? '⏳ FALTA TERMINAR · ' + (rr.label || 'Ronda').toLowerCase() + ' ' + (nDone + 1) + ', ej. ' + (stK + 1) : (nDone > 0 && rr ? '⏳ FALTA TERMINAR · ' + nDone + ' de ' + rr.base : '⏳ PENDIENTE')) : (isHere ? '📍 EN CURSO' : (i === goIdx ? (anyProgress ? '👉 SIGUE AQUÍ' : '👉 INICIA AQUÍ') : '')));
         var head = document.createElement('div'); head.className = 'gd-head';
-        head.innerHTML = (pill ? (startBtn && s !== 'pend' ? '<button type="button" class="gd-pill gd-start">' + pill + '</button>' : '<span class="gd-pill">' + pill + '</span>') : '') + '<span class="gd-names">' + escHtml(names) + '</span>' + ((s === 'pend' && !isHere) ? '<button type="button" class="gd-ok">✅ Completado</button>' : '') + (isHere ? '' : '<span class="gd-chev">' + (collapsed ? '▼' : '▲') + '</span>');
+        head.innerHTML = (pill ? (startBtn ? '<button type="button" class="gd-pill gd-start">' + pill + '</button>' : '<span class="gd-pill">' + pill + '</span>') : '') + '<span class="gd-names">' + escHtml(names) + '</span>' + ((s === 'pend' && !isHere && collapsed) ? '<button type="button" class="gd-ok">✅ Completado</button>' : '') + (isHere ? '' : '<span class="gd-chev">' + (collapsed ? '▼' : '▲') + '</span>');
         var okBtn = head.querySelector('.gd-ok');   // bloque pendiente que en realidad ya hizo: lo marca completado (con ventanita de cargas si las hay)
         if (okBtn) okBtn.onclick = function(ev) { ev.stopPropagation(); bdOpen(b.srId); };
         var gdSt = head.querySelector('.gd-start');   // botón de inicio en la franja del bloque: hace lo mismo que «Iniciar temporizador»
@@ -14032,7 +14032,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
       { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
-      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
+      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera.' },
       { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
