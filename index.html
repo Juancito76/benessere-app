@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -325,6 +325,7 @@
     /* Día que el cliente ya completó hoy: su tarjeta de la pantalla principal queda opaca con la nota «Completado» */
     .capsule-btn.cap-card.day-done { opacity: .55; }
     .capsule-btn.cap-card.day-done .cap-s { color: #06d6a0; font-weight: 900; }
+    .capsule-btn.cap-card.day-left .cap-s { color: #ff9f1c; font-weight: 900; }   /* entreno cerrado con bloques pendientes: se puede volver a terminarlo esta semana */
     /* Día que le toca hoy: la tarjeta de la pantalla principal late suave (se apaga si ya entrenó hoy) */
     @keyframes daySugGlow { 0%,100% { box-shadow: var(--shadow-card); } 50% { box-shadow: var(--shadow-card), 0 0 0 2px color-mix(in srgb, var(--c) 75%, transparent), 0 0 20px color-mix(in srgb, var(--c) 55%, transparent); } }
     .capsule-group .cap-card.day-sug { animation: vsIn .3s ease-out backwards, daySugGlow 2.6s ease-in-out .4s infinite; }
@@ -5201,7 +5202,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Rutina en espera: avisos al cliente -----
     // Borra las marcas y los "completado" de la rutina anterior (el Historial de Cargas no se toca: ahí quedan sus pesos)
     function pendClearTracker() {
-      var pre = ['pw_', 'pr_', 'alc_', 'nsets_', 'wkdur_', 'wknm_', 'wkwatch_', 'wksc_pend', 'wklast_', 'gdst_', 'hist_'].map(function(x) { return tk(x); }), kill = [];
+      var pre = ['pw_', 'pr_', 'alc_', 'nsets_', 'wkdur_', 'wknm_', 'wkwatch_', 'wksc_pend', 'wklast_', 'gdst_', 'gdleft_', 'hist_'].map(function(x) { return tk(x); }), kill = [];
       try {
         for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && pre.some(function(p) { return k.indexOf(p) === 0; })) kill.push(k); }
         kill.forEach(function(k) { localStorage.removeItem(k); });
@@ -10322,7 +10323,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function dayClose(dayId) {
       var blocks = guideBlocks(dayId), st = blocks.length ? gdStatus(dayId, blocks) : [], left = st.filter(function(x) { return x !== 'done'; }).length;
-      if (left > 0 && !confirm('Aún ' + (left === 1 ? 'te falta 1 bloque' : 'te faltan ' + left + ' bloques') + '. ¿Cerrar el entreno de todos modos?')) return;
+      if (left > 0 && !confirm('Aún ' + (left === 1 ? 'te falta 1 bloque' : 'te faltan ' + left + ' bloques') + '. ¿Cerrar el entreno de todos modos?\n\nPodrás volver a este día y terminarlos hasta el domingo.')) return;
+      try { gdLeftSave(dayId, blocks, st); } catch (e) {}
       CLOSE_PENDING = dayId;
       if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }   // abre "¡Entreno terminado!"; al tocar "Listo" se guardan las marcas
       dayCloseSave(dayId);
@@ -10375,10 +10377,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var bx = a.closest('.exercise-item-box');   // solo se marca el ejercicio cuya demostración se tocó, no todo el bloque
       if (bx && bx.id) { GD_DEMO['b:' + bx.id] = true; a.classList.add('gd-demo-seen'); a.classList.remove('gd-demo-wait'); setTimeout(function() { try { guidePaintAll(); } catch (e2) {} }, 400); }
     }, true);
+    // Pendientes de un entreno cerrado a medias: duran hasta que termina la semana (lunes a domingo) y se pueden terminar otro día
+    function gdLeftGet(dayId) {
+      var o = null; try { o = JSON.parse(localStorage.getItem(tk('gdleft_' + dayId)) || 'null'); } catch (e) {}
+      if (!o || o.w !== weekRange(0).from || !o.p || !Object.keys(o.p).length) { if (o) { try { localStorage.removeItem(tk('gdleft_' + dayId)); } catch (e) {} } return null; }
+      if (!o.c) o.c = {};
+      return o;
+    }
+    function gdLeftCount(dayId) { var L = gdLeftGet(dayId); return L ? Object.keys(L.p).length : 0; }
+    function gdLeftSave(dayId, blocks, st) {
+      var c = {}, p = {};
+      blocks.forEach(function(b, i) { if (st[i] === 'done') c[b.key] = 1; else p[b.key] = 1; });
+      try { if (Object.keys(p).length) localStorage.setItem(tk('gdleft_' + dayId), JSON.stringify({ w: weekRange(0).from, c: c, p: p })); else localStorage.removeItem(tk('gdleft_' + dayId)); } catch (e) {}
+    }
     // Estado de cada bloque del día (completado / pendiente), guardado en el celular solo para hoy
     function gdStore(dayId) {
       var o = null; try { o = JSON.parse(localStorage.getItem(tk('gdst_' + dayId)) || 'null'); } catch (e) {}
-      if (!o || o.d !== todayIso()) o = { d: todayIso(), p: {}, c: {}, n: {}, s: {} };
+      if (!o || o.d !== todayIso()) {
+        var L = gdLeftGet(dayId);   // quedó con bloques pendientes esta semana: vuelve a ver lo hecho y lo que falta
+        o = { d: todayIso(), p: L ? JSON.parse(JSON.stringify(L.p)) : {}, c: L ? JSON.parse(JSON.stringify(L.c)) : {}, n: {}, s: {} };
+      }
       if (!o.n) o.n = {};
       if (!o.s) o.s = {};   // ejercicio (estación) de la ronda donde se quedó el cliente
       return o;
@@ -10399,6 +10417,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         }
       }
       try { localStorage.setItem(tk('gdst_' + dayId), JSON.stringify(o)); } catch (e) {}
+      if (kind === 'c') { try { var L = gdLeftGet(dayId); if (L && L.p[key]) { delete L.p[key]; L.c[key] = 1; if (Object.keys(L.p).length) localStorage.setItem(tk('gdleft_' + dayId), JSON.stringify(L)); else localStorage.removeItem(tk('gdleft_' + dayId)); dayCardPaint(dayId); } } catch (e) {} }
     }
     function gdStatus(dayId, blocks) {
       var store = gdStore(dayId);
@@ -10416,8 +10435,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // se opaca y su subtítulo pasa a «✔ Completado hoy».
     function dayCardPaint(dayId) {
       var card = document.querySelector('#ath_capsuleGroup .cap-card[data-day="' + dayId + '"]'); if (!card) return;
-      var done = false;
+      var done = false, left = 0;
+      try { left = gdLeftCount(dayId); } catch (e) {}
       try { done = daySavedToday(dayId); } catch (e) {}
+      if (left > 0) {   // cerró el entreno con bloques sin hacer: «Completado con pendientes» (naranja) hasta que los termine o acabe la semana
+        card.classList.remove('day-done'); card.classList.add('day-left');
+        var sb = card.querySelector('.cap-s'); if (sb) { if (!sb.getAttribute('data-o')) sb.setAttribute('data-o', sb.innerText); sb.innerText = '✔ Completado · ' + left + (left === 1 ? ' pendiente' : ' pendientes'); }
+        return;
+      }
+      card.classList.remove('day-left');
       if (!done) { try { var bl = guideBlocks(dayId); done = bl.length > 0 && gdStatus(dayId, bl).every(function(x) { return x === 'done'; }); } catch (e) {} }
       card.classList.toggle('day-done', done);
       var sub = card.querySelector('.cap-s');
@@ -11608,7 +11634,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
       try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
       try {
-        var pre = ['wkdur_', 'wknm_', 'wkwatch_', 'wksc_pend', 'wklast_', 'gdst_', 'nsets_'].map(function(x) { return tk(x); }), kill = [];
+        var pre = ['wkdur_', 'wknm_', 'wkwatch_', 'wksc_pend', 'wklast_', 'gdst_', 'gdleft_', 'nsets_'].map(function(x) { return tk(x); }), kill = [];
         for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && (k === RESUME_KEY || k === tk(WK_KEY) || pre.some(function(q) { return k.indexOf(q) === 0; }))) kill.push(k); }
         kill.forEach(function(k) { localStorage.removeItem(k); });
         remSave({ promo: todayIso() });   // avisos de pesaje y de fin de ciclo empiezan de cero
@@ -14032,7 +14058,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
       { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
-      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera.' },
+      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera. Si cierras el entreno con bloques sin hacer, la tarjeta del día dirá «Completado · N pendientes»: puedes volver a ese día hasta el domingo y terminarlos; ese día cuenta como una visita más.' },
       { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
