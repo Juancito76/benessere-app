@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-08-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-08-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -270,6 +270,9 @@
     .view-title { font-size: 1.05rem; font-weight: 800; color: #fff; text-transform: uppercase; }
 
     .progression-banner { background: #14282c; border: 1px solid var(--primary); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .day-goal .prog-title { font-size: 0.72rem; font-weight: 900; color: var(--primary); display: block; margin-bottom: 3px; }
+    .nag-sec { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 0 0 12px; }
+    .nag-sec span { background: #241913; border: 1px solid var(--accent); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 0.74rem; font-weight: 700; }
     .prog-title { font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 2px; }
     .prog-desc { font-size: 0.8rem; color: #e0f7fa; line-height: 1.35; }
     .security-card { background: #241913; border: 1px solid var(--accent); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
@@ -5156,9 +5159,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button class="back-btn" onclick="closeModal(\'' + d.id + '\')">← Volver</button>' +
           '<div class="view-title">' + escHtml(dayShownTitle(d, i, state.routineDays)) + '</div><div style="width:50px;"></div>' +
         '</div>' +
-        '<details class="progression-banner fold-card"><summary><span class="prog-title">📈 Progresión Semanal</span></summary><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></details>' +
-        '<details class="security-card fold-card"><summary><span class="sec-title">🛡️ Protocolo de Seguridad</span></summary><div class="sec-items">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div></details>' +
-        (isNutri ? '<button type="button" class="nutri-hoy-link" id="nutri_link_' + d.id + '" onclick="nutriHoyGo(\'' + d.id + '\')">🍽 Nutrición de hoy</button>' : '') +
+        '<div class="progression-banner day-goal"><span class="prog-title">🎯 Meta de esta semana</span><div class="prog-desc" id="prog_text_' + d.id + '">Directriz activa...</div></div>' +
+        '<div class="sec-items" style="position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; pointer-events:none;">' + escHtml(d.security || 'Técnica estricta | Hidratación activa') + '</div>' +
         toggleHeaderHtml +
         '<div id="sec_rutina_' + d.id + '" class="day-section' + ((isRest && isNutri) ? '' : ' active') + '">' +
           wkBarHtml(d.id) +
@@ -6971,7 +6973,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       var m = document.getElementById('day_review_modal');
       if (!m) { m = document.createElement('div'); m.id = 'day_review_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100004'; document.body.appendChild(m); }
-      var hasN = !!document.getElementById('nutri_link_' + dayId), dEl = document.getElementById(dayId), dTitle = dEl ? (dEl.getAttribute('data-day-title') || '') : '';
+      var hasN = nutriOn(), dEl = document.getElementById(dayId), dTitle = dEl ? (dEl.getAttribute('data-day-title') || '') : '';
       m.innerHTML = '<div class="modal-inner" style="max-height:85vh; overflow-y:auto;">' +
         '<div style="font-size:1.05rem; font-weight:900; color:var(--primary); margin-bottom:2px;">📋 Qué toca hoy' + (dTitle ? ' · ' + escHtml(dTitle) : '') + '</div>' +
         '<div style="font-size:0.74rem; color:var(--muted); margin-bottom:10px;">' + nEx + ' ejercicio' + (nEx === 1 ? '' : 's') + ' en total. Solo repaso: el cronómetro no se inicia.</div>' +
@@ -7024,6 +7026,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       pendOverlay('rest_pick', h);
     }
     function openRestDayId(id) { try { pendCloseOverlay('rest_pick'); } catch (e) {} openDay(id, true); if (nutriOn()) { try { switchDaySection(id, 'nutricion'); } catch (e2) {} } }
+    // «🛡️ Antes de empezar»: el protocolo de seguridad del día, justo cuando el cliente está por entrenar (ahí sí se lee)
+    function nagSecHtml(dayId) {
+      try {
+        var el = document.querySelector('#' + dayId + ' .sec-items'), t = el ? el.textContent.trim() : '';
+        var items = t.split(/\s*\|\s*/).filter(Boolean).slice(0, 6);
+        if (!items.length) return '';
+        return '<div style="font-size:0.72rem; color:var(--accent); font-weight:900; margin-bottom:6px;">🛡️ ANTES DE EMPEZAR</div><div class="nag-sec">' + items.map(function(x) { return '<span>' + escHtml(x) + '</span>'; }).join('') + '</div>';
+      } catch (e) { return ''; }
+    }
     function openDay(dayId, review) {
       openModal(dayId);
       visPing(dayId);
@@ -7042,7 +7053,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         m.innerHTML = '<div class="modal-inner congrats-box">' +
           '<div style="font-size:2.2rem; margin-bottom:6px;">⏱</div>' +
           '<div style="font-size:1.05rem; color:var(--primary); font-weight:900; margin-bottom:8px;">¿Empezamos tu entreno?</div>' +
-          '<div style="font-size:0.85rem; color:#f0f0f0; line-height:1.45; margin-bottom:16px;">Inícialo para que queden registrados tu tiempo y tus calorías estimadas.</div>' +
+          '<div style="font-size:0.85rem; color:#f0f0f0; line-height:1.45; margin-bottom:12px;">Inícialo para que queden registrados tu tiempo y tus calorías estimadas.</div>' +
+          nagSecHtml(dayId) +
           '<button type="button" class="wk-btn" style="width:100%; padding:15px; font-size:1rem;" onclick="wkNagStart(\'' + dayId + '\')">▶ Iniciar entreno</button>' +
           '<div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">' +
             '<button type="button" class="wk-link" onclick="closeModal(\'wk_nag_modal\'); dayReview(\'' + dayId + '\', true)">👀 Solo quiero ver qué toca hoy</button>' +
@@ -13995,6 +14007,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_upd_btn', t: 'Actualizar', x: 'Si tu coach cambió algo y no lo ves, toca aquí para traer lo más nuevo.' },
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
+      { t: 'Dentro de un día: tu meta y la seguridad', x: 'Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
       { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo y dice «👇 Inicia con el botón de abajo»: el que lo arranca es el botón «⏱ Iniciar temporizador», no la franja de arriba. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar.' },
       { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach» y se le avisa automáticamente.' },
