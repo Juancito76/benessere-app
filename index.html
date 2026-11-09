@@ -14186,6 +14186,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.querySelectorAll('.pick-name-row input[type="text"]').forEach(function(t) {
         if (!isVideoInput(t)) return;
         var empty = !t.value.trim();
+        if (empty && /\.altVideo\s*=/.test(t.getAttribute('oninput') || '')) {   // video de la alternativa: solo es obligatorio (y solo brilla) si la alternativa tiene ejercicio escrito
+          var abox = t.closest('.alt-field-box'), aname = abox && abox.querySelector('input[type="text"]');
+          if (aname && aname !== t && !aname.value.trim()) { t.classList.remove('vid-empty', 'vid-filled'); return; }
+        }
         if (t.classList.contains('vid-empty') !== empty) t.classList.toggle('vid-empty', empty);
         if (t.classList.contains('vid-filled') === empty) t.classList.toggle('vid-filled', !empty);
       });
