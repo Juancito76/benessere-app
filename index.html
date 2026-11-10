@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-09-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -637,6 +637,19 @@
     #tm_overlay #tm_side > #tm_more { background: linear-gradient(135deg, #ffb84d, #ff8c00); color: #2a1500 !important; }
     #tm_overlay #tm_side > .tm-btn.tm-sm { border: 1.5px solid #3a3a3a !important; background: #1a1a1a !important; box-shadow: none; }
     #tm_overlay #tm_side > #tm_exit { border-color: #7a3f3a !important; background: #1d1313 !important; }
+    /* Todos los botones del temporizador con el mismo molde: esquinas 16px, sin borde grueso, sombra suave (−15/+15 cuadrados) */
+    #tm_overlay #tm_round:not(.tm-static) { background: linear-gradient(135deg, #6ea0ff, #3e78f0) !important; color: #00112e !important; border: 0 !important; border-radius: 16px !important; box-shadow: 0 4px 12px rgba(0,0,0,.4); padding: 10px 14px !important; font-size: .95rem !important; font-weight: 900 !important; }
+    #tm_overlay #tm_minb { background: #1a1a1a !important; color: #fff !important; border: 1.5px solid #3a3a3a !important; border-radius: 16px !important; padding: 10px 14px !important; font-size: .95rem !important; font-weight: 900 !important; }
+    #tm_overlay #tm_radj .tm-btn { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; padding: 0 !important; font-size: 1.25rem !important; font-weight: 900 !important; background: linear-gradient(135deg, #6ea0ff, #3e78f0) !important; color: #00112e !important; border: 0 !important; border-radius: 16px !important; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+    #tm_overlay #tm_radj .tm-btn:active { transform: scale(.94); }
+    /* Celebración al superar una marca anterior */
+    @keyframes celPop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.4); } 18% { opacity: 1; transform: translate(-50%,-50%) scale(1.12); } 30% { transform: translate(-50%,-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-62%) scale(1); } }
+    @keyframes celFly { 0% { opacity: 1; transform: translate(0,0) scale(.5) rotate(0); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(var(--rot)); } }
+    #cel_layer { position: fixed; inset: 0; z-index: 100040; pointer-events: none; overflow: hidden; }
+    #cel_layer .cel-badge { position: absolute; left: 50%; top: 38%; background: linear-gradient(135deg, #ffe14d, #ff9f1c); color: #2a1500; font-weight: 900; font-size: 1.15rem; text-align: center; padding: 12px 20px; border-radius: 18px; box-shadow: 0 8px 28px rgba(255,159,28,.55); animation: celPop 1.9s ease-out forwards; white-space: nowrap; }
+    #cel_layer .cel-badge small { display: block; font-size: .78rem; font-weight: 800; margin-top: 2px; }
+    #cel_layer .cel-bit { position: absolute; left: 50%; top: 40%; font-size: 1.5rem; animation: celFly 1.5s cubic-bezier(.15,.7,.3,1) forwards; }
+    @media (prefers-reduced-motion: reduce) { #cel_layer .cel-bit { display: none; } }
 
     /* ===== Detalles de pulido: movimiento suave ===== */
     @keyframes popIn { 0% { opacity: 0; transform: scale(.88); } 60% { transform: scale(1.03); } 100% { opacity: 1; transform: none; } }
@@ -6018,7 +6031,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var blk = b.closest('.exercise-variant'), cT = blk && blk.querySelector('.circ-title');
         if (cT && isWarmName(cT.innerText)) { b.style.display = 'none'; if (btnRestore) btnRestore.style.display = 'none'; return; }   // calentamiento / activación: sin «Última vez»
         if (p) {
-          b.innerText = 'Última vez (' + (p.date || 'Previo') + '): ' + markSummary(p);
+          b.innerText = 'Marca anterior (' + (p.date || 'Previo') + '): ' + markSummary(p);
           if (btnRestore) btnRestore.style.display = 'inline-block';
         } else {
           b.innerText = 'Marca Anterior: -';
@@ -9194,12 +9207,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       o.id = 'tm_overlay';
       o.style.cssText = 'position:fixed; top:max(8px, env(safe-area-inset-top)); left:8px; right:8px; bottom:max(8px, env(safe-area-inset-bottom)); border-radius:22px; border:2px solid #333; box-shadow:0 0 0 100vmax rgba(0,0,0,.6); z-index:100000; background:#111; display:flex; flex-direction:column; padding:18px 16px calc(18px + env(safe-area-inset-bottom)); color:#fff; text-align:center; overflow:auto;' + (PRUEBA.on ? ' padding-bottom:calc(60px + env(safe-area-inset-bottom));' : '');
       o.innerHTML = '<div id="tm_g" style="display:none; text-align:left; margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:800;"><span id="tm_gtxt" style="color:#ccc;"></span><span id="tm_gpct" style="color:#ccc;"></span></div><div style="height:6px; background:#2a2a2a; border-radius:4px; overflow:hidden; margin-top:4px;"><div id="tm_gbar" style="height:100%; width:0; background:#4d8bff;"></div></div></div>' +
-        '<div id="tm_head"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary); text-align:left;"></div><button type="button" id="tm_round" aria-label="Estoy en…"></button><button type="button" id="tm_minb" aria-label="Minimizar" style="background:#1c1c1c; color:#fff; border:2px solid #fff; border-radius:10px; font-size:.8rem; font-weight:900; padding:7px 10px;">➖ Minimizar</button></div>' +
+        '<div id="tm_head"><div id="tm_title" style="font-weight:800; font-size:0.9rem; color:var(--primary); text-align:left;"></div><button type="button" id="tm_round" aria-label="Estoy en…"></button><button type="button" id="tm_minb" aria-label="Minimizar">➖ Minimizar</button></div>' +
         '<div id="tm_top"><div id="tm_left">' +
         '<div id="tm_prog" style="display:none; margin-top:2px; font-size:0.9rem; font-weight:800; color:#ccc;"></div>' +
         '<div id="tm_station" style="margin-top:4px; font-size:1.35rem; font-weight:800; line-height:1.2;"></div>' +
         '<div id="tm_reps" style="font-size:1.3rem; font-weight:800; color:#ffd60a; margin-top:2px;"></div>' +
-        '<div id="tm_prev" style="display:none; margin-top:4px; font-size:1rem; font-weight:800; color:#8fd3ff; line-height:1.25;"></div>' +
+        '<div id="tm_prev" style="display:none; margin-top:4px; font-size:1rem; font-weight:800; color:#8fd3ff; line-height:1.25; white-space:pre-line;"></div>' +
         '<div id="tm_list" style="display:none; text-align:left; margin:6px 0 2px; font-size:0.95rem; line-height:1.35;"></div>' +
         '<button type="button" class="tm-btn" id="tm_demo" style="display:none; flex:none; margin:2px auto 0; padding:9px 18px; font-size:0.85rem;">🎥 Ver demo</button>' +
         '<div id="tm_phase" style="margin-top:8px; font-size:1.2rem; font-weight:900; letter-spacing:2px;"></div>' +
@@ -9325,12 +9338,47 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (ph.kind === 'side') tmrSpeak('Cambia de lado');
       }
     }
-    function tmrSpeak(txt) {   // voz opcional: si el celular no la tiene, quedan el sonido y el texto en pantalla
+    // Voz del temporizador. iPhone antiguos (ej. iPhone 7, iOS 15): la voz solo suena si se "despierta" con un toque del usuario,
+    // hay que elegir una voz en español de la lista (es-419 no existe ahí) y no conviene cancelar justo antes de hablar.
+    // Si aun así no arranca, se avisa con pitidos (2 = "faltan 20 s", 3 = "faltan 10 s").
+    var SPK = { ok: false, voice: null, tried: false };
+    function tmrVoicePick() {
       try {
-        if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
-        var u = new SpeechSynthesisUtterance(txt); u.lang = 'es-419'; u.rate = 1;
-        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+        var vs = window.speechSynthesis.getVoices() || [], best = null;
+        for (var i = 0; i < vs.length; i++) {
+          var l = String(vs[i].lang || '').replace('_', '-').toLowerCase();
+          if (l.indexOf('es') !== 0) continue;
+          if (!best || (/^es-(mx|419|us)/.test(l) && !/^es-(mx|419|us)/.test(String(best.lang).replace('_', '-').toLowerCase()))) best = vs[i];
+        }
+        SPK.voice = best;
       } catch (e) {}
+    }
+    function tmrSpeakUnlock() {   // se llama dentro de un toque: una frase muda que habilita la voz en iOS
+      try {
+        if (SPK.ok || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+        tmrVoicePick();
+        var u = new SpeechSynthesisUtterance(' '); u.volume = 0; if (SPK.voice) u.voice = SPK.voice; u.lang = SPK.voice ? SPK.voice.lang : 'es-MX';
+        window.speechSynthesis.speak(u); SPK.ok = true;
+      } catch (e) {}
+    }
+    try {
+      if (window.speechSynthesis) { tmrVoicePick(); if (window.speechSynthesis.addEventListener) window.speechSynthesis.addEventListener('voiceschanged', tmrVoicePick); else window.speechSynthesis.onvoiceschanged = tmrVoicePick; }
+      ['touchend', 'click'].forEach(function(evn) { document.addEventListener(evn, function() { tmrSpeakUnlock(); }, { capture: true, passive: true }); });
+    } catch (e) {}
+    function tmrSpeak(txt, beeps) {   // voz opcional: si el celular no la dice, quedan los pitidos y el texto en pantalla
+      var started = false;
+      try {
+        if (window.speechSynthesis && typeof SpeechSynthesisUtterance !== 'undefined') {
+          var ss = window.speechSynthesis;
+          if (!SPK.voice) tmrVoicePick();
+          var u = new SpeechSynthesisUtterance(txt); u.rate = 1; u.volume = 1;
+          if (SPK.voice) { u.voice = SPK.voice; u.lang = SPK.voice.lang; } else u.lang = 'es-MX';
+          u.onstart = function() { started = true; };
+          if (ss.speaking || ss.pending) { ss.cancel(); setTimeout(function() { try { ss.speak(u); } catch (e) {} }, 120); }   // cancelar y hablar en el mismo instante lo deja mudo en iOS
+          else ss.speak(u);
+        }
+      } catch (e) {}
+      if (beeps) setTimeout(function() { if (started) return; for (var b = 0; b < beeps; b++) tmrBeep(1000, 120, b * 200); }, 1000);
     }
 
     function ctTick() {
@@ -9366,19 +9414,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (ph.t === 'work') { if (remain === 20 && d >= 30) say = 'Faltan 20 segundos'; else if (remain === 10 && d >= 15) say = 'Faltan 10 segundos'; }
         else if (ph.t === 'rest' && remain === 20 && d >= 30) say = '20 segundos para iniciar';
         if (!say) return;
-        CT.voiceK = key; tmrSpeak(say);
+        CT.voiceK = key; tmrSpeak(say, remain === 20 ? 2 : 3);
       } catch (e) {}
     }
     // Texto bajo el ejercicio con el peso y las reps de la última vez (referencia para el cliente), o «Sin marcas» si no hay registro
     function ctRepsClean(t) { return String(t == null ? '' : t).replace(/\s*[—–-]+\s*EP\s*\d+(?:[.,]\d+)?/gi, '').trim(); }   // fuera el índice de esfuerzo (EP) de la pantalla del temporizador
-    function ctPrevSetTxt(mk, idx) {   // «Última vez: 30 lbs × 8 reps» de la serie que toca
+    function ctPrevSetFor(mk, idx) {   // la marca anterior de la serie que toca (si esa serie quedó vacía, la última anotada antes)
       var sets = (mk && mk.sets) || [], st = sets[idx];
-      if (!st || (!cleanMark(st.w) && !cleanMark(st.r))) { for (var q = Math.min(idx, sets.length - 1); q >= 0; q--) { if (sets[q] && (cleanMark(sets[q].w) || cleanMark(sets[q].r))) { st = sets[q]; break; } } }
+      if (!st || (!cleanMark(st.w) && !cleanMark(st.r))) { st = null; for (var q = Math.min(idx, sets.length - 1); q >= 0; q--) { if (sets[q] && (cleanMark(sets[q].w) || cleanMark(sets[q].r))) { st = sets[q]; break; } } }
+      return st || null;
+    }
+    function ctPrevSetTxt(mk, idx) {   // «Marca anterior» + «30 lbs × 8 reps» de la serie que toca
+      var st = ctPrevSetFor(mk, idx);
       if (!st) return 'Sin marcas';
       var w = cleanMark(st.w), r = cleanMark(st.r), parts = [];
       if (w) parts.push(/^[\d.,]+$/.test(w) ? w + ' lbs' : w);
       if (r) parts.push(/^\d+$/.test(r) ? r + (mk.tm ? ' s' : ' reps') : r);
-      return 'Última vez: ' + parts.join(' × ');
+      return 'Marca anterior\n' + parts.join(' × ');
     }
     // Calentamiento y activación se repiten igual cada día: no tiene sentido mostrar «Última vez» ahí
     function isWarmName(t) { return /calent|activaci/i.test(String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '')); }
@@ -9401,6 +9453,54 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (pv.innerText !== txt) pv.innerText = txt;
       pv.style.display = txt ? 'block' : 'none';
     }
+    // ----- Celebración corta cuando una marca supera a la anterior (más peso, o el mismo peso con más reps / segundos) -----
+    var CEL = { t: {}, done: {} };
+    function celNum(v) { var n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? null : n; }
+    function celBeats(cw, cr, pw, pr) {
+      var cwN = celNum(cw), pwN = celNum(pw), crN = celNum(cr), prN = celNum(pr);
+      if (crN == null || crN <= 0) return false;
+      if (cwN != null && pwN != null) return cwN > pwN || (cwN === pwN && prN != null && crN > prN);
+      if (cwN == null && pwN == null && String(cw || '').trim().toLowerCase() === String(pw || '').trim().toLowerCase()) return prN != null && crN > prN;   // corporal / sin peso: solo cuentan las reps
+      return false;
+    }
+    function celCheck(key, idx) {
+      try {
+        var rp = document.getElementById('pr_' + key + '_' + idx); if (!rp) return;
+        var wEl = document.getElementById('pw_' + key + '_' + idx);
+        var cw = wEl ? cleanMark(wEl.value) : '', cr = cleanMark(rp.value);
+        if (!cr || (wEl && !cw)) return;
+        var sig = cw + '|' + cr, dk = key + '_' + idx; if (CEL.done[dk] === sig) return;
+        var prevSet = ctPrevSetFor(lastMarkFor(key) || null, idx); if (!prevSet) return;
+        if (celBeats(cw, cr, cleanMark(prevSet.w), cleanMark(prevSet.r))) { CEL.done[dk] = sig; celebrate(); }
+      } catch (e) {}
+    }
+    function celebrate() {
+      try {
+        var old = document.getElementById('cel_layer'); if (old) old.remove();
+        var L = document.createElement('div'); L.id = 'cel_layer';
+        var html = '<div class="cel-badge">🏆 ¡Nueva marca!<small>Superaste tu marca anterior</small></div>', em = ['🎉', '⭐', '🔥', '💪', '✨', '🎊'];
+        for (var i = 0; i < 22; i++) {
+          var a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 170;
+          html += '<span class="cel-bit" style="--dx:' + Math.round(Math.cos(a) * d) + 'px; --dy:' + Math.round(Math.sin(a) * d + 60) + 'px; --rot:' + Math.round(Math.random() * 540 - 270) + 'deg; animation-delay:' + Math.round(Math.random() * 120) + 'ms;">' + em[i % em.length] + '</span>';
+        }
+        L.innerHTML = html; document.body.appendChild(L);
+        setTimeout(function() { if (L.parentNode) L.remove(); }, 2000);
+        tmrVibrate([60, 40, 60, 40, 120]);
+        tmrAudio(); tmrBeep(660, 110, 0); tmrBeep(880, 110, 130); tmrBeep(1175, 220, 260);
+      } catch (e) {}
+    }
+    // Al terminar de escribir una marca (peso o reps) se compara con la anterior; sirve en la ventanita del temporizador y en el registro de cada ejercicio
+    document.addEventListener('input', function(ev) {
+      try {
+        var t = ev.target, key = '', idx = -1;
+        if (t && t.classList && t.classList.contains('bd-in')) { key = t.getAttribute('data-k'); idx = parseInt(t.getAttribute('data-i'), 10); }
+        else if (t && t.id) { var m = /^p[wr]_(.+)_(\d+)$/.exec(t.id); if (m) { key = m[1]; idx = parseInt(m[2], 10); } }
+        if (!key || !(idx >= 0)) return;
+        var dk = key + '_' + idx; clearTimeout(CEL.t[dk]);
+        CEL.t[dk] = setTimeout(function() { celCheck(key, idx); }, 900);   // espera a que termine de escribir (para que "1" no cuente antes de "15")
+      } catch (e) {}
+    }, true);
+
     // Antes se repintaba toda la pantalla 5 veces por segundo (y el video flotante), lo que congelaba algunos iPhone.
     // Ahora solo se repinta cuando cambia el segundo que se ve o el estado; si algo no cambió la llave, se corrige a más tardar en 1 s.
     function ctRenderThrottled(remain, ph) {
@@ -9448,11 +9548,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var el = function(id) { return document.getElementById(id); };
       if (!el('tm_time')) return;
       var sBase = ctShort(ph.st), tShort = ctShort(CT.title);
-      var hideTitle = !CT.title || (sBase && tShort.toLowerCase().indexOf(sBase.toLowerCase()) !== -1) || (CT.guide && CT.rounds > 0 && tShort.indexOf('+') !== -1);   // el nombre del ejercicio ya sale abajo: no se repite
+      var hideTitle = !CT.cls || !CT.title || (sBase && tShort.toLowerCase().indexOf(sBase.toLowerCase()) !== -1) || (CT.guide && CT.rounds > 0 && tShort.indexOf('+') !== -1);   // el título de arriba sobra (el ejercicio ya sale abajo): solo se muestra en clases y retos
       el('tm_title').innerText = hideTitle ? '' : tShort; el('tm_title').style.display = hideTitle ? 'none' : '';
       el('tm_head').style.justifyContent = hideTitle ? 'center' : 'space-between';
       var rOff = CT.doneBefore || 0, rAbsT = rOff + CT.rounds, rWhere = ctWhereOk(), rShowReady = !CT.cls && rWhere && (rAbsT > 1 || CT.nSt > 1);
-      el('tm_round').innerText = (ph.t === 'ready' && !rShowReady) ? '' : ((CT.roundLabel || 'Ronda') + ' ' + (rOff + ph.r) + ' de ' + rAbsT);   // cuenta real del bloque (al retomar, sigue en la ronda donde iba)
+      var rNwk = (ph.t === 'rest' && !CT.hiit && !CT.cls) ? ctNextWork() : null;   // en el descanso el botón dice qué serie sigue (ya no hay texto aparte)
+      el('tm_round').innerText = (ph.t === 'ready' && !rShowReady) ? '' : (rNwk ? ('Sigue: ' + (CT.roundLabel || 'Ronda') + ' ' + (rOff + rNwk.r) + ' de ' + rAbsT + (rNwk.r === CT.rounds && CT.rounds > 1 ? ' 🔥' : '')) : ((CT.roundLabel || 'Ronda') + ' ' + (rOff + ph.r) + ' de ' + rAbsT));   // cuenta real del bloque (al retomar, sigue en la ronda donde iba)
       el('tm_round').classList.toggle('tm-static', !rWhere);
       el('tm_phase').innerText = labels[ph.t]; el('tm_phase').style.color = col;
       var stationTxt = ctShort(ph.st);
@@ -9489,11 +9590,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         } else if (CT.rounds > 1 && ph.t !== 'ready') {
           if (left <= 0) { pTxt = '¡Última ' + lab + '! Ya casi 🔥'; pCol = '#ffd60a'; }
           else if (left === 1) { pTxt = '¡Ya casi! Te falta 1 más'; pCol = '#ffd60a'; }
-        }
-        var nwP = ctNextWork(), lab0 = (CT.roundLabel || 'Ronda');
-        if (ph.t === 'rest' && !CT.hiit && !CT.cls && nwP) {   // en el descanso: qué serie/ronda sigue
-          pTxt = lab0 + ' ' + nwP.r + ' de ' + CT.rounds; pCol = '#ccc';
-          if (nwP.r === CT.rounds && CT.rounds > 1) { pTxt += ' · ¡la última! 🔥'; pCol = '#ffd60a'; }
         }
         var warn10 = ctWarn10On(ph, remain);   // aviso de los últimos 10 s del descanso
         if (warn10) { pTxt = remain >= 10 ? '⚠️ ¡10 segundos para iniciar!' : '⚠️ ¡Inicias en ' + remain + ' s!'; pCol = '#ffd60a'; }
@@ -14231,11 +14327,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
       { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
       { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera. Si cierras el entreno con bloques sin hacer, la tarjeta del día dirá «Completado · N pendientes»: puedes volver a ese día hasta el domingo y terminarlos; ese día cuenta como una visita más.' },
-      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno.' },
+      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno. En el temporizador, bajo el ejercicio, ves tu «Marca anterior» de esa serie (por ejemplo «30 lbs × 8 reps»); si al anotar la superas, aparece una celebración corta 🏆.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach», debajo del ejercicio o en la ventana del video, y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
       { t: 'Circuitos con temporizador', x: 'En los circuitos, el temporizador te guía con sonido, vibración y voz: avisa cuando faltan 20 y 10 segundos del trabajo, y 20 segundos para iniciar tras el descanso.' },
-      { t: 'Si sales y vuelves: «Estoy en…»', x: 'Dentro del temporizador, toca «Estoy en…» para elegir en qué ronda y ejercicio vas y continuar donde te quedaste.' },
+      { t: 'Si sales y vuelves: botón de serie', x: 'Dentro del temporizador, el botón azul de arriba muestra en qué serie vas (por ejemplo «Serie 2 de 3»; en el descanso dice «Sigue: Serie 3 de 3»). Tócalo para elegir en qué ronda y ejercicio vas y continuar donde te quedaste.' },
       { t: '¡Listo!', x: 'Ya conoces la app. Puedes volver a ver este recorrido cuando quieras con «📖 Cómo usar la app».' }
     ];
     var MAN = { i: 0, list: [] };
