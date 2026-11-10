@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -785,7 +785,7 @@
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">🔗 Cargar desde Link</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
-      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_class', this); clsRender();">🎓 Clases y Retos</button>
+      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_class', this); clsRender(); try { clsySync(false); } catch (e) {}">🎓 Clases y Retos</button>
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
       <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
       <button type="button" class="gen-tab-btn" id="btn_frase_dia" onclick="openFraseEditor()">✨ Frase del día</button>
@@ -14233,6 +14233,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!CLS.hh) CLS.hh = hh;   // primera vez en este dispositivo: solo se anota, sin sellar hora (si no, una lista vacía pisaría la clase de hoy de otro dispositivo)
       else if (CLS.hh !== hh) { CLS.hh = hh; CLS.hu = now; }
     }
+    function clsyTabOpen() { var el = document.getElementById('clsList'); return !!(el && el.offsetParent); }   // la pestaña «Clases y Retos» está a la vista
     function clsySchedule() { if (CLSY.timer) clearTimeout(CLSY.timer); CLSY.timer = setTimeout(function() { clsySync(false); }, 3000); }
     function clsyStatus(txt, col) { CLSY.msg = { t: txt || '', c: col || '' }; var el = document.getElementById('clsSyncMsg'); if (el) { el.style.color = col || ''; el.innerHTML = txt || ''; } }
     function clsyEnc(obj) {
@@ -14362,7 +14363,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!manual && Date.now() - CLSY.last < 15000) return;
       if (!COACH) {
         CLSY.busy = true;
-        clsEnsureCoach(function(ok) { CLSY.busy = false; if (ok) clsySync(manual); else if (manual) clsyStatus('Para sincronizar entra una vez a «Mis clientes» con tu PIN (marca «Recordar»).', '#ffd166'); });
+        clsEnsureCoach(function(ok) { CLSY.busy = false; if (ok) clsySync(manual); else if (manual || clsyTabOpen()) clsyStatus('Para sincronizar entra una vez a «Mis clientes» con tu PIN (marca «Recordar»).', '#ffd166'); });
         return;
       }
       CLSY.busy = true; CLSY.last = Date.now();
@@ -14397,6 +14398,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     setTimeout(function() { try { clsySync(false); } catch (e) {} }, 6000);
     document.addEventListener('visibilitychange', function() { if (!document.hidden) { try { clsySync(false); } catch (e) {} } });
+    setInterval(function() { try { if (!document.hidden && clsyTabOpen() && !(CLSY && CLSY.busy)) clsySync(false); } catch (e) {} }, 180000);   // con «Clases y Retos» abierta, se vuelve a sincronizar cada 3 min
 
     // ----- Publicar: un solo link permanente para todas las clases (atleta especial "__CLASES__") -----
     // Código corto (no reversible a simple vista) de un cliente: así el link de clases no lleva los nombres de los clientes
