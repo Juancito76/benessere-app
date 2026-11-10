@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -11490,11 +11490,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       vrepSaveQ(q); vrepBusy = true;
       postJson({ a: 'reporte', r: JSON.stringify(r) }).then(function(j) {
         if (j && j.ok) return true;
-        if (r.rid) return postJson({ a: 'sesion', id: r.rid, s: JSON.stringify(r) }).then(function(j2) { return !!(j2 && (j2.ok || j2.error === 'datos')); });
+        // Script de Google viejo (no conoce los avisos, responde 'clave'): el aviso se queda en cola para no perderse
+        if (j && j.error === 'clave') { r.n = Math.max(0, (r.n || 1) - 1); vrepSaveQ(q); return 'espera'; }
+        // Error permanente (datos mal formados o rutina que ya no existe): se descarta
+        if (j && (j.error === 'datos' || j.error === 'no-existe')) return true;
         return false;
       }).then(function(ok) {
         vrepBusy = false;
-        if (ok) { var q2 = vrepQ(); q2.shift(); vrepSaveQ(q2); vrepFlush(); }
+        if (ok === true) { var q2 = vrepQ(); q2.shift(); vrepSaveQ(q2); vrepFlush(); }
       }).catch(function() { vrepBusy = false; });
     }
     // ----- Bandeja del coach: videos reportados por los clientes -----
