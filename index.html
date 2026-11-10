@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -14246,12 +14246,23 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var st = decodePayload('q', p); if (!st) return null;
       try { var o = JSON.parse(st.coachMsgBody || '{}'); return (o && typeof o === 'object' && Array.isArray(o.l)) ? o : null; } catch (e) { return null; }
     }
-    function clsyFindHead() {   // el registro principal se encuentra por su nombre en la lista de la hoja (no hay que pegar ningún código)
+    function clsyFindHeads() {   // los registros principales se encuentran por su nombre en la lista de la hoja (no hay que pegar ningún código)
       return postJson({ a: 'listar', pin: COACH.pin }).then(function(j) {
         if (!(j && j.ok)) { var er = new Error((j && j.error) || 'lista'); er.code = j && j.error; throw er; }
         var rows = (j.rutinas || []).filter(function(r) { return r && r.id && normName(r.atleta) === '__clases_lista__'; });
-        rows.sort(function(a, b) { return String(a.f) < String(b.f) ? -1 : 1; });   // si por una carrera hubiera dos, gana el más antiguo
-        return rows.length ? rows[0].id : '';
+        rows.sort(function(a, b) { return String(a.f) < String(b.f) ? -1 : 1; });   // si hubiera varios, se prueba del más antiguo al más nuevo y gana el primero que se pueda leer
+        return rows.map(function(r) { return r.id; });
+      });
+    }
+    // Abre el primer registro principal legible. Los que no se pueden leer (formato viejo o dañado) se saltan; si ninguno se lee, devuelve vacío y se crea uno nuevo
+    function clsyLoadChain() {
+      return clsyFindHeads().then(function(ids) {
+        var i = 0;
+        function next() {
+          if (i >= ids.length) return Promise.resolve([]);
+          return clsyFetchChain(ids[i++]).catch(function(e) { if (e && e.message === 'formato') return next(); throw e; });
+        }
+        return next();
       });
     }
     function clsyFetchChain(id) {
@@ -14346,6 +14357,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (overwrite || !localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ t: new Date().toISOString(), CLS: CLS })); } catch (e) {}
     }
     function clsySync(manual) {
+      if (PRUEBA && PRUEBA.on) { if (manual) clsyStatus('Estás en modo prueba (no se guarda nada). Sal de la prueba para sincronizar las clases.', '#ffd166'); return; }
       if (CLSY.busy) return;
       if (!manual && Date.now() - CLSY.last < 15000) return;
       if (!COACH) {
@@ -14356,7 +14368,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       CLSY.busy = true; CLSY.last = Date.now();
       clsyStatus('🔄 Sincronizando clases…', '');
       var recs = [];
-      clsyFindHead().then(function(head) { return head ? clsyFetchChain(head) : []; }).then(function(rs) {
+      clsyLoadChain().then(function(rs) {
         recs = rs;
         var rem = clsyAssemble(recs);
         clsLoad(); clsStamp();
