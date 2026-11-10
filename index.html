@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5203,16 +5203,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             var sSets = item.type === 'circuito' ? (parseInt(cI.rondas, 10) || 1) : (parseInt(sub.series, 10) || 1);
             sSets = Math.max(1, Math.min(12, sSets));
             subKeys[subIdx] = fieldId; subUnis[subIdx] = sUni;
+            var epI = epSplit(sub.reps), epTail = (epI.n != null && !isNaN(epI.n)) ? ' · ' + epLabel(epI.n, sW) : '';   // «— EP4» → «· peso moderado»
             var targetTxt = item.type === 'circuito'
-              ? escHtml(sub.reps || (circTimed ? (cI.trabajo || '-') : '-'))
-              : (escHtml(sub.series || '-') + ' series × ' + escHtml(sub.reps || '-') + (isTimeText(sub.reps) ? '' : ' reps'));
+              ? escHtml(epI.txt || (circTimed ? (cI.trabajo || '-') : '-')) + epTail
+              : (escHtml(sub.series || '-') + ' series × ' + escHtml(epI.txt || '-') + (isTimeText(epI.txt) ? '' : ' reps') + epTail);
 
             // Alternativa "¿Máquina ocupada?": segundo bloque (oculto) con otro ejercicio y su propio video, con registro de cargas aparte.
             // Un bloque se muestra y el otro lleva la clase "alt-off" (el resto de la app ignora los bloques "alt-off").
             var altName = String(sub.alt || '').trim(), hasAlt = !!altName && !isHiit;
             var altOn = hasAlt && altIsOn(fieldId), altKey = fieldId + 'a';
             var exNameHtml = (!isNormal ? '<span style="color:var(--accent);">' + letter + '</span> ' : '');
-            var targetHtml = '<div class="ex-target">' + targetTxt + (sUni ? escHtml(uniNote(sub.reps || (circTimed ? cI.trabajo : ''))) + '<span class="uni-badge">↔ UNILATERAL</span>' : '') + '</div>';
+            var targetHtml = '<div class="ex-target">' + targetTxt + (sUni ? escHtml(uniNote(epI.txt || (circTimed ? cI.trabajo : ''))) + '<span class="uni-badge">↔ UNILATERAL</span>' : '') + '</div>';
             function mkRows(key, homeOnly) {
               var sr = setRowsHtml(key, sSets, sW, sTimed, item.type === 'circuito', true);
               if (!homeOnly) return sr.btn;
@@ -5815,6 +5816,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
       { id: '2026-11-10-marcas', title: '📝 Tus marcas anteriores se movieron', text: '«Última vez» y «Montar» ya no aparecen bajo el ejercicio: ahora están dentro del botón «📝 Marcas anteriores». Ábrelo para ver tu marca anterior y montarla con un toque.' },
+      { id: '2026-11-10-esfuerzo', title: '💬 Más fácil de entender', text: 'Donde decía «EP4» ahora lees el tipo de carga en palabras, por ejemplo «3 series × 14 reps · peso moderado».' },
       { id: '2026-11-10-temporizador', title: '⏱ Temporizador renovado', text: 'El botón azul de arriba dice en qué serie vas, «Última vez» ahora se llama «Marca anterior», los botones −15/+15 del descanso son cuadrados y, si superas una marca, verás una celebración 🏆.' }
     ];
     var NT_SEEN = {};
@@ -5934,6 +5936,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (parts.length) return parts.join(' · ');
       }
       return (ex && ex.s ? ex.s : '-') + ' series × ' + (ex && ex.r ? ex.r : '-') + ' reps';
+    }
+    // El índice de esfuerzo («— EP4») no lo entiende el cliente: se separa de las reps y se cambia por una frase clara («peso moderado»)
+    function epSplit(t) {
+      var s = String(t == null ? '' : t), m = /\s*[—–-]+\s*EP\s*(\d+(?:[.,]\d+)?)/i.exec(s);
+      return m ? { txt: s.replace(m[0], '').replace(/\s+/g, ' ').trim(), n: parseFloat(m[1].replace(',', '.')) } : { txt: s.trim(), n: null };
+    }
+    function epLabel(n, usesW) {
+      var w = usesW ? ['muy ligero', 'ligero', 'moderado', 'pesado', 'muy pesado', 'al límite'] : ['muy suave', 'suave', 'moderado', 'fuerte', 'muy fuerte', 'al máximo'];
+      var i = n <= 2 ? 0 : n <= 3 ? 1 : n <= 5 ? 2 : n <= 7 ? 3 : n <= 8 ? 4 : 5;
+      return (usesW ? 'peso ' : 'esfuerzo ') + w[i];
     }
     function uniNote(reps) {
       var t = String(reps == null ? '' : reps).trim();
@@ -14384,7 +14396,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
       { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
       { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera. Si cierras el entreno con bloques sin hacer, la tarjeta del día dirá «Completado · N pendientes»: puedes volver a ese día hasta el domingo y terminarlos; ese día cuenta como una visita más.' },
-      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. Arriba de esa ventana ves tu «Marca anterior» con su fecha y el botón «⤴️ Montar marca anterior» para llenarla con un toque. La app guarda lo que anotas para el próximo entreno. En el temporizador, bajo el ejercicio, ves tu «Marca anterior» de esa serie (por ejemplo «30 lbs × 8 reps»); si al anotar la superas, aparece una celebración corta 🏆.' },
+      { t: 'Dentro de un día: registrar tus series', x: 'Cada ejercicio dice cuántas series y repeticiones hacer y qué tan pesado ir, por ejemplo «3 series × 14 reps · peso moderado». En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. Arriba de esa ventana ves tu «Marca anterior» con su fecha y el botón «⤴️ Montar marca anterior» para llenarla con un toque. La app guarda lo que anotas para el próximo entreno. En el temporizador, bajo el ejercicio, ves tu «Marca anterior» de esa serie (por ejemplo «30 lbs × 8 reps»); si al anotar la superas, aparece una celebración corta 🏆.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach», debajo del ejercicio o en la ventana del video, y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
       { t: 'Circuitos con temporizador', x: 'En los circuitos, el temporizador te guía con sonido, vibración y voz: avisa cuando faltan 20 y 10 segundos del trabajo, y 20 segundos para iniciar tras el descanso.' },
