@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -14148,7 +14148,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="btn btn-secondary" style="flex:1; min-width:120px;" onclick="clsPreviewPortada()">👁 Ver portada</button>' +
         (link ? '<button type="button" class="btn btn-secondary" style="flex:1; min-width:100px;" onclick="clsCopyLink()">📋 Copiar</button><button type="button" class="btn btn-export-wa" style="flex:1; min-width:110px;" onclick="clsShareWa()">📲 WhatsApp</button>' : '') +
         '</div><div id="clsPubMsg" style="font-size:0.78rem; min-height:18px; margin-top:6px;">' + CLS_PUBMSG + '</div>' +
-        '<div style="display:flex; gap:8px; align-items:center; margin-top:6px;"><button type="button" class="btn btn-secondary" style="padding:6px 10px; font-size:0.74rem;" onclick="clsySync(true)" title="Une las clases de este dispositivo con las de tus otros dispositivos">🔄 Sincronizar clases</button><div id="clsSyncMsg" style="font-size:0.74rem; flex:1;"></div></div>' +
+        '<div style="display:flex; gap:8px; align-items:center; margin-top:6px;"><button type="button" class="btn btn-secondary" style="padding:6px 10px; font-size:0.74rem;" onclick="clsySync(true)" title="Une las clases de este dispositivo con las de tus otros dispositivos">🔄 Sincronizar clases</button><div id="clsSyncMsg" style="font-size:0.74rem; flex:1;' + (CLSY.msg && CLSY.msg.c ? ' color:' + CLSY.msg.c + ';' : '') + '">' + (CLSY.msg ? CLSY.msg.t : '') + '</div></div>' +
         (lid ? '<div id="clsStats" style="font-size:0.8rem; margin-top:6px; color:#9fe8c8;">' + clsStatsHtml() + '</div>' : '') + '</div>' +
         '<div class="med-h" style="margin-top:12px;">Clase de hoy</div>' + (today ? clsRowHtml(today, true) : '<div class="med-sum">Todavía no has elegido la clase de hoy.</div>');
       h += '<details style="margin-top:10px;"' + (clases.length && !today ? ' open' : '') + '><summary style="cursor:pointer; font-weight:800; color:var(--primary); font-size:0.88rem; padding:6px 0;">📅 Clases anteriores (' + clases.length + ')</summary>' +
@@ -14234,7 +14234,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else if (CLS.hh !== hh) { CLS.hh = hh; CLS.hu = now; }
     }
     function clsySchedule() { if (CLSY.timer) clearTimeout(CLSY.timer); CLSY.timer = setTimeout(function() { clsySync(false); }, 3000); }
-    function clsyStatus(txt, col) { var el = document.getElementById('clsSyncMsg'); if (el) { el.style.color = col || ''; el.innerHTML = txt || ''; } }
+    function clsyStatus(txt, col) { CLSY.msg = { t: txt || '', c: col || '' }; var el = document.getElementById('clsSyncMsg'); if (el) { el.style.color = col || ''; el.innerHTML = txt || ''; } }
     function clsyEnc(obj) {
       return encodePayload(buildUltraCompactState({
         clientName: 'CLASESLISTA', clientGender: 'o', startDate: '', durationWeeks: 1,
@@ -14379,12 +14379,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         CLS.lista = m.lista; CLS.hoy = m.hoy; CLS.hoyD = m.hoyD; CLS.hu = m.hu; CLS.del = m.del; CLS.known = m.lista.map(function(c) { return c.id; }); CLS.hh = (m.hoy || '') + '|' + (m.hoyD || '');
         var dirty = CLS.dirty; clsSave(true); CLS.dirty = dirty; try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); } catch (e) {}
         var same = recs.length && JSON.stringify(m.lista.map(function(c) { return c.id + ':' + (c.u || 0); }).sort()) === JSON.stringify(rem.lista.map(function(c) { return c.id + ':' + (c.u || 0); }).sort()) && m.hoy === rem.hoy && m.hoyD === rem.hoyD && JSON.stringify(m.del) === JSON.stringify(rem.del || {});
-        var count = m.lista.length;
-        if (same) return count;
-        return clsyWrite(m, recs).then(function() { return count; });
-      }).then(function(count) {
+        var info = { count: m.lista.length, aqui: loc.lista.length, hoja: rem.lista.length, escrito: !same };
+        if (same) return info;
+        return clsyWrite(m, recs).then(function() { return info; });
+      }).then(function(info) {
         CLSY.busy = false;
-        clsyStatus('✅ Clases sincronizadas entre tus dispositivos · ' + count + ' en total.', '#06d6a0');
+        var count = info.count;
+        CLSY.okMsg = '✅ Sincronizado · aquí había ' + info.aqui + ', en la hoja ' + info.hoja + ' → ahora ' + count + (info.escrito ? ' (hoja actualizada)' : ' (hoja ya al día)') + '.';
+        clsyStatus(CLSY.okMsg, '#06d6a0');
         if (document.getElementById('clsList')) { var ta = document.getElementById('clsText'), keep = ta ? ta.value : null; clsRender(); if (ta && keep != null && document.getElementById('clsText')) document.getElementById('clsText').value = keep; }
       }).catch(function(e) {
         CLSY.busy = false;
