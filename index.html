@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1255,6 +1255,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <button type="button" class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('videoLibFileInput').click()">📤 Importar</button>
         <button type="button" class="btn btn-secondary" style="flex:1;" onclick="vidLibSync(true)">🔄 Sincronizar</button>
       </div>
+      <button type="button" class="btn btn-secondary" style="width:100%; margin-bottom:8px; border-color:#ff6b6b; color:#ff9a93;" onclick="canalImport()">📺 Traer videos del canal Benessere</button>
       <div id="videoLibStatus" style="font-size:0.74rem; color:var(--muted); margin-bottom:8px; line-height:1.4;"></div>
       <input type="file" id="videoLibFileInput" accept=".json" style="display:none;" onchange="loadVideoLibraryFromFile(this)">
       <button type="button" class="btn btn-secondary" style="width:100%;" onclick="closeModal('modal_video_library')">Cerrar</button>
@@ -2953,6 +2954,56 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       showToastTop('No encontré el espacio en pantalla; revisa que el día esté abierto.');
     }
     setInterval(vidNextFabSync, 1500);
+    // ----- Videos del canal de YouTube de Benessere: la lista la trae el servidor; se usa para sugerir y para llenar la biblioteca -----
+    var CANAL_KEY = 'benessere_canal_videos', VM_CANAL_TRIED = false;
+    function canalClean(t) {   // «Sentadilla búlgara | Benessere Gym 💪 #fitness» → «Sentadilla búlgara»
+      t = String(t || '').replace(/#\S+/g, ' ').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}️]/gu, ' ');
+      t = t.split(/\s+[|–—-]\s+/)[0];
+      return t.replace(/\b(benessere\s*gym|benessere)\b/ig, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function canalGet() { try { var o = JSON.parse(localStorage.getItem(CANAL_KEY) || 'null'); return (o && o.items) ? o : null; } catch (e) { return null; } }
+    function canalLoad(force) {
+      var c = canalGet();
+      if (c && !force && Date.now() - (c.t || 0) < 12 * 3600 * 1000) return Promise.resolve(c.items);
+      return postJson({ a: 'canalvideos', fresh: !!force, pin: (typeof vrepPin === 'function' ? vrepPin() : '') }, 40000).then(function(j) {
+        if (!j || !j.ok || !j.items) throw new Error((j && j.error) || 'respuesta');
+        var items = j.items.filter(function(x) { return x && x.id && x.title; });
+        try { localStorage.setItem(CANAL_KEY, JSON.stringify({ t: Date.now(), items: items })); } catch (e) {}
+        return items;
+      });
+    }
+    function vmScore(q, tname) {
+      var t = vmToks(tname); if (!q.length || !t.length) return 0;
+      var inter = q.filter(function(x) { return t.indexOf(x) >= 0; }).length; if (!inter) return 0;
+      var sc = inter / (q.length + t.length - inter);
+      if (inter === Math.min(q.length, t.length)) sc = Math.max(sc, 0.6);
+      return sc;
+    }
+    // Videos del canal (ya descargados) cuyo título se parece a «name»
+    function canalMatches(name, max) {
+      var c = canalGet(); if (!c) return [];
+      var q = vmToks(name), out = [];
+      c.items.forEach(function(x) { var nm = canalClean(x.title), sc = vmScore(q, nm); if (sc >= 0.5) out.push({ name: nm, link: 'https://www.youtube.com/watch?v=' + x.id, sc: sc, canal: true }); });
+      return out.sort(function(a, b) { return b.sc - a.sc; }).slice(0, max || 3);
+    }
+    // Agrega a la biblioteca los videos del canal que todavía no están (el título limpio queda como nombre del ejercicio)
+    function canalImport() {
+      vidLibStatus('⏳ Trayendo los videos del canal…');
+      canalLoad(true).then(function(items) {
+        var lib = getVideoLibrary(), have = {}, nuevos = [];
+        Object.keys(lib).forEach(function(k) { var id = ytIdStrict(lib[k]); if (id) have[id] = true; });
+        items.forEach(function(x) { var nm = canalClean(x.title); if (nm && !have[x.id] && !findVideoInLibrary(nm)) nuevos.push({ nm: nm, link: 'https://www.youtube.com/watch?v=' + x.id }); });
+        vidLibStatus('El canal tiene ' + items.length + ' videos; ' + nuevos.length + ' no están en la biblioteca.');
+        if (!nuevos.length) return;
+        if (!confirm('📺 El canal tiene ' + items.length + ' videos. ¿Agregar a la biblioteca los ' + nuevos.length + ' que faltan?\n\nEj.: ' + nuevos.slice(0, 5).map(function(x) { return x.nm; }).join(', ') + (nuevos.length > 5 ? '…' : ''))) return;
+        nuevos.forEach(function(x) { rememberExerciseVideo(x.nm, x.link); });
+        try { renderVideoLibrary(); } catch (e) {}
+        vidLibStatus('✅ ' + nuevos.length + ' videos del canal agregados a la biblioteca.', '#06d6a0');
+      }).catch(function(e) {
+        var m = String(e && e.message || '');
+        vidLibStatus(m === 'pin' ? 'Entra primero con tu PIN.' : (m === 'sin-clave' ? 'Falta la clave de YouTube en el servidor.' : 'No se pudo traer el canal (¿el servidor ya tiene la función publicada?).'), '#ffd166');
+      });
+    }
     // ----- Panel «Videos que faltan»: sugerencias de la biblioteca, pegar el link y pasar al siguiente; busca candidatos si el servidor lo permite -----
     var VM_G = [], VM_CAND = {};
     function vmToks(n) { return vsSigKey(n).split(' ').filter(Boolean); }
@@ -2969,6 +3020,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (sc < 0.5) return;
         if (!best[link] || sc > best[link].sc) best[link] = { name: k, link: link, sc: sc };
       });
+      var seen = {}; Object.keys(best).forEach(function(l) { var id = ytIdStrict(l); if (id) seen[id] = true; });
+      canalMatches(name, 3).forEach(function(c) { var id = ytIdStrict(c.link); if (id && seen[id]) return; best[c.link] = c; });   // los del canal de Benessere también se sugieren
       return Object.keys(best).map(function(l) { return best[l]; }).sort(function(a, b) { return b.sc - a.sc; }).slice(0, max || 3);
     }
     // Pone el video en todos los lugares de la rutina con ese nombre (ejercicio o alternativa) que lo tengan vacío y lo guarda en la biblioteca (así el nombre nuevo queda como alias)
@@ -3002,6 +3055,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         document.body.appendChild(o);
       }
       var G = vmGroups(); VM_G = G.list;
+      if (!VM_CANAL_TRIED) { VM_CANAL_TRIED = true; canalLoad(false).then(function() { if (document.getElementById('vm_modal')) vmOpen(); }).catch(function() {}); }   // trae (o actualiza) los videos del canal para sugerir
       if (!G.list.length && !G.nameless) { o.remove(); showToastTop('🎥 Ya no falta ningún video. Vuelve a tocar Enviar.'); return; }
       var h = '<div style="background:#181818; border:1.5px solid var(--primary); border-radius:16px; width:100%; max-width:460px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden;">' +
         '<div style="padding:12px 14px 6px; font-weight:900; color:var(--primary);">🎥 Videos que faltan (' + G.list.length + ')<div style="font-size:.74rem; color:#aab; font-weight:600; margin-top:2px;">Toca una sugerencia o pega el link. Se copia a todos los lugares con ese nombre y queda guardado en la biblioteca.</div></div>' +
@@ -3010,8 +3064,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var sug = vmSuggest(gr.name, 3), yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(gr.name + ' ejercicio');
         h += '<div style="background:#111; border:1px solid #333; border-radius:12px; padding:10px;">' +
           '<div style="font-weight:800; color:#fff; font-size:.9rem;">' + escHtml(gr.name) + (gr.n > 1 ? ' <span style="color:#8fd3ff; font-size:.72rem;">· en ' + gr.n + ' lugares</span>' : '') + '</div>' +
-          (sug.length ? '<div style="font-size:.72rem; color:#ffd60a; margin-top:6px; font-weight:800;">¿Es alguno de estos de tu biblioteca?</div><div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">' +
-            sug.map(function(x, j) { return '<button type="button" onclick="vmPick(' + i + ',' + j + ')" style="background:#1d2b1d; border:1px solid #06d6a0; color:#06d6a0; border-radius:8px; padding:6px 9px; font-size:.78rem; font-weight:800; cursor:pointer;">✔ ' + escHtml(x.name) + '</button>'; }).join('') + '</div>' : '') +
+          (sug.length ? '<div style="font-size:.72rem; color:#ffd60a; margin-top:6px; font-weight:800;">¿Es alguno de estos? (✔ tu biblioteca · 📺 canal de Benessere)</div><div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">' +
+            sug.map(function(x, j) { return '<button type="button" onclick="vmPick(' + i + ',' + j + ')" style="background:#1d2b1d; border:1px solid #06d6a0; color:#06d6a0; border-radius:8px; padding:6px 9px; font-size:.78rem; font-weight:800; cursor:pointer;">' + (x.canal ? '📺 ' : '✔ ') + escHtml(x.name) + '</button>'; }).join('') + '</div>' : '') +
           '<div style="display:flex; gap:6px; margin-top:8px;"><input type="text" id="vm_in_' + i + '" placeholder="Pega aquí el link del video" style="flex:1; min-width:0; padding:9px; border-radius:8px; border:1px solid var(--border); background:#0b0b0b; color:#fff; font-size:.85rem;">' +
           '<button type="button" onclick="vmSave(' + i + ')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:0 12px; font-weight:800; cursor:pointer;">Guardar</button></div>' +
           '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><a href="' + yt + '" target="_blank" rel="noopener noreferrer" style="color:#ff6b6b; font-size:.78rem; font-weight:800; text-decoration:none; border:1px solid #ff6b6b; border-radius:8px; padding:5px 9px;">▶ Buscar en YouTube</a>' +
