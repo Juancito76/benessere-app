@@ -9363,7 +9363,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '#tm_radjl{display:none; font-size:0.85rem; color:#bcd3ff; font-weight:900; text-align:center; margin-bottom:-3px;}' +
           '@keyframes tmBlink{0%,100%{opacity:1} 50%{opacity:0.12}} .tm-blink{animation:tmBlink .6s linear infinite;}' +
           '#tm_vrep{display:none; flex:none; align-self:center; margin:4px auto 0; background:none; border:none; color:#ff9a93; font-size:0.8rem; font-weight:700; text-decoration:underline; padding:6px 8px; cursor:pointer;}' +
-          '#tm_vid{width:100%; flex:none; height:calc(100vh - 380px); height:clamp(calc((100vw - 32px) * 0.5625), calc(100vh - 380px), calc((100vw - 32px) * 1.35)); min-height:200px; margin:12px 0 0;}' +
+          '#tm_vid{border:3px solid #ff9f1c; box-sizing:border-box; width:100%; flex:none; height:calc(100vh - 380px); height:clamp(calc((100vw - 32px) * 0.5625), calc(100vh - 380px), calc((100vw - 32px) * 1.35)); min-height:200px; margin:12px 0 0;}' +
           '@media (orientation:landscape) and (max-height:520px){#tm_overlay{display:grid !important; grid-template-columns:1fr 1fr; column-gap:14px; align-content:start; grid-auto-rows:min-content;} #tm_overlay > *{grid-column:1;} #tm_g{grid-column:1 / -1; grid-row:1;} #tm_head{grid-column:1; grid-row:2;} #tm_top{grid-column:1; grid-row:3;} #tm_vid{grid-column:2; grid-row:2 / span 9; width:100%; height:calc(100vh - 70px); flex:none; margin:0; align-self:start;} #tm_time{font-size:min(18vh, 90px) !important;}}';
         document.head.appendChild(cs);
       }
@@ -9869,7 +9869,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<iframe title="Demostración" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam() + '"></iframe>' +
         (check ? '<div id="demo_float_st" style="padding:8px 10px;font-size:.78rem;font-weight:700;color:#aaa;">⏳ Revisando si se puede mostrar en la app…</div>' : '') +
         '</div>' +
-        '<div style="display:flex;justify-content:flex-end;padding-right:14px;"><div style="background:#00e5ff;color:#001418;font-weight:900;font-size:.78rem;padding:5px 14px 6px;border-radius:0 0 10px 10px;letter-spacing:.2px;">Benessere Gym / ' + escHtml(demoCoachTxt()) + '</div></div></div>';
+        '<div style="display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;padding-right:14px;"><span id="demo_nav_slot"></span><div style="background:#00e5ff;color:#001418;font-weight:900;font-size:.78rem;padding:5px 14px 6px;border-radius:0 0 10px 10px;letter-spacing:.2px;">Benessere Gym / ' + escHtml(demoCoachTxt()) + '</div></div></div>';
       w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
       document.body.appendChild(w);
       document.getElementById('demo_float_x').onclick = demoFloatClose;
@@ -9901,19 +9901,64 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       showToastTop('🗑️ Video eliminado.');
     }
     var DEMO_FIELD = '';   // ruta del campo de video desde el que se abrió la prueba (para vaciarlo al eliminar)
+    // ----- «Siguiente video»: pasa al siguiente ejercicio del mismo bloque sin cerrar la ventana; un aviso de 2 s dice cuál es -----
+    var DEMO_NAV = null;
+    function demoNavSetup(a) {
+      DEMO_NAV = null;
+      var blk = a.closest('.exercise-variant'); if (!blk) return;
+      var items = [], cur = -1;
+      [].slice.call(blk.querySelectorAll('.exercise-item-box:not(.alt-off)')).forEach(function(bx, i) {
+        var an = bx.querySelector('.btn-yt-demo'), href = an ? an.getAttribute('href') : '', nm = bx.querySelector('.ex-name'), tg = bx.querySelector('.ex-target');
+        var name = nm ? nm.innerText.replace(/^[A-C1-9]\s/, '').trim() : 'Ejercicio';
+        var t = tg ? tg.innerText.replace(/↔.*$/, '').replace(/\s+/g, ' ').trim() : '', reps = '';
+        var m = t.match(/×\s*(.*?)(?:\s+reps)?\s*(?:·|$)/); reps = m ? m[1].trim() : t.split('·')[0].replace(/\s+reps$/, '').trim();
+        items.push({ name: name, reps: reps, href: href, pos: i + 1, ok: !!(href && ytIdStrict(href)), id: bx.id || '' });
+        if (an === a) cur = i;
+      });
+      if (cur < 0 || items.filter(function(x) { return x.ok; }).length < 2) return;
+      DEMO_NAV = { items: items, cur: cur };
+      var slot = document.getElementById('demo_nav_slot'); if (!slot) return;
+      slot.innerHTML = '<button type="button" id="demo_next" style="background:#00e5ff;color:#001418;border:0;border-radius:10px 10px 0 0;font-weight:900;font-size:.8rem;padding:6px 12px 7px;cursor:pointer;">⏭ Siguiente video</button>';
+      document.getElementById('demo_next').onclick = demoNavNext;
+    }
+    function demoNavNext() {
+      var N = DEMO_NAV; if (!N) return;
+      var n = N.cur, len = N.items.length, tries = 0;
+      do { n = (n + 1) % len; tries++; } while (!N.items[n].ok && tries <= len);
+      var it = N.items[n]; if (!it || !it.ok) return;
+      N.cur = n;
+      var lastOk = -1; N.items.forEach(function(x, i) { if (x.ok) lastOk = i; });
+      var id = ytIdStrict(it.href), fr = document.querySelector('#demo_float iframe');
+      if (fr) fr.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam();
+      var label = (n === lastOk ? 'Último ejercicio' : 'Ejercicio ' + it.pos) + ': ' + it.name + (it.reps ? ' × ' + it.reps : '');
+      var box = fr && fr.parentNode;
+      if (box) {
+        var old = document.getElementById('demo_toast'); if (old) old.remove();
+        var t = document.createElement('div'); t.id = 'demo_toast';
+        t.style.cssText = 'position:absolute;left:10px;right:10px;top:50%;transform:translateY(-50%);z-index:3;background:rgba(0,229,255,.95);color:#001418;font-weight:900;font-size:1.1rem;line-height:1.25;text-align:center;padding:14px 12px;border-radius:12px;pointer-events:none;transition:opacity .35s;';
+        t.textContent = label; box.appendChild(t);
+        setTimeout(function() { t.style.opacity = '0'; }, 1650); setTimeout(function() { t.remove(); }, 2050);
+      }
+      try {   // el aviso de «el video no se ve» pasa a ser del video nuevo; y el ejercicio queda marcado como visto
+        var hold = document.getElementById('demo_hold');
+        if (hold) { var dayEl = document.querySelector('#' + (it.id ? it.id : 'x_none')); hold.innerHTML = vrepMini(it.href, it.name, (dayEl && dayEl.closest('.view-screen')) ? dayEl.closest('.view-screen').id : ''); var bt = hold.firstChild; if (bt) { bt.style.display = 'inline-block'; bt.style.fontSize = '0.85rem'; bt.style.padding = '6px 4px'; } }
+        if (it.id) { GD_DEMO['b:' + it.id] = true; setTimeout(function() { try { guidePaintAll(); } catch (e2) {} }, 400); }
+      } catch (e) {}
+    }
     function demoFloatClose() { var w = document.getElementById('demo_float'); if (w) w.remove(); }
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') demoFloatClose(); });
     document.addEventListener('click', function(e) {   // «Ver demostración»: ventana flotante; si el link no es de YouTube, abre como siempre
       var a = e.target && e.target.closest ? e.target.closest('.btn-yt-demo') : null; if (!a) return;
       if (demoFloatOpen(a.getAttribute('href'))) {
         e.preventDefault();
+        try { demoNavSetup(a); } catch (eN) {}
         try {   // el cliente también puede avisar desde la ventana de la demostración si el video no se ve
           if (!isCoachView()) {
             var bx = a.closest('.exercise-item-box'), nmEl = bx && bx.querySelector('.ex-name'), dayEl = a.closest('.view-screen');
             var hold = document.createElement('div'); hold.style.cssText = 'padding:8px 10px; text-align:center; background:#1a1a1a;';
             hold.innerHTML = vrepMini(a.getAttribute('href'), nmEl ? nmEl.innerText.replace(/^[A-C1-9]\s/, '').trim() : 'Ejercicio', dayEl ? dayEl.id : '');
             var bt = hold.firstChild; if (bt) { bt.style.display = 'inline-block'; bt.style.fontSize = '0.85rem'; bt.style.padding = '6px 4px'; }
-            var inner = document.querySelector('#demo_float > div'); if (inner && bt) inner.appendChild(hold);
+            hold.id = 'demo_hold'; var inner = document.querySelector('#demo_float > div'); if (inner && bt) inner.appendChild(hold);
           }
         } catch (er) {}
       }
