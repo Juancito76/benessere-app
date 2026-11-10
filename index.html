@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -483,6 +483,19 @@
     .prev-load-badge-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
     .prev-load-badge { font-size: 0.7rem; color: var(--primary); font-weight: 600; }
     .btn-load-prev { background: #1b282c; border: 1px solid var(--primary); color: var(--primary); font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+    /* «Última vez / Marca anterior» y «Montar» ya no van bajo el ejercicio: viven dentro del botón «📝 Marcas anteriores» */
+    .prev-load-badge, .btn-load-prev { display: none !important; }
+    .prev-load-badge-row:not(:has(.phase-badge)) { display: none; }
+    .sf-prev { background: #11191c; border: 1.5px solid var(--primary); border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; text-align: left; }
+    .sf-prev .sf-l { font-size: .72rem; font-weight: 900; letter-spacing: .8px; text-transform: uppercase; color: #8fd3ff; }
+    .sf-prev .sf-v { font-size: .95rem; font-weight: 800; color: #fff; margin-top: 2px; line-height: 1.3; }
+    .sf-prev .sf-go { width: 100%; margin-top: 8px; padding: 11px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #6ea0ff, #3e78f0); color: #00112e; font-size: .95rem; font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+    .sf-prev .sf-msg { font-size: .8rem; font-weight: 800; color: #06d6a0; margin-top: 6px; min-height: 1em; }
+    .nt-item { background: #17171c; border: 1.5px solid #3a3a45; border-radius: 14px; padding: 12px; margin-top: 10px; text-align: left; }
+    .nt-item b { color: var(--primary); font-size: .95rem; }
+    .nt-item p { margin: 4px 0 8px; font-size: .88rem; line-height: 1.35; color: #ddd; }
+    .nt-item label { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 800; color: #fff; }
+    .nt-item input[type=checkbox] { width: 20px; height: 20px; accent-color: #06d6a0; }
 
     /* ===== Registro por serie (etapa 1, 07/10/2026) ===== */
     .set-box { margin-top: 8px; background: #141414; border-radius: 8px; padding: 8px; }
@@ -5774,12 +5787,56 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       o.style.cssText = 'position:fixed; inset:0; z-index:100020; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:14px;';
       o.innerHTML = '<div style="background:#181818; border:1.5px solid var(--primary); border-radius:16px; width:100%; max-width:420px; max-height:86vh; display:flex; flex-direction:column; overflow:hidden;">' +
         '<div style="padding:12px 14px; font-weight:900; color:var(--primary); font-size:.95rem;">📝 Marcas anteriores' + (name ? '<div style="font-size:.8rem; color:#fff; font-weight:700; margin-top:2px;">' + escHtml(name) + '</div>' : '') + '</div>' +
-        '<div id="set_float_body" style="padding:0 14px 8px; overflow:auto;"></div>' +
+        '<div id="set_float_body" style="padding:0 14px 8px; overflow:auto;">' + setFloatPrevHtml(key) + '</div>' +
         '<div style="padding:10px 14px 14px;"><button type="button" class="btn-action-primary" onclick="setFloatClose()">Listo</button></div></div>';
       o.addEventListener('click', function(e) { if (e.target === o) setFloatClose(); });
       document.body.appendChild(o);
       document.getElementById('set_float_body').appendChild(node);
       SETFLOAT = key;
+    }
+    // «Marca anterior» (fecha y series) y el botón para montarla: antes iban bajo el ejercicio, ahora viven en la ventana «Marcas anteriores»
+    function setFloatPrevHtml(key) {
+      try {
+        var box = document.getElementById('setbox_' + key), blk = box && box.closest('.exercise-variant'), cT = blk && blk.querySelector('.circ-title');
+        if (cT && isWarmName(cT.innerText)) return '';   // calentamiento / activación: no tiene marca anterior
+        var p = lastMarkFor(key);
+        if (!p) return '<div class="sf-prev"><div class="sf-l">Marca anterior</div><div class="sf-v">Sin marcas todavía</div></div>';
+        return '<div class="sf-prev"><div class="sf-l">Marca anterior · ' + escHtml(p.date || 'Previo') + '</div><div class="sf-v">' + escHtml(markSummary(p)) + '</div>' +
+          '<button type="button" class="sf-go" onclick="setFloatMount(\'' + key + '\')">⤴️ Montar marca anterior</button><div class="sf-msg" id="sf_msg"></div></div>';
+      } catch (e) { return ''; }
+    }
+    function setFloatMount(key) {
+      var p = lastMarkFor(key); if (!p) return;
+      fillSetsFrom(key, p.sets, true); saveTracker(); try { refreshSetSummary(key); } catch (e) {}
+      var m = document.getElementById('sf_msg'); if (m) m.textContent = '✅ Marca montada: ya puedes ajustarla abajo';
+    }
+
+    // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
+    // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
+    var APP_NOTICES = [
+      { id: '2026-11-10-marcas', title: '📝 Tus marcas anteriores se movieron', text: '«Última vez» y «Montar» ya no aparecen bajo el ejercicio: ahora están dentro del botón «📝 Marcas anteriores». Ábrelo para ver tu marca anterior y montarla con un toque.' },
+      { id: '2026-11-10-temporizador', title: '⏱ Temporizador renovado', text: 'El botón azul de arriba dice en qué serie vas, «Última vez» ahora se llama «Marca anterior», los botones −15/+15 del descanso son cuadrados y, si superas una marca, verás una celebración 🏆.' }
+    ];
+    var NT_SEEN = {};
+    function ntOffKey(id) { return 'benessere_notice_off_' + id; }
+    function ntIsOff(id) { try { return localStorage.getItem(ntOffKey(id)) === '1'; } catch (e) { return false; } }
+    function noticesMaybe() {
+      try {
+        if (document.getElementById('nt_modal')) return;
+        var list = APP_NOTICES.filter(function(n) { return !ntIsOff(n.id) && !NT_SEEN[n.id]; });
+        if (!list.length) return;
+        list.forEach(function(n) { NT_SEEN[n.id] = true; });
+        var m = document.createElement('div'); m.id = 'nt_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100050';
+        m.innerHTML = '<div class="modal-inner" style="text-align:center; max-height:86vh; overflow:auto;"><div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📢 Novedades en la app</div>' +
+          list.map(function(n) { return '<div class="nt-item"><b>' + escHtml(n.title) + '</b><p>' + escHtml(n.text) + '</p><label><input type="checkbox" data-nt="' + escHtml(n.id) + '"> No mostrar más</label></div>'; }).join('') +
+          '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="noticesClose()">Entendido</button></div>';
+        document.body.appendChild(m); m.classList.add('active');
+      } catch (e) {}
+    }
+    function noticesClose() {
+      var m = document.getElementById('nt_modal'); if (!m) return;
+      m.querySelectorAll('input[data-nt]').forEach(function(c) { if (c.checked) { try { localStorage.setItem(ntOffKey(c.getAttribute('data-nt')), '1'); } catch (e) {} } });
+      m.remove();
     }
     function setFloatClose() {
       var key = SETFLOAT; SETFLOAT = '';
@@ -10737,7 +10794,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (!demoWait && !collapsed && s === 'next' && i === goIdx) tb.classList.add('gd-btn-go');
           else if (!demoWait && !collapsed && s === 'pend') tb.classList.add('gd-btn-pend');
         }
-        if (!isHere) head.onclick = function() { if (!collapsed && s !== 'done') gdMark(dayId, b.key, 'p'); GD_OPEN[b.srId] = !GD_OPEN[b.srId]; guidePaint(dayId); };   // abrir y cerrar sin hacerla la deja pendiente
+        if (!isHere) head.onclick = function() { if (!collapsed && s !== 'done') gdMark(dayId, b.key, 'p'); GD_OPEN[b.srId] = !GD_OPEN[b.srId]; guidePaint(dayId); if (GD_OPEN[b.srId]) noticesMaybe(); };   // abrir y cerrar sin hacerla la deja pendiente; al abrir un bloque salen las novedades de uso
         el.insertBefore(head, el.firstChild);
       });
     }
@@ -14327,7 +14384,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
       { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
       { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera. Si cierras el entreno con bloques sin hacer, la tarjeta del día dirá «Completado · N pendientes»: puedes volver a ese día hasta el domingo y terminarlos; ese día cuenta como una visita más.' },
-      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. La app las guarda para el próximo entreno. En el temporizador, bajo el ejercicio, ves tu «Marca anterior» de esa serie (por ejemplo «30 lbs × 8 reps»); si al anotar la superas, aparece una celebración corta 🏆.' },
+      { t: 'Dentro de un día: registrar tus series', x: 'En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. Arriba de esa ventana ves tu «Marca anterior» con su fecha y el botón «⤴️ Montar marca anterior» para llenarla con un toque. La app guarda lo que anotas para el próximo entreno. En el temporizador, bajo el ejercicio, ves tu «Marca anterior» de esa serie (por ejemplo «30 lbs × 8 reps»); si al anotar la superas, aparece una celebración corta 🏆.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach», debajo del ejercicio o en la ventana del video, y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
       { t: 'Circuitos con temporizador', x: 'En los circuitos, el temporizador te guía con sonido, vibración y voz: avisa cuando faltan 20 y 10 segundos del trabajo, y 20 segundos para iniciar tras el descanso.' },
