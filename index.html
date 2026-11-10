@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5816,7 +5816,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
       { id: '2026-11-10-marcas', title: '📝 Tus marcas anteriores se movieron', text: '«Última vez» y «Montar» ya no aparecen bajo el ejercicio: ahora están dentro del botón «📝 Marcas anteriores». Ábrelo para ver tu marca anterior y montarla con un toque.' },
-      { id: '2026-11-10-esfuerzo', title: '💬 Más fácil de entender', text: 'Donde decía «EP4» ahora lees el tipo de carga en palabras, por ejemplo «3 series × 14 reps · peso moderado».' },
+      { id: '2026-11-10-esfuerzo', title: '💬 Más fácil de entender', text: 'Donde decía «EP4» ahora lees el tipo de carga en palabras, en la rutina y en el temporizador, por ejemplo «3 series × 14 reps · peso moderado».' },
       { id: '2026-11-10-temporizador', title: '⏱ Temporizador renovado', text: 'El botón azul de arriba dice en qué serie vas, «Última vez» ahora se llama «Marca anterior», los botones −15/+15 del descanso son cuadrados y, si superas una marca, verás una celebración 🏆.' }
     ];
     var NT_SEEN = {};
@@ -9487,7 +9487,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } catch (e) {}
     }
     // Texto bajo el ejercicio con el peso y las reps de la última vez (referencia para el cliente), o «Sin marcas» si no hay registro
-    function ctRepsClean(t) { return String(t == null ? '' : t).replace(/\s*[—–-]+\s*EP\s*\d+(?:[.,]\d+)?/gi, '').trim(); }   // fuera el índice de esfuerzo (EP) de la pantalla del temporizador
+    // El índice de esfuerzo («— EP4») se cambia por palabras que entienda cualquiera («· peso moderado»); w = el ejercicio usa peso
+    function ctRepsClean(t, w) {
+      return String(t == null ? '' : t).replace(/\s*[—–-]+\s*EP\s*(\d+(?:[.,]\d+)?)/gi, function(m, n) { var v = parseFloat(String(n).replace(',', '.')); return isNaN(v) ? '' : ' · ' + epLabel(v, !!w); }).trim();
+    }
+    function ctWfor(p) {   // ¿el ejercicio de esa fase usa peso? (para decir «peso moderado» o «esfuerzo moderado»)
+      try { var k = (CT.keys || [])[p && p.si]; return !!(k && SETMETA[k] && SETMETA[k].w); } catch (e) { return false; }
+    }
     function ctPrevSetFor(mk, idx) {   // la marca anterior de la serie que toca (si esa serie quedó vacía, la última anotada antes)
       var sets = (mk && mk.sets) || [], st = sets[idx];
       if (!st || (!cleanMark(st.w) && !cleanMark(st.r))) { st = null; for (var q = Math.min(idx, sets.length - 1); q >= 0; q--) { if (sets[q] && (cleanMark(sets[q].w) || cleanMark(sets[q].r))) { st = sets[q]; break; } } }
@@ -9647,7 +9653,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         for (var qn = CT.i + 1; qn < CT.phases.length; qn++) { var pn = CT.phases[qn]; if (pn.t === 'work') { repsStr = pn.open ? (pn.reps || '') : (pn.note || (pn.d ? tmrFmt(pn.d) + (pn.d < 60 ? ' s' : ' min') : '')); break; } }
       }
       if (ph.seq) repsStr = seqDone ? '' : seqStep.reps;
-      if (el('tm_reps')) el('tm_reps').innerText = CT.cls ? repsStr : ctRepsClean(repsStr);
+      var wPh = (ph.t === 'work') ? ph : (ctNextWork() || ph);   // en el descanso se muestra lo que viene: se mira el ejercicio siguiente
+      if (!CT.cls) repsStr = ctRepsClean(repsStr, ctWfor(wPh));
+      if (el('tm_reps')) el('tm_reps').innerText = repsStr;
       ctPrevPaint(ph);   // marca anterior (peso y reps) del ejercicio, o «Sin marcas»
       if (el('tm_prog')) {   // avance del bloque: cuánto falta, y "ya casi" cuando queda poco
         var left = CT.rounds - ph.r, lab = (CT.roundLabel || 'Ronda').toLowerCase(), pTxt = '', pCol = '#ccc';
@@ -9722,7 +9730,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else nxTxt = 'Sigue: ' + ctShort(nx.st) + (nx.side ? ' · lado ' + nx.side : '') + (nx.open && nx.reps ? ' · ' + nx.reps : '');
       }
       if (!CT.cls && ph.t === 'ready' && nx && nx.t === 'work') nxTxt = '';   // en el «Prepárate» el ejercicio de turno ya está arriba: no se repite abajo
-      el('tm_next').innerText = CT.cls ? nxTxt : ctRepsClean(nxTxt);
+      el('tm_next').innerText = CT.cls ? nxTxt : ctRepsClean(nxTxt, ctWfor(nx));
       if (CT.cls) ctClsRender(ph); else if (el('tm_blkb')) el('tm_blkb').style.display = 'none';
       if (ph.seq) {   // qué sigue dentro del intervalo
         var sq = ph.steps[CT.seqI + 1];
