@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2953,6 +2953,108 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       showToastTop('No encontré el espacio en pantalla; revisa que el día esté abierto.');
     }
     setInterval(vidNextFabSync, 1500);
+    // ----- Panel «Videos que faltan»: sugerencias de la biblioteca, pegar el link y pasar al siguiente; busca candidatos si el servidor lo permite -----
+    var VM_G = [], VM_CAND = {};
+    function vmToks(n) { return vsSigKey(n).split(' ').filter(Boolean); }
+    // Nombres de la biblioteca parecidos a «name» (sin repetir el mismo video), del más parecido al menos
+    function vmSuggest(name, max) {
+      var q = vmToks(name); if (!q.length) return [];
+      var lib = getVideoLibrary(), best = {};
+      Object.keys(lib).forEach(function(k) {
+        var link = String(lib[k] || '').trim(); if (!link) return;
+        var t = vmToks(k); if (!t.length) return;
+        var inter = q.filter(function(x) { return t.indexOf(x) >= 0; }).length; if (!inter) return;
+        var union = q.length + t.length - inter, sc = inter / union;
+        if (inter === Math.min(q.length, t.length)) sc = Math.max(sc, 0.6);   // todas las palabras de uno están en el otro
+        if (sc < 0.5) return;
+        if (!best[link] || sc > best[link].sc) best[link] = { name: k, link: link, sc: sc };
+      });
+      return Object.keys(best).map(function(l) { return best[l]; }).sort(function(a, b) { return b.sc - a.sc; }).slice(0, max || 3);
+    }
+    // Pone el video en todos los lugares de la rutina con ese nombre (ejercicio o alternativa) que lo tengan vacío y lo guarda en la biblioteca (así el nombre nuevo queda como alias)
+    function vmApply(name, link) {
+      var k = normKey(name), v = String(link || '').trim(), n = 0; if (!k || !v) return 0;
+      (routineDays || []).forEach(function(d) { (d.items || []).forEach(function(it) { (it.sub || []).forEach(function(sb) {
+        if (!sb) return;
+        if (normKey(sb.name) === k && !String(sb.video || '').trim()) { sb.video = v; n++; }
+        if (normKey(sb.alt) === k && !String(sb.altVideo || '').trim()) { sb.altVideo = v; n++; }
+      }); }); });
+      rememberExerciseVideo(name, v);
+      try { var id = ytIdStrict(v); if (id) vidCheckQ(id); } catch (e) {}
+      try { renderDays(); setTimeout(vidBadgeAll, 150); } catch (e) {}
+      return n;
+    }
+    function vmGroups() {
+      var g = {}, order = [], nameless = 0;
+      missingVideos().forEach(function(m) {
+        var it = routineDays[m.di].items[m.ii].sub[m.k], nm = String(m.alt ? it.alt : it.name || '').trim();
+        if (!nm) { nameless++; return; }
+        var key = normKey(nm); if (!g[key]) { g[key] = { name: nm, n: 0, where: m.label }; order.push(key); }
+        g[key].n++;
+      });
+      return { list: order.map(function(k) { return g[k]; }), nameless: nameless };
+    }
+    function vmOpen() {
+      var o = document.getElementById('vm_modal');
+      if (!o) {
+        o = document.createElement('div'); o.id = 'vm_modal';
+        o.style.cssText = 'position:fixed; inset:0; z-index:100030; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; padding:12px;';
+        document.body.appendChild(o);
+      }
+      var G = vmGroups(); VM_G = G.list;
+      if (!G.list.length && !G.nameless) { o.remove(); showToastTop('🎥 Ya no falta ningún video. Vuelve a tocar Enviar.'); return; }
+      var h = '<div style="background:#181818; border:1.5px solid var(--primary); border-radius:16px; width:100%; max-width:460px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden;">' +
+        '<div style="padding:12px 14px 6px; font-weight:900; color:var(--primary);">🎥 Videos que faltan (' + G.list.length + ')<div style="font-size:.74rem; color:#aab; font-weight:600; margin-top:2px;">Toca una sugerencia o pega el link. Se copia a todos los lugares con ese nombre y queda guardado en la biblioteca.</div></div>' +
+        '<div style="padding:4px 14px; overflow:auto; display:flex; flex-direction:column; gap:10px;">';
+      VM_G.forEach(function(gr, i) {
+        var sug = vmSuggest(gr.name, 3), yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(gr.name + ' ejercicio');
+        h += '<div style="background:#111; border:1px solid #333; border-radius:12px; padding:10px;">' +
+          '<div style="font-weight:800; color:#fff; font-size:.9rem;">' + escHtml(gr.name) + (gr.n > 1 ? ' <span style="color:#8fd3ff; font-size:.72rem;">· en ' + gr.n + ' lugares</span>' : '') + '</div>' +
+          (sug.length ? '<div style="font-size:.72rem; color:#ffd60a; margin-top:6px; font-weight:800;">¿Es alguno de estos de tu biblioteca?</div><div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">' +
+            sug.map(function(x, j) { return '<button type="button" onclick="vmPick(' + i + ',' + j + ')" style="background:#1d2b1d; border:1px solid #06d6a0; color:#06d6a0; border-radius:8px; padding:6px 9px; font-size:.78rem; font-weight:800; cursor:pointer;">✔ ' + escHtml(x.name) + '</button>'; }).join('') + '</div>' : '') +
+          '<div style="display:flex; gap:6px; margin-top:8px;"><input type="text" id="vm_in_' + i + '" placeholder="Pega aquí el link del video" style="flex:1; min-width:0; padding:9px; border-radius:8px; border:1px solid var(--border); background:#0b0b0b; color:#fff; font-size:.85rem;">' +
+          '<button type="button" onclick="vmSave(' + i + ')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:0 12px; font-weight:800; cursor:pointer;">Guardar</button></div>' +
+          '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><a href="' + yt + '" target="_blank" rel="noopener noreferrer" style="color:#ff6b6b; font-size:.78rem; font-weight:800; text-decoration:none; border:1px solid #ff6b6b; border-radius:8px; padding:5px 9px;">▶ Buscar en YouTube</a>' +
+          '<button type="button" onclick="vmCand(' + i + ')" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:8px; padding:5px 9px; font-size:.78rem; font-weight:800; cursor:pointer;">🔎 Candidatos</button></div>' +
+          '<div id="vm_c_' + i + '" style="margin-top:6px;"></div></div>';
+      });
+      if (G.nameless) h += '<div style="font-size:.78rem; color:#ffd60a;">Hay ' + G.nameless + ' ejercicio(s) sin nombre: ponles nombre en el constructor.</div>';
+      h += '</div><div style="padding:8px 14px 14px;"><button type="button" class="btn-action-primary" onclick="vmClose()" style="background:#2a2a2a; color:#fff;">Cerrar</button></div></div>';
+      o.innerHTML = h;
+    }
+    function vmClose() { var o = document.getElementById('vm_modal'); if (o) o.remove(); }
+    function vmPick(i, j) {
+      var gr = VM_G[i]; if (!gr) return; var sg = vmSuggest(gr.name, 3)[j]; if (!sg) return;
+      var n = vmApply(gr.name, sg.link); showToastTop('🎥 Video puesto en ' + n + (n === 1 ? ' lugar' : ' lugares') + ' · «' + gr.name + '» queda como alias.'); vmOpen();
+    }
+    function vmSave(i) {
+      var gr = VM_G[i], inp = document.getElementById('vm_in_' + i); if (!gr || !inp) return;
+      var v = inp.value.trim();
+      if (!/^https?:\/\//i.test(v)) { showToastTop('Pega un link completo (empieza con https://).'); return; }
+      var n = vmApply(gr.name, v); showToastTop('🎥 Video guardado en ' + n + (n === 1 ? ' lugar' : ' lugares') + '.'); vmOpen();
+    }
+    // Candidatos desde YouTube (los busca el servidor; descarta los que no se pueden incrustar). Tú eliges: nunca se pone uno solo.
+    function vmCand(i) {
+      var gr = VM_G[i], box = document.getElementById('vm_c_' + i); if (!gr || !box) return;
+      box.innerHTML = '<span style="color:#aab; font-size:.78rem;">⏳ Buscando…</span>';
+      postJson({ a: 'buscarvideo', q: gr.name + ' ejercicio', pin: (typeof vrepPin === 'function' ? vrepPin() : '') }, 20000).then(function(j) {
+        if (!j || !j.ok || !j.items || !j.items.length) {
+          var why = (j && j.error === 'sin-clave') ? 'Falta activar la búsqueda en el servidor (clave de YouTube).' : (j && j.error === 'pin') ? 'Entra primero con tu PIN.' : (j && j.ok) ? 'No encontré candidatos.' : 'Esta búsqueda aún no está activada en el servidor.';
+          box.innerHTML = '<span style="color:#ffd60a; font-size:.78rem;">' + why + ' Usa «Buscar en YouTube».</span>'; return;
+        }
+        VM_CAND[i] = j.items;
+        box.innerHTML = j.items.slice(0, 3).map(function(c, k) {
+          return '<div style="display:flex; gap:8px; align-items:center; margin-top:6px;"><img src="' + escHtml(c.thumb || '') + '" alt="" style="width:84px; height:48px; object-fit:cover; border-radius:6px; background:#222;">' +
+            '<div style="flex:1; min-width:0; font-size:.74rem; color:#ddd; line-height:1.25;">' + escHtml(c.title || '') + '<div style="color:#8d99ae;">' + escHtml(c.channel || '') + '</div></div>' +
+            '<a href="https://www.youtube.com/watch?v=' + encodeURIComponent(c.id) + '" target="_blank" rel="noopener noreferrer" style="color:#ff6b6b; font-size:.75rem; font-weight:800; text-decoration:none;">▶ Ver</a>' +
+            '<button type="button" onclick="vmUseCand(' + i + ',' + k + ')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:6px 10px; font-weight:800; font-size:.78rem; cursor:pointer;">Usar</button></div>';
+        }).join('');
+      }).catch(function() { box.innerHTML = '<span style="color:#ffd60a; font-size:.78rem;">No hubo conexión con el servidor. Usa «Buscar en YouTube».</span>'; });
+    }
+    function vmUseCand(i, k) {
+      var gr = VM_G[i], c = (VM_CAND[i] || [])[k]; if (!gr || !c) return;
+      var n = vmApply(gr.name, 'https://www.youtube.com/watch?v=' + c.id); showToastTop('🎥 Video puesto en ' + n + (n === 1 ? ' lugar' : ' lugares') + '.'); vmOpen();
+    }
     function clearVideoMissingMarks() {
       document.querySelectorAll('.video-missing').forEach(function(el) { el.classList.remove('video-missing'); });
     }
@@ -2972,8 +3074,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var el = document.querySelector(sel);
         if (el) { el.classList.add('video-missing'); if (!first) first = el; }
       });
-      var shown = miss.slice(0, 8).map(function(m) { return '• ' + m.label; }).join('\n');
-      alert('🎥 Falta el video de ' + miss.length + ' ejercicio' + (miss.length > 1 ? 's' : '') + ' o alternativa' + (miss.length > 1 ? 's' : '') + ' (las demostraciones en video están activadas):\n\n' + shown + (miss.length > 8 ? '\n• … y ' + (miss.length - 8) + ' más' : '') + '\n\nPega el link de cada uno (o usa "🎥 Elegir"). Si no quieres demostraciones, desactiva "Activar Demostraciones en Video" en Perfil del Coach.');
+      try { vmOpen(); } catch (eVm) {
+        var shown = miss.slice(0, 8).map(function(m) { return '• ' + m.label; }).join('\n');
+        alert('🎥 Falta el video de ' + miss.length + ' ejercicio(s) o alternativa(s):\n\n' + shown);
+      }
       if (first) { dayEnsureOpen(first); try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
       return false;
     }
