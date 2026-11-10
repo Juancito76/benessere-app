@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1182,13 +1182,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
         <span id="cl_who" style="font-size:0.78rem; color:var(--primary); font-weight:800;"></span>
         <span>
-          <button type="button" onclick="asistManualRun()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📊 Resúmenes</button>
-          <button type="button" onclick="vigScanClients()" title="Revisa todas las rutinas: ejercicios repetidos y rutinas en espera vencidas (no cambia nada)" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🔍 Vigencias</button>
-          <button type="button" onclick="linkScanClients()" title="Revisa los videos de todos los clientes: los que faltan y los que no funcionan (no cambia nada)" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🔗 Links</button>
-          <button type="button" onclick="openAttendance()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">🚪 Asistencia</button>
-          <button type="button" onclick="openCoachWeek()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">📈 Esta semana</button>
-          <button type="button" onclick="refreshClientList()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">🔄</button>
-          <button type="button" onclick="coachLogout()" style="background:transparent; border:1px solid #555; color:#aaa; font-size:0.7rem; padding:4px 8px; border-radius:4px; cursor:pointer;">Cerrar sesión</button>
+          <button type="button" onclick="clMenuOpen()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); font-size:0.8rem; font-weight:800; padding:6px 12px; border-radius:6px; cursor:pointer;">⚙️ Opciones</button>
         </span>
       </div>
       <div id="cl_reports"></div>
@@ -11674,7 +11668,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
           '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:#ffd60a; border:1px solid #ffd60a; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
-        html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="cvOpen(\'' + escHtml(k) + '\')" title="Link del cliente, todas sus rutinas, semana por semana e historial (solo ver)" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-weight:800; cursor:pointer;">🔎 Visor</button><button type="button" onclick="coachOpenDatos(\'' + escHtml(last.id) + '\')" title="Ficha, medidas, asistencia y datos de contacto" style="background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📋 Datos y asistencia</button><button type="button" onclick="clientExportText(\'' + escHtml(last.id) + '\', ' + jsArg(g.name) + ')" title="Sacar todo lo guardado de este cliente como texto para corregirlo y volver a subirlo" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📤 Exportar a texto plano</button><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button><button type="button" onclick="coachHabilitarRecorrido(' + jsArg(g.name) + ')" title="Le vuelve a mostrar las ventanitas que explican para qué sirve cada botón" style="background:transparent; border:1px solid #ffd60a; color:#ffd60a; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">🧭 Habilitar recorrido</button></div>';
+        CLMENU[k] = { key: k, name: g.name, id: last.id, off: isOff };
+        html += '<div style="margin-top:6px;"><button type="button" onclick="clientMenuOpen(' + jsArg(k) + ')" style="background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:6px; padding:5px 14px; font-size:0.78rem; font-weight:800; cursor:pointer;">⚙️ Opciones</button></div>';
         if (g.days.length > 1) {
           html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">';
           g.days.slice(1, 6).forEach(function(r) {
@@ -11946,6 +11941,47 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var COACH_OFF_KEY = 'benessere_off_clients';
     function coachOffGet() { try { return JSON.parse(localStorage.getItem(COACH_OFF_KEY) || '{}') || {}; } catch (e) { return {}; } }
     function coachOffSet(k, on) { try { var o = coachOffGet(); if (on) o[k] = 1; else delete o[k]; localStorage.setItem(COACH_OFF_KEY, JSON.stringify(o)); } catch (e) {} }
+    // ----- Menú «Opciones»: agrupa los botoncitos en una ventana flotante (general y por cliente) -----
+    var CLMENU = {}, CLMENU_ACT = [];
+    function optMenuShow(title, sub, items) {
+      var old = document.getElementById('opt_menu'); if (old) old.remove();
+      CLMENU_ACT = items;
+      var o = document.createElement('div'); o.id = 'opt_menu';
+      o.style.cssText = 'position:fixed; inset:0; z-index:100030; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:14px;';
+      o.innerHTML = '<div style="background:#181818; border:1.5px solid var(--primary); border-radius:16px; width:100%; max-width:420px; max-height:86vh; display:flex; flex-direction:column; overflow:hidden;">' +
+        '<div style="padding:12px 14px 6px; font-weight:900; color:var(--primary); font-size:1rem;">' + escHtml(title) + (sub ? '<div style="font-size:.8rem; color:#fff; font-weight:700; margin-top:2px;">' + escHtml(sub) + '</div>' : '') + '</div>' +
+        '<div style="padding:6px 14px; overflow:auto; display:flex; flex-direction:column; gap:8px;">' +
+        items.map(function(it, i) {
+          return '<button type="button" onclick="optMenuGo(' + i + ')" style="text-align:left; background:#111; border:1px solid ' + (it.color || 'var(--primary)') + '; color:' + (it.color || 'var(--primary)') + '; border-radius:10px; padding:10px 12px; cursor:pointer;">' +
+            '<div style="font-weight:800; font-size:.92rem;">' + it.label + '</div>' + (it.desc ? '<div style="font-size:.74rem; color:#aab; margin-top:2px; font-weight:600;">' + escHtml(it.desc) + '</div>' : '') + '</button>';
+        }).join('') + '</div>' +
+        '<div style="padding:8px 14px 14px;"><button type="button" class="btn-action-primary" onclick="optMenuClose()" style="background:#2a2a2a; color:#fff;">Cerrar</button></div></div>';
+      o.addEventListener('click', function(e) { if (e.target === o) optMenuClose(); });
+      document.body.appendChild(o);
+    }
+    function optMenuClose() { var o = document.getElementById('opt_menu'); if (o) o.remove(); }
+    function optMenuGo(i) { var it = CLMENU_ACT[i]; optMenuClose(); if (it && it.fn) setTimeout(it.fn, 60); }
+    function clMenuOpen() {
+      optMenuShow('⚙️ Opciones', 'Todos los clientes', [
+        { label: '📊 Resúmenes', desc: 'Resúmenes de asistencia para enviar', fn: function() { asistManualRun(); } },
+        { label: '🔍 Vigencias', desc: 'Revisa ejercicios repetidos y rutinas en espera vencidas (no cambia nada)', fn: function() { vigScanClients(); } },
+        { label: '🔗 Links', desc: 'Revisa los videos de todos los clientes (no cambia nada)', fn: function() { linkScanClients(); } },
+        { label: '🚪 Asistencia', fn: function() { openAttendance(); } },
+        { label: '📈 Esta semana', fn: function() { openCoachWeek(); } },
+        { label: '🔄 Actualizar lista', fn: function() { refreshClientList(); }, color: '#8d99ae' },
+        { label: 'Cerrar sesión', fn: function() { coachLogout(); }, color: '#aaa' }
+      ]);
+    }
+    function clientMenuOpen(k) {
+      var c = CLMENU[k]; if (!c) return;
+      optMenuShow('⚙️ Opciones', c.name, [
+        { label: '🔎 Visor', desc: 'Link del cliente, todas sus rutinas, semana por semana e historial (solo ver)', fn: function() { cvOpen(c.key); } },
+        { label: '📋 Datos y asistencia', desc: 'Ficha, medidas, asistencia y datos de contacto', fn: function() { coachOpenDatos(c.id); }, color: '#cfd6e0' },
+        { label: '📤 Exportar a texto plano', desc: 'Todo lo guardado como texto para corregirlo y volver a subirlo', fn: function() { clientExportText(c.id, c.name); }, color: '#4dd0e1' },
+        { label: '🧭 Habilitar recorrido', desc: 'Le vuelve a mostrar las ventanitas que explican cada botón', fn: function() { coachHabilitarRecorrido(c.name); }, color: '#ffd60a' },
+        { label: c.off ? '🔗 Reconectar' : '🔌 Desconectar', desc: c.off ? 'Vuelve a ver su rutina y a recibir actualizaciones' : 'Deja de ver la rutina; verá un mensaje de despedida', fn: function() { coachToggleClientOff(c.name); }, color: c.off ? '#06d6a0' : '#ff8a65' }
+      ]);
+    }
     // «🧭 Habilitar recorrido»: activa (o reinicia) las ventanitas explicativas de un cliente que ya tenía la app. Se marca en todas sus rutinas.
     var tourBusy = false;
     function coachHabilitarRecorrido(name) {
