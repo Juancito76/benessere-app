@@ -9915,11 +9915,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         items.push({ name: name, reps: reps, href: href, pos: i + 1, ok: !!(href && ytIdStrict(href)), id: bx.id || '' });
         if (an === a) cur = i;
       });
-      if (cur < 0 || items.filter(function(x) { return x.ok; }).length < 2) return;
+      if (cur < 0) return;
+      var okN = items.filter(function(x) { return x.ok; }).length, lastI = -1; items.forEach(function(x, i) { if (x.ok) lastI = i; });
+      demoToast(demoNavLabel(items[cur], cur === lastI && okN > 1, okN > 1));   // al abrir: explica qué ejercicio se está viendo
+      if (okN < 2) return;
       DEMO_NAV = { items: items, cur: cur };
       var slot = document.getElementById('demo_nav_slot'); if (!slot) return;
       slot.innerHTML = '<button type="button" id="demo_next" style="background:#00e5ff;color:#001418;border:0;border-radius:10px 10px 0 0;font-weight:900;font-size:.8rem;padding:6px 12px 7px;cursor:pointer;">⏭ Siguiente video</button>';
       document.getElementById('demo_next').onclick = demoNavNext;
+    }
+    function demoNavLabel(it, isLast, multi) { return (!multi ? 'Ejercicio' : (isLast ? 'Último ejercicio' : 'Ejercicio ' + it.pos)) + ': ' + it.name + (it.reps ? ' × ' + it.reps : ''); }
+    // Cartel de 2 s sobre el video: «Estás viendo» + el ejercicio
+    function demoToast(label) {
+      var fr = document.querySelector('#demo_float iframe'), box = fr && fr.parentNode; if (!box) return;
+      var old = document.getElementById('demo_toast'); if (old) old.remove();
+      var t = document.createElement('div'); t.id = 'demo_toast';
+      t.style.cssText = 'position:absolute;left:10px;right:10px;top:50%;transform:translateY(-50%);z-index:3;background:rgba(0,229,255,.95);color:#001418;font-weight:900;font-size:1.1rem;line-height:1.25;text-align:center;padding:14px 12px;border-radius:12px;pointer-events:none;transition:opacity .35s;';
+      t.innerHTML = '<div style="font-size:.78rem;font-weight:800;opacity:.8;">Estás viendo</div>' + escHtml(label); box.appendChild(t);
+      setTimeout(function() { t.style.opacity = '0'; }, 1650); setTimeout(function() { t.remove(); }, 2050);
     }
     function demoNavNext() {
       var N = DEMO_NAV; if (!N) return;
@@ -9930,15 +9943,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var lastOk = -1; N.items.forEach(function(x, i) { if (x.ok) lastOk = i; });
       var id = ytIdStrict(it.href), fr = document.querySelector('#demo_float iframe');
       if (fr) fr.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam();
-      var label = (n === lastOk ? 'Último ejercicio' : 'Ejercicio ' + it.pos) + ': ' + it.name + (it.reps ? ' × ' + it.reps : '');
-      var box = fr && fr.parentNode;
-      if (box) {
-        var old = document.getElementById('demo_toast'); if (old) old.remove();
-        var t = document.createElement('div'); t.id = 'demo_toast';
-        t.style.cssText = 'position:absolute;left:10px;right:10px;top:50%;transform:translateY(-50%);z-index:3;background:rgba(0,229,255,.95);color:#001418;font-weight:900;font-size:1.1rem;line-height:1.25;text-align:center;padding:14px 12px;border-radius:12px;pointer-events:none;transition:opacity .35s;';
-        t.textContent = label; box.appendChild(t);
-        setTimeout(function() { t.style.opacity = '0'; }, 1650); setTimeout(function() { t.remove(); }, 2050);
-      }
+      demoToast(demoNavLabel(it, n === lastOk, true));
       try {   // el aviso de «el video no se ve» pasa a ser del video nuevo; y el ejercicio queda marcado como visto
         var hold = document.getElementById('demo_hold');
         if (hold) { var dayEl = document.querySelector('#' + (it.id ? it.id : 'x_none')); hold.innerHTML = vrepMini(it.href, it.name, (dayEl && dayEl.closest('.view-screen')) ? dayEl.closest('.view-screen').id : ''); var bt = hold.firstChild; if (bt) { bt.style.display = 'inline-block'; bt.style.fontSize = '0.85rem'; bt.style.padding = '6px 4px'; } }
