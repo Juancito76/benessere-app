@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -398,6 +398,14 @@
     .tm-btn { flex: 1; padding: 14px 6px; border-radius: 12px; border: 1px solid #444; background: #1c1c1c; color: #fff; font-size: 0.95rem; font-weight: 800; cursor: pointer; }
     .set-runner { margin: 10px 0 4px; padding: 10px; border: 1px solid #2c2c2c; border-radius: 12px; background: #141414; }
     .sr-info { font-size: 0.78rem; font-weight: 800; color: var(--muted); text-align: center; }
+    .tip-hl { outline: 3px solid #ffd60a !important; outline-offset: 3px; border-radius: 10px; animation: tipPulse 1.1s ease-in-out infinite; position: relative; z-index: 100061; }
+    @keyframes tipPulse { 0%,100% { outline-color: #ffd60a; } 50% { outline-color: rgba(255,214,10,.25); } }
+    #tip_card { position: fixed; left: 12px; right: 12px; bottom: 14px; max-width: 420px; margin: 0 auto; z-index: 100060; background: #181818; border: 2px solid #ffd60a; border-radius: 16px; padding: 12px 14px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.6); text-align: left; }
+    #tip_card.tip-top { bottom: auto; top: 14px; }
+    #tip_card .tip-t { font-weight: 900; color: #ffd60a; font-size: 1rem; }
+    #tip_card .tip-x { color: #fff; font-size: .92rem; line-height: 1.35; margin-top: 4px; }
+    #tip_card .tip-p { color: #8fd3ff; font-size: .78rem; font-weight: 800; margin-top: 6px; }
+    #tip_card .tip-l { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: #ccc; font-size: .85rem; }
     .sr-btn { margin: 6px 0 4px; }
     .sr-btn.sr-work { background: #06d6a0; }
     .sr-btn.sr-rest { background: #4d8bff; color: #fff; }
@@ -3377,6 +3385,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (state.coachMsgTitle) document.getElementById('coachMsgTitle').value = state.coachMsgTitle;
       if (state.coachMsgBody) document.getElementById('coachMsgBody').value = state.coachMsgBody;
 
+      BUILDER_TOUR = (state.configFeatures && parseInt(state.configFeatures.tour, 10)) || 0;   // el recorrido del cliente no se pierde al editar su rutina
       if (state.configFeatures) {
         document.getElementById('featureNutrition').checked = state.configFeatures.nutrition === true;
         document.getElementById('featureDemos').checked = state.configFeatures.demos === true;
@@ -4365,7 +4374,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         coachName: document.getElementById('coachName').value.trim(),
         coachPhone: CONFIG_COACH_PHONE,
         measureLog: normalizeMeasureLog(measureLog),
-        configFeatures: { nutrition: isNutri, demos: isDemos, uso: (document.getElementById('featureUso') || {}).value || 'r', classId: (((document.getElementById('featureUso') || {}).value || 'r') === 'r') ? '' : clsLinkId() },
+        configFeatures: { nutrition: isNutri, demos: isDemos, uso: (document.getElementById('featureUso') || {}).value || 'r', classId: (((document.getElementById('featureUso') || {}).value || 'r') === 'r') ? '' : clsLinkId(), tour: BUILDER_TOUR | 0 },
         measures: {
           m_objetivo: document.getElementById('m_objetivo').value.trim() || '-',
           m_estatura: document.getElementById('m_estatura').value.trim() || '-',
@@ -4402,7 +4411,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         full.coachMsgBody,
         (function() {
           var ft = [full.configFeatures.nutrition ? 1 : 0, full.configFeatures.demos ? 1 : 0], u = full.configFeatures.uso;
+          var tg = parseInt(full.configFeatures.tour, 10) || 0;
           if (u === 'c' || u === 'rc') { ft.push(u === 'c' ? 1 : 2); ft.push(String(full.configFeatures.classId || '')); }
+          else if (tg) { ft.push(0); ft.push(''); }
+          if (tg) ft.push(tg);   // recorrido contextual: número de «edición» (0 = apagado)
           return ft;
         })(),
         (function() {
@@ -4512,7 +4524,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           MEASURE_FIELDS.forEach(function(f, i) { if (r[i + 1] !== '' && r[i + 1] != null) v[f.k] = r[i + 1]; });
           return { d: r[0], v: v };
         })),
-        configFeatures: { nutrition: feats[0] === 1, demos: feats[1] === 1, uso: feats[2] === 1 ? 'c' : (feats[2] === 2 ? 'rc' : 'r'), classId: String(feats[3] || '') },
+        configFeatures: { nutrition: feats[0] === 1, demos: feats[1] === 1, uso: feats[2] === 1 ? 'c' : (feats[2] === 2 ? 'rc' : 'r'), classId: String(feats[3] || ''), tour: parseInt(feats[4], 10) || 0 },
         measures: {
           m_objetivo: m[0]||'-', m_estatura: m[1]||'-', m_peso_kg: m[2]||'-',
           m_grasa: m[3]||'-', m_musculo: m[4]||'-', m_visceral: m[5]||'-',
@@ -4996,6 +5008,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       // Enlace corto: la rutina se guarda en la hoja de Google y el enlace lleva solo el código
       showShareWorking();
       function crearNuevo(modo) {
+        // Cliente nuevo (primera vez que se le envía una rutina): se activa el recorrido contextual
+        if (modo === '' && !state.configFeatures.tour) {
+          try { state.configFeatures.tour = tourNewGen(); payloadText = encodePayload(buildUltraCompactState(state)); } catch (eT) { state.configFeatures.tour = 0; }
+        }
         fetchJson(conn.base, {
           method: 'POST',
           redirect: 'follow',
@@ -5019,7 +5035,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (r === 'cancel') { closeModal('modal_share'); return; }
           if (r === 'espera') { finishShare(state, baseUrl + '#i=' + id, '', 'espera'); return; }
           if (r === 'fallo') { closeModal('modal_share'); return; }
-          postJson({ a: 'actualizar', id: id, p: payloadText, pin: pin }).then(function(j) {
+          // Si el cliente ya tenía el recorrido activado, se conserva en la rutina nueva
+          fetchRoutine(id).then(function(jt) {
+            try {
+              var curT = (jt && jt.ok && jt.p) ? decodePayload('q', jt.p) : null, tg0 = curT && curT.configFeatures ? (parseInt(curT.configFeatures.tour, 10) || 0) : 0;
+              if (tg0 && !state.configFeatures.tour) { state.configFeatures.tour = tg0; payloadText = encodePayload(buildUltraCompactState(state)); }
+            } catch (eT2) {}
+          }).catch(function() {}).then(function() {
+            return postJson({ a: 'actualizar', id: id, p: payloadText, pin: pin });
+          }).then(function(j) {
             if (j && j.ok) finishShare(state, baseUrl + '#i=' + id, '', 'mismo');
             else crearNuevo('no-actualizo');
           }).catch(function() { crearNuevo('no-actualizo'); });
@@ -5794,6 +5818,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.body.appendChild(o);
       document.getElementById('set_float_body').appendChild(node);
       SETFLOAT = key;
+      setTimeout(function() { tourTry('marcas', o); }, 350);
     }
     // «Marca anterior» (fecha y series) y el botón para montarla: antes iban bajo el ejercicio, ahora viven en la ventana «Marcas anteriores»
     function setFloatPrevHtml(key) {
@@ -5839,6 +5864,81 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var m = document.getElementById('nt_modal'); if (!m) return;
       m.querySelectorAll('input[data-nt]').forEach(function(c) { if (c.checked) { try { localStorage.setItem(ntOffKey(c.getAttribute('data-nt')), '1'); } catch (e) {} } });
       m.remove();
+      setTimeout(function() { try { tipNext(); } catch (e) {} }, 300);
+    }
+
+    // ----- Recorrido contextual: ventanitas flotantes que explican para qué sirve cada cosa y señalan el botón (resaltado) -----
+    // Se activa con configFeatures.tour (clientes nuevos desde 2026-11-10, o con «Habilitar recorrido» en Mis clientes).
+    // REGLA: si cambia algo de la interfaz del cliente, actualiza el texto de la ventanita correspondiente y SUBE su «v»: así vuelve a salir a quien ya la había cerrado.
+    var BUILDER_TOUR = 0;
+    function tourNewGen() { return Math.floor(Date.now() / 60000); }   // «edición» del recorrido: crece con el tiempo; si es mayor que la del celular, el recorrido vuelve a empezar
+    var TIPS = {
+      'blk-demo':   { ctx: 'block',   v: 1, sel: function(r) { return r.querySelector('.btn-yt-demo'); }, title: '🎥 Ver demostración', text: 'Mira aquí cómo se hace el ejercicio antes de empezar. Es el botón resaltado.' },
+      'blk-marcas': { ctx: 'block',   v: 1, sel: function(r) { return r.querySelector('.set-open-btn'); }, title: '📝 Marcas anteriores', text: 'Aquí anotas el peso y las repeticiones de cada serie y ves lo que hiciste la última vez para superarlo.' },
+      'blk-timer':  { ctx: 'block',   v: 1, sel: function(r) { return r.querySelector('.sr-btn'); }, title: '⏱ Temporizador', text: 'Toca este botón para empezar. Te dice cuándo trabajar y cuándo descansar, con voz y sonido.' },
+      'win-marcas': { ctx: 'marcas',  v: 1, sel: function(r) { return r.querySelector('.sf-go') || r.querySelector('.sf-prev'); }, title: '⤴️ Montar marca anterior', text: 'Con este botón copias tu marca anterior a las series de hoy. Luego solo ajustas lo que cambie.' },
+      'win-desglose': { ctx: 'desglose', v: 1, sel: function(r) { return r.querySelector('.bd-in'); }, title: '📝 Anota tus cargas', text: 'Escribe aquí el peso y las repeticiones que hiciste. Es opcional: si lo dejas vacío no pasa nada.' },
+      'tm-serie':   { ctx: 'timer',   v: 1, sel: function(r) { return r.querySelector('#tm_round'); }, title: '🔵 Dónde vas', text: 'Este botón azul te dice en qué serie o ronda estás. Tócalo si necesitas cambiar de lugar.' },
+      'tm-marca':   { ctx: 'timer',   v: 1, sel: function(r) { return r.querySelector('#tm_prev'); }, title: '🏆 Marca anterior', text: 'Es lo que hiciste la última vez en este ejercicio. Intenta superarla; si lo logras, ¡verás una celebración!' },
+      'tm-descanso': { ctx: 'timer',  v: 1, sel: function(r) { return r.querySelector('#tm_radj'); }, title: '⏳ Ajustar el descanso', text: 'Con −15 y +15 acortas o alargas el descanso en segundos.' },
+      'tm-pausa':   { ctx: 'timer',   v: 1, sel: function(r) { return r.querySelector('#tm_pause'); }, title: '⏸ Pausar', text: 'Detiene el temporizador si necesitas parar un momento. Vuelve a tocarlo para seguir.' },
+      'tm-mas':     { ctx: 'timer',   v: 1, sel: function(r) { return r.querySelector('#tm_more_btn'); }, title: '⚙️ Más opciones', text: 'Aquí activas o apagas la voz y cambias de bloque.' }
+    };
+    var TIP_Q = [], TIP_SEEN = {}, TIP_CUR = '';
+    function tipKey(id) { return id + '@' + TIPS[id].v; }
+    function tipOffKey(k) { return 'benessere_tip_off_' + k; }
+    function tipIsOff(k) { try { return localStorage.getItem(tipOffKey(k)) === '1'; } catch (e) { return false; } }
+    function tourOn() {
+      try {
+        if (isCoachView()) return false;
+        var st = athleteActiveState, g = (st && st.configFeatures && parseInt(st.configFeatures.tour, 10)) || 0;
+        if (!g && pruebaAsClient()) g = 1;   // «Probar» como cliente: se ve el recorrido
+        var lg = parseInt(localStorage.getItem('benessere_tour_gen') || '0', 10) || 0;
+        if (g > lg) {   // edición nueva (cliente nuevo o «Habilitar recorrido»): vuelve a salir todo
+          var del = []; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('benessere_tip_off_') === 0) del.push(k); }
+          del.forEach(function(k2) { localStorage.removeItem(k2); });
+          localStorage.setItem('benessere_tour_gen', String(g)); TIP_SEEN = {}; lg = g;
+        }
+        return lg > 0;
+      } catch (e) { return false; }
+    }
+    function tipVisible(el) { return !!(el && document.body.contains(el) && (el.offsetParent || getComputedStyle(el).position === 'fixed')); }
+    // Pone en fila las ventanitas de ese lugar cuyo botón se ve y todavía no se han mostrado
+    function tourTry(ctx, root) {
+      try {
+        if (!root || !tourOn()) return;
+        Object.keys(TIPS).forEach(function(id) {
+          var t = TIPS[id]; if (t.ctx !== ctx) return;
+          var k = tipKey(id); if (TIP_SEEN[k] || tipIsOff(k) || TIP_Q.some(function(q) { return q.id === id; }) || TIP_CUR === id) return;
+          var el = t.sel(root); if (!tipVisible(el)) return;
+          TIP_Q.push({ id: id, el: el });
+        });
+        tipNext();
+      } catch (e) {}
+    }
+    function tipNext() {
+      if (TIP_CUR || !TIP_Q.length || document.getElementById('nt_modal')) return;
+      var q = TIP_Q.shift(), t = TIPS[q.id], k = tipKey(q.id);
+      if (!t || TIP_SEEN[k] || !tipVisible(q.el)) { tipNext(); return; }
+      TIP_SEEN[k] = true; TIP_CUR = q.id;
+      var el = q.el; el.classList.add('tip-hl');
+      try { var r0 = el.getBoundingClientRect(); if (r0.top < 60 || r0.bottom > window.innerHeight - 170) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+      var c = document.createElement('div'); c.id = 'tip_card';
+      var more = TIP_Q.length > 0;
+      c.innerHTML = '<div class="tip-t">' + escHtml(t.title) + '</div><div class="tip-x">' + escHtml(t.text) + '</div>' +
+        '<div class="tip-p">👆 Es el botón que está resaltado</div>' +
+        '<label class="tip-l"><input type="checkbox" id="tip_off"> No mostrar más</label>' +
+        '<button type="button" class="btn-action-primary" id="tip_ok" style="margin-top:8px; padding:10px;">' + (more ? 'Siguiente' : 'Entendido') + '</button>';
+      document.body.appendChild(c);
+      setTimeout(function() {   // si el botón queda abajo, la ventanita sube; si queda arriba, baja
+        try { var r = el.getBoundingClientRect(); c.classList.toggle('tip-top', r.top > window.innerHeight / 2); } catch (e) {}
+      }, 380);
+      document.getElementById('tip_ok').onclick = function() {
+        var off = document.getElementById('tip_off');
+        if (off && off.checked) { try { localStorage.setItem(tipOffKey(k), '1'); } catch (e) {} }
+        el.classList.remove('tip-hl'); c.remove(); TIP_CUR = '';
+        setTimeout(tipNext, 250);
+      };
     }
     function setFloatClose() {
       var key = SETFLOAT; SETFLOAT = '';
@@ -9738,6 +9838,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else if (!seqDone) el('tm_next').innerText = (ph.open ? 'Último ejercicio de la ronda' : 'Último ejercicio del intervalo');
         else el('tm_next').innerText = CT.phases[CT.i + 1] ? 'Sigue: ' + (CT.roundLabel || 'Ronda').toLowerCase() + ' ' + (ph.r + 1) + ' de ' + CT.rounds + ' · ' + ctShort(CT.phases[CT.i + 1].steps[0].n) + ' ' + CT.phases[CT.i + 1].steps[0].reps : 'Último intervalo del bloque';
       }
+      try { if (!CT.tourT || Date.now() - CT.tourT > 1500) { CT.tourT = Date.now(); tourTry('timer', document.getElementById('tm_overlay')); } } catch (eTr) {}
       if (PIP.prep) ctPipDraw(col, labels[ph.t], stationTxt, el('tm_time').innerText, el('tm_round').innerText, repsStr, isOpen ? 0 : Math.max(0, Math.min(1, 1 - remain / ph.d)));
     }
 
@@ -10814,7 +10915,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (!demoWait && !collapsed && s === 'next' && i === goIdx) tb.classList.add('gd-btn-go');
           else if (!demoWait && !collapsed && s === 'pend') tb.classList.add('gd-btn-pend');
         }
-        if (!isHere) head.onclick = function() { if (!collapsed && s !== 'done') gdMark(dayId, b.key, 'p'); GD_OPEN[b.srId] = !GD_OPEN[b.srId]; guidePaint(dayId); if (GD_OPEN[b.srId]) noticesMaybe(); };   // abrir y cerrar sin hacerla la deja pendiente; al abrir un bloque salen las novedades de uso
+        if (!isHere) head.onclick = function() { if (!collapsed && s !== 'done') gdMark(dayId, b.key, 'p'); GD_OPEN[b.srId] = !GD_OPEN[b.srId]; guidePaint(dayId); if (GD_OPEN[b.srId]) { noticesMaybe(); var bEl = b.el; setTimeout(function() { tourTry('block', bEl); }, 450); } };   // abrir y cerrar sin hacerla la deja pendiente; al abrir un bloque salen las novedades de uso
         el.insertBefore(head, el.firstChild);
       });
     }
@@ -10948,6 +11049,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="btn-action-primary" style="margin-top:16px;" onclick="bdDone()">✅ Completado</button>' +
         '<button type="button" onclick="bdCancel()" style="margin-top:8px; width:100%; background:none; border:none; color:#aaa; font-size:0.85rem; padding:8px; cursor:pointer;">Volver</button></div>';
       m.classList.add('active');
+      setTimeout(function() { tourTry('desglose', m); }, 350);
     }
     function bdInput(el) {
       var key = el.getAttribute('data-k'), idx = parseInt(el.getAttribute('data-i'), 10), kind = el.getAttribute('data-kind'), val = el.value;
@@ -11572,7 +11674,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
           '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:#ffd60a; border:1px solid #ffd60a; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
-        html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="cvOpen(\'' + escHtml(k) + '\')" title="Link del cliente, todas sus rutinas, semana por semana e historial (solo ver)" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-weight:800; cursor:pointer;">🔎 Visor</button><button type="button" onclick="coachOpenDatos(\'' + escHtml(last.id) + '\')" title="Ficha, medidas, asistencia y datos de contacto" style="background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📋 Datos y asistencia</button><button type="button" onclick="clientExportText(\'' + escHtml(last.id) + '\', ' + jsArg(g.name) + ')" title="Sacar todo lo guardado de este cliente como texto para corregirlo y volver a subirlo" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📤 Exportar a texto plano</button><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button></div>';
+        html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="cvOpen(\'' + escHtml(k) + '\')" title="Link del cliente, todas sus rutinas, semana por semana e historial (solo ver)" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-weight:800; cursor:pointer;">🔎 Visor</button><button type="button" onclick="coachOpenDatos(\'' + escHtml(last.id) + '\')" title="Ficha, medidas, asistencia y datos de contacto" style="background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📋 Datos y asistencia</button><button type="button" onclick="clientExportText(\'' + escHtml(last.id) + '\', ' + jsArg(g.name) + ')" title="Sacar todo lo guardado de este cliente como texto para corregirlo y volver a subirlo" style="background:transparent; border:1px solid #4dd0e1; color:#4dd0e1; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">📤 Exportar a texto plano</button><button type="button" onclick="coachToggleClientOff(' + jsArg(g.name) + ')" style="background:transparent; border:1px solid ' + (isOff ? '#06d6a0' : '#ff8a65') + '; color:' + (isOff ? '#06d6a0' : '#ff8a65') + '; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">' + (isOff ? '🔗 Reconectar' : '🔌 Desconectar') + '</button><button type="button" onclick="coachHabilitarRecorrido(' + jsArg(g.name) + ')" title="Le vuelve a mostrar las ventanitas que explican para qué sirve cada botón" style="background:transparent; border:1px solid #ffd60a; color:#ffd60a; border-radius:6px; padding:3px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;">🧭 Habilitar recorrido</button></div>';
         if (g.days.length > 1) {
           html += '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">';
           g.days.slice(1, 6).forEach(function(r) {
@@ -11844,6 +11946,43 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var COACH_OFF_KEY = 'benessere_off_clients';
     function coachOffGet() { try { return JSON.parse(localStorage.getItem(COACH_OFF_KEY) || '{}') || {}; } catch (e) { return {}; } }
     function coachOffSet(k, on) { try { var o = coachOffGet(); if (on) o[k] = 1; else delete o[k]; localStorage.setItem(COACH_OFF_KEY, JSON.stringify(o)); } catch (e) {} }
+    // «🧭 Habilitar recorrido»: activa (o reinicia) las ventanitas explicativas de un cliente que ya tenía la app. Se marca en todas sus rutinas.
+    var tourBusy = false;
+    function coachHabilitarRecorrido(name) {
+      if (!COACH || tourBusy) return;
+      var k = normName(name), ids = [];
+      clientRows.forEach(function(r) { if (normName(r.atleta) === k && r.id && ids.indexOf(r.id) < 0) ids.push(r.id); });
+      if (!ids.length) { showToastTop('No encontré rutinas de ' + name + '.'); return; }
+      if (!confirm('🧭 Habilitar recorrido a ' + name + '\n\nLa próxima vez que abra la app le saldrán ventanitas cortas que explican para qué sirve cada botón (en los bloques, el temporizador y las marcas). Cada una tiene su «No mostrar más».\n\nSi ya las había visto, volverán a salir.\n\n¿Habilitar?')) return;
+      tourBusy = true;
+      var gen = tourNewGen(), i = 0, failed = 0, st = document.getElementById('cl_status');
+      function next() {
+        if (i >= ids.length) {
+          tourBusy = false;
+          var s2 = document.getElementById('cl_status');
+          if (failed) { if (s2) s2.innerText = '⚠️ No se pudo habilitar del todo a ' + name + ' (' + failed + ' de ' + ids.length + ' con error). Inténtalo de nuevo.'; }
+          else { if (s2) s2.innerText = ''; showToastTop('🧭 Recorrido habilitado para ' + name + '.'); }
+          return;
+        }
+        var id = ids[i++];
+        if (st) st.innerText = '⏳ Habilitando recorrido a ' + name + '… (' + i + '/' + ids.length + ')';
+        fetchRoutine(id).then(function(j) {
+          if (!j || !j.ok || !j.p) throw new Error('lectura');
+          var isOff = j.p.indexOf(OFF_PREFIX) === 0, stt = decodePayload('q', j.p);
+          if (!stt) throw new Error('lectura');
+          var n0 = (stt.routineDays || []).length;
+          stt.configFeatures = stt.configFeatures || {}; stt.configFeatures.tour = gen;
+          var np = encodePayload(buildUltraCompactState(stt)), chk = decodePayload('q', np);
+          if (!chk || chk.clientName !== stt.clientName || chk.startDate !== stt.startDate || (chk.routineDays || []).length !== n0 || !chk.configFeatures || chk.configFeatures.tour !== gen) throw new Error('verificacion');
+          if (isOff) np = OFF_PREFIX + np;
+          return postJson({ a: 'actualizar', id: id, p: np, pin: COACH.pin }).then(function(r) {
+            if (!r || !r.ok) throw new Error((r && r.error) || 'guardado');
+            coachCacheSet(id, np);
+          });
+        }).catch(function() { failed++; }).then(next);
+      }
+      next();
+    }
     var coachOffBusy = false;
     function coachToggleClientOff(name) {
       if (!COACH || coachOffBusy) return;
