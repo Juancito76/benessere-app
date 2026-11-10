@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-m';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -399,6 +399,13 @@
     .set-runner { margin: 10px 0 4px; padding: 10px; border: 1px solid #2c2c2c; border-radius: 12px; background: #141414; }
     .sr-info { font-size: 0.78rem; font-weight: 800; color: var(--muted); text-align: center; }
     .tip-hl { outline: 3px solid #ffd60a !important; outline-offset: 3px; border-radius: 10px; animation: tipPulse 1.1s ease-in-out infinite; position: relative; z-index: 100061; }
+    #tip_arrow { position: fixed; z-index: 100062; width: 46px; height: 46px; margin-left: -23px; pointer-events: none; display: none; }
+    #tip_arrow svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.85)); }
+    #tip_arrow.dn { animation: tipArrowDn .7s ease-in-out infinite; }
+    #tip_arrow.up { animation: tipArrowUp .7s ease-in-out infinite; }
+    #tip_arrow.up svg { transform: rotate(180deg); }
+    @keyframes tipArrowDn { 0%,100% { transform: translateY(-8px); } 50% { transform: translateY(6px); } }
+    @keyframes tipArrowUp { 0%,100% { transform: translateY(8px); } 50% { transform: translateY(-6px); } }
     @keyframes tipPulse { 0%,100% { outline-color: #ffd60a; } 50% { outline-color: rgba(255,214,10,.25); } }
     #tip_card { position: fixed; left: 12px; right: 12px; bottom: 14px; max-width: 420px; margin: 0 auto; z-index: 100060; background: #181818; border: 2px solid #ffd60a; border-radius: 16px; padding: 12px 14px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.6); text-align: left; }
     #tip_card.tip-top { bottom: auto; top: 14px; }
@@ -5953,14 +5960,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         list.forEach(function(n) { NT_SEEN[n.id] = true; });
         var m = document.createElement('div'); m.id = 'nt_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100050';
         m.innerHTML = '<div class="modal-inner" style="text-align:center; max-height:86vh; overflow:auto;"><div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📢 Novedades en la app</div>' +
-          list.map(function(n) { return '<div class="nt-item"><b>' + escHtml(n.title) + '</b><p>' + escHtml(n.text) + '</p><label><input type="checkbox" data-nt="' + escHtml(n.id) + '"> No mostrar más</label></div>'; }).join('') +
-          '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="noticesClose()">Entendido</button></div>';
+          list.map(function(n) { return '<div class="nt-item"><b>' + escHtml(n.title) + '</b><p>' + escHtml(n.text) + '</p></div>'; }).join('') +
+          '<label style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; font-size:.85rem; font-weight:800; color:#fff;"><input type="checkbox" id="nt_off_all" data-nt-ids="' + escHtml(list.map(function(n) { return n.id; }).join(',')) + '" style="width:20px; height:20px; accent-color:#06d6a0;"> No mostrar más</label>' +
+          '<button type="button" class="btn-action-primary" style="margin-top:10px;" onclick="noticesClose()">Entendido</button></div>';
         document.body.appendChild(m); m.classList.add('active');
       } catch (e) {}
     }
     function noticesClose() {
       var m = document.getElementById('nt_modal'); if (!m) return;
-      m.querySelectorAll('input[data-nt]').forEach(function(c) { if (c.checked) { try { localStorage.setItem(ntOffKey(c.getAttribute('data-nt')), '1'); } catch (e) {} } });
+      var all = m.querySelector('#nt_off_all');   // un solo cuadrito al final: si está marcado, ninguna de estas novedades vuelve a salir
+      if (all && all.checked) { (all.getAttribute('data-nt-ids') || '').split(',').forEach(function(id) { if (id) { try { localStorage.setItem(ntOffKey(id), '1'); } catch (e) {} } }); }
       m.remove();
       setTimeout(function() { try { tipNext(); } catch (e) {} }, 300);
     }
@@ -6014,6 +6023,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         tipNext();
       } catch (e) {}
     }
+    // Flecha amarilla que rebota y señala el botón resaltado (arriba del botón apuntando hacia abajo; si no hay espacio, abajo apuntando hacia arriba)
+    var TIP_ARROW_T = 0;
+    function tipArrowStart(el) {
+      tipArrowStop();
+      var a = document.createElement('div'); a.id = 'tip_arrow';
+      a.innerHTML = '<svg viewBox="0 0 46 46" aria-hidden="true"><path d="M16 3h14v21h10L23 43 6 24h10z" fill="#ffd60a" stroke="#111" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+      document.body.appendChild(a);
+      function place() {
+        try {
+          if (!tipVisible(el)) { a.style.display = 'none'; return; }
+          var r = el.getBoundingClientRect(), up = r.top < 64;
+          a.className = up ? 'up' : 'dn';
+          a.style.display = 'block';
+          a.style.left = Math.max(26, Math.min(window.innerWidth - 26, r.left + r.width / 2)) + 'px';
+          a.style.top = (up ? r.bottom + 6 : r.top - 52) + 'px';
+        } catch (e) {}
+      }
+      place(); TIP_ARROW_T = setInterval(place, 120);
+    }
+    function tipArrowStop() { if (TIP_ARROW_T) { clearInterval(TIP_ARROW_T); TIP_ARROW_T = 0; } var a = document.getElementById('tip_arrow'); if (a) a.remove(); }
     function tipNext() {
       if (TIP_CUR || !TIP_Q.length || document.getElementById('nt_modal')) return;
       var q = TIP_Q.shift(), t = TIPS[q.id], k = tipKey(q.id);
@@ -6024,17 +6053,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var c = document.createElement('div'); c.id = 'tip_card';
       var more = TIP_Q.length > 0;
       c.innerHTML = '<div class="tip-t">' + escHtml(t.title) + '</div><div class="tip-x">' + escHtml(t.text) + '</div>' +
-        '<div class="tip-p">👆 Es el botón que está resaltado</div>' +
+        '<div class="tip-p">👆 Sigue la flecha: señala el botón resaltado</div>' +
         '<label class="tip-l"><input type="checkbox" id="tip_off"> No mostrar más</label>' +
         '<button type="button" class="btn-action-primary" id="tip_ok" style="margin-top:8px; padding:10px;">' + (more ? 'Siguiente' : 'Entendido') + '</button>';
       document.body.appendChild(c);
+      tipArrowStart(el);
       setTimeout(function() {   // si el botón queda abajo, la ventanita sube; si queda arriba, baja
         try { var r = el.getBoundingClientRect(); c.classList.toggle('tip-top', r.top > window.innerHeight / 2); } catch (e) {}
       }, 380);
       document.getElementById('tip_ok').onclick = function() {
         var off = document.getElementById('tip_off');
         if (off && off.checked) { try { localStorage.setItem(tipOffKey(k), '1'); } catch (e) {} }
-        el.classList.remove('tip-hl'); c.remove(); TIP_CUR = '';
+        el.classList.remove('tip-hl'); c.remove(); tipArrowStop(); TIP_CUR = '';
         setTimeout(tipNext, 250);
       };
     }
