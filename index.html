@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9973,7 +9973,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<iframe title="Demostración" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam() + '"></iframe>' +
         (check ? '<div id="demo_float_st" style="padding:8px 10px;font-size:.78rem;font-weight:700;color:#aaa;">⏳ Revisando si se puede mostrar en la app…</div>' : '') +
         '</div>' +
-        '<div style="display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;padding-right:14px;"><span id="demo_nav_slot"></span><div style="background:#00e5ff;color:#001418;font-weight:900;font-size:.78rem;padding:5px 14px 6px;border-radius:0 0 10px 10px;letter-spacing:.2px;">Benessere Gym / ' + escHtml(demoCoachTxt()) + '</div></div></div>';
+        '<div style="display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;padding-right:14px;"><div style="background:#00e5ff;color:#001418;font-weight:900;font-size:.78rem;padding:5px 14px 6px;border-radius:0 0 10px 10px;letter-spacing:.2px;">Benessere Gym / ' + escHtml(demoCoachTxt()) + '</div><span id="demo_nav_slot"></span></div></div>';
       w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
       document.body.appendChild(w);
       document.getElementById('demo_float_x').onclick = demoFloatClose;
