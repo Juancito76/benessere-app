@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -15205,7 +15205,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= FICHAS MAESTRAS (pestaña "Fichas" de la hoja de Google) =================
     // Una línea por cliente con todas sus mediciones codificadas. El constructor la lee y la escribe casi en tiempo real,
     // "Datos y asistencia" del cliente la lee, y hay un visor con enlace privado (también para quien solo lleva seguimiento).
-    var FICHA = { list: null, listAt: 0, loading: false, c: '', t: '', rev: '', name: '', notes: {}, texts: {}, authors: {}, dc: [], extra: {}, deleted: {}, dirty: false, timer: null, saving: false, again: false, q: '' };
+    var FICHA = { list: null, listAt: 0, loading: false, c: '', t: '', rev: '', name: '', notes: {}, texts: {}, authors: {}, dc: [], extra: {}, hist: [], base: [], deleted: {}, dirty: false, timer: null, saving: false, again: false, q: '' };
     function fichaSet(msg, kind) {
       var el = document.getElementById('ficha_status');
       if (!el) return;
@@ -15233,10 +15233,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (e.t && typeof e.t === 'object') texts[e.d] = e.t;
         });
         log.sort(byDate);
-        return { p: (o.p && typeof o.p === 'object') ? o.p : {}, log: log, notes: notes, texts: texts, authors: authors, dc: Array.isArray(o.dc) ? o.dc.filter(isIsoDate) : [] };
+        return { p: (o.p && typeof o.p === 'object') ? o.p : {}, log: log, notes: notes, texts: texts, authors: authors, dc: Array.isArray(o.dc) ? o.dc.filter(isIsoDate) : [], hist: Array.isArray(o.h) ? o.h.filter(function(x) { return x && isIsoDate(x.d) && (x.a === 'e' || x.a === 'b'); }).slice(-300) : [] };
       } catch (e) { return null; }
     }
-    function fichaBuild(perfil, log, notes, texts, authors, dc) {
+    function fichaBuild(perfil, log, notes, texts, authors, dc, hist) {
       var m = normalizeMeasureLog(log).map(function(e) {
         var o = { d: e.d, v: e.v };
         if (notes && notes[e.d]) o.n = notes[e.d];
@@ -15246,6 +15246,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       var out = { v: 1, p: perfil, m: m };
       if (dc && dc.length) out.dc = dc;
+      if (hist && hist.length) out.h = hist.slice(-300);
       return out;
     }
     function fichaHeightCm(s) { var n = parseNum(s); if (n === null) return ''; return n < 3 ? Math.round(n * 100) : n; }
@@ -15278,6 +15279,36 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Si un coach corrige una medida que anotó el cliente, queda como «Cliente · corregida por X»: así la app no la vuelve a pisar con el valor original
     function fichaStampName(prev, by) { if (!prev) return by || fichaWho(); if (prev === 'Cliente') return 'Cliente · corregida por ' + (by || fichaWho()); return prev; }
+
+    // ----- Registro de cambios: cada vez que se corrige o se borra una medición ya guardada, queda quién, cuándo y el valor anterior -----
+    function fichaCloneLog(log) { return JSON.parse(JSON.stringify(log || [])); }
+    function fichaDiff(base, now, who) {
+      var out = [], t = new Date().toISOString().slice(0, 16), bm = {}, nm = {};
+      (base || []).forEach(function(e) { bm[e.d] = e.v; });
+      (now || []).forEach(function(e) { nm[e.d] = e.v; });
+      Object.keys(bm).forEach(function(d) {
+        if (!nm[d]) out.push({ d: d, w: who, t: t, a: 'b', p: bm[d] });
+        else if (!sameValues(bm[d], nm[d])) out.push({ d: d, w: who, t: t, a: 'e', p: bm[d], n: nm[d] });
+      });
+      return out;
+    }
+    function fichaHistLine(h) {
+      function vs(v) { return Object.keys(v || {}).map(function(k) { var f = fieldInfo(k); return f ? f.short + ' ' + withUnit(v[k], f.unit) : ''; }).filter(Boolean).join(', '); }
+      var when = String(h.t || '').replace('T', ' ').slice(5, 16), dd = fmtDate(h.d);
+      if (h.a === 'b') return when + ' · ' + escHtml(h.w || '') + ' borró la medición del ' + dd + ' (' + escHtml(vs(h.p)) + ')';
+      var ch = [];
+      Object.keys(Object.assign({}, h.p, h.n)).forEach(function(k) {
+        var f = fieldInfo(k); if (!f) return;
+        var a = h.p ? h.p[k] : null, b = h.n ? h.n[k] : null;
+        if (a !== b) ch.push(f.short + ' ' + (a == null ? '—' : withUnit(a, f.unit)) + ' → ' + (b == null ? '—' : withUnit(b, f.unit)));
+      });
+      return when + ' · ' + escHtml(h.w || '') + ' corrigió la del ' + dd + ': ' + escHtml(ch.join(', '));
+    }
+    function fichaHistHtml() {
+      if (!(COACH && COACH.todos) || !FICHA.c || !(FICHA.hist || []).length) return '';
+      var rows = FICHA.hist.slice().reverse().map(function(h) { return '<div class="fch-muted" style="border-top:1px solid var(--border); padding:4px 0;">' + fichaHistLine(h) + '</div>'; }).join('');
+      return '<details style="margin-top:8px;"><summary style="cursor:pointer; font-size:0.8rem; font-weight:700; color:var(--primary);">🧾 Historial de cambios (' + FICHA.hist.length + ')</summary><div class="fch-scroll">' + rows + '</div></details>';
+    }
     function fichaExists(d) {
       if (indexOfDate(measureLog, d) >= 0) return true;
       try { var fc = fichaCliData(); if (fc && fc.log.some(function(e) { return e.d === d; })) return true; } catch (e) {}
@@ -15304,7 +15335,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function fichaUnlink() {
       clearTimeout(FICHA.timer);
-      FICHA.c = ''; FICHA.t = ''; FICHA.rev = ''; FICHA.name = ''; FICHA.notes = {}; FICHA.texts = {}; FICHA.authors = {}; FICHA.dc = []; FICHA.extra = {}; FICHA.deleted = {}; FICHA.dirty = false; FICHA.saving = false; FICHA.again = false;
+      FICHA.c = ''; FICHA.t = ''; FICHA.rev = ''; FICHA.name = ''; FICHA.notes = {}; FICHA.texts = {}; FICHA.authors = {}; FICHA.dc = []; FICHA.extra = {}; FICHA.hist = []; FICHA.base = []; FICHA.deleted = {}; FICHA.dirty = false; FICHA.saving = false; FICHA.again = false;
       fichaRenderPanel();
     }
 
@@ -15354,6 +15385,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (ex.cum) cn += '<div class="fch-muted">🎂 Cumpleaños: ' + escHtml(contactFmtBirthday(ex.cum) || ex.cum) + '</div>';
         link.innerHTML += cn;
       }
+      if (link && FICHA.c) link.innerHTML += fichaHistHtml();
       if (act) act.style.display = FICHA.c ? 'flex' : 'none';
       if (!box) return;
       var list = FICHA.list || [], q = normName(FICHA.q);
@@ -15384,7 +15416,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var d = (j && j.ok) ? fichaDecode(j.p) : null;
         if (!d) { fichaSet('⚠️ ' + (j && j.ok ? 'La ficha no se pudo leer.' : fichaErrText(j)), 'err'); return; }
         clearTimeout(FICHA.timer);
-        FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.name = j.n || d.p.nombre || ''; FICHA.notes = d.notes; FICHA.texts = d.texts; FICHA.authors = d.authors || {}; FICHA.dc = d.dc || []; FICHA.extra = fichaExtraOf(d.p); FICHA.deleted = {}; FICHA.dirty = false;
+        FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.name = j.n || d.p.nombre || ''; FICHA.notes = d.notes; FICHA.texts = d.texts; FICHA.authors = d.authors || {}; FICHA.dc = d.dc || []; FICHA.extra = fichaExtraOf(d.p); FICHA.hist = d.hist || []; FICHA.base = fichaCloneLog(d.log); FICHA.deleted = {}; FICHA.dirty = false;
         var localOnly = measureLog.some(function(e) { return !d.log.some(function(x) { return x.d === e.d; }); });
         measureLog = fichaUnion(d.log, normalizeMeasureLog(measureLog));
         fichaFillForm(d.p);
@@ -15406,8 +15438,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       FICHA.name = nm;
       var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog);
       fichaSet('Creando la ficha…');
-      postJson({ a: 'ficha_guardar', pin: pin, n: nm, p: fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts, FICHA.authors, FICHA.dc)), r: fichaSummary(perfil, log) }, 30000).then(function(j) {
-        if (j && j.ok) { FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.dirty = false; FICHA.listAt = 0; fichaRenderPanel(); fichaSet('✅ Ficha ' + j.c + ' creada para ' + nm + '.', 'ok'); fichaLoadList(true); }
+      postJson({ a: 'ficha_guardar', pin: pin, n: nm, p: fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts, FICHA.authors, FICHA.dc, [])), r: fichaSummary(perfil, log) }, 30000).then(function(j) {
+        if (j && j.ok) { FICHA.base = fichaCloneLog(log); FICHA.hist = []; FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.dirty = false; FICHA.listAt = 0; fichaRenderPanel(); fichaSet('✅ Ficha ' + j.c + ' creada para ' + nm + '.', 'ok'); fichaLoadList(true); }
         else { FICHA.name = ''; fichaSet('⚠️ ' + fichaErrText(j), 'err'); }
       }).catch(function() { FICHA.name = ''; fichaSet('⚠️ Sin conexión.', 'err'); });
     }
@@ -15429,12 +15461,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (cn && FICHA.name && normName(cn) !== normName(FICHA.name)) { fichaSet('⚠️ El nombre del cliente cambió: desvincula la ficha de ' + FICHA.name + ' para no mezclar datos.', 'err'); return Promise.resolve(false); }
       FICHA.saving = true;
       var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog);
-      var payload = fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts, FICHA.authors, FICHA.dc));
+      var newHist = (FICHA.hist || []).concat(fichaDiff(FICHA.base, log, fichaWho())).slice(-300);
+      var payload = fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts, FICHA.authors, FICHA.dc, newHist));
       if (payload.length > 44000) { FICHA.saving = false; fichaSet('⚠️ La ficha es demasiado grande para una celda.', 'err'); return Promise.resolve(false); }
       return postJson({ a: 'ficha_guardar', pin: pin, c: FICHA.c, n: FICHA.name, p: payload, rev: FICHA.rev, r: fichaSummary(perfil, log) }, 30000).then(function(j) {
         FICHA.saving = false;
         if (j && j.ok) {
           FICHA.rev = j.rev || FICHA.rev; if (j.t) FICHA.t = j.t; FICHA.dirty = false;
+          FICHA.hist = newHist; FICHA.base = fichaCloneLog(log); fichaRenderPanel();
           var now = new Date(); fichaSet('✅ Guardado en la ficha ' + FICHA.c + ' · ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()), 'ok');
           var row = (FICHA.list || []).filter(function(f) { return f.c === FICHA.c; })[0];
           if (row) { var s = fichaSummary(perfil, log); row.k = String(s.k); row.f = s.f; row.p = s.p == null ? '' : String(s.p); row.g = s.g == null ? '' : String(s.g); }
@@ -15449,6 +15483,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             measureLog = fichaUnion(log, add);
             add.forEach(function(e) { if (d2.notes[e.d] && !FICHA.notes[e.d]) FICHA.notes[e.d] = d2.notes[e.d]; if (d2.texts[e.d] && !FICHA.texts[e.d]) FICHA.texts[e.d] = d2.texts[e.d]; if (d2.authors[e.d] && !FICHA.authors[e.d]) FICHA.authors[e.d] = d2.authors[e.d]; });
             FICHA.extra = fichaExtraOf(d2.p); (d2.dc || []).forEach(function(x) { if (FICHA.dc.indexOf(x) < 0) FICHA.dc.push(x); });
+            FICHA.base = fichaCloneLog(d2.log); FICHA.hist = d2.hist || FICHA.hist;
             FICHA.rev = j.rev; renderMeasureLog(); FICHA.dirty = true; return fichaSaveNow();
           }
         }
@@ -15521,14 +15556,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       Promise.resolve(ready).then(function() {
         var f = fichaFind(name);
         var norm = normalizeMeasureLog(log);
-        if (!f) return postJson({ a: 'ficha_guardar', pin: pin, n: String(name).trim(), p: fichaEncode(fichaBuild({ nombre: String(name).trim() }, norm, {}, {}, savedDate ? (function() { var a = {}; a[savedDate] = fichaWho(); return a; })() : {}, [])), r: fichaSummary({}, norm) }, 30000).then(function(j) { if (j && j.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' creada en la hoja'); } });
+        if (!f) return postJson({ a: 'ficha_guardar', pin: pin, n: String(name).trim(), p: fichaEncode(fichaBuild({ nombre: String(name).trim() }, norm, {}, {}, savedDate ? (function() { var a = {}; a[savedDate] = fichaWho(); return a; })() : {}, [], [])), r: fichaSummary({}, norm) }, 30000).then(function(j) { if (j && j.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' creada en la hoja'); } });
         return postJson({ a: 'ficha', pin: pin, c: f.c }, 30000).then(function(j) {
           var d = (j && j.ok) ? fichaDecode(j.p) : null; if (!d) return;
           var merged = fichaUnion(d.log, norm), au = d.authors || {}, dcs = (d.dc || []).slice();
           if (savedDate) { var ne = norm.filter(function(e) { return e.d === savedDate; })[0]; if (ne) merged = fichaUnion([ne], merged); }
           if (delDate) { merged = merged.filter(function(e) { return e.d !== delDate; }); delete au[delDate]; if (dcs.indexOf(delDate) < 0) dcs.push(delDate); }
           if (savedDate) { au[savedDate] = fichaStampName(au[savedDate]); dcs = dcs.filter(function(x) { return x !== savedDate; }); }
-          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(d.p, merged, d.notes, d.texts, au, dcs)), rev: j.rev, r: fichaSummary(d.p, merged) }, 30000).then(function(j2) { if (j2 && j2.ok) FICHA.listAt = 0; });
+          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(d.p, merged, d.notes, d.texts, au, dcs, (d.hist || []).concat(fichaDiff(d.log, merged, fichaWho())).slice(-300))), rev: j.rev, r: fichaSummary(d.p, merged) }, 30000).then(function(j2) { if (j2 && j2.ok) FICHA.listAt = 0; });
         });
       }).catch(function() {});
     }
@@ -15706,7 +15741,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       Promise.resolve(ready).then(function() {
         var f = fichaFind(name);
         if (!cn || normName(cn) !== normName(name)) {   // el constructor tenía a otro cliente (o ninguno): no se mezcla lo suyo
-          measureLog = []; FICHA.notes = {}; FICHA.authors = {}; FICHA.dc = []; FICHA.extra = {}; FICHA.deleted = {};
+          measureLog = []; FICHA.notes = {}; FICHA.authors = {}; FICHA.dc = []; FICHA.extra = {}; FICHA.hist = []; FICHA.base = []; FICHA.deleted = {};
           ['m_objetivo', 'm_estatura', 'm_edad', 'f_frecuencia', 'f_lesiones', 'f_enfermedades', 'f_experiencia', 'f_notas', 'f_tel', 'm_nota'].forEach(function(id) { var e = document.getElementById(id); if (e) e.value = ''; });
         }
         if (cnEl) cnEl.value = name;
@@ -15878,7 +15913,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             pf.cliente_t = stamp; changed = true;
           }
           if (!changed) return;
-          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(pf, log, d.notes, d.texts, au, d.dc)), rev: j.rev, r: fichaSummary(pf, log) }, 30000).then(function(j2) {
+          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(pf, log, d.notes, d.texts, au, d.dc, (d.hist || []).concat(fichaDiff(d.log, log, 'Cliente')).slice(-300))), rev: j.rev, r: fichaSummary(pf, log) }, 30000).then(function(j2) {
             if (j2 && j2.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' actualizada con lo que anotó el cliente'); }
           });
         });
