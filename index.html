@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5416,7 +5416,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Último enlace enviado a un cliente: la rutina más nueva con su nombre en la hoja (la lista llega de la más nueva a la más vieja)
     function lastLinkFor(name, pin) {
       var n = normName(name);
-      function buscar() { var id = ''; (clientRows || []).forEach(function(r) { if (!id && r && r.id && normName(r.atleta) === n) id = r.id; }); return id; }
+      function buscar() {
+        var id = ''; (clientRows || []).forEach(function(r) { if (!id && r && r.id && normName(r.atleta) === n) id = r.id; });
+        if (id) return id;
+        // nombre parcial («Cecilia Acosta» ≈ «Cecilia Acosta Obaldía»): solo si todos los enlaces parecidos son de la misma persona
+        var nombres = {}, primero = '';
+        (clientRows || []).forEach(function(r) { if (r && r.id && nameLike(r.atleta, name)) { nombres[normName(r.atleta)] = 1; if (!primero) primero = r.id; } });
+        return Object.keys(nombres).length === 1 ? primero : '';
+      }
       var id0 = buscar(); if (id0) return Promise.resolve(id0);
       return postJson({ a: 'listar', pin: pin }).then(function(j) { if (j && j.ok) clientRows = j.rutinas || []; return buscar(); }).catch(function() { return ''; });
     }
@@ -15425,10 +15432,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else fichaSet('⚠️ ' + fichaErrText(j), 'err');
       }).catch(function() { FICHA.loading = false; fichaSet('⚠️ Sin conexión.', 'err'); });
     }
+    // ¿Son el mismo nombre? Igual, o uno contiene todas las palabras del otro (mínimo 2 palabras): «Cecilia Acosta» ≈ «Cecilia Acosta Obaldía»
+    function nameLike(a, b) {
+      var x = normName(a), y = normName(b);
+      if (!x || !y) return false;
+      if (x === y) return true;
+      var tx = x.split(' '), ty = y.split(' '), cort = tx.length <= ty.length ? tx : ty, larg = tx.length <= ty.length ? ty : tx;
+      if (cort.length < 2) return false;
+      return cort.every(function(w) { return larg.indexOf(w) !== -1; });
+    }
     function fichaFind(name) {
       var n = normName(name), hit = null;
       (FICHA.list || []).forEach(function(f) { if (!hit && normName(f.n) === n) hit = f; });
-      return hit;
+      if (hit) return hit;
+      // sin coincidencia exacta: se acepta un nombre parcial solo si encaja con UNA sola ficha (si hay dudas, no se une nada)
+      var cand = (FICHA.list || []).filter(function(f) { return nameLike(f.n, name); });
+      return cand.length === 1 ? cand[0] : null;
     }
     function fichaSearch() { var e = document.getElementById('ficha_q'); FICHA.q = e ? e.value : ''; fichaRenderPanel(); }
     function fichaRowHtml(f) {
@@ -15944,7 +15963,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Al crear el enlace del cliente cuyo plan venía de la cola, el plan queda como procesado
     function espDone(name) {
-      if (!ESP.active || normName(ESP.active.n) !== normName(name)) return;
+      if (!ESP.active || !nameLike(ESP.active.n, name)) return;
       var c = ESP.active.c, pin = fichaPin(); ESP.active = null;
       if (!pin) return;
       postJson({ a: 'espera_listo', pin: pin, c: c }, 30000).then(function(j) {
