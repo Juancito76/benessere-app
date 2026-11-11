@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-t';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-u';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1028,6 +1028,15 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           <button type="button" class="btn btn-secondary" onclick="fichaCreate()">➕ Crear ficha con este nombre</button>
           <button type="button" class="btn btn-secondary" onclick="fichaLoadList(true)">🔄 Actualizar lista</button>
         </div>
+        <details id="ficha_txt_box" style="margin-top:10px;">
+          <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; color:var(--primary);">📝 Cargar o actualizar con texto plano</summary>
+          <p class="fch-muted" style="margin:6px 0;">Pega el texto con <b>[ATLETA]</b> (nombre, perfil, «Fecha medicion:» y sus medidas) y/o bloques <b>[MEDICION AAAA-MM-DD]</b>. Cada fecha se suma a la ficha: solo se cambian las medidas que escribas, lo demás se conserva. Si el nombre ya tiene ficha, se vincula sola.</p>
+          <textarea id="ficha_txt" rows="8" style="width:100%; box-sizing:border-box;" placeholder="[ATLETA]&#10;Nombre: Ana Pérez&#10;Fecha medicion: 2026-11-10&#10;Peso: 78.5 kg&#10;Grasa: 31%&#10;Nota medicion: Medido por Kenneth"></textarea>
+          <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-accent" onclick="fichaImportText()">✅ Aplicar a la ficha</button>
+            <button type="button" class="btn btn-secondary" onclick="fichaExportTextBox()">📤 Texto de la ficha (todas las fechas)</button>
+          </div>
+        </details>
         <div id="ficha_actions" style="display:none; gap:8px; margin-top:8px; flex-wrap:wrap;">
           <button type="button" class="btn btn-export-wa" onclick="fichaSendWa()">📲 Enviar por WhatsApp</button>
           <button type="button" class="btn btn-secondary" onclick="fichaCopyLink()">🔗 Copiar enlace</button>
@@ -15278,7 +15287,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!pin) { fichaSet('Entra como coach (con tu PIN) para usar las fichas.', 'err'); return; }
       if (FICHA.dirty) fichaSaveNow();
       fichaSet('Abriendo la ficha…');
-      postJson({ a: 'ficha', pin: pin, c: code }, 30000).then(function(j) {
+      return postJson({ a: 'ficha', pin: pin, c: code }, 30000).then(function(j) {
         var d = (j && j.ok) ? fichaDecode(j.p) : null;
         if (!d) { fichaSet('⚠️ ' + (j && j.ok ? 'La ficha no se pudo leer.' : fichaErrText(j)), 'err'); return; }
         clearTimeout(FICHA.timer);
@@ -15520,6 +15529,104 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         try { localStorage.setItem(fichaCliKey(id), JSON.stringify({ p: j.p })); } catch (e) {}
         if (id === athleteRoutineId) { FCLI.id = id; FCLI.d = d; try { renderAthleteMeasures(); } catch (e) {} }
       }).catch(function() {});
+    }
+
+
+    // ----- Carga / actualización con texto plano (sin rutina): perfil + [ATLETA] + [MEDICION fecha] -----
+    function fichaParseText(raw) {
+      var lines = String(raw || '').split('\n').map(function(l) { return l.trim(); });
+      var out = { nombre: '', perfil: {}, entries: [] }, sec = '', cur = null, atl = null;
+      var perfilIds = { frecuencia: 'frecuencia', lesiones: 'lesiones', enfermedades: 'enfermedades', experiencia: 'experiencia', notas: 'notas', telefono: 'tel', 'teléfono': 'tel', whatsapp: 'tel' };
+      function startAtl() { atl = { d: '', v: {}, n: '' }; sec = 'A'; }
+      lines.forEach(function(line) {
+        if (!line) return;
+        if (/^\[atleta\]/i.test(line)) { startAtl(); return; }
+        if (/^\[medici[oó]n/i.test(line)) { var m = line.match(/\d{4}-\d{2}-\d{2}/); cur = { d: m ? m[0] : '', v: {}, n: '' }; out.entries.push(cur); sec = 'M'; return; }
+        if (/^\[/.test(line)) { sec = 'X'; return; }   // días, mensaje del coach, etc.: aquí no se usan
+        if (!sec) startAtl();   // texto sin encabezados: se lee como [ATLETA]
+        var low = line.toLowerCase();
+        if (sec === 'M') { if (/^nota:/.test(low)) cur.n = line.substring(line.indexOf(':') + 1).trim(); else parseImportMeasureLine(line, cur.v); return; }
+        if (sec !== 'A') return;
+        if (/^nombre:/.test(low)) { out.nombre = line.substring(line.indexOf(':') + 1).trim(); return; }
+        if (/^fecha (de la )?medici[oó]n:/.test(low)) { atl.d = line.substring(line.indexOf(':') + 1).trim(); return; }
+        if (/^nota (de la )?medici[oó]n:/.test(low)) { atl.n = line.substring(line.indexOf(':') + 1).trim(); return; }
+        if (/^objetivo:/.test(low)) { out.perfil.objetivo = line.substring(line.indexOf(':') + 1).trim(); return; }
+        var pm = low.match(/^(frecuencia|lesiones|enfermedades|experiencia|notas|tel[eé]fono|whatsapp):/);
+        if (pm) { out.perfil[perfilIds[pm[1]]] = line.substring(line.indexOf(':') + 1).trim(); return; }
+        if (/^(genero|género|fecha|semanas):/.test(low)) return;
+        parseImportMeasureLine(line, atl.v);
+      });
+      if (atl) { atl.d = isIsoDate(atl.d) ? atl.d : todayIso(); out.entries.push(atl); }
+      out.entries = out.entries.filter(function(e) {
+        if (e.v.__estatura) out.perfil.estatura = e.v.__estatura;
+        if (e.v.__edad) out.perfil.edad = e.v.__edad;
+        Object.keys(e.v).forEach(function(k) { if (k.indexOf('__') === 0 || !isFinite(e.v[k])) delete e.v[k]; });
+        return isIsoDate(e.d) && Object.keys(e.v).length;
+      });
+      return out;
+    }
+    // Suma lo leído a lo que hay: por fecha, solo cambian las medidas escritas
+    function fichaApplyParsed(P) {
+      var n = 0;
+      P.entries.forEach(function(e) {
+        var i = indexOfDate(measureLog, e.d);
+        if (i >= 0) { var cv = JSON.parse(JSON.stringify(measureLog[i].v)); Object.keys(e.v).forEach(function(k) { cv[k] = e.v[k]; }); measureLog[i] = { d: e.d, v: cv }; }
+        else measureLog.push({ d: e.d, v: e.v });
+        delete FICHA.deleted[e.d];
+        if (e.n) FICHA.notes[e.d] = e.n;
+        n++;
+      });
+      measureLog.sort(byDate);
+      var map = { objetivo: 'm_objetivo', estatura: 'm_estatura', edad: 'm_edad', frecuencia: 'f_frecuencia', lesiones: 'f_lesiones', enfermedades: 'f_enfermedades', experiencia: 'f_experiencia', notas: 'f_notas', tel: 'f_tel' }, np = 0;
+      Object.keys(P.perfil).forEach(function(k) { var el = document.getElementById(map[k]); if (el && P.perfil[k]) { el.value = P.perfil[k]; np++; } });
+      renderMeasureLog();
+      return { med: n, perfil: np };
+    }
+    function fichaImportText() {
+      var raw = (document.getElementById('ficha_txt') || {}).value || '';
+      if (!raw.trim()) { fichaSet('Pega primero el texto.', 'err'); return; }
+      var P = fichaParseText(raw);
+      if (!P.entries.length && !Object.keys(P.perfil).length) { fichaSet('⚠️ No encontré medidas ni datos en ese texto (revisa que tenga líneas como «Peso: 78.5 kg»).', 'err'); return; }
+      var cnEl = document.getElementById('clientName'), cn = cnEl ? cnEl.value.trim() : '';
+      function done() {
+        var r = fichaApplyParsed(P);
+        var msg = '✅ ' + r.med + ' medición(es)' + (r.perfil ? ' y ' + r.perfil + ' dato(s) del perfil' : '') + ' aplicadas a ' + (FICHA.name || 'la ficha') + '.';
+        if (FICHA.c) { fichaTouch(); return Promise.resolve(fichaSaveNow()).then(function(ok) { if (ok !== false) fichaSet(msg + ' Ya están en la hoja.', 'ok'); }); }
+        fichaSet(msg + ' Vincula o crea la ficha para guardarlas en la hoja.', 'ok');
+      }
+      if (FICHA.c) {
+        if (P.nombre && normName(P.nombre) !== normName(FICHA.name)) { fichaSet('⚠️ El texto es de ' + P.nombre + ' y la ficha vinculada es de ' + FICHA.name + '. Desvincula primero o corrige el nombre.', 'err'); return; }
+        done(); return;
+      }
+      var name = P.nombre || cn;
+      if (!name) { done(); return; }
+      var ready = FICHA.list ? Promise.resolve() : fichaLoadList(true);
+      Promise.resolve(ready).then(function() {
+        var f = fichaFind(name);
+        if (!cn || normName(cn) !== normName(name)) {   // el constructor tenía a otro cliente (o ninguno): no se mezcla lo suyo
+          measureLog = []; FICHA.notes = {}; FICHA.deleted = {};
+          ['m_objetivo', 'm_estatura', 'm_edad', 'f_frecuencia', 'f_lesiones', 'f_enfermedades', 'f_experiencia', 'f_notas', 'f_tel', 'm_nota'].forEach(function(id) { var e = document.getElementById(id); if (e) e.value = ''; });
+        }
+        if (cnEl) cnEl.value = name;
+        if (f) return Promise.resolve(fichaOpen(f.c)).then(done);
+        FICHA.name = name; var r = fichaApplyParsed(P);
+        fichaSet('Creando la ficha de ' + name + '…');
+        fichaCreate();
+        fichaSet('✅ Ficha nueva de ' + name + ' con ' + r.med + ' medición(es).', 'ok');
+      });
+    }
+    // Texto de la ficha con TODAS las fechas (el mismo formato que se pega arriba)
+    function fichaExportTextBox() {
+      var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog), L = ['[ATLETA]'];
+      if (FICHA.name || perfil.nombre) L.push('Nombre: ' + (FICHA.name || perfil.nombre));
+      if (perfil.estatura) L.push('Estatura: ' + perfil.estatura);
+      if (perfil.edad) L.push('Edad: ' + perfil.edad);
+      if (perfil.objetivo) L.push('Objetivo: ' + expClean(perfil.objetivo));
+      [['Frecuencia', 'frecuencia'], ['Lesiones', 'lesiones'], ['Enfermedades', 'enfermedades'], ['Experiencia', 'experiencia'], ['Notas', 'notas'], ['Telefono', 'tel']].forEach(function(r) { if (perfil[r[1]]) L.push(r[0] + ': ' + expClean(perfil[r[1]])); });
+      log.forEach(function(e) { L.push('', '[MEDICION ' + e.d + ']'); expMeasureLines(L, e.v); if (FICHA.notes[e.d]) L.push('Nota: ' + expClean(FICHA.notes[e.d])); });
+      var t = L.join('\n') + '\n', ta = document.getElementById('ficha_txt');
+      if (ta) ta.value = t;
+      copyTextSilently(t); showToastTop('📋 Texto de la ficha copiado (' + log.length + ' fechas)');
     }
 
     function fichaClearForm() {
