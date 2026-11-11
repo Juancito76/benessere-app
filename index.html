@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1640,6 +1640,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return v;
     }
     function saveMeasureEntry() {
+      if (fichaNeedCoach()) return;
       var d = document.getElementById('m_fecha').value;
       if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
       var v = readMeasureForm();
@@ -1691,6 +1692,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (fld && fld.scrollIntoView) fld.scrollIntoView({ block: 'center' });
     }
     function deleteMeasureEntry(d) {
+      if (fichaNeedCoach()) return;
       if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
       if (!confirm('¿Borrar la medición del ' + fmtDate(d) + '?')) return;
       measureLog = measureLog.filter(function(e) { return e.d !== d; });
@@ -15321,6 +15323,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     var FICHA_FORM_KEYS = ['nombre', 'edad', 'estatura', 'objetivo', 'frecuencia', 'lesiones', 'enfermedades', 'experiencia', 'notas', 'tel'];
     function fichaExtraOf(p) { var x = {}; Object.keys(p || {}).forEach(function(k) { if (FICHA_FORM_KEYS.indexOf(k) < 0 && p[k]) x[k] = p[k]; }); return x; }
+    // El nombre del coach es obligatorio para guardar en la ficha (queda como autor de cada medición)
+    function fichaWhoStrict() { return ((COACH && COACH.name) || ((document.getElementById('coachName') || {}).value || '')).trim(); }
+    function fichaNeedCoach() {
+      var n = ((COACH && COACH.name) || ((document.getElementById('coachName') || {}).value || '')).trim();
+      if (n) return false;
+      var el = document.getElementById('coachName');
+      alert('Escribe el nombre del coach (campo «Nombre del Coach» del Planificador) o entra con tu PIN antes de guardar. Así queda registrado quién hizo cada medición.');
+      try { if (el) { switchGenTab('tab_builder', document.querySelector('.gen-tab-btn')); el.focus(); } } catch (e) {}
+      return true;
+    }
     function fichaWho() { var n = (COACH && COACH.name) || ((document.getElementById('coachName') || {}).value || '').trim(); return String(n || 'Coach').slice(0, 40); }
 
     // Un coach puede AGREGAR mediciones, pero no editar ni borrar las que hizo otro coach (el administrador sí puede con todas)
@@ -15483,6 +15495,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).catch(function() { fichaSet('⚠️ Sin conexión.', 'err'); });
     }
     function fichaCreate() {
+      if (fichaNeedCoach()) return;
       var pin = fichaPin(), nm = ((document.getElementById('clientName') || {}).value || '').trim();
       if (!pin) { fichaSet('Entra como coach (con tu PIN) para usar las fichas.', 'err'); return; }
       if (!nm) { alert('Escribe primero el nombre del cliente (arriba, en el constructor).'); return; }
@@ -15510,6 +15523,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (FICHA.saving) { FICHA.again = true; return Promise.resolve(false); }
       var pin = fichaPin();
       if (!pin) { fichaSet('⚠️ Entra como coach para guardar en la ficha.', 'err'); return Promise.resolve(false); }
+      if (!fichaWhoStrict()) { fichaSet('⚠️ Falta el nombre del coach: no se guardó. Escríbelo en «Nombre del Coach» o entra con tu PIN.', 'err'); return Promise.resolve(false); }
       var cnEl = document.getElementById('clientName'), cn = cnEl ? cnEl.value.trim() : '';
       if (cn && FICHA.name && normName(cn) !== normName(FICHA.name)) { fichaSet('⚠️ El nombre del cliente cambió: desvincula la ficha de ' + FICHA.name + ' para no mezclar datos.', 'err'); return Promise.resolve(false); }
       FICHA.saving = true;
@@ -15773,6 +15787,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return { med: n, perfil: np, blocked: blocked };
     }
     function fichaImportText() {
+      if (fichaNeedCoach()) return;
       var raw = (document.getElementById('ficha_txt') || {}).value || '';
       if (!raw.trim()) { fichaSet('Pega primero el texto.', 'err'); return; }
       var P = fichaParseText(raw);
