@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -831,6 +831,7 @@
       <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
       <button type="button" class="gen-tab-btn" id="btn_frase_dia" onclick="openFraseEditor()">✨ Frase del día</button>
       <button type="button" class="gen-tab-btn" onclick="openReception(false)">🚪 Recepción</button>
+      <button type="button" class="gen-tab-btn" id="coach_install_btn" style="display:none;" onclick="installApp()">📲 Instalar en esta tablet</button>
       <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
     </div>
 
@@ -952,7 +953,7 @@
     <div id="tab_import" class="gen-view">
       <section class="section-box" id="esp_panel">
         <div class="section-title">📥 Planes en espera de procesar <span class="badge" id="esp_count">0</span></div>
-        <p class="fch-muted" style="margin:0 0 8px;">Planes ya armados que esperan en la hoja. Toca «Cargar» para abrir uno en el constructor (se vincula solo con la ficha del cliente); al crear su enlace, el plan sale de esta lista.</p>
+        <p class="fch-muted" style="margin:0 0 8px;">Planes ya armados que esperan aquí. Toca «Cargar» para abrir uno en el constructor (se vincula solo con la ficha del cliente); al crear su enlace, el plan sale de esta lista.</p>
         <div id="esp_list"></div>
         <div id="esp_status" style="font-size:0.78rem; margin-top:6px; min-height:1em;"></div>
         <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
@@ -1032,8 +1033,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     <!-- TAB 4: FICHA ANTROPOMÉTRICA -->
     <div id="tab_athlete" class="gen-view">
       <section class="section-box" id="ficha_panel">
-        <div class="section-title">🗂️ Ficha maestra <span class="badge">Hoja de Google</span></div>
-        <p class="fch-muted" style="margin:0 0 8px;">Cada cliente es una línea de la hoja «Fichas». Vincula al cliente y cada medición que guardes aquí se escribe sola en su ficha; el cliente la ve en «Datos y asistencia» o con su enlace de ficha.</p>
+        <div class="section-title">🗂️ Ficha técnica del cliente</div>
+        <p class="fch-muted" style="margin:0 0 8px;">Cada cliente tiene su ficha técnica. Vincula al cliente y cada medición que guardes aquí se guarda sola en su ficha; el cliente la ve en «Datos y asistencia» o con su enlace de ficha.</p>
         <input type="text" id="ficha_q" placeholder="🔎 Buscar cliente por nombre…" oninput="fichaSearch()" autocomplete="off" style="width:100%;">
         <div id="ficha_results"></div>
         <div id="ficha_suggest" style="margin-top:8px;"></div>
@@ -1060,7 +1061,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         </div>
       </section>
       <section class="section-box">
-        <div class="section-title">🩺 Perfil de la ficha <span class="badge">Se guarda en la hoja</span></div>
+        <div class="section-title">🩺 Perfil de la ficha <span class="badge">Se guarda en la ficha</span></div>
         <div class="form-grid">
           <div class="form-group"><label>Frecuencia / tiempo</label><input type="text" id="f_frecuencia" placeholder="Ej: 4 x 60 min" onchange="fichaTouch()"></div>
           <div class="form-group"><label>Experiencia en gimnasio</label><input type="text" id="f_experiencia" placeholder="Ej: Principiante / Intermedia" onchange="fichaTouch()"></div>
@@ -1608,10 +1609,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var rows = entries.slice().sort(function(a, b) { return a.d < b.d ? 1 : (a.d > b.d ? -1 : 0); }).map(function(e) {
         var mark = e.src === 'a' ? ' 👤' : '';
         var del = (mode === 'athlete' && e.src === 'a') ? ' <button type="button" class="med-x" title="Borrar" onclick="deleteOwnMeasure(\'' + e.d + '\')">🗑</button>' : '';
-        if (mode === 'cv' && e.src === 'c' && e.d !== entries[0].d) del = ' <button type="button" class="med-x" title="Borrar esta medición de seguimiento" onclick="coachDeleteMeasure(\'' + e.d + '\')">🗑</button>';   // la medición del inicio no se puede borrar desde aquí
+        if (mode === 'cv' && e.src === 'c' && e.d !== entries[0].d && fichaCanEdit(e.d)) del = ' <button type="button" class="med-x" title="Borrar esta medición de seguimiento" onclick="coachDeleteMeasure(\'' + e.d + '\')">🗑</button>';   // la medición del inicio no se puede borrar desde aquí
         var cells = keys.map(function(f) { return '<td>' + (e.v[f.k] != null ? (f.unit === 'nivel' ? (NIVEL_ARW[Math.round(e.v[f.k])] || fmtNum(e.v[f.k])) : fmtNum(e.v[f.k])) : '–') + '</td>'; }).join('');
         var acts = mode === 'coach'
-          ? '<td><button type="button" class="med-x" title="Editar" onclick="editMeasureEntry(\'' + e.d + '\')">✏️</button><button type="button" class="med-x" title="Borrar" onclick="deleteMeasureEntry(\'' + e.d + '\')">🗑</button></td>'
+          ? (fichaCanEdit(e.d) ? '<td><button type="button" class="med-x" title="Editar" onclick="editMeasureEntry(\'' + e.d + '\')">✏️</button><button type="button" class="med-x" title="Borrar" onclick="deleteMeasureEntry(\'' + e.d + '\')">🗑</button></td>' : '<td title="La registró otro coach: solo esa persona la edita">🔒</td>')
           : '';
         var by = e.src === 'a' ? 'Cliente' : (e.by || '');
         return '<tr><td>' + fmtDateTable(e.d) + mark + del + (by ? '<br><small style="color:var(--muted);">' + escHtml(by) + '</small>' : '') + '</td>' + cells + acts + '</tr>';
@@ -1639,6 +1640,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
       var v = readMeasureForm();
       if (!Object.keys(v).length) { alert('Escribe al menos una medida (por ejemplo el peso) antes de guardar.'); return; }
+      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
       var i = indexOfDate(measureLog, d);
       if (i >= 0 && !sameValues(measureLog[i].v, v) && !confirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Reemplazarla con estos valores?')) return;
       if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
@@ -1646,7 +1648,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       renderMeasureLog();
       var ntEl = document.getElementById('m_nota'), ntv = ntEl ? ntEl.value.trim() : '';
       if (ntv) FICHA.notes[d] = ntv;
-      FICHA.authors[d] = fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== d; });
+      FICHA.authors[d] = FICHA.authors[d] || fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== d; });
       renderMeasureLog();
       fichaTouch();
       var st = document.getElementById('med_status');
@@ -1660,10 +1662,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!isIsoDate(d) || !Object.keys(v).length) return;
       var i = indexOfDate(measureLog, d);
       if (i >= 0 && sameValues(measureLog[i].v, v)) return;
+      if (!fichaCanEdit(d)) return;
       if (measureLog.length === 0 || confirm((i >= 0 ? 'La medición del ' + fmtDate(d) + ' tiene cambios sin guardar.' : 'Hay una medición del ' + fmtDate(d) + ' sin guardar en el historial.') + '\n\n¿Guardarla antes de crear el enlace?')) {
         if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
         measureLog.sort(byDate);
-        FICHA.authors[d] = fichaWho();
+        FICHA.authors[d] = FICHA.authors[d] || fichaWho();
         renderMeasureLog();
         fichaTouch();
       }
@@ -1671,6 +1674,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function editMeasureEntry(d) {
       var i = indexOfDate(measureLog, d);
       if (i < 0) return;
+      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
       document.getElementById('m_fecha').value = d;
       MEASURE_FIELDS.forEach(function(f) {
         var n = measureLog[i].v[f.k];
@@ -1683,6 +1687,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (fld && fld.scrollIntoView) fld.scrollIntoView({ block: 'center' });
     }
     function deleteMeasureEntry(d) {
+      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
       if (!confirm('¿Borrar la medición del ' + fmtDate(d) + '?')) return;
       measureLog = measureLog.filter(function(e) { return e.d !== d; });
       FICHA.deleted[d] = 1; delete FICHA.notes[d]; delete FICHA.authors[d]; if (FICHA.dc.indexOf(d) < 0) FICHA.dc.push(d);
@@ -1907,6 +1912,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var v = {};
       MEASURE_FIELDS.forEach(function(f) { var n = parseNum(document.getElementById('med_new_' + f.k).value); if (n !== null) v[f.k] = n; });
       if (!Object.keys(v).length) { alert('Escribe al menos una medida (por ejemplo el peso).'); return; }
+      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
       var log = coachMeasureBase(st), i = indexOfDate(log, d);
       if (i >= 0) {
         if (!confirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Actualizarla con lo que escribiste? (lo que dejes en blanco se conserva)')) return;
@@ -1921,6 +1927,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function coachDeleteMeasure(d) {
       var st = athleteActiveState;
       if (!st || !coachMeasureOn()) return;
+      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
       var log = coachMeasureBase(st);
       if (log.length && log[0].d === d) { alert('La medición del inicio no se borra desde aquí.'); return; }
       if (!confirm('¿Borrar la medición de seguimiento del ' + fmtDate(d) + '? Se quita también de la rutina del cliente.')) return;
@@ -4006,6 +4013,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (meas.__edad) { var eg = document.getElementById('m_edad'); if (eg) eg.value = meas.__edad; }
       if (!keys.length) return 0;
       var d = isIsoDate(dateIso) ? dateIso : todayIso();
+      if (!fichaCanEdit(d)) { try { showToastTop('⚠️ La medición del ' + fmtDate(d) + ' es de otro coach: no se cambió'); } catch (e) {} return 0; }
       var v = {};
       keys.forEach(function(k) { if (isFinite(meas[k])) v[k] = meas[k]; });
       MEASURE_FIELDS.forEach(function(f) {
@@ -4304,6 +4312,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var hv = {}, hk = 0;
           Object.keys(hm.v).forEach(function(k) { if (k.indexOf('__') !== 0 && isFinite(hm.v[k])) { hv[k] = hm.v[k]; hk++; } });
           if (!hk) return;
+          if (!fichaCanEdit(hm.d)) return;
           var hi = indexOfDate(measureLog, hm.d);
           if (hi >= 0) measureLog[hi] = { d: hm.d, v: hv }; else measureLog.push({ d: hm.d, v: hv });
           if (hm.n) FICHA.notes[hm.d] = hm.n;
@@ -15019,8 +15028,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var INST_EVT = null;
     function appIsInstalled() { try { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; } catch (e) { return false; } }
     function installBtnSync() {
-      var b = document.getElementById('ath_install_btn'); if (!b) return;
-      b.style.display = (appIsInstalled() || (typeof isCoachView === 'function' && isCoachView())) ? 'none' : '';
+      var inst = appIsInstalled();
+      var b = document.getElementById('ath_install_btn');
+      if (b) b.style.display = (inst || (typeof isCoachView === 'function' && isCoachView())) ? 'none' : '';
+      ['fv_install_btn', 'coach_install_btn'].forEach(function(id) { var x = document.getElementById(id); if (x) x.style.display = inst ? 'none' : ''; });   // ficha del cliente y versión de la tablet del gym
     }
     window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); INST_EVT = e; installBtnSync(); });
     window.addEventListener('appinstalled', function() { INST_EVT = null; installBtnSync(); try { showToastTop('✅ ¡App instalada! Búscala en tu pantalla de inicio.'); } catch (e) {} });
@@ -15259,6 +15270,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var FICHA_FORM_KEYS = ['nombre', 'edad', 'estatura', 'objetivo', 'frecuencia', 'lesiones', 'enfermedades', 'experiencia', 'notas', 'tel'];
     function fichaExtraOf(p) { var x = {}; Object.keys(p || {}).forEach(function(k) { if (FICHA_FORM_KEYS.indexOf(k) < 0 && p[k]) x[k] = p[k]; }); return x; }
     function fichaWho() { var n = (COACH && COACH.name) || ((document.getElementById('coachName') || {}).value || '').trim(); return String(n || 'Coach').slice(0, 40); }
+
+    // Un coach puede AGREGAR mediciones, pero no editar ni borrar las que hizo otro coach (el administrador sí puede con todas)
+    function fichaAuthorOf(d) {
+      var a = (FICHA.authors || {})[d];
+      if (!a) { try { var fc = fichaCliData(); a = fc && fc.authors ? fc.authors[d] : ''; } catch (e) {} }
+      return a || '';
+    }
+    function fichaCanEdit(d) {
+      var a = fichaAuthorOf(d);
+      if (!a || a === 'Cliente') return true;
+      if (COACH && COACH.todos) return true;
+      return normName(a) === normName(fichaWho());
+    }
+    function fichaLockMsg(d) { return 'La medición del ' + fmtDate(d) + ' la registró ' + fichaAuthorOf(d) + '. Solo esa persona puede editarla o borrarla.\n\nPuedes agregar la tuya con otra fecha.'; }
     function fichaFillForm(p) {
       function setv(id, v) { var e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); }
       setv('m_objetivo', p.objetivo); setv('m_estatura', p.estatura); setv('m_edad', p.edad);
@@ -15278,7 +15303,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (e === 'bloqueado') return 'Demasiados intentos de PIN: espera 15 minutos.';
       if (e === 'permiso') return 'Esa ficha es de otro coach.';
       if (e === 'clave' || e === 'clave-sin-cambiar' || e === 'datos') return 'Falta publicar la versión 6 del script de Google (la que trae las fichas).';
-      return 'No se pudo conectar con la hoja (' + (e || 'sin respuesta') + ').';
+      return 'No se pudo conectar (' + (e || 'sin respuesta') + ').';
     }
     function fichaLoadList(force) {
       var pin = fichaPin();
@@ -15288,9 +15313,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       FICHA.loading = true; fichaSet('Cargando fichas…');
       return postJson({ a: 'fichas', pin: pin }, 30000).then(function(j) {
         FICHA.loading = false;
-        if (j && j.ok) { FICHA.list = j.fichas || []; FICHA.listAt = Date.now(); fichaSet(FICHA.c ? '' : FICHA.list.length + ' fichas en la hoja.'); fichaRenderPanel(); fichaSuggest(); }
+        if (j && j.ok) { FICHA.list = j.fichas || []; FICHA.listAt = Date.now(); fichaSet(FICHA.c ? '' : FICHA.list.length + ' fichas.'); fichaRenderPanel(); fichaSuggest(); }
         else fichaSet('⚠️ ' + fichaErrText(j), 'err');
-      }).catch(function() { FICHA.loading = false; fichaSet('⚠️ Sin conexión con la hoja.', 'err'); });
+      }).catch(function() { FICHA.loading = false; fichaSet('⚠️ Sin conexión.', 'err'); });
     }
     function fichaFind(name) {
       var n = normName(name), hit = null;
@@ -15307,7 +15332,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (link) {
         link.innerHTML = FICHA.c
           ? '<div class="fch-linked">🗂️ <b>' + escHtml(FICHA.name) + '</b> · ficha ' + escHtml(FICHA.c) + ' <button type="button" class="med-x" title="Desvincular (no borra nada)" onclick="fichaUnlink()">✖</button></div>'
-          : '<div class="fch-muted">Sin ficha vinculada: busca al cliente o crea su ficha. Mientras esté vinculada, cada medición que guardes aquí se escribe sola en la hoja.</div>';
+          : '<div class="fch-muted">Sin ficha vinculada: busca al cliente o crea su ficha. Mientras esté vinculada, cada medición que guardes aquí se guarda sola en su ficha.</div>';
       }
       if (link && FICHA.c) {
         var ex = FICHA.extra || {}, cn = '';
@@ -15357,7 +15382,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         renderMeasureLog(); fichaRenderPanel(); fichaSuggest();
         fichaSet('✅ Ficha de ' + FICHA.name + ' cargada (' + d.log.length + ' mediciones).', 'ok');
         if (localOnly) fichaTouch();
-      }).catch(function() { fichaSet('⚠️ Sin conexión con la hoja.', 'err'); });
+      }).catch(function() { fichaSet('⚠️ Sin conexión.', 'err'); });
     }
     function fichaCreate() {
       var pin = fichaPin(), nm = ((document.getElementById('clientName') || {}).value || '').trim();
@@ -15371,7 +15396,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       postJson({ a: 'ficha_guardar', pin: pin, n: nm, p: fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts, FICHA.authors, FICHA.dc)), r: fichaSummary(perfil, log) }, 30000).then(function(j) {
         if (j && j.ok) { FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.dirty = false; FICHA.listAt = 0; fichaRenderPanel(); fichaSet('✅ Ficha ' + j.c + ' creada para ' + nm + '.', 'ok'); fichaLoadList(true); }
         else { FICHA.name = ''; fichaSet('⚠️ ' + fichaErrText(j), 'err'); }
-      }).catch(function() { FICHA.name = ''; fichaSet('⚠️ Sin conexión con la hoja.', 'err'); });
+      }).catch(function() { FICHA.name = ''; fichaSet('⚠️ Sin conexión.', 'err'); });
     }
     // Cada cambio (medición guardada o borrada, datos del perfil) se escribe en la hoja a los ~1 s
     function fichaTouch() {
@@ -15486,7 +15511,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!f) return postJson({ a: 'ficha_guardar', pin: pin, n: String(name).trim(), p: fichaEncode(fichaBuild({ nombre: String(name).trim() }, norm, {}, {}, savedDate ? (function() { var a = {}; a[savedDate] = fichaWho(); return a; })() : {}, [])), r: fichaSummary({}, norm) }, 30000).then(function(j) { if (j && j.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' creada en la hoja'); } });
         return postJson({ a: 'ficha', pin: pin, c: f.c }, 30000).then(function(j) {
           var d = (j && j.ok) ? fichaDecode(j.p) : null; if (!d) return;
-          var merged = fichaUnion(norm, d.log), au = d.authors || {}, dcs = (d.dc || []).slice();
+          var merged = fichaUnion(d.log, norm), au = d.authors || {}, dcs = (d.dc || []).slice();
+          if (savedDate) { var ne = norm.filter(function(e) { return e.d === savedDate; })[0]; if (ne) merged = fichaUnion([ne], merged); }
           if (delDate) { merged = merged.filter(function(e) { return e.d !== delDate; }); delete au[delDate]; if (dcs.indexOf(delDate) < 0) dcs.push(delDate); }
           if (savedDate) { au[savedDate] = fichaWho(); dcs = dcs.filter(function(x) { return x !== savedDate; }); }
           return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(d.p, merged, d.notes, d.texts, au, dcs)), rev: j.rev, r: fichaSummary(d.p, merged) }, 30000).then(function(j2) { if (j2 && j2.ok) FICHA.listAt = 0; });
@@ -15520,7 +15546,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           (noteRows ? '<div class="med-h">Notas</div><ul class="fv-notes">' + noteRows + '</ul>' : '');
       }
       return '<div class="fv-head"><div><div class="fv-brand">BENESSERE GYM</div><div class="fv-sub">Ficha técnica · ' + fmtDate(todayIso()) + '</div></div>' +
-        '<div class="no-print fv-btns"><button type="button" class="btn btn-accent" onclick="window.print()">🖨️ Guardar PDF</button>' + (FV.overlay ? '<button type="button" class="btn btn-secondary" onclick="fichaViewClose()">✕ Cerrar</button>' : '') + '</div></div>' +
+        '<div class="no-print fv-btns">' + (FV.overlay ? '' : '<button type="button" class="btn btn-secondary" id="fv_install_btn" style="display:none;" onclick="installApp()">📲 Instalar</button>') + '<button type="button" class="btn btn-accent" onclick="window.print()">🖨️ Guardar PDF</button>' + (FV.overlay ? '<button type="button" class="btn btn-secondary" onclick="fichaViewClose()">✕ Cerrar</button>' : '') + '</div></div>' +
         '<h2 class="fv-name">' + escHtml(p.nombre || d.name || '') + '</h2>' + prof + body +
         '<div class="fv-foot">Benessere Gym · Juntos somos más fuertes</div>';
     }
@@ -15529,6 +15555,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var box = document.getElementById('ficha_app');
       if (!box || !FV.data) return;
       box.innerHTML = '<div class="fv-wrap">' + fichaViewHtml(FV.data) + '</div>';
+      try { installBtnSync(); } catch (e) {}
     }
     function fichaViewShow(data, overlay) {
       FV.data = data; FV.overlay = !!overlay;
@@ -15627,20 +15654,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Suma lo leído a lo que hay: por fecha, solo cambian las medidas escritas
     function fichaApplyParsed(P) {
       var n = 0;
+      var blocked = [];
+      P.entries = P.entries.filter(function(e) { if (fichaCanEdit(e.d)) return true; blocked.push(e.d); return false; });
       P.entries.forEach(function(e) {
         var i = indexOfDate(measureLog, e.d);
         if (i >= 0) { var cv = JSON.parse(JSON.stringify(measureLog[i].v)); Object.keys(e.v).forEach(function(k) { cv[k] = e.v[k]; }); measureLog[i] = { d: e.d, v: cv }; }
         else measureLog.push({ d: e.d, v: e.v });
         delete FICHA.deleted[e.d];
         if (e.n) FICHA.notes[e.d] = e.n;
-        FICHA.authors[e.d] = e.by || fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== e.d; });
+        FICHA.authors[e.d] = e.by || FICHA.authors[e.d] || fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== e.d; });
         n++;
       });
       measureLog.sort(byDate);
       var map = { objetivo: 'm_objetivo', estatura: 'm_estatura', edad: 'm_edad', frecuencia: 'f_frecuencia', lesiones: 'f_lesiones', enfermedades: 'f_enfermedades', experiencia: 'f_experiencia', notas: 'f_notas', tel: 'f_tel' }, np = 0;
       Object.keys(P.perfil).forEach(function(k) { var el = document.getElementById(map[k]); if (el && P.perfil[k]) { el.value = P.perfil[k]; np++; } });
       renderMeasureLog();
-      return { med: n, perfil: np };
+      return { med: n, perfil: np, blocked: blocked };
     }
     function fichaImportText() {
       var raw = (document.getElementById('ficha_txt') || {}).value || '';
@@ -15650,9 +15679,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var cnEl = document.getElementById('clientName'), cn = cnEl ? cnEl.value.trim() : '';
       function done() {
         var r = fichaApplyParsed(P);
-        var msg = '✅ ' + r.med + ' medición(es)' + (r.perfil ? ' y ' + r.perfil + ' dato(s) del perfil' : '') + ' aplicadas a ' + (FICHA.name || 'la ficha') + '.';
-        if (FICHA.c) { fichaTouch(); return Promise.resolve(fichaSaveNow()).then(function(ok) { if (ok !== false) fichaSet(msg + ' Ya están en la hoja.', 'ok'); }); }
-        fichaSet(msg + ' Vincula o crea la ficha para guardarlas en la hoja.', 'ok');
+        var msg = '✅ ' + r.med + ' medición(es)' + (r.perfil ? ' y ' + r.perfil + ' dato(s) del perfil' : '') + ' aplicadas a ' + (FICHA.name || 'la ficha') + '.' + (r.blocked.length ? ' ⚠️ No se tocaron ' + r.blocked.length + ' hecha(s) por otro coach (' + r.blocked.map(fmtDateShort).join(', ') + '): agrégalas con otra fecha.' : '');
+        if (FICHA.c) { fichaTouch(); return Promise.resolve(fichaSaveNow()).then(function(ok) { if (ok !== false) fichaSet(msg + ' Ya están guardadas.', 'ok'); }); }
+        fichaSet(msg + ' Vincula o crea la ficha para guardarlas.', 'ok');
       }
       if (FICHA.c) {
         if (P.nombre && normName(P.nombre) !== normName(FICHA.name)) { fichaSet('⚠️ El texto es de ' + P.nombre + ' y la ficha vinculada es de ' + FICHA.name + '. Desvincula primero o corrige el nombre.', 'err'); return; }
@@ -15704,7 +15733,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (e === 'bloqueado') return 'Demasiados intentos de PIN: espera 15 minutos.';
       if (e === 'permiso') return 'Ese plan es de otro coach.';
       if (e === 'clave' || e === 'clave-sin-cambiar') return 'Falta publicar la versión 7 del script de Google (la que trae los planes en espera).';
-      return 'No se pudo conectar con la hoja (' + (e || 'sin respuesta') + ').';
+      return 'No se pudo conectar (' + (e || 'sin respuesta') + ').';
     }
     function espLoad(force) {
       var pin = fichaPin();
@@ -15716,7 +15745,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         ESP.loading = false;
         if (j && j.ok) { ESP.list = j.planes || []; ESP.listAt = Date.now(); espSet(ESP.list.length ? '' : 'No hay planes en espera.'); espRender(); }
         else espSet('⚠️ ' + espErr(j), 'err');
-      }).catch(function() { ESP.loading = false; espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+      }).catch(function() { ESP.loading = false; espSet('⚠️ Sin conexión.', 'err'); });
     }
     function espRender() {
       var n = ESP.list ? ESP.list.length : 0;
@@ -15757,7 +15786,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var ta = document.getElementById('esp_txt'); if (ta) ta.value = '';
           espLoad(true).then(function() { espSet(okMsg, 'ok'); });
         } else espSet('⚠️ ' + espErr(j), 'err');
-      }).catch(function() { espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+      }).catch(function() { espSet('⚠️ Sin conexión.', 'err'); });
     }
     function espLoadPlan(c) {
       var pin = fichaPin(); if (!pin) { espSet('Entra como coach (con tu PIN).', 'err'); return; }
@@ -15773,7 +15802,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         espSet('✅ Plan de ' + j.n + ' cargado en el constructor.', 'ok'); espRender();
         parseAndLoadImportData();
         espAutoLink(j.n);
-      }).catch(function() { espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+      }).catch(function() { espSet('⚠️ Sin conexión.', 'err'); });
     }
     // Al cargar un plan, se vincula con la ficha del cliente (o se crea si aún no existe)
     function espAutoLink(name) {
@@ -15789,7 +15818,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       postJson({ a: 'espera_listo', pin: pin, c: c, nota: 'descartado' }, 30000).then(function(j) {
         if (j && j.ok) { ESP.list = (ESP.list || []).filter(function(x) { return x.c !== c; }); if (ESP.active && ESP.active.c === c) ESP.active = null; espRender(); espSet('🗑 Plan descartado.', 'ok'); }
         else espSet('⚠️ ' + espErr(j), 'err');
-      }).catch(function() { espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+      }).catch(function() { espSet('⚠️ Sin conexión.', 'err'); });
     }
     // Al crear el enlace del cliente cuyo plan venía de la cola, el plan queda como procesado
     function espDone(name) {
