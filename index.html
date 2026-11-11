@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1647,7 +1647,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       renderMeasureLog();
       var ntEl = document.getElementById('m_nota'), ntv = ntEl ? ntEl.value.trim() : '';
       if (ntv) FICHA.notes[d] = ntv;
-      FICHA.authors[d] = FICHA.authors[d] || fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== d; });
+      FICHA.authors[d] = fichaStampName(FICHA.authors[d]); FICHA.dc = FICHA.dc.filter(function(x) { return x !== d; });
       renderMeasureLog();
       fichaTouch();
       var st = document.getElementById('med_status');
@@ -1665,7 +1665,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (measureLog.length === 0 || confirm((i >= 0 ? 'La medición del ' + fmtDate(d) + ' tiene cambios sin guardar.' : 'Hay una medición del ' + fmtDate(d) + ' sin guardar en el historial.') + '\n\n¿Guardarla antes de crear el enlace?')) {
         if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
         measureLog.sort(byDate);
-        FICHA.authors[d] = FICHA.authors[d] || fichaWho();
+        FICHA.authors[d] = fichaStampName(FICHA.authors[d]);
         renderMeasureLog();
         fichaTouch();
       }
@@ -15276,6 +15276,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!a) { try { var fc = fichaCliData(); a = fc && fc.authors ? fc.authors[d] : ''; } catch (e) {} }
       return a || '';
     }
+    // Si un coach corrige una medida que anotó el cliente, queda como «Cliente · corregida por X»: así la app no la vuelve a pisar con el valor original
+    function fichaStampName(prev, by) { if (!prev) return by || fichaWho(); if (prev === 'Cliente') return 'Cliente · corregida por ' + (by || fichaWho()); return prev; }
     function fichaExists(d) {
       if (indexOfDate(measureLog, d) >= 0) return true;
       try { var fc = fichaCliData(); if (fc && fc.log.some(function(e) { return e.d === d; })) return true; } catch (e) {}
@@ -15288,7 +15290,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var a = fichaAuthorOf(d), hayFicha = false;
       try { hayFicha = !!(FICHA.c || fichaCliData()); } catch (e) { hayFicha = !!FICHA.c; }
       if (!a) return !hayFicha;                         // sin autor y ya en una ficha: solo el administrador (sin ficha de por medio es un cliente nuevo en el constructor)
-      if (a === 'Cliente') return true;
+      if (/^Cliente/.test(a)) return true;
       return normName(a) === normName(fichaWho());
     }
     function fichaLockMsg(d) {
@@ -15525,7 +15527,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var merged = fichaUnion(d.log, norm), au = d.authors || {}, dcs = (d.dc || []).slice();
           if (savedDate) { var ne = norm.filter(function(e) { return e.d === savedDate; })[0]; if (ne) merged = fichaUnion([ne], merged); }
           if (delDate) { merged = merged.filter(function(e) { return e.d !== delDate; }); delete au[delDate]; if (dcs.indexOf(delDate) < 0) dcs.push(delDate); }
-          if (savedDate) { au[savedDate] = fichaWho(); dcs = dcs.filter(function(x) { return x !== savedDate; }); }
+          if (savedDate) { au[savedDate] = fichaStampName(au[savedDate]); dcs = dcs.filter(function(x) { return x !== savedDate; }); }
           return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(d.p, merged, d.notes, d.texts, au, dcs)), rev: j.rev, r: fichaSummary(d.p, merged) }, 30000).then(function(j2) { if (j2 && j2.ok) FICHA.listAt = 0; });
         });
       }).catch(function() {});
@@ -15673,7 +15675,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else measureLog.push({ d: e.d, v: e.v });
         delete FICHA.deleted[e.d];
         if (e.n) FICHA.notes[e.d] = e.n;
-        FICHA.authors[e.d] = e.by || FICHA.authors[e.d] || fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== e.d; });
+        FICHA.authors[e.d] = e.by || fichaStampName(FICHA.authors[e.d]); FICHA.dc = FICHA.dc.filter(function(x) { return x !== e.d; });
         n++;
       });
       measureLog.sort(byDate);
