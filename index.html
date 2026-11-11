@@ -1061,6 +1061,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           <button type="button" class="btn btn-secondary" onclick="fichaCopyLink()">🔗 Copiar enlace</button>
           <button type="button" class="btn btn-secondary" onclick="fichaViewCoach()">👁️ Ver ficha / PDF</button>
           <button type="button" class="btn btn-secondary" onclick="fichaTouch(); fichaSaveNow()">💾 Guardar ahora</button>
+          <button type="button" class="btn btn-secondary" onclick="fichaRename()">✏️ Cambiar nombre</button>
+          <button type="button" class="btn btn-secondary" id="ficha_del" style="display:none; color:#ff6b6b; border-color:#ff6b6b;" onclick="fichaDelete()">🗑 Borrar ficha</button>
         </div>
       </section>
       <section class="section-box">
@@ -12424,8 +12426,45 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         { label: '📋 Datos y asistencia', desc: 'Ficha, medidas, asistencia y datos de contacto', fn: function() { coachOpenDatos(c.id); }, color: '#cfd6e0' },
         { label: '📤 Exportar a texto plano', desc: 'Todo lo guardado como texto para corregirlo y volver a subirlo', fn: function() { clientExportText(c.id, c.name); }, color: '#4dd0e1' },
         { label: '🧭 Habilitar recorrido', desc: 'Le vuelve a mostrar las ventanitas que explican cada botón', fn: function() { coachHabilitarRecorrido(c.name); }, color: '#ffd60a' },
+        { label: '✏️ Corregir nombre', desc: 'Cambia el nombre con el que aparece en todos sus enlaces (no cambia la rutina ni el link)', fn: function() { coachRenameClient(c.name); }, color: '#cfd6e0' },
+        { label: '🗑 Borrar sus enlaces', desc: 'Solo administrador. Quita este cliente de la lista; sus links dejan de funcionar. No se puede deshacer', fn: function() { coachDeleteClient(c.name); }, color: '#ff6b6b', hide: !(COACH && COACH.todos) },
         { label: c.off ? '🔗 Reconectar' : '🔌 Desconectar', desc: c.off ? 'Vuelve a ver su rutina y a recibir actualizaciones' : 'Deja de ver la rutina; verá un mensaje de despedida', fn: function() { coachToggleClientOff(c.name); }, color: c.off ? '#06d6a0' : '#ff8a65' }
-      ]);
+      ].filter(function(it) { return !it.hide; }));
+    }
+    function clientIdsOf(name) {
+      var k = normName(name), ids = [];
+      (clientRows || []).forEach(function(r) { if (r && r.id && normName(r.atleta) === k && ids.indexOf(r.id) < 0) ids.push(r.id); });
+      return ids;
+    }
+    // Aplica una acción del script a cada enlace del cliente, uno por uno; al final recarga la lista
+    function clientBatch(ids, mk, label, done) {
+      var i = 0, fail = 0, last = '', st = document.getElementById('cl_status');
+      (function next() {
+        if (i >= ids.length) {
+          if (st) st.innerText = '';
+          if (fail) alert('⚠️ ' + label + ': ' + fail + ' de ' + ids.length + ' enlaces con error (' + last + ').' + ((last === 'clave' || last === 'datos') ? '\n\nFalta publicar la versión 8 del script de Google.' : ''));
+          else showToastTop('✅ ' + label + ' (' + ids.length + ' enlace' + (ids.length > 1 ? 's' : '') + ')');
+          try { refreshClientList(); } catch (e) {}
+          if (done) done(!fail); return;
+        }
+        var id = ids[i++];
+        if (st) st.innerText = '⏳ ' + label + '… (' + i + '/' + ids.length + ')';
+        postJson(mk(id), 30000).then(function(j) { if (!j || !j.ok) { fail++; last = (j && j.error) || 'sin respuesta'; } next(); }).catch(function() { fail++; last = 'conexión'; next(); });
+      })();
+    }
+    function coachRenameClient(name) {
+      if (!COACH) return;
+      var ids = clientIdsOf(name); if (!ids.length) { showToastTop('No encontré enlaces de ' + name + '.'); return; }
+      var nuevo = prompt('Nombre correcto para ' + name + ' (se cambia en sus ' + ids.length + ' enlace' + (ids.length > 1 ? 's' : '') + '):', name);
+      if (nuevo == null) return; nuevo = nuevo.trim().replace(/\s+/g, ' ');
+      if (!nuevo || nuevo === name) return;
+      clientBatch(ids, function(id) { return { a: 'rutina_editar', pin: COACH.pin, id: id, atleta: nuevo }; }, 'Nombre cambiado a ' + nuevo);
+    }
+    function coachDeleteClient(name) {
+      if (!COACH || !COACH.todos) return;
+      var ids = clientIdsOf(name); if (!ids.length) { showToastTop('No encontré enlaces de ' + name + '.'); return; }
+      if (!confirm('🗑 Borrar a ' + name + ' de la lista\n\nSe borran sus ' + ids.length + ' enlace' + (ids.length > 1 ? 's' : '') + ' de la hoja. Los links que ya le enviaste dejan de funcionar y no se puede deshacer. Su ficha no se toca.\n\n¿Borrar?')) return;
+      clientBatch(ids, function(id) { return { a: 'rutina_borrar', pin: COACH.pin, id: id }; }, 'Enlaces de ' + name + ' borrados');
     }
     // «🧭 Habilitar recorrido»: activa (o reinicia) las ventanitas explicativas de un cliente que ya tenía la app. Se marca en todas sus rutinas.
     var tourBusy = false;
@@ -15471,6 +15510,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (link && FICHA.c) link.innerHTML += fichaHistHtml();
       try { cliViewPaint(); } catch (e) {}
       if (act) act.style.display = FICHA.c ? 'flex' : 'none';
+      var dBtn = document.getElementById('ficha_del'); if (dBtn) dBtn.style.display = (COACH && COACH.todos) ? '' : 'none';
       if (!box) return;
       var list = FICHA.list || [], q = normName(FICHA.q);
       if (!FICHA.list) { box.innerHTML = ''; return; }
@@ -15487,6 +15527,44 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var n = (document.getElementById('clientName') || {}).value || '';
       var f = (!FICHA.c && n.trim()) ? fichaFind(n) : null;
       s.innerHTML = f ? '<button type="button" class="btn btn-secondary" style="width:100%;" onclick="fichaOpen(\'' + escHtml(f.c) + '\')">🔗 Vincular con la ficha de ' + escHtml(f.n) + ' (' + escHtml(f.c) + ')</button>' : '';
+    }
+    // Cambia el nombre de la ficha abierta sin tocar sus datos (guarda lo mismo que ya había, con el nombre nuevo)
+    function fichaRename() {
+      var pin = fichaPin(); if (!pin || !FICHA.c) return;
+      var nuevo = prompt('Nombre nuevo para la ficha ' + FICHA.c + ' (ahora: ' + FICHA.name + '):', FICHA.name);
+      if (nuevo == null) return; nuevo = nuevo.trim().replace(/\s+/g, ' ');
+      if (!nuevo || nuevo === FICHA.name) return;
+      var code = FICHA.c;
+      fichaSet('Cambiando el nombre…');
+      var go = FICHA.dirty ? fichaSaveNow() : Promise.resolve(true);
+      Promise.resolve(go).then(function() {
+        return postJson({ a: 'ficha', pin: pin, c: code }, 30000);
+      }).then(function(j) {
+        if (!j || !j.ok) { fichaSet('⚠️ ' + fichaErrText(j), 'err'); return; }
+        var row = (FICHA.list || []).filter(function(f) { return f.c === code; })[0] || {};
+        var r = { ed: row.ed === '' || row.ed == null ? null : Number(row.ed), es: row.es === '' || row.es == null ? null : Number(row.es), f: row.f || '', p: row.p === '' || row.p == null ? null : Number(row.p), g: row.g === '' || row.g == null ? null : Number(row.g), k: Number(row.k) || 0 };
+        return postJson({ a: 'ficha_guardar', pin: pin, c: code, n: nuevo, p: j.p, rev: j.rev, r: r }, 30000).then(function(j2) {
+          if (j2 && j2.ok) {
+            if (row.c) row.n = nuevo;
+            if (FICHA.c === code) { FICHA.name = nuevo; FICHA.rev = j2.rev || FICHA.rev; }
+            fichaRenderPanel(); fichaSet('✅ Ficha ' + code + ' ahora se llama ' + nuevo + '.', 'ok');
+          } else fichaSet('⚠️ ' + fichaErrText(j2), 'err');
+        });
+      }).catch(function() { fichaSet('⚠️ Sin conexión.', 'err'); });
+    }
+    // Borra la ficha abierta de la hoja (solo administrador). No se puede deshacer
+    function fichaDelete() {
+      var pin = fichaPin(); if (!pin || !FICHA.c) return;
+      if (!(COACH && COACH.todos)) { fichaSet('Solo el administrador puede borrar fichas.', 'err'); return; }
+      var code = FICHA.c, name = FICHA.name;
+      if (!confirm('🗑 Borrar la ficha ' + code + ' de ' + name + '\n\nSe borra de la hoja con todas sus mediciones y no se puede deshacer.\n\n¿Borrarla?')) return;
+      fichaSet('Borrando la ficha…');
+      postJson({ a: 'ficha_borrar', pin: pin, c: code }, 30000).then(function(j) {
+        if (j && j.ok) {
+          FICHA.list = (FICHA.list || []).filter(function(f) { return f.c !== code; });
+          fichaUnlink(); fichaSet('🗑 Ficha ' + code + ' (' + name + ') borrada.', 'ok');
+        } else fichaSet('⚠️ ' + (j && j.error === 'no-permiso' ? 'Solo el administrador puede borrar fichas.' : (j && (j.error === 'clave' || j.error === 'datos') ? 'Falta publicar la versión 8 del script de Google (la que borra y edita).' : fichaErrText(j))), 'err');
+      }).catch(function() { fichaSet('⚠️ Sin conexión.', 'err'); });
     }
     function fichaTabOpen() { fichaRenderPanel(); fichaLoadList(false).then(fichaSuggest); }
 
@@ -15873,7 +15951,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (e === 'pin') return 'El PIN ya no vale: vuelve a entrar como coach.';
       if (e === 'bloqueado') return 'Demasiados intentos de PIN: espera 15 minutos.';
       if (e === 'permiso') return 'Ese plan es de otro coach.';
-      if (e === 'clave' || e === 'clave-sin-cambiar') return 'Falta publicar la versión 7 del script de Google (la que trae los planes en espera).';
+      if (e === 'permiso' || e === 'no-permiso') return 'Esa acción es solo del administrador o de otro coach.';
+      if (e === 'clave' || e === 'clave-sin-cambiar') return 'Falta publicar la versión 8 del script de Google (la que borra y edita; trae también los planes en espera).';
       return 'No se pudo conectar (' + (e || 'sin respuesta') + ').';
     }
     function espLoad(force) {
@@ -15898,7 +15977,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var act = ESP.active && ESP.active.c === f.c;
         return '<div class="fch-row" style="cursor:default;' + (act ? ' border-color:var(--success);' : '') + '"><b>' + escHtml(f.n) + (act ? ' · en el constructor' : '') + '</b><span>' + escHtml(f.c) + ' · ' + escHtml(f.co) + ' · ' + (f.d ? fmtDateTable(String(f.d).slice(0, 10)) : '') + '</span>' +
           '<div style="display:flex; gap:8px; margin-top:6px;"><button type="button" class="btn btn-accent" style="padding:6px 12px;" onclick="espLoadPlan(\'' + escHtml(f.c) + '\')">📂 Cargar en el constructor</button>' +
-          '<button type="button" class="btn btn-secondary" style="padding:6px 12px;" onclick="espDiscard(\'' + escHtml(f.c) + '\')">🗑 Descartar</button></div></div>';
+          '<button type="button" class="btn btn-secondary" style="padding:6px 12px;" onclick="espDiscard(\'' + escHtml(f.c) + '\')">🗑 ' + ((COACH && COACH.todos) ? 'Borrar' : 'Descartar') + '</button></div></div>';
       }).join('');
     }
     // Cada plan empieza con [ATLETA]; el nombre sale de su línea "Nombre:"
@@ -15955,8 +16034,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function espDiscard(c) {
       var pin = fichaPin(), it = (ESP.list || []).filter(function(x) { return x.c === c; })[0];
-      if (!pin || !confirm('¿Descartar el plan en espera de ' + (it ? it.n : c) + '?')) return;
-      postJson({ a: 'espera_listo', pin: pin, c: c, nota: 'descartado' }, 30000).then(function(j) {
+      if (!pin || !confirm('¿' + ((COACH && COACH.todos) ? 'Borrar' : 'Descartar') + ' el plan en espera de ' + (it ? it.n : c) + '?')) return;
+      var borrar = !!(COACH && COACH.todos);   // el administrador borra la fila de la hoja; los demás coaches solo la marcan como descartada
+      postJson(borrar ? { a: 'espera_borrar', pin: pin, c: c } : { a: 'espera_listo', pin: pin, c: c, nota: 'descartado' }, 30000).then(function(j) {
         if (j && j.ok) { ESP.list = (ESP.list || []).filter(function(x) { return x.c !== c; }); if (ESP.active && ESP.active.c === c) ESP.active = null; espRender(); espSet('🗑 Plan descartado.', 'ok'); }
         else espSet('⚠️ ' + espErr(j), 'err');
       }).catch(function() { espSet('⚠️ Sin conexión.', 'err'); });
