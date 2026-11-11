@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1107,6 +1107,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         <div id="measureLogList"></div>
         <div id="measureChartBox"></div>
       </section>
+      <section class="section-box" id="ficha_cliview" style="display:none;"></section>
     </div>
 
     <!-- TAB: CLASES Y RETOS -->
@@ -1694,7 +1695,53 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       fichaTouch();
     }
     function selectCoachMedMetric(k) { coachMedKey = k; renderMeasureLog(); }
-    function renderMeasureLog() {
+
+    // ----- Vista del cliente dentro de la ficha del coach: lo mismo que ve el cliente en «Datos y asistencia», para repasarlo con él -----
+    var CV_KEY = '';
+    function cvSelMetric(k) { CV_KEY = k; cliViewPaint(); }
+    function cliViewPaint() {
+      var el = document.getElementById('ficha_cliview'); if (!el) return;
+      var log = normalizeMeasureLog(measureLog), nm = ((document.getElementById('clientName') || {}).value || FICHA.name || '').trim();
+      if (!log.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+      el.style.display = '';
+      var entries = log.map(function(e) { return { d: e.d, v: e.v, src: 'c', by: FICHA.authors[e.d] || '' }; });
+      var gv = function(id) { var x = document.getElementById(id); return x ? String(x.value || '').trim() : ''; };
+      var keys = medKeysWithData(entries), lastDate = entries[entries.length - 1].d;
+      var cards = keys.map(function(f) {
+        var sr = medSeries(entries, f.k), cur = sr[sr.length - 1], prev = sr.length > 1 ? sr[sr.length - 2] : null;
+        return '<div class="metric-card"><div class="metric-title">' + f.label + '</div><div class="metric-val">' + withUnit(cur.n, f.unit) + '</div>' +
+          (prev ? '<div class="med-delta">' + deltaText(cur.n - prev.n, f.unit) + ' <span>vs ' + fmtDateShort(prev.d) + '</span></div>' : '') +
+          (cur.d !== lastDate ? '<div class="med-delta"><span>medido el ' + fmtDateShort(cur.d) + '</span></div>' : '') + '</div>';
+      }).join('');
+      var h = '<div class="section-title">👁️ Así lo ve el cliente <span class="badge">Para repasar con él</span></div>' +
+        '<div class="metrics-grid"><div class="metric-card"><div class="metric-title">Objetivo</div><div class="metric-val" style="color:var(--accent); font-size:0.85rem;">' + escHtml(gv('m_objetivo') || '-') + '</div></div>' +
+        '<div class="metric-card"><div class="metric-title">Estatura</div><div class="metric-val">' + escHtml(gv('m_estatura') || '-') + '</div></div></div>' +
+        '<div class="med-h">Última medición · ' + fmtDate(lastDate) + '</div><div class="metrics-grid">' + cards + '</div>' +
+        last3Html(entries, keys) + '<div class="med-h">Evolución</div>' + medChartBlock(entries, CV_KEY, 'cvSelMetric') +
+        '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, 'view');
+      // asistencia (lo que el coach tiene cargado de Recepción + lo guardado en la hoja)
+      var wk = []; try { wk = asistWeeksFor(nm, true); } catch (e) {}
+      var known = wk.filter(function(x) { return x.n != null && !x.partial; });
+      h += '<div class="med-h">📅 Asistencia al gym</div>';
+      if (!known.length && !wk.some(function(x) { return x.partial; })) h += '<div class="med-sum">Todavía no hay asistencias de este cliente. Aparecen al cargar el Excel de accesos en Recepción y abrir «Mis clientes».</div>';
+      else {
+        var avg = known.length ? known.reduce(function(t, x) { return t + x.n; }, 0) / known.length : 0;
+        h += '<div class="med-sum">Días que entra por semana · últimas 12 semanas</div>' + asistChart(wk, 0) +
+          '<div class="med-sum">Promedio: <b>' + (Math.round(avg * 10) / 10).toString().replace('.', ',') + '</b> días por semana' + (wk.some(function(x) { return x.partial; }) ? ' · la última barra (punteada) es la semana en curso' : '') + '</div>';
+      }
+      var ex = FICHA.extra || {}, tel = gv('f_tel'), les = gv('f_lesiones'), enf = gv('f_enfermedades');
+      var info = [];
+      if (tel) info.push('Teléfono: <b>' + escHtml(tel) + '</b>');
+      if (ex.cum) info.push('Cumpleaños: <b>' + escHtml(contactFmtBirthday(ex.cum) || ex.cum) + '</b>');
+      if (les) info.push('🩹 Lesiones: <b>' + escHtml(les) + '</b>');
+      if (ex.lesiones_c) info.push('🩹 Nota del cliente · lesiones: <b>' + escHtml(ex.lesiones_c) + '</b>');
+      if (enf) info.push('🩺 Enfermedades / cirugías: <b>' + escHtml(enf) + '</b>');
+      if (ex.enfermedades_c) info.push('🩺 Nota del cliente · enfermedades/cirugías: <b>' + escHtml(ex.enfermedades_c) + '</b>');
+      if (info.length) h += '<div class="med-h">📞 Datos de contacto y salud</div><div style="font-size:0.85rem; line-height:1.7;">' + info.join('<br>') + '</div>';
+      el.innerHTML = h;
+    }
+    function renderMeasureLog() { try { renderMeasureLog0(); } finally { try { cliViewPaint(); } catch (e) {} } }
+    function renderMeasureLog0() {
       var box = document.getElementById('measureLogList');
       if (!box) return;
       var cnt = document.getElementById('med_count');
@@ -15386,6 +15433,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         link.innerHTML += cn;
       }
       if (link && FICHA.c) link.innerHTML += fichaHistHtml();
+      try { cliViewPaint(); } catch (e) {}
       if (act) act.style.display = FICHA.c ? 'flex' : 'none';
       if (!box) return;
       var list = FICHA.list || [], q = normName(FICHA.q);
