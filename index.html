@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5947,6 +5947,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var APP_NOTICES = [
       { id: '2026-11-10-marcas', title: '📝 Tus marcas anteriores se movieron', text: '«Última vez» y «Montar» ya no aparecen bajo el ejercicio: ahora están dentro del botón «📝 Marcas anteriores». Ábrelo para ver tu marca anterior y montarla con un toque.' },
       { id: '2026-11-10-esfuerzo', title: '💬 Más fácil de entender', text: 'Donde decía «EP4» ahora lees el tipo de carga en palabras, en la rutina y en el temporizador, por ejemplo «3 series × 14 reps · peso moderado».' },
+      { id: '2026-11-10-clase-donde', title: '📍 Entra a la clase donde la necesites', text: 'En los bloques de la clase con varias rondas o ejercicios, toca el botón azul de arriba («Ronda 2 de 4»), elige en qué ronda y ejercicio estás y toca «Empezar aquí».' },
       { id: '2026-11-10-temporizador', title: '⏱ Temporizador renovado', text: 'El botón azul de arriba dice en qué serie vas, «Última vez» ahora se llama «Marca anterior», los botones −15/+15 del descanso son cuadrados y, si superas una marca, verás una celebración 🏆.' }
     ];
     var NT_SEEN = {};
@@ -9569,9 +9570,32 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- «📍 Estoy en…»: el cliente elige en qué ronda (y ejercicio) está, por si salió del temporizador y quiere volver a donde iba -----
     var TW = { r: 1, s: 0 };
-    function ctWhereOk() { return !!(CT.active && !CT.done && !CT.cls && !CT.guide && CT.srId && SR[CT.srId] && SR[CT.srId].base >= 1 && CT.phases && CT.phases[CT.i]); }
+    // Clases: mapa de las fases de trabajo del bloque (ronda -> ejercicio -> fase) para poder entrar donde se necesita. null si el bloque no tiene por dónde elegir (AMRAP, por tiempo, pausa, una sola ronda y un solo ejercicio)
+    function clsWhereInfo() {
+      if (!(CT.cls && CT.active && !CT.done && CT.phases && CT.phases[CT.i])) return null;
+      var first = {}, rs = {}, rounds = [], multi = false;
+      CT.phases.forEach(function(p, j) {
+        if (p.t !== 'work' || p.amrap || p.list || p.pausa) return;
+        if (first[p.r] == null) { first[p.r] = j; rounds.push(p.r); rs[p.r] = {}; }
+        if (p.si >= 0 && !p.seq && rs[p.r][p.si] == null) { rs[p.r][p.si] = j; if (Object.keys(rs[p.r]).length > 1) multi = true; }
+      });
+      if (rounds.length < 2 && !multi) return null;
+      return { first: first, rs: rs, rounds: rounds, multi: multi };
+    }
+    function ctWhereOk() {
+      if (CT.cls) return !!clsWhereInfo();
+      return !!(CT.active && !CT.done && !CT.guide && CT.srId && SR[CT.srId] && SR[CT.srId].base >= 1 && CT.phases && CT.phases[CT.i]);
+    }
     function ctWhereOpen() {
       if (!ctWhereOk()) return;
+      if (CT.cls) {
+        var inf = clsWhereInfo(), cw = null;
+        for (var jc = CT.i; jc < CT.phases.length; jc++) { var pc = CT.phases[jc]; if (pc.t === 'work' && !pc.amrap && !pc.list && !pc.pausa) { cw = pc; break; } }
+        TW.r = cw ? cw.r : inf.rounds[0]; TW.s = (cw && cw.si >= 0 && inf.multi) ? cw.si : 0;
+        ctWherePaint();
+        var wc = document.getElementById('tm_where'); if (wc) wc.classList.add('on'); document.body.classList.add('tm-extra-open');
+        return;
+      }
       var total = SR[CT.srId].base, off = CT.doneBefore || 0, cur = null;
       for (var j = CT.i; j < CT.phases.length; j++) if (CT.phases[j].t === 'work') { cur = CT.phases[j]; break; }
       TW.r = Math.min(total, Math.max(1, off + (cur ? cur.r : 1)));
@@ -9583,10 +9607,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function ctWhereSet(r, s) { if (r > 0) TW.r = r; if (s >= 0) TW.s = s; ctWherePaint(); }
     function ctWherePaint() {
       var w = document.getElementById('tm_where'); if (!w || !ctWhereOk()) return;
-      var total = SR[CT.srId].base, lab = CT.roundLabel || 'Ronda', h = '<div class="tw-t">📍 Estoy en…</div><div class="tw-l">' + escHtml(lab) + '</div><div class="tw-chips">';
-      for (var r = 1; r <= total; r++) h += '<button type="button" class="tw-chip' + (r === TW.r ? ' sel' : '') + '" onclick="ctWhereSet(' + r + ',-1)">' + r + '</button>';
+      var infC = CT.cls ? clsWhereInfo() : null, total = CT.cls ? 0 : SR[CT.srId].base, lab = CT.roundLabel || 'Ronda', h = '<div class="tw-t">📍 Estoy en…</div><div class="tw-l">' + escHtml(lab) + '</div><div class="tw-chips">';
+      if (infC) infC.rounds.forEach(function(r) { h += '<button type="button" class="tw-chip' + (r === TW.r ? ' sel' : '') + '" onclick="ctWhereSet(' + r + ',-1)">' + r + '</button>'; });
+      else for (var r = 1; r <= total; r++) h += '<button type="button" class="tw-chip' + (r === TW.r ? ' sel' : '') + '" onclick="ctWhereSet(' + r + ',-1)">' + r + '</button>';
       h += '</div>';
-      if (!CT.hiit && CT.nSt > 1) {
+      if (!CT.hiit && CT.nSt > 1 && (!CT.cls || (infC && infC.multi))) {
         h += '<div class="tw-l">Ejercicio</div><div class="tw-rows">';
         for (var i = 0; i < CT.nSt; i++) h += '<button type="button" class="tw-row' + (i === TW.s ? ' sel' : '') + '" onclick="ctWhereSet(0,' + i + ')"><b>' + (i + 1) + '</b><span>' + escHtml(ctShort(CT.names[i] || ('Ejercicio ' + (i + 1)))) + '</span></button>';
         h += '</div>';
@@ -9596,6 +9621,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function ctWhereGo() {
       if (!ctWhereOk()) { ctWhereClose(); return; }
+      if (CT.cls) {   // clase: se salta directo a esa ronda/ejercicio del bloque (el reloj de esa fase arranca de cero)
+        var infG = clsWhereInfo(); ctWhereClose(); if (!infG) return;
+        var ix = (infG.multi && infG.rs[TW.r] && infG.rs[TW.r][TW.s] != null) ? infG.rs[TW.r][TW.s] : infG.first[TW.r];
+        if (ix == null || !CT.phases[ix]) return;
+        CT.i = ix; CT.preSel = null; ctEnter(CT.phases[ix], Date.now()); CT.paused = false; CT.lastBeep = ''; CT.listKey = ''; CT.rKey = '';
+        var bp = document.getElementById('tm_pause'); if (bp) bp.innerText = '⏸ Pausar';
+        ctPhaseSound(CT.phases[ix]); ctTick(); ctSaveResume(true);
+        return;
+      }
       var ci = CT.ci, sid = CT.srId, gk = gdKeyOf(sid);
       ctWhereClose();
       if (!gk) return;
@@ -9854,7 +9888,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var hideTitle = !CT.cls || !CT.title || (sBase && tShort.toLowerCase().indexOf(sBase.toLowerCase()) !== -1) || (CT.guide && CT.rounds > 0 && tShort.indexOf('+') !== -1);   // el título de arriba sobra (el ejercicio ya sale abajo): solo se muestra en clases y retos
       el('tm_title').innerText = hideTitle ? '' : tShort; el('tm_title').style.display = hideTitle ? 'none' : '';
       el('tm_head').style.justifyContent = hideTitle ? 'center' : 'space-between';
-      var rOff = CT.doneBefore || 0, rAbsT = rOff + CT.rounds, rWhere = ctWhereOk(), rShowReady = !CT.cls && rWhere && (rAbsT > 1 || CT.nSt > 1);
+      var rOff = CT.doneBefore || 0, rAbsT = rOff + CT.rounds, rWhere = ctWhereOk(), rShowReady = rWhere && (rAbsT > 1 || CT.nSt > 1) && !(CT.cls && ph.pre);
       var rNwk = (ph.t === 'rest' && !CT.hiit && !CT.cls) ? ctNextWork() : null;   // en el descanso el botón dice qué serie sigue (ya no hay texto aparte)
       el('tm_round').innerText = (ph.t === 'ready' && !rShowReady) ? '' : (rNwk ? ('Sigue: ' + (CT.roundLabel || 'Ronda') + ' ' + (rOff + rNwk.r) + ' de ' + rAbsT + (rNwk.r === CT.rounds && CT.rounds > 1 ? ' 🔥' : '')) : ((CT.roundLabel || 'Ronda') + ' ' + (rOff + ph.r) + ' de ' + rAbsT));   // cuenta real del bloque (al retomar, sigue en la ronda donde iba)
       el('tm_round').classList.toggle('tm-static', !rWhere);
