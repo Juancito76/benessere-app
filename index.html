@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-i';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -15482,15 +15482,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!d) { fichaSet('⚠️ ' + (j && j.ok ? 'La ficha no se pudo leer.' : fichaErrText(j)), 'err'); return; }
         clearTimeout(FICHA.timer);
         FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.name = j.n || d.p.nombre || ''; FICHA.notes = d.notes; FICHA.texts = d.texts; FICHA.authors = d.authors || {}; FICHA.dc = d.dc || []; FICHA.extra = fichaExtraOf(d.p); FICHA.hist = d.hist || []; FICHA.base = fichaCloneLog(d.log); FICHA.deleted = {}; FICHA.dirty = false;
+        // Las mediciones que ya estaban en pantalla solo se conservan si son de la misma persona; si eran de otro cliente se descartan (nunca se mezclan)
+        var cnPrev = ((document.getElementById('clientName') || {}).value || '').trim(), prevFicha = FICHA.prevC || '';
+        var otraPersona = (measureLog.length && ((cnPrev && normName(cnPrev) !== normName(FICHA.name)) || (prevFicha && prevFicha !== j.c)));
+        var descartadas = otraPersona ? measureLog.length : 0;
+        if (otraPersona) { measureLog = []; var cnx = document.getElementById('clientName'); if (cnx) cnx.value = FICHA.name; }
         var localOnly = measureLog.some(function(e) { return !d.log.some(function(x) { return x.d === e.d; }); });
         measureLog = fichaUnion(d.log, normalizeMeasureLog(measureLog));
+        FICHA.prevC = j.c;
         fichaFillForm(d.p);
         var cn = document.getElementById('clientName'); if (cn && !cn.value.trim()) cn.value = FICHA.name;
         var fe = document.getElementById('m_fecha'); if (fe) fe.value = todayIso();
         MEASURE_FIELDS.forEach(function(f) { var el = document.getElementById(f.k); if (el) el.value = ''; });
         var nt = document.getElementById('m_nota'); if (nt) nt.value = '';
         renderMeasureLog(); fichaRenderPanel(); fichaSuggest();
-        fichaSet('✅ Ficha de ' + FICHA.name + ' cargada (' + d.log.length + ' mediciones).', 'ok');
+        fichaSet('✅ Ficha de ' + FICHA.name + ' cargada (' + d.log.length + ' mediciones).' + (descartadas ? ' Se quitaron ' + descartadas + ' mediciones en pantalla que eran de otro cliente.' : ''), 'ok');
         if (localOnly) fichaTouch();
       }).catch(function() { fichaSet('⚠️ Sin conexión.', 'err'); });
     }
