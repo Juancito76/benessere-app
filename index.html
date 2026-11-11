@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -755,11 +755,52 @@
     html.lite .btn-yt-demo.gd-demo-wait { border-color: #ff1744 !important; box-shadow: 0 0 0 2px rgba(255,23,68,.35); }
     html.lite .capsule-group .cap-card.day-sug { box-shadow: var(--shadow-card), 0 0 0 2px color-mix(in srgb, var(--c) 75%, transparent); }
     html.lite input.vid-empty { border-color: #ff1744 !important; } html.lite input.vid-filled { border-color: #39ff14 !important; }
+
+    /* Fichas maestras */
+    .fch-muted { font-size: 0.76rem; color: var(--muted); line-height: 1.5; }
+    .fch-row { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 8px 10px; margin-top: 6px; cursor: pointer; }
+    .fch-row b { font-size: 0.86rem; } .fch-row span { font-size: 0.72rem; color: var(--muted); }
+    .fch-all { margin-top: 8px; } .fch-all summary { cursor: pointer; font-size: 0.8rem; color: var(--primary); font-weight: 700; }
+    .fch-scroll { max-height: 260px; overflow-y: auto; }
+    .fch-linked { background: rgba(37,211,102,.1); border: 1px solid rgba(37,211,102,.4); border-radius: 10px; padding: 8px 10px; font-size: 0.84rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    #ficha_app.fv-page { position: relative; min-height: 100vh; background: var(--bg); color: var(--text); padding: 16px; box-sizing: border-box; }
+    #ficha_app.fv-overlay { position: fixed; inset: 0; z-index: 100020; overflow-y: auto; background: var(--bg); color: var(--text); padding: 16px; box-sizing: border-box; }
+    .fv-wrap { max-width: 760px; margin: 0 auto; }
+    .fv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid var(--accent); padding-bottom: 8px; }
+    .fv-brand { font-weight: 900; letter-spacing: .06em; font-size: 1.05rem; } .fv-sub { font-size: 0.74rem; color: var(--muted); }
+    .fv-btns { display: flex; gap: 8px; } .fv-btns .btn { padding: 8px 12px; font-size: 0.8rem; }
+    .fv-name { margin: 12px 0 8px; font-size: 1.25rem; }
+    .fv-prof { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin-bottom: 8px; }
+    .fv-prof div { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 0.78rem; }
+    .fv-prof span { display: block; color: var(--muted); font-size: 0.68rem; text-transform: uppercase; } 
+    .fv-notes { font-size: 0.8rem; line-height: 1.5; padding-left: 18px; }
+    .fv-foot { text-align: center; color: var(--muted); font-size: 0.7rem; margin: 22px 0 8px; }
+    .print-only { display: none; }
+    .fv-pcs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .fv-pc { border: 1px solid var(--border); border-radius: 8px; padding: 6px; } .fv-pct { font-weight: 800; font-size: 0.8rem; }
+    @media print {
+      body.fv-on > *:not(#ficha_app) { display: none !important; }
+      body.fv-on { background: #fff !important; }
+      #ficha_app { display: block !important; position: static !important; background: #fff !important; color: #111 !important; padding: 0 !important; overflow: visible !important; }
+      #ficha_app * { color: #111 !important; border-color: #ccc !important; background-color: transparent !important; box-shadow: none !important; }
+      #ficha_app .fv-head { border-bottom-color: #ff6d00 !important; }
+      #ficha_app .no-print { display: none !important; }
+      #ficha_app .print-only { display: block !important; }
+      #ficha_app .metric-card, #ficha_app .fv-prof div { background: #f7f7f7 !important; }
+      #ficha_app svg text { fill: #111 !important; } #ficha_app svg line { stroke: #ccc !important; }
+      #ficha_app svg rect { fill: #2b8a99 !important; }
+      #ficha_app .med-table-wrap { overflow: visible !important; border: none !important; }
+      #ficha_app .med-table { font-size: 8px !important; } #ficha_app .med-table th, #ficha_app .med-table td { padding: 3px 4px !important; position: static !important; }
+      .fv-pc, .metric-card { break-inside: avoid; }
+      @page { margin: 1cm; }
+    }
   </style>
 </head>
 <body>
 
   <!-- ================= 1. MODO CONSTRUCTOR (COACH) ================= -->
+  <!-- VISOR DE FICHA (enlace privado / vista del coach / PDF) -->
+  <div id="ficha_app" style="display:none;"></div>
+
   <div id="coach_builder_view">
     <header>
       <img class="hd-logo" src="icons/logo.png" alt="" onerror="this.style.display='none'">
@@ -975,6 +1016,36 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
 
     <!-- TAB 4: FICHA ANTROPOMÉTRICA -->
     <div id="tab_athlete" class="gen-view">
+      <section class="section-box" id="ficha_panel">
+        <div class="section-title">🗂️ Ficha maestra <span class="badge">Hoja de Google</span></div>
+        <p class="fch-muted" style="margin:0 0 8px;">Cada cliente es una línea de la hoja «Fichas». Vincula al cliente y cada medición que guardes aquí se escribe sola en su ficha; el cliente la ve en «Datos y asistencia» o con su enlace de ficha.</p>
+        <input type="text" id="ficha_q" placeholder="🔎 Buscar cliente por nombre…" oninput="fichaSearch()" autocomplete="off" style="width:100%;">
+        <div id="ficha_results"></div>
+        <div id="ficha_suggest" style="margin-top:8px;"></div>
+        <div id="ficha_linked" style="margin-top:8px;"></div>
+        <div id="ficha_status" style="font-size:0.78rem; margin-top:6px; min-height:1em;"></div>
+        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary" onclick="fichaCreate()">➕ Crear ficha con este nombre</button>
+          <button type="button" class="btn btn-secondary" onclick="fichaLoadList(true)">🔄 Actualizar lista</button>
+        </div>
+        <div id="ficha_actions" style="display:none; gap:8px; margin-top:8px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-export-wa" onclick="fichaSendWa()">📲 Enviar por WhatsApp</button>
+          <button type="button" class="btn btn-secondary" onclick="fichaCopyLink()">🔗 Copiar enlace</button>
+          <button type="button" class="btn btn-secondary" onclick="fichaViewCoach()">👁️ Ver ficha / PDF</button>
+          <button type="button" class="btn btn-secondary" onclick="fichaTouch(); fichaSaveNow()">💾 Guardar ahora</button>
+        </div>
+      </section>
+      <section class="section-box">
+        <div class="section-title">🩺 Perfil de la ficha <span class="badge">Se guarda en la hoja</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Frecuencia / tiempo</label><input type="text" id="f_frecuencia" placeholder="Ej: 4 x 60 min" onchange="fichaTouch()"></div>
+          <div class="form-group"><label>Experiencia en gimnasio</label><input type="text" id="f_experiencia" placeholder="Ej: Principiante / Intermedia" onchange="fichaTouch()"></div>
+          <div class="form-group"><label>Lesiones</label><input type="text" id="f_lesiones" placeholder="Ej: Dolor de rodilla izquierda" onchange="fichaTouch()"></div>
+          <div class="form-group"><label>Enfermedades / cirugías</label><input type="text" id="f_enfermedades" placeholder="Ej: Colesterol alto" onchange="fichaTouch()"></div>
+          <div class="form-group"><label>WhatsApp del cliente</label><input type="text" id="f_tel" placeholder="Ej: 50688888888" onchange="fichaTouch()"></div>
+          <div class="form-group" style="grid-column:1/-1;"><label>Notas generales</label><input type="text" id="f_notas" placeholder="Observaciones del coach sobre el cliente" onchange="fichaTouch()"></div>
+        </div>
+      </section>
       <section class="section-box">
         <div class="section-title">📏 Ficha Antropométrica <span class="badge">Medidas</span></div>
         <div class="form-grid">
@@ -999,6 +1070,9 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
           <div class="form-group"><label>Descanso (horas de sueño)</label><input type="text" id="m_descanso" placeholder="Ej: 7 h"></div>
           <div class="form-group"><label>Neat (actividad diaria)</label><select id="m_neat"><option value="">—</option><option value="Bajo">↘ Bajo</option><option value="Medio">⇒ Medio</option><option value="Alto">↗ Alto</option></select></div>
           <div class="form-group"><label>Estrés</label><select id="m_estres"><option value="">—</option><option value="Bajo">↘ Bajo</option><option value="Medio">⇒ Medio</option><option value="Alto">↗ Alto</option></select></div>
+          <div class="form-group"><label>Kcal en reposo</label><input type="text" id="m_kcal" placeholder="Ej: 1293 kcal"></div>
+          <div class="form-group"><label>IMC</label><input type="text" id="m_imc" placeholder="Ej: 29.3"></div>
+          <div class="form-group" style="grid-column:1/-1;"><label>Nota de esta medición</label><input type="text" id="m_nota" placeholder="Ej: Toma de datos efectuada por el entrenador Kenneth"></div>
         </div>
         <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center;">
           <button type="button" class="btn btn-secondary" onclick="saveMeasureEntry()">➕ Guardar medición en el historial</button>
@@ -1350,7 +1424,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { k: 'm_agua',      label: 'Agua',                  short: 'Agua',      unit: 'L' },
       { k: 'm_descanso',  label: 'Descanso (sueño)',      short: 'Descanso',  unit: 'h' },
       { k: 'm_neat',      label: 'Neat (actividad diaria)', short: 'Neat',    unit: 'nivel' },
-      { k: 'm_estres',    label: 'Estrés',                short: 'Estrés',    unit: 'nivel' }
+      { k: 'm_estres',    label: 'Estrés',                short: 'Estrés',    unit: 'nivel' },
+      { k: 'm_kcal',      label: 'Kcal en reposo',        short: 'Kcal',      unit: 'kcal' },
+      { k: 'm_imc',       label: 'IMC',                   short: 'IMC',       unit: '' }
     ];
     var MEASURE_PAIRS = [['m_muslo_der', 'm_muslo_izq', 'Muslo'], ['m_pant_der', 'm_pant_izq', 'Pantorrilla'], ['m_brazo_der', 'm_brazo_izq', 'Brazo']];   // un solo espacio con dos celdas (derecha | izquierda)
     var NIVEL_TXT = { 1: 'Bajo', 2: 'Medio', 3: 'Alto' }, NIVEL_ARW = { 1: '↘', 2: '⇒', 3: '↗' };
@@ -1543,6 +1619,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
       measureLog.sort(byDate);
       renderMeasureLog();
+      var ntEl = document.getElementById('m_nota'), ntv = ntEl ? ntEl.value.trim() : '';
+      if (ntv) FICHA.notes[d] = ntv;
+      fichaTouch();
       var st = document.getElementById('med_status');
       if (st) st.innerText = '✅ Medición del ' + fmtDate(d) + ' guardada en el historial.';
     }
@@ -1558,6 +1637,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
         measureLog.sort(byDate);
         renderMeasureLog();
+        fichaTouch();
       }
     }
     function editMeasureEntry(d) {
@@ -1568,6 +1648,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var n = measureLog[i].v[f.k];
         document.getElementById(f.k).value = (n == null) ? '' : withUnit(n, f.unit);
       });
+      var ntE = document.getElementById('m_nota'); if (ntE) ntE.value = FICHA.notes[d] || '';
       var st = document.getElementById('med_status');
       if (st) st.innerText = '✏️ Editando la medición del ' + fmtDate(d) + '. Cambia lo que necesites y toca "Guardar".';
       var fld = document.getElementById('m_fecha');
@@ -1576,7 +1657,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function deleteMeasureEntry(d) {
       if (!confirm('¿Borrar la medición del ' + fmtDate(d) + '?')) return;
       measureLog = measureLog.filter(function(e) { return e.d !== d; });
+      FICHA.deleted[d] = 1; delete FICHA.notes[d];
       renderMeasureLog();
+      fichaTouch();
     }
     function selectCoachMedMetric(k) { coachMedKey = k; renderMeasureLog(); }
     function renderMeasureLog() {
@@ -1604,7 +1687,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // Mediciones del coach (o la ficha antigua como primera medición) + las que anotó el propio atleta
     function athleteEntries(st) {
-      var coach = normalizeMeasureLog(st.measureLog);
+      var coach = normalizeMeasureLog(st.measureLog), fcd = null;
+      try { fcd = fichaCliData(); } catch (e) {}
+      if (fcd && fcd.log.length) coach = fichaUnion(fcd.log, coach);   // la ficha de la hoja manda; la rutina aporta lo que la hoja aún no tenga
       if (!coach.length) { var base = legacyBaseline(st); if (base) coach = [base]; }
       // La ficha completa del enlace (st.measures) también cuenta: si la última medición del historial
       // no trae alguna medida que sí está en la ficha, se completa con ese valor para que no se pierda.
@@ -1699,6 +1784,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function renderAthleteMeasures() {
       var st = athleteActiveState, body = document.getElementById('ath_medBody');
       if (!st || !body) return;
+      try { fichaCliRefresh(); } catch (e) {}
       ensureAddForm();
       try {   // en modo coach, la medición se guarda en la rutina del cliente (se conserva y se suma a la del inicio)
         var cvOn = coachMeasureOn(), t1 = document.getElementById('med_add_sum'), t2 = document.getElementById('med_add_note'), b1 = document.getElementById('med_btn_save'), b2 = document.getElementById('med_btn_wa');
@@ -1760,7 +1846,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!base.length) { var b0 = legacyBaseline(st); if (b0) base = [b0]; }
       return base.map(function(e) { return { d: e.d, v: JSON.parse(JSON.stringify(e.v)) }; });
     }
-    function coachPersistMeasures(st, newLog, okMsg) {
+    function coachPersistMeasures(st, newLog, okMsg, delDate) {
       var oldLog = st.measureLog;
       st.measureLog = newLog;
       var payloadText;
@@ -1769,6 +1855,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       postJson({ a: 'actualizar', id: athleteRoutineId, p: payloadText, pin: COACH.pin }).then(function(j) {
         if (j && j.ok) {
           coachCacheSet(athleteRoutineId, payloadText);
+          try { fichaSyncFromRoutine(st.clientName, newLog, delDate); } catch (e) {}
           var openIds = []; document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
           var scrollY = window.scrollY || 0;
           renderAthleteApp(st);
@@ -1807,7 +1894,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var log = coachMeasureBase(st);
       if (log.length && log[0].d === d) { alert('La medición del inicio no se borra desde aquí.'); return; }
       if (!confirm('¿Borrar la medición de seguimiento del ' + fmtDate(d) + '? Se quita también de la rutina del cliente.')) return;
-      coachPersistMeasures(st, log.filter(function(e) { return e.d !== d; }), '🗑 Medición del ' + fmtDate(d) + ' borrada.');
+      coachPersistMeasures(st, log.filter(function(e) { return e.d !== d; }), '🗑 Medición del ' + fmtDate(d) + ' borrada.', d);
     }
     function sendMeasureToCoach(st, d, v) {
       var lines = ['*Medidas - ' + st.clientName + '*', 'Coach: ' + athleteCoachName, 'Fecha: ' + fmtDate(d), ''];
@@ -2254,6 +2341,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (target) target.classList.add('active');
       if (btn) btn.classList.add('active');
       if (viewId === 'tab_class') { try { clsySync(false); } catch (e) {} }
+      if (viewId === 'tab_athlete') { try { fichaTabOpen(); } catch (e) {} }
     }
 
     function updateModulesVisibility() {
@@ -3813,7 +3901,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('m_estatura').value = '';
       document.getElementById('m_edad').value = '';
       MEASURE_FIELDS.forEach(function(f) { document.getElementById(f.k).value = ''; });
-      measureLog = [];
+      measureLog = []; try { fichaClearForm(); } catch (e) {}
       var fechaEl = document.getElementById('m_fecha');
       if (fechaEl) fechaEl.value = todayIso();
       renderMeasureLog();
@@ -3851,6 +3939,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (/^(grasa|porcentaje de grasa|masa grasa)$/.test(key) || key === 'grasa corporal') return one('m_grasa');
       if (/^(musculo|masa muscular|masa m|porcentaje de musculo)$/.test(key) || key === 'masa muscular') return one('m_musculo');
       if (/^(visceral|indice visceral|ind visc|grasa visceral)$/.test(key)) return one('m_visceral');
+      if (/^(kcal|calorias)/.test(key)) return one('m_kcal');
+      if (/^imc$|^indice de masa/.test(key)) return one('m_imc');
       if (/^edad met/.test(key)) return one('m_edad_meta');
       if (/^edad( natural| real| cronologica| actual| en anos)?$/.test(key)) { if (nums.length) { out.__edad = val; return true; } return false; }
       if (/^espalda/.test(key)) return one('m_espalda');
@@ -3905,7 +3995,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var lines = raw.split('\n').map(function(l) { return l.trim(); });
       var curSection = null, curDay = null, parsedDays = [];
       var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1, lastCircuit = null;
-      var importMeas = {}, importMeasDate = '', histMeas = [], curMed = null;
+      var importMeas = {}, importMeasDate = '', histMeas = [], curMed = null, importNote = '', importPerfil = false;
 
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
@@ -3932,7 +4022,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           pendingVigencia = null; currentSlotCounter = 0; lastHandledSlot = 1;
           continue;
         }
-        if (curSection === 'MEDICION') { if (curMed) parseImportMeasureLine(line, curMed.v); continue; }
+        if (curSection === 'MEDICION') {
+          if (curMed) { if (/^nota:/i.test(line)) curMed.n = line.substring(line.indexOf(':') + 1).trim(); else parseImportMeasureLine(line, curMed.v); }
+          continue;
+        }
         if (curSection === 'ATLETA') {
           var lineLower = line.toLowerCase();
           if (lineLower.indexOf('nombre:') === 0) document.getElementById('clientName').value = line.split(':')[1].trim();
@@ -3944,6 +4037,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (lineLower.indexOf('semanas:') === 0) document.getElementById('durationWeeks').value = line.split(':')[1].trim();
           if (lineLower.indexOf('objetivo:') === 0) document.getElementById('m_objetivo').value = line.split(':')[1].trim();
           if (/^fecha (de la )?medici[oó]n:/.test(lineLower)) { importMeasDate = line.substring(line.indexOf(':') + 1).trim(); continue; }
+          if (/^nota (de la )?medici[oó]n:/.test(lineLower)) { importNote = line.substring(line.indexOf(':') + 1).trim(); continue; }
+          var pfm = lineLower.match(/^(frecuencia|lesiones|enfermedades|experiencia|notas|tel[eé]fono|whatsapp):/);
+          if (pfm) {
+            var pfId = { frecuencia: 'f_frecuencia', lesiones: 'f_lesiones', enfermedades: 'f_enfermedades', experiencia: 'f_experiencia', notas: 'f_notas' }[pfm[1]] || 'f_tel', pfEl = document.getElementById(pfId);
+            if (pfEl) { pfEl.value = line.substring(line.indexOf(':') + 1).trim(); importPerfil = true; }
+            continue;
+          }
           parseImportMeasureLine(line, importMeas);   // peso, grasa, cintura, cadera, etc.
           continue;
         }
@@ -4170,10 +4270,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (!hk) return;
           var hi = indexOfDate(measureLog, hm.d);
           if (hi >= 0) measureLog[hi] = { d: hm.d, v: hv }; else measureLog.push({ d: hm.d, v: hv });
+          if (hm.n) FICHA.notes[hm.d] = hm.n;
           nHist++;
         });
         if (nHist) { measureLog.sort(byDate); renderMeasureLog(); }
         var nMeas = applyImportedMeasures(importMeas, importMeasDate || document.getElementById('startDate').value);
+        if (importNote && nMeas) { var nd = isIsoDate(importMeasDate) ? importMeasDate : (isIsoDate(document.getElementById('startDate').value) ? document.getElementById('startDate').value : todayIso()); FICHA.notes[nd] = importNote; }
+        if (nHist || nMeas || importPerfil) { try { fichaSuggest(); } catch (e) {} fichaTouch(); }   // si hay ficha vinculada, lo importado se escribe en la hoja
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
         alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días' + (nMeas ? ' y ' + nMeas + ' medidas (revísalas en "👤 Datos Atleta & Medidas").' : '.') + (nHist ? '\nTambién se cargaron ' + nHist + ' medición(es) anterior(es) en el historial.' : ''));
         vigAfterImport();
@@ -4221,6 +4324,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (g('m_objetivo')) L.push('Objetivo: ' + expClean(g('m_objetivo')));
       if (g('m_estatura')) L.push('Estatura: ' + g('m_estatura'));
       if (g('m_edad')) L.push('Edad: ' + g('m_edad'));
+      [['Frecuencia', 'f_frecuencia'], ['Lesiones', 'f_lesiones'], ['Enfermedades', 'f_enfermedades'], ['Experiencia', 'f_experiencia'], ['Notas', 'f_notas'], ['Telefono', 'f_tel']].forEach(function(r) { if (g(r[1])) L.push(r[0] + ': ' + expClean(g(r[1]))); });
       var log = normalizeMeasureLog(measureLog), last = log.length ? log[log.length - 1] : null;
       var formVals = {};
       MEASURE_FIELDS.forEach(function(f) { var n = parseNum(g(f.k)); if (n !== null) formVals[f.k] = n; });
@@ -4230,24 +4334,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (mVals) {
         expMeasureLines(L, mVals);
         if (isIsoDate(mDate)) L.push('Fecha medicion: ' + mDate);
+        if (FICHA.notes[mDate]) L.push('Nota medicion: ' + expClean(FICHA.notes[mDate]));
       }
-      expHistoryBlocks(L, log, mDate);   // mediciones anteriores del historial
+      expHistoryBlocks(L, log, mDate, FICHA.notes);   // mediciones anteriores del historial
       expMessageAndDays(L, g('coachMsgTitle'), g('coachMsgBody'), routineDays);
       return L.join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
     }
 
     // Líneas de medidas ("Peso: 78.5 kg", "Cintura 1: 84 cm"...) de una medición
-    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I', m_pecho: 'Pecho', m_brazo_der: 'Brazo D', m_brazo_izq: 'Brazo I', m_agua: 'Agua', m_descanso: 'Descanso', m_neat: 'Neat', m_estres: 'Estres' };
+    var EXP_LABELS = { m_peso_kg: 'Peso', m_grasa: 'Grasa', m_musculo: 'Musculo', m_visceral: 'Visceral', m_edad_meta: 'Edad metabolica', m_espalda: 'Espalda', m_cintura1: 'Cintura 1', m_cintura2: 'Cintura 2', m_cadera: 'Cadera', m_muslo_der: 'Muslo D', m_muslo_izq: 'Muslo I', m_pant_der: 'Pantorrilla D', m_pant_izq: 'Pantorrilla I', m_pecho: 'Pecho', m_brazo_der: 'Brazo D', m_brazo_izq: 'Brazo I', m_agua: 'Agua', m_descanso: 'Descanso', m_neat: 'Neat', m_estres: 'Estres', m_kcal: 'Kcal', m_imc: 'IMC' };
     function expMeasureLines(L, vals) {
       MEASURE_FIELDS.forEach(function(f) { if (vals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(vals[f.k], f.unit)); });
     }
     // Mediciones anteriores: un bloque [MEDICION AAAA-MM-DD] por cada una (la más reciente va en [ATLETA]); el importador las vuelve a leer
-    function expHistoryBlocks(L, entries, skipDate) {
+    function expHistoryBlocks(L, entries, skipDate, notes) {
       (entries || []).forEach(function(e) {
         if (!e || !isIsoDate(e.d) || e.d === skipDate || !e.v) return;
         L.push('', '[MEDICION ' + e.d + ']');
         if (e.src === 'a') L.push('Origen: anotada por el cliente');
         expMeasureLines(L, e.v);
+        if (notes && notes[e.d]) L.push('Nota: ' + expClean(notes[e.d]));
       });
     }
 
@@ -5945,6 +6051,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
+      { id: '2026-11-10-ficha', title: '📏 Tus medidas, siempre al día', text: 'En «Datos y asistencia» ahora ves tu ficha completa: todas tus mediciones con su fecha, sus gráficas y la nota de tu coach. Se actualiza cada vez que te miden.' },
       { id: '2026-11-10-marcas', title: '📝 Tus marcas anteriores se movieron', text: '«Última vez» y «Montar» ya no aparecen bajo el ejercicio: ahora están dentro del botón «📝 Marcas anteriores». Ábrelo para ver tu marca anterior y montarla con un toque.' },
       { id: '2026-11-10-esfuerzo', title: '💬 Más fácil de entender', text: 'Donde decía «EP4» ahora lees el tipo de carga en palabras, en la rutina y en el temporizador, por ejemplo «3 series × 14 reps · peso moderado».' },
       { id: '2026-11-10-clase-donde', title: '📍 Entra a la clase donde la necesites', text: 'En los bloques de la clase con varias rondas o ejercicios, toca el botón azul de arriba («Ronda 2 de 4»), elige en qué ronda y ejercicio estás y toca «Empezar aquí».' },
@@ -12816,7 +12923,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         ['clientName', 'clientPhone', 'coachMsgTitle', 'coachMsgBody'].forEach(function(k) { var el = document.getElementById(k); if (el) el.value = ''; });
         var sd = document.getElementById('startDate'); if (sd) sd.value = todayIso();
         Object.keys(getBuilderState().measures).forEach(function(k) { var el = document.getElementById(k); if (el) el.value = ''; });
-        measureLog = []; renderMeasureLog();
+        measureLog = []; renderMeasureLog(); try { fichaClearForm(); } catch (e) {}
         var mf = document.getElementById('m_fecha'); if (mf) mf.value = todayIso();
         if (!keepNutri) {
           document.getElementById('featureNutrition').checked = false;
@@ -14818,7 +14925,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openRestDays"]', t: 'Días de descanso', x: 'Una sola tarjeta para todos tus descansos: ahí encuentras tu nutrición y recomendaciones de recuperación. Si hoy toca descanso, te lo avisa.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openClasesTab"]', t: 'Clases', x: 'La clase de hoy, las anteriores y los retos, con cronómetro guiado. Al terminar una clase, queda anotada en tu mes con sus calorías estimadas.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openHistorialModal"]', t: 'Historial de Cargas', x: 'Los pesos y marcas de tus entrenos anteriores, para que sepas cuánto levantaste la última vez y puedas superarlo.' },
-      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openDatosTab"]', t: 'Datos y asistencia', x: 'Cómo va tu mes (cuántos entrenamientos llevas frente a los programados), tus medidas con barras para comparar con las anteriores, tu asistencia por semana y tus datos de contacto. Aquí también puedes ver el resumen del mes pasado.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openDatosTab"]', t: 'Datos y asistencia', x: 'Cómo va tu mes (cuántos entrenamientos llevas frente a los programados), tus medidas con barras para comparar con las anteriores (tu ficha completa, con todas las fechas), tu asistencia por semana y tus datos de contacto. Aquí también puedes ver el resumen del mes pasado.' },
       { sel: '#ath_upd_btn', t: 'Actualizar', x: 'Si tu coach cambió algo y no lo ves, toca aquí para traer lo más nuevo.' },
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
@@ -15037,12 +15144,401 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function loadAthletePayload() { try { return JSON.parse(localStorage.getItem(ATHLETE_KEY) || 'null'); } catch (e) { return null; } }
 
+    // ================= FICHAS MAESTRAS (pestaña "Fichas" de la hoja de Google) =================
+    // Una línea por cliente con todas sus mediciones codificadas. El constructor la lee y la escribe casi en tiempo real,
+    // "Datos y asistencia" del cliente la lee, y hay un visor con enlace privado (también para quien solo lleva seguimiento).
+    var FICHA = { list: null, listAt: 0, loading: false, c: '', t: '', rev: '', name: '', notes: {}, texts: {}, deleted: {}, dirty: false, timer: null, saving: false, again: false, q: '' };
+    function fichaSet(msg, kind) {
+      var el = document.getElementById('ficha_status');
+      if (!el) return;
+      el.innerText = msg || '';
+      el.style.color = kind === 'err' ? '#ff9a9a' : (kind === 'ok' ? 'var(--success)' : 'var(--muted)');
+    }
+    function fichaEncode(obj) { return bytesToB64url(fflate.deflateSync(fflate.strToU8(JSON.stringify(obj)), { level: 9 })); }
+    // {v:1, p:perfil, m:[{d, v:{...}, x:{kcal,imc}, t:{texto libre}, n:'nota'}]}  ->  { p, log, notes, texts }
+    function fichaDecode(str) {
+      try {
+        var o = JSON.parse(fflate.strFromU8(fflate.inflateSync(b64urlToBytes(String(str || '')))));
+        if (!o || typeof o !== 'object') return null;
+        var log = [], notes = {}, texts = {};
+        (Array.isArray(o.m) ? o.m : []).forEach(function(e) {
+          if (!e || !isIsoDate(e.d)) return;
+          var v = {};
+          Object.keys(e.v || {}).forEach(function(k) { if (fieldInfo(k)) { var n = parseNum(e.v[k]); if (n !== null && isFinite(n)) v[k] = n; } });
+          if (e.x) {
+            if (e.x.kcal != null && isFinite(e.x.kcal) && v.m_kcal == null) v.m_kcal = +e.x.kcal;
+            if (e.x.imc != null && isFinite(e.x.imc) && v.m_imc == null) v.m_imc = +e.x.imc;
+          }
+          if (Object.keys(v).length) log.push({ d: e.d, v: v });
+          if (e.n) notes[e.d] = String(e.n);
+          if (e.t && typeof e.t === 'object') texts[e.d] = e.t;
+        });
+        log.sort(byDate);
+        return { p: (o.p && typeof o.p === 'object') ? o.p : {}, log: log, notes: notes, texts: texts };
+      } catch (e) { return null; }
+    }
+    function fichaBuild(perfil, log, notes, texts) {
+      var m = normalizeMeasureLog(log).map(function(e) {
+        var o = { d: e.d, v: e.v };
+        if (notes && notes[e.d]) o.n = notes[e.d];
+        if (texts && texts[e.d] && Object.keys(texts[e.d]).length) o.t = texts[e.d];
+        return o;
+      });
+      return { v: 1, p: perfil, m: m };
+    }
+    function fichaHeightCm(s) { var n = parseNum(s); if (n === null) return ''; return n < 3 ? Math.round(n * 100) : n; }
+    function fichaSummary(perfil, log) {
+      var last = log.length ? log[log.length - 1] : null, lv = last ? last.v : {};
+      return { ed: parseNum(perfil.edad), es: fichaHeightCm(perfil.estatura), f: last ? last.d : '', p: lv.m_peso_kg, g: lv.m_grasa, k: log.length };
+    }
+    // Une dos historiales por fecha; en una misma fecha gana "first"
+    function fichaUnion(first, second) {
+      var byD = {};
+      (second || []).forEach(function(e) { byD[e.d] = e; });
+      (first || []).forEach(function(e) { byD[e.d] = e; });
+      return Object.keys(byD).sort().map(function(d) { return { d: d, v: byD[d].v }; });
+    }
+    function fichaPerfilFromForm() {
+      var g = function(id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+      return { nombre: FICHA.name || g('clientName'), edad: g('m_edad'), estatura: g('m_estatura'), objetivo: g('m_objetivo'), frecuencia: g('f_frecuencia'), lesiones: g('f_lesiones'), enfermedades: g('f_enfermedades'), experiencia: g('f_experiencia'), notas: g('f_notas'), tel: g('f_tel') };
+    }
+    function fichaFillForm(p) {
+      function setv(id, v) { var e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); }
+      setv('m_objetivo', p.objetivo); setv('m_estatura', p.estatura); setv('m_edad', p.edad);
+      setv('f_frecuencia', p.frecuencia); setv('f_lesiones', p.lesiones); setv('f_enfermedades', p.enfermedades); setv('f_experiencia', p.experiencia); setv('f_notas', p.notas); setv('f_tel', p.tel);
+    }
+    function fichaUnlink() {
+      clearTimeout(FICHA.timer);
+      FICHA.c = ''; FICHA.t = ''; FICHA.rev = ''; FICHA.name = ''; FICHA.notes = {}; FICHA.texts = {}; FICHA.deleted = {}; FICHA.dirty = false; FICHA.saving = false; FICHA.again = false;
+      fichaRenderPanel();
+    }
+
+    // ----- lista y búsqueda -----
+    function fichaPin() { return vrepPin(); }
+    function fichaErrText(j) {
+      var e = j && j.error;
+      if (e === 'pin') return 'El PIN ya no vale: vuelve a entrar como coach.';
+      if (e === 'bloqueado') return 'Demasiados intentos de PIN: espera 15 minutos.';
+      if (e === 'permiso') return 'Esa ficha es de otro coach.';
+      if (e === 'clave' || e === 'clave-sin-cambiar' || e === 'datos') return 'Falta publicar la versión 6 del script de Google (la que trae las fichas).';
+      return 'No se pudo conectar con la hoja (' + (e || 'sin respuesta') + ').';
+    }
+    function fichaLoadList(force) {
+      var pin = fichaPin();
+      if (!pin) { fichaSet('Entra como coach (con tu PIN) para usar las fichas.', 'err'); return Promise.resolve(); }
+      if (FICHA.loading) return Promise.resolve();
+      if (!force && FICHA.list && Date.now() - FICHA.listAt < 120000) { fichaRenderPanel(); return Promise.resolve(); }
+      FICHA.loading = true; fichaSet('Cargando fichas…');
+      return postJson({ a: 'fichas', pin: pin }, 30000).then(function(j) {
+        FICHA.loading = false;
+        if (j && j.ok) { FICHA.list = j.fichas || []; FICHA.listAt = Date.now(); fichaSet(FICHA.c ? '' : FICHA.list.length + ' fichas en la hoja.'); fichaRenderPanel(); fichaSuggest(); }
+        else fichaSet('⚠️ ' + fichaErrText(j), 'err');
+      }).catch(function() { FICHA.loading = false; fichaSet('⚠️ Sin conexión con la hoja.', 'err'); });
+    }
+    function fichaFind(name) {
+      var n = normName(name), hit = null;
+      (FICHA.list || []).forEach(function(f) { if (!hit && normName(f.n) === n) hit = f; });
+      return hit;
+    }
+    function fichaSearch() { var e = document.getElementById('ficha_q'); FICHA.q = e ? e.value : ''; fichaRenderPanel(); }
+    function fichaRowHtml(f) {
+      var d = f.f ? fmtDateTable(String(f.f).slice(0, 10)) : '—';
+      return '<button type="button" class="fch-row" onclick="fichaOpen(\'' + escHtml(f.c) + '\')"><b>' + escHtml(f.n) + '</b><span>' + escHtml(f.c) + ' · ' + f.k + ' med. · ' + d + (f.p ? ' · ' + escHtml(String(f.p).replace('.', ',')) + ' kg' : '') + '</span></button>';
+    }
+    function fichaRenderPanel() {
+      var box = document.getElementById('ficha_results'), link = document.getElementById('ficha_linked'), act = document.getElementById('ficha_actions');
+      if (link) {
+        link.innerHTML = FICHA.c
+          ? '<div class="fch-linked">🗂️ <b>' + escHtml(FICHA.name) + '</b> · ficha ' + escHtml(FICHA.c) + ' <button type="button" class="med-x" title="Desvincular (no borra nada)" onclick="fichaUnlink()">✖</button></div>'
+          : '<div class="fch-muted">Sin ficha vinculada: busca al cliente o crea su ficha. Mientras esté vinculada, cada medición que guardes aquí se escribe sola en la hoja.</div>';
+      }
+      if (act) act.style.display = FICHA.c ? 'flex' : 'none';
+      if (!box) return;
+      var list = FICHA.list || [], q = normName(FICHA.q);
+      if (!FICHA.list) { box.innerHTML = ''; return; }
+      var hits = q ? list.filter(function(f) { return normName(f.n).indexOf(q) !== -1 || String(f.c).toLowerCase() === q; }) : [];
+      var html = '';
+      if (q) html += hits.length ? hits.slice(0, 12).map(fichaRowHtml).join('') : '<div class="fch-muted">No hay fichas con ese nombre.</div>';
+      html += '<details class="fch-all"><summary>📋 Todas las fichas (' + list.length + ')</summary><div class="fch-scroll">' + list.map(fichaRowHtml).join('') + '</div></details>';
+      box.innerHTML = html;
+    }
+    // Si el nombre del cliente que se está armando coincide con una ficha, se ofrece vincularla
+    function fichaSuggest() {
+      var s = document.getElementById('ficha_suggest');
+      if (!s) return;
+      var n = (document.getElementById('clientName') || {}).value || '';
+      var f = (!FICHA.c && n.trim()) ? fichaFind(n) : null;
+      s.innerHTML = f ? '<button type="button" class="btn btn-secondary" style="width:100%;" onclick="fichaOpen(\'' + escHtml(f.c) + '\')">🔗 Vincular con la ficha de ' + escHtml(f.n) + ' (' + escHtml(f.c) + ')</button>' : '';
+    }
+    function fichaTabOpen() { fichaRenderPanel(); fichaLoadList(false).then(fichaSuggest); }
+
+    // ----- abrir / crear / guardar -----
+    function fichaOpen(code) {
+      var pin = fichaPin();
+      if (!pin) { fichaSet('Entra como coach (con tu PIN) para usar las fichas.', 'err'); return; }
+      if (FICHA.dirty) fichaSaveNow();
+      fichaSet('Abriendo la ficha…');
+      postJson({ a: 'ficha', pin: pin, c: code }, 30000).then(function(j) {
+        var d = (j && j.ok) ? fichaDecode(j.p) : null;
+        if (!d) { fichaSet('⚠️ ' + (j && j.ok ? 'La ficha no se pudo leer.' : fichaErrText(j)), 'err'); return; }
+        clearTimeout(FICHA.timer);
+        FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.name = j.n || d.p.nombre || ''; FICHA.notes = d.notes; FICHA.texts = d.texts; FICHA.deleted = {}; FICHA.dirty = false;
+        var localOnly = measureLog.some(function(e) { return !d.log.some(function(x) { return x.d === e.d; }); });
+        measureLog = fichaUnion(d.log, normalizeMeasureLog(measureLog));
+        fichaFillForm(d.p);
+        var cn = document.getElementById('clientName'); if (cn && !cn.value.trim()) cn.value = FICHA.name;
+        var fe = document.getElementById('m_fecha'); if (fe) fe.value = todayIso();
+        MEASURE_FIELDS.forEach(function(f) { var el = document.getElementById(f.k); if (el) el.value = ''; });
+        var nt = document.getElementById('m_nota'); if (nt) nt.value = '';
+        renderMeasureLog(); fichaRenderPanel(); fichaSuggest();
+        fichaSet('✅ Ficha de ' + FICHA.name + ' cargada (' + d.log.length + ' mediciones).', 'ok');
+        if (localOnly) fichaTouch();
+      }).catch(function() { fichaSet('⚠️ Sin conexión con la hoja.', 'err'); });
+    }
+    function fichaCreate() {
+      var pin = fichaPin(), nm = ((document.getElementById('clientName') || {}).value || '').trim();
+      if (!pin) { fichaSet('Entra como coach (con tu PIN) para usar las fichas.', 'err'); return; }
+      if (!nm) { alert('Escribe primero el nombre del cliente (arriba, en el constructor).'); return; }
+      var ex = fichaFind(nm);
+      if (ex) { if (confirm('Ya existe la ficha de ' + ex.n + ' (' + ex.c + '). ¿Vincularla en vez de crear otra?')) fichaOpen(ex.c); return; }
+      FICHA.name = nm;
+      var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog);
+      fichaSet('Creando la ficha…');
+      postJson({ a: 'ficha_guardar', pin: pin, n: nm, p: fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts)), r: fichaSummary(perfil, log) }, 30000).then(function(j) {
+        if (j && j.ok) { FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.dirty = false; FICHA.listAt = 0; fichaRenderPanel(); fichaSet('✅ Ficha ' + j.c + ' creada para ' + nm + '.', 'ok'); fichaLoadList(true); }
+        else { FICHA.name = ''; fichaSet('⚠️ ' + fichaErrText(j), 'err'); }
+      }).catch(function() { FICHA.name = ''; fichaSet('⚠️ Sin conexión con la hoja.', 'err'); });
+    }
+    // Cada cambio (medición guardada o borrada, datos del perfil) se escribe en la hoja a los ~1 s
+    function fichaTouch() {
+      if (typeof PRUEBA !== 'undefined' && PRUEBA.on) return;
+      if (!FICHA.c) { fichaSuggest(); return; }
+      FICHA.dirty = true; clearTimeout(FICHA.timer);
+      FICHA.timer = setTimeout(fichaSaveNow, 1200);
+      fichaSet('⏳ Guardando en la ficha…');
+    }
+    function fichaSaveNow() {
+      clearTimeout(FICHA.timer);
+      if (!FICHA.c || !FICHA.dirty) return Promise.resolve(true);
+      if (FICHA.saving) { FICHA.again = true; return Promise.resolve(false); }
+      var pin = fichaPin();
+      if (!pin) { fichaSet('⚠️ Entra como coach para guardar en la ficha.', 'err'); return Promise.resolve(false); }
+      var cnEl = document.getElementById('clientName'), cn = cnEl ? cnEl.value.trim() : '';
+      if (cn && FICHA.name && normName(cn) !== normName(FICHA.name)) { fichaSet('⚠️ El nombre del cliente cambió: desvincula la ficha de ' + FICHA.name + ' para no mezclar datos.', 'err'); return Promise.resolve(false); }
+      FICHA.saving = true;
+      var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog);
+      var payload = fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts));
+      if (payload.length > 44000) { FICHA.saving = false; fichaSet('⚠️ La ficha es demasiado grande para una celda.', 'err'); return Promise.resolve(false); }
+      return postJson({ a: 'ficha_guardar', pin: pin, c: FICHA.c, n: FICHA.name, p: payload, rev: FICHA.rev, r: fichaSummary(perfil, log) }, 30000).then(function(j) {
+        FICHA.saving = false;
+        if (j && j.ok) {
+          FICHA.rev = j.rev || FICHA.rev; if (j.t) FICHA.t = j.t; FICHA.dirty = false;
+          var now = new Date(); fichaSet('✅ Guardado en la ficha ' + FICHA.c + ' · ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()), 'ok');
+          var row = (FICHA.list || []).filter(function(f) { return f.c === FICHA.c; })[0];
+          if (row) { var s = fichaSummary(perfil, log); row.k = String(s.k); row.f = s.f; row.p = s.p == null ? '' : String(s.p); row.g = s.g == null ? '' : String(s.g); }
+          if (FICHA.again) { FICHA.again = false; FICHA.dirty = true; return fichaSaveNow(); }
+          return true;
+        }
+        if (j && j.error === 'conflicto') {   // otra tablet guardó antes: se unen las mediciones por fecha y se reintenta
+          var d2 = fichaDecode(j.p);
+          if (d2) {
+            var mine = {}; log.forEach(function(e) { mine[e.d] = 1; });
+            var add = d2.log.filter(function(e) { return !mine[e.d] && !FICHA.deleted[e.d]; });
+            measureLog = fichaUnion(log, add);
+            add.forEach(function(e) { if (d2.notes[e.d] && !FICHA.notes[e.d]) FICHA.notes[e.d] = d2.notes[e.d]; if (d2.texts[e.d] && !FICHA.texts[e.d]) FICHA.texts[e.d] = d2.texts[e.d]; });
+            FICHA.rev = j.rev; renderMeasureLog(); FICHA.dirty = true; return fichaSaveNow();
+          }
+        }
+        if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+        fichaSet('⚠️ No se guardó en la ficha: ' + fichaErrText(j) + ' Se reintenta al siguiente cambio.', 'err');
+        return false;
+      }).catch(function() { FICHA.saving = false; fichaSet('⚠️ Sin conexión: la ficha se guarda cuando vuelva la señal (toca «Guardar ahora»).', 'err'); return false; });
+    }
+    // Si el cliente tiene enlace de rutina, trae a esa rutina las mediciones de la ficha (por fecha)
+    function fichaSyncRoutine(id, pin) {
+      return fetchRoutine(id).then(function(jt) {
+        var st = (jt && jt.ok && jt.p) ? decodePayload('q', jt.p) : null;
+        if (!st) throw new Error('rutina');
+        if (st.coachMsgTitle === '__CLASES__') return 'clases';
+        var cur = coachMeasureBase(st), merged = fichaUnion(normalizeMeasureLog(measureLog), cur);
+        if (JSON.stringify(merged) === JSON.stringify(cur)) return 'igual';
+        st.measureLog = merged;
+        var p = encodePayload(buildUltraCompactState(st));
+        return postJson({ a: 'actualizar', id: id, p: p, pin: pin }).then(function(j) {
+          if (j && j.ok) { try { coachCacheSet(id, p); } catch (e) {} return 'ok'; }
+          throw new Error((j && j.error) || 'actualizar');
+        });
+      });
+    }
+    function fichaLink() { return getAppBaseUrl() + '#f=' + FICHA.c + '.' + FICHA.t; }
+    function fichaCopyLink() {
+      if (!FICHA.c || !FICHA.t) { fichaSet('Guarda la ficha primero para tener su enlace.', 'err'); return; }
+      copyTextSilently(fichaLink()); showToastTop('🔗 Enlace de la ficha copiado');
+    }
+    function fichaSendWa() {
+      var pin = fichaPin();
+      if (!FICHA.c) { alert('Primero vincula o crea la ficha del cliente.'); return; }
+      if (!pin) { fichaSet('Entra como coach (con tu PIN) para enviar.', 'err'); return; }
+      fichaSet('Guardando y preparando el envío…');
+      Promise.resolve(fichaSaveNow()).then(function(ok) {
+        if (ok === false || FICHA.dirty) throw new Error('nosave');
+        return lastLinkFor(FICHA.name, pin);
+      }).then(function(rid) {
+        if (!rid) return { rid: '', how: 'ficha' };
+        return fichaSyncRoutine(rid, pin).then(function(how) { return { rid: how === 'clases' ? '' : rid, how: how === 'clases' ? 'ficha' : 'rutina' }; });
+      }).then(function(r) {
+        fichaSet('✅ Listo para enviar.', 'ok');
+        var nm = FICHA.name, phone = cleanPhone(fichaPerfilFromForm().tel || ((document.getElementById('clientPhone') || {}).value || ''));
+        var coachName = displayCoach((document.getElementById('coachName') || {}).value || (COACH && COACH.name) || 'Coach Benessere');
+        var link, text, title, note;
+        if (r.how === 'rutina') {
+          link = getAppBaseUrl() + '#i=' + r.rid;
+          text = '¡Hola ' + nm + '! 💪 Te saluda ' + coachName + ' de Benessere Gym.\n\nActualicé tus medidas y tu ficha. ¡Revísalo en tu app! (en «Datos y asistencia»)\n🔗 ' + link + '\n\n¡Juntos somos más fuertes! 🔥';
+          title = '✅ Rutina actualizada'; note = nm + ' ya tiene su enlace: se actualizó su pestaña «Datos y asistencia» con la ficha y se le envía el mismo enlace de siempre.';
+        } else {
+          link = fichaLink();
+          text = '¡Hola ' + nm + '! 💪 Te saluda ' + coachName + ' de Benessere Gym.\n\nAquí está tu ficha de seguimiento con tus medidas y tu evolución:\n🔗 ' + link + '\n\nSe actualiza sola cada vez que te medimos. 📈\n¡Juntos somos más fuertes! 🔥';
+          title = '🔗 Enlace de la ficha'; note = nm + ' no tiene rutina del constructor: se le envía el enlace privado de su ficha (siempre es el mismo).';
+        }
+        var url = phone ? ('https://wa.me/' + phone + '?text=' + encodeURIComponent(text)) : ('https://wa.me/?text=' + encodeURIComponent(text));
+        var m = pendOverlay('ficha_wa', '<div class="pend-ttl">' + title + '</div><div class="pend-txt">' + escHtml(note) + '</div>' +
+          '<div class="pend-txt" style="white-space:pre-wrap; font-size:0.78rem; color:var(--muted);">' + escHtml(text) + '</div>' +
+          '<button type="button" class="pend-btn pend-ok" id="ficha_wa_go">📲 Abrir WhatsApp</button>' +
+          '<button type="button" class="pend-btn pend-cancel" id="ficha_wa_x">Cerrar</button>');
+        document.getElementById('ficha_wa_go').onclick = function() { window.open(url, '_blank'); };
+        document.getElementById('ficha_wa_x').onclick = function() { pendCloseOverlay('ficha_wa'); };
+      }).catch(function(e) {
+        fichaSet('⚠️ No se pudo preparar el envío' + (e && e.message === 'nosave' ? ' (la ficha no se guardó)' : (e && e.message ? ' (' + e.message + ')' : '')) + '.', 'err');
+      });
+    }
+    // Medición agregada desde "Datos y asistencia" (modo coach): también se escribe en la hoja de fichas
+    function fichaSyncFromRoutine(name, log) {
+      var pin = fichaPin(); if (!pin || !String(name || '').trim()) return;
+      var ready = FICHA.list ? Promise.resolve() : fichaLoadList(true);
+      Promise.resolve(ready).then(function() {
+        var f = fichaFind(name);
+        var norm = normalizeMeasureLog(log);
+        if (!f) return postJson({ a: 'ficha_guardar', pin: pin, n: String(name).trim(), p: fichaEncode(fichaBuild({ nombre: String(name).trim() }, norm, {}, {})), r: fichaSummary({}, norm) }, 30000).then(function(j) { if (j && j.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' creada en la hoja'); } });
+        return postJson({ a: 'ficha', pin: pin, c: f.c }, 30000).then(function(j) {
+          var d = (j && j.ok) ? fichaDecode(j.p) : null; if (!d) return;
+          var merged = fichaUnion(norm, d.log);
+          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(d.p, merged, d.notes, d.texts)), rev: j.rev, r: fichaSummary(d.p, merged) }, 30000).then(function(j2) { if (j2 && j2.ok) FICHA.listAt = 0; });
+        });
+      }).catch(function() {});
+    }
+
+    // ----- visor de la ficha (enlace privado, PDF) -----
+    var FV = { data: null, key: '', overlay: false };
+    function fichaViewHtml(d) {
+      var p = d.p || {}, entries = d.log.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
+      var rows = [['Objetivo', p.objetivo], ['Estatura', p.estatura ? (parseNum(p.estatura) < 3 ? Math.round(parseNum(p.estatura) * 100) + ' cm' : p.estatura + (/cm/i.test(p.estatura) ? '' : ' cm')) : ''], ['Edad', p.edad], ['Frecuencia', p.frecuencia], ['Lesiones', p.lesiones], ['Enfermedades', p.enfermedades], ['Experiencia', p.experiencia], ['Notas', p.notas]].filter(function(r) { return r[1] && String(r[1]).trim() && String(r[1]).trim() !== '-'; });
+      var prof = rows.length ? '<div class="fv-prof">' + rows.map(function(r) { return '<div><span>' + r[0] + '</span><b>' + escHtml(r[1]) + '</b></div>'; }).join('') + '</div>' : '';
+      var body;
+      if (!entries.length) body = '<div class="med-sum" style="margin:14px 0;">Todavía no hay mediciones registradas.</div>';
+      else {
+        var keys = medKeysWithData(entries), lastDate = entries[entries.length - 1].d;
+        var cards = keys.map(function(f) {
+          var s = medSeries(entries, f.k), cur = s[s.length - 1], prev = s.length > 1 ? s[s.length - 2] : null;
+          return '<div class="metric-card"><div class="metric-title">' + f.label + '</div><div class="metric-val">' + withUnit(cur.n, f.unit) + '</div>' +
+            (prev ? '<div class="med-delta">' + deltaText(cur.n - prev.n, f.unit) + ' <span>vs ' + fmtDateShort(prev.d) + '</span></div>' : '') +
+            (cur.d !== lastDate ? '<div class="med-delta"><span>medido el ' + fmtDateShort(cur.d) + '</span></div>' : '') + '</div>';
+        }).join('');
+        var printKeys = ['m_peso_kg', 'm_grasa', 'm_musculo', 'm_cintura1', 'm_cadera', 'm_visceral'].filter(function(k) { return keys.some(function(f) { return f.k === k; }) && medSeries(entries, k).length >= 1; });
+        var printCharts = printKeys.map(function(k) { var f = fieldInfo(k); return '<div class="fv-pc"><div class="fv-pct">' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</div>' + medChartSvg(medSeries(entries, k), f.unit) + '</div>'; }).join('');
+        var noteRows = Object.keys(d.notes || {}).sort().map(function(dt) { return '<li><b>' + fmtDate(dt) + ':</b> ' + escHtml(d.notes[dt]) + '</li>'; }).join('');
+        body = '<div class="med-h">Última medición · ' + fmtDate(lastDate) + '</div><div class="metrics-grid">' + cards + '</div>' +
+          '<div class="no-print"><div class="med-h">Evolución</div><div id="fv_chart_box">' + medChartBlock(entries, athMedKey, 'fichaViewMetric') + '</div></div>' +
+          '<div class="print-only"><div class="med-h">Evolución</div><div class="fv-pcs">' + printCharts + '</div></div>' +
+          '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, 'athlete') +
+          (noteRows ? '<div class="med-h">Notas</div><ul class="fv-notes">' + noteRows + '</ul>' : '');
+      }
+      return '<div class="fv-head"><div><div class="fv-brand">BENESSERE GYM</div><div class="fv-sub">Ficha técnica · ' + fmtDate(todayIso()) + '</div></div>' +
+        '<div class="no-print fv-btns"><button type="button" class="btn btn-accent" onclick="window.print()">🖨️ Guardar PDF</button>' + (FV.overlay ? '<button type="button" class="btn btn-secondary" onclick="fichaViewClose()">✕ Cerrar</button>' : '') + '</div></div>' +
+        '<h2 class="fv-name">' + escHtml(p.nombre || d.name || '') + '</h2>' + prof + body +
+        '<div class="fv-foot">Benessere Gym · Juntos somos más fuertes</div>';
+    }
+    function fichaViewMetric(k) { athMedKey = k; fichaViewRender(); }
+    function fichaViewRender() {
+      var box = document.getElementById('ficha_app');
+      if (!box || !FV.data) return;
+      box.innerHTML = '<div class="fv-wrap">' + fichaViewHtml(FV.data) + '</div>';
+    }
+    function fichaViewShow(data, overlay) {
+      FV.data = data; FV.overlay = !!overlay;
+      var box = document.getElementById('ficha_app'); if (!box) return;
+      box.className = overlay ? 'fv-overlay' : 'fv-page';
+      box.style.display = 'block';
+      document.body.classList.add('fv-on');
+      fichaViewRender();
+      if (overlay) box.scrollTop = 0; else window.scrollTo(0, 0);
+    }
+    function fichaViewClose() { var box = document.getElementById('ficha_app'); if (box) { box.style.display = 'none'; box.innerHTML = ''; } document.body.classList.remove('fv-on'); }
+    // Desde el constructor: ver la ficha tal como queda (y guardarla en PDF)
+    function fichaViewCoach() {
+      var perfil = fichaPerfilFromForm();
+      fichaViewShow({ p: perfil, name: perfil.nombre || '', log: normalizeMeasureLog(measureLog), notes: FICHA.notes, texts: FICHA.texts }, true);
+    }
+    // Enlace privado de la ficha: #f=F001.clave
+    function fichaViewerBoot(idc) {
+      ['coach_builder_view', 'athlete_client_view', 'athlete_message_view'].forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
+      var key = 'benessere_fichaview_' + idc, cached = null;
+      try { cached = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+      function show(j) {
+        var d = fichaDecode(j.p); if (!d) return false;
+        d.name = j.n || ''; if (!d.p.nombre) d.p.nombre = j.n || '';
+        fichaViewShow(d, false); return true;
+      }
+      var shown = false;
+      if (cached && cached.p) shown = show(cached);
+      if (!shown) { var box = document.getElementById('ficha_app'); box.className = 'fv-page'; box.style.display = 'block'; document.body.classList.add('fv-on'); box.innerHTML = '<div class="fv-wrap"><div class="fv-brand">BENESSERE GYM</div><div class="med-sum" style="margin-top:14px;">Cargando tu ficha…</div></div>'; }
+      fetchJsonHedged(SHARE_SCRIPT_URL + '?a=ficha&id=' + encodeURIComponent(idc), 25000).then(function(j) {
+        if (j && j.ok && j.p) { try { localStorage.setItem(key, JSON.stringify({ n: j.n, p: j.p })); } catch (e) {} show(j); }
+        else if (!shown) { document.getElementById('ficha_app').innerHTML = '<div class="fv-wrap"><div class="fv-brand">BENESSERE GYM</div><div class="med-sum" style="margin-top:14px;">Este enlace de ficha no es válido o ya no existe. Pídele a tu coach que te lo envíe de nuevo.</div></div>'; }
+      }).catch(function() {
+        if (!shown) document.getElementById('ficha_app').innerHTML = '<div class="fv-wrap"><div class="fv-brand">BENESSERE GYM</div><div class="med-sum" style="margin-top:14px;">No se pudo cargar tu ficha. Revisa tu conexión e inténtalo de nuevo.</div></div>';
+      });
+    }
+
+    // ----- "Datos y asistencia" del cliente: lee la ficha de la hoja (según su enlace de rutina) -----
+    var FCLI = { id: '', d: null, tried: '' };
+    function fichaCliKey(id) { return 'benessere_ficharid_' + id; }
+    function fichaCliData() {
+      if (!athleteRoutineId) return null;
+      if (FCLI.id !== athleteRoutineId) {
+        FCLI.id = athleteRoutineId; FCLI.d = null;
+        try { var c = JSON.parse(localStorage.getItem(fichaCliKey(athleteRoutineId)) || 'null'); if (c && c.p) FCLI.d = fichaDecode(c.p); } catch (e) {}
+      }
+      return FCLI.d;
+    }
+    function fichaCliRefresh() {
+      var id = athleteRoutineId;
+      if (!id || FCLI.tried === id) return;
+      FCLI.tried = id;
+      fetchJsonHedged(SHARE_SCRIPT_URL + '?a=ficha_rutina&id=' + encodeURIComponent(id), 25000).then(function(j) {
+        if (!(j && j.ok && j.p)) return;
+        var d = fichaDecode(j.p); if (!d) return;
+        try { localStorage.setItem(fichaCliKey(id), JSON.stringify({ p: j.p })); } catch (e) {}
+        if (id === athleteRoutineId) { FCLI.id = id; FCLI.d = d; try { renderAthleteMeasures(); } catch (e) {} }
+      }).catch(function() {});
+    }
+
+    function fichaClearForm() {
+      fichaUnlink();
+      ['f_frecuencia', 'f_lesiones', 'f_enfermedades', 'f_experiencia', 'f_notas', 'f_tel', 'm_nota', 'm_kcal', 'm_imc', 'ficha_q'].forEach(function(id) { var e = document.getElementById(id); if (e) e.value = ''; });
+      FICHA.q = ''; fichaSuggest();
+    }
+
     window.onload = function() {
       setTimeout(draftsCompressOld, 1500);   // convierte los borradores viejos a comprimidos (sin perder nada)
       var where = (window.location.hash || '') + (window.location.search || '');
 
       // 0) Enlace de recepción (#recepcion): solo ve la pestaña de Recepción, con su propio PIN
       if (/(^|[#&?])recepcion(\b|=)/.test(where)) { openReception(true); return; }
+
+      // 0b) Enlace privado de ficha (#f=F001.clave): solo ve su ficha (seguimiento sin rutina)
+      var fvm = where.match(/[#&]f=([A-Za-z0-9.]+)/);
+      if (fvm) { fichaViewerBoot(fvm[1]); return; }
+      try { var cnE = document.getElementById('clientName'); if (cnE) { cnE.addEventListener('change', fichaSuggest); cnE.addEventListener('blur', fichaSuggest); } } catch (e) {}
 
       // 1) Llegó un enlace con rutina
       var payload = readPayloadFromUrl();
