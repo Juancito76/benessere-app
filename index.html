@@ -13,12 +13,13 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
         var base = new URL('./', location.href).href;
-        var m = { name: 'Benessere Gym', short_name: 'Benessere', start_url: location.href, scope: base, display: 'standalone', background_color: '#0d0d0d', theme_color: '#0d0d0d',
+        var fo = /(^|[#&?])fichas(\b|=)/.test(location.hash + location.search);
+        var m = { name: fo ? 'Fichas Benessere Gym' : 'Benessere Gym', short_name: fo ? 'Fichas' : 'Benessere', start_url: location.href, scope: base, display: 'standalone', background_color: '#0d0d0d', theme_color: '#0d0d0d',
           icons: [
             { src: base + 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
             { src: base + 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
@@ -78,6 +79,7 @@
     body { background: var(--bg); color: var(--text); line-height: 1.4; min-height: 100vh; }
 
     /* ================= CONSTRUCTOR ================= */
+    body.fichas-only .gen-tabs, body.fichas-only .demo-btn { display: none !important; }
     #coach_builder_view { display: none; padding: 16px; max-width: 1100px; margin: 0 auto; padding-bottom: 95px; }
 
     header {
@@ -1034,6 +1036,8 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     <div id="tab_athlete" class="gen-view">
       <section class="section-box" id="ficha_panel">
         <div class="section-title">🗂️ Ficha técnica del cliente</div>
+        <button type="button" class="btn btn-secondary" id="fichas_install_btn" style="display:none; width:100%; margin-bottom:8px;" onclick="installApp()">📲 Instalar en esta tablet</button>
+        <div id="fichas_login" style="display:none; margin-bottom:10px;"></div>
         <input type="text" id="ficha_q" placeholder="🔎 Buscar cliente por nombre…" oninput="fichaSearch()" autocomplete="off" style="width:100%;">
         <div id="ficha_results"></div>
         <div id="ficha_suggest" style="margin-top:8px;"></div>
@@ -15077,7 +15081,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var inst = appIsInstalled();
       var b = document.getElementById('ath_install_btn');
       if (b) b.style.display = (inst || (typeof isCoachView === 'function' && isCoachView())) ? 'none' : '';
-      ['fv_install_btn', 'coach_install_btn'].forEach(function(id) { var x = document.getElementById(id); if (x) x.style.display = inst ? 'none' : ''; });   // ficha del cliente y versión de la tablet del gym
+      ['fv_install_btn', 'coach_install_btn'].forEach(function(id) { var x = document.getElementById(id); if (x) x.style.display = inst ? 'none' : ''; });
+      var fb = document.getElementById('fichas_install_btn'); if (fb) fb.style.display = (inst || !document.body.classList.contains('fichas-only')) ? 'none' : '';   // ficha del cliente y versión de la tablet del gym
     }
     window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); INST_EVT = e; installBtnSync(); });
     window.addEventListener('appinstalled', function() { INST_EVT = null; installBtnSync(); try { showToastTop('✅ ¡App instalada! Búscala en tu pantalla de inicio.'); } catch (e) {} });
@@ -15974,12 +15979,54 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       FICHA.q = ''; fichaSuggest();
     }
 
+
+    // ----- Modo «solo fichas» (#fichas): la tablet abre directo «Datos Atleta & Medidas», sin el resto del constructor (como Recepción) -----
+    function fichasLoginPaint(msg) {
+      var el = document.getElementById('fichas_login'); if (!el) return;
+      el.style.display = '';
+      el.innerHTML = '<div style="font-size:0.85rem; font-weight:800; margin-bottom:6px;">Escribe tu PIN de coach para entrar</div>' +
+        '<div style="display:flex; gap:8px;"><input type="password" id="fichas_pin" placeholder="PIN" autocomplete="current-password" style="flex:1;" onkeydown="if(event.key===\'Enter\')fichasLoginGo()"><button type="button" class="btn btn-accent" onclick="fichasLoginGo()">Entrar</button></div>' +
+        '<div style="font-size:0.78rem; margin-top:6px; color:#ff6b6b; min-height:1em;">' + escHtml(msg || '') + '</div>';
+    }
+    function fichasLoginGo() {
+      var inp = document.getElementById('fichas_pin'), pin = inp ? inp.value.trim() : '';
+      if (pin.length < 6) { fichasLoginPaint('El PIN tiene mínimo 6 caracteres.'); return; }
+      fichasLogin(pin);
+    }
+    function fichasLogin(pin) {
+      postJson({ a: 'listar', pin: pin }).then(function(j) {
+        if (j && j.ok) {
+          COACH = { pin: pin, name: j.coach, todos: !!j.todos };
+          try { localStorage.setItem(COACH_PIN_KEY, pin); } catch (e) {}
+          var el = document.getElementById('fichas_login'); if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+          try { fichaTabOpen(); } catch (e) {}
+        } else {
+          if (j && j.error === 'pin') { try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
+          fichasLoginPaint(clientsErrorText(j && j.error));
+        }
+      }).catch(function(e) { fichasLoginPaint(clientsErrorText(e && e.message)); });
+    }
+    function fichasOnlyBoot() {
+      document.body.classList.add('fichas-only');
+      try { document.title = 'Fichas · Benessere Gym'; } catch (e) {}
+      var show = function() {
+        var b = document.getElementById('coach_builder_view'); if (b) b.style.display = 'block';
+        try { switchGenTab('tab_athlete', null); } catch (e) {}
+        installBtnSync();
+        var saved = ''; try { saved = localStorage.getItem(COACH_PIN_KEY) || ''; } catch (e) {}
+        if (COACH) return;
+        if (saved) fichasLogin(saved); else fichasLoginPaint('');
+      };
+      setTimeout(show, 50); setTimeout(show, 900);   // por si el arranque normal vuelve a mostrar otra vista
+    }
     window.onload = function() {
       setTimeout(draftsCompressOld, 1500);   // convierte los borradores viejos a comprimidos (sin perder nada)
       var where = (window.location.hash || '') + (window.location.search || '');
 
       // 0) Enlace de recepción (#recepcion): solo ve la pestaña de Recepción, con su propio PIN
       if (/(^|[#&?])recepcion(\b|=)/.test(where)) { openReception(true); return; }
+
+      if (/(^|[#&?])fichas(\b|=)/.test(where)) fichasOnlyBoot();
 
       // 0b) Enlace privado de ficha (#f=F001.clave): solo ve su ficha (seguimiento sin rutina)
       var fvm = where.match(/[#&]f=([A-Za-z0-9.]+)/);
