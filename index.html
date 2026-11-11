@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-v';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1613,7 +1613,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var acts = mode === 'coach'
           ? '<td><button type="button" class="med-x" title="Editar" onclick="editMeasureEntry(\'' + e.d + '\')">✏️</button><button type="button" class="med-x" title="Borrar" onclick="deleteMeasureEntry(\'' + e.d + '\')">🗑</button></td>'
           : '';
-        return '<tr><td>' + fmtDateTable(e.d) + mark + del + '</td>' + cells + acts + '</tr>';
+        var by = e.src === 'a' ? 'Cliente' : (e.by || '');
+        return '<tr><td>' + fmtDateTable(e.d) + mark + del + (by ? '<br><small style="color:var(--muted);">' + escHtml(by) + '</small>' : '') + '</td>' + cells + acts + '</tr>';
       }).join('');
       return '<div class="med-table-wrap"><table class="med-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
     }
@@ -1645,6 +1646,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       renderMeasureLog();
       var ntEl = document.getElementById('m_nota'), ntv = ntEl ? ntEl.value.trim() : '';
       if (ntv) FICHA.notes[d] = ntv;
+      FICHA.authors[d] = fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== d; });
+      renderMeasureLog();
       fichaTouch();
       var st = document.getElementById('med_status');
       if (st) st.innerText = '✅ Medición del ' + fmtDate(d) + ' guardada en el historial.';
@@ -1660,6 +1663,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (measureLog.length === 0 || confirm((i >= 0 ? 'La medición del ' + fmtDate(d) + ' tiene cambios sin guardar.' : 'Hay una medición del ' + fmtDate(d) + ' sin guardar en el historial.') + '\n\n¿Guardarla antes de crear el enlace?')) {
         if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
         measureLog.sort(byDate);
+        FICHA.authors[d] = fichaWho();
         renderMeasureLog();
         fichaTouch();
       }
@@ -1681,7 +1685,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function deleteMeasureEntry(d) {
       if (!confirm('¿Borrar la medición del ' + fmtDate(d) + '?')) return;
       measureLog = measureLog.filter(function(e) { return e.d !== d; });
-      FICHA.deleted[d] = 1; delete FICHA.notes[d];
+      FICHA.deleted[d] = 1; delete FICHA.notes[d]; delete FICHA.authors[d]; if (FICHA.dc.indexOf(d) < 0) FICHA.dc.push(d);
       renderMeasureLog();
       fichaTouch();
     }
@@ -1697,7 +1701,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (chartBox) chartBox.innerHTML = '';
         return;
       }
-      var entries = measureLog.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
+      var entries = measureLog.map(function(e) { return { d: e.d, v: e.v, src: 'c', by: FICHA.authors[e.d] || '' }; });
       box.innerHTML = medTableHtml(entries, 'coach');
       if (chartBox) chartBox.innerHTML = '<div class="med-h">Evolución</div>' + medChartBlock(entries, coachMedKey, 'selectCoachMedMetric');
     }
@@ -1727,7 +1731,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
         if (added) coach[coach.length - 1] = { d: lastE.d, v: merged };
       }
-      var list = coach.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
+      var fAu = (fcd && fcd.authors) || {};
+      var list = coach.map(function(e) { return { d: e.d, v: e.v, src: 'c', by: fAu[e.d] || '' }; });
       (isCoachView() ? remoteOwnMeasures() : loadOwnMeasures(st.clientName)).forEach(function(e) { list.push({ d: e.d, v: e.v, src: 'a' }); });
       list.sort(byDate);
       return list;
@@ -1809,6 +1814,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var st = athleteActiveState, body = document.getElementById('ath_medBody');
       if (!st || !body) return;
       try { fichaCliRefresh(); } catch (e) {}
+      try { if (isCoachView() && COACH) fichaFromClient(st); } catch (e) {}
       ensureAddForm();
       try {   // en modo coach, la medición se guarda en la rutina del cliente (se conserva y se suma a la del inicio)
         var cvOn = coachMeasureOn(), t1 = document.getElementById('med_add_sum'), t2 = document.getElementById('med_add_note'), b1 = document.getElementById('med_btn_save'), b2 = document.getElementById('med_btn_wa');
@@ -1827,7 +1833,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var m = st.measures || {};
       document.getElementById('ath_metricsGrid').innerHTML =
         '<div class="metric-card"><div class="metric-title">Objetivo</div><div class="metric-val" style="color:var(--accent); font-size:0.85rem;">' + escHtml(m.m_objetivo || '-') + '</div></div>' +
-        '<div class="metric-card"><div class="metric-title">Estatura</div><div class="metric-val">' + escHtml(m.m_estatura || '-') + '</div></div>';
+        '<div class="metric-card"><div class="metric-title">Estatura</div><div class="metric-val">' + escHtml(m.m_estatura || '-') + '</div></div>' + fichaCliCards();
       var keys = medKeysWithData(entries), lastDate = entries[entries.length - 1].d;
       var cards = keys.map(function(f) {
         var s = medSeries(entries, f.k), cur = s[s.length - 1], prev = s.length > 1 ? s[s.length - 2] : null;
@@ -1870,7 +1876,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!base.length) { var b0 = legacyBaseline(st); if (b0) base = [b0]; }
       return base.map(function(e) { return { d: e.d, v: JSON.parse(JSON.stringify(e.v)) }; });
     }
-    function coachPersistMeasures(st, newLog, okMsg, delDate) {
+    function coachPersistMeasures(st, newLog, okMsg, delDate, savedDate) {
       var oldLog = st.measureLog;
       st.measureLog = newLog;
       var payloadText;
@@ -1879,7 +1885,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       postJson({ a: 'actualizar', id: athleteRoutineId, p: payloadText, pin: COACH.pin }).then(function(j) {
         if (j && j.ok) {
           coachCacheSet(athleteRoutineId, payloadText);
-          try { fichaSyncFromRoutine(st.clientName, newLog, delDate); } catch (e) {}
+          try { fichaSyncFromRoutine(st.clientName, newLog, delDate, savedDate); } catch (e) {}
           var openIds = []; document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
           var scrollY = window.scrollY || 0;
           renderAthleteApp(st);
@@ -1910,7 +1916,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       MEASURE_FIELDS.forEach(function(f) { document.getElementById('med_new_' + f.k).value = ''; });
       var det = document.getElementById('med_add'); if (det) det.open = false;
       athMedKey = Object.keys(v)[0];
-      coachPersistMeasures(st, log, '✅ Medición del ' + fmtDate(d) + ' guardada en la rutina de ' + (st.clientName || 'el cliente') + '.');
+      coachPersistMeasures(st, log, '✅ Medición del ' + fmtDate(d) + ' guardada en la rutina de ' + (st.clientName || 'el cliente') + '.', '', d);
     }
     function coachDeleteMeasure(d) {
       var st = athleteActiveState;
@@ -4024,7 +4030,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var lines = raw.split('\n').map(function(l) { return l.trim(); });
       var curSection = null, curDay = null, parsedDays = [];
       var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1, lastCircuit = null;
-      var importMeas = {}, importMeasDate = '', histMeas = [], curMed = null, importNote = '', importPerfil = false;
+      var importMeas = {}, importMeasDate = '', histMeas = [], curMed = null, importNote = '', importBy = '', importPerfil = false;
 
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
@@ -4052,7 +4058,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           continue;
         }
         if (curSection === 'MEDICION') {
-          if (curMed) { if (/^nota:/i.test(line)) curMed.n = line.substring(line.indexOf(':') + 1).trim(); else parseImportMeasureLine(line, curMed.v); }
+          if (curMed) { if (/^nota:/i.test(line)) curMed.n = line.substring(line.indexOf(':') + 1).trim(); else if (/^registrada por:/i.test(line)) curMed.by = line.substring(line.indexOf(':') + 1).trim(); else parseImportMeasureLine(line, curMed.v); }
           continue;
         }
         if (curSection === 'ATLETA') {
@@ -4067,6 +4073,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (lineLower.indexOf('objetivo:') === 0) document.getElementById('m_objetivo').value = line.split(':')[1].trim();
           if (/^fecha (de la )?medici[oó]n:/.test(lineLower)) { importMeasDate = line.substring(line.indexOf(':') + 1).trim(); continue; }
           if (/^nota (de la )?medici[oó]n:/.test(lineLower)) { importNote = line.substring(line.indexOf(':') + 1).trim(); continue; }
+          if (/^registrada por:/.test(lineLower)) { importBy = line.substring(line.indexOf(':') + 1).trim(); continue; }
           var pfm = lineLower.match(/^(frecuencia|lesiones|enfermedades|experiencia|notas|tel[eé]fono|whatsapp):/);
           if (pfm) {
             var pfId = { frecuencia: 'f_frecuencia', lesiones: 'f_lesiones', enfermedades: 'f_enfermedades', experiencia: 'f_experiencia', notas: 'f_notas' }[pfm[1]] || 'f_tel', pfEl = document.getElementById(pfId);
@@ -4300,10 +4307,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var hi = indexOfDate(measureLog, hm.d);
           if (hi >= 0) measureLog[hi] = { d: hm.d, v: hv }; else measureLog.push({ d: hm.d, v: hv });
           if (hm.n) FICHA.notes[hm.d] = hm.n;
+          FICHA.authors[hm.d] = hm.by || FICHA.authors[hm.d] || fichaWho();
           nHist++;
         });
         if (nHist) { measureLog.sort(byDate); renderMeasureLog(); }
         var nMeas = applyImportedMeasures(importMeas, importMeasDate || document.getElementById('startDate').value);
+        if (nMeas) { var ad = isIsoDate(importMeasDate) ? importMeasDate : (isIsoDate(document.getElementById('startDate').value) ? document.getElementById('startDate').value : todayIso()); FICHA.authors[ad] = importBy || FICHA.authors[ad] || fichaWho(); }
         if (importNote && nMeas) { var nd = isIsoDate(importMeasDate) ? importMeasDate : (isIsoDate(document.getElementById('startDate').value) ? document.getElementById('startDate').value : todayIso()); FICHA.notes[nd] = importNote; }
         if (nHist || nMeas || importPerfil) { try { fichaSuggest(); } catch (e) {} fichaTouch(); }   // si hay ficha vinculada, lo importado se escribe en la hoja
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
@@ -4363,9 +4372,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (mVals) {
         expMeasureLines(L, mVals);
         if (isIsoDate(mDate)) L.push('Fecha medicion: ' + mDate);
+        if (FICHA.authors[mDate]) L.push('Registrada por: ' + expClean(FICHA.authors[mDate]));
         if (FICHA.notes[mDate]) L.push('Nota medicion: ' + expClean(FICHA.notes[mDate]));
       }
-      expHistoryBlocks(L, log, mDate, FICHA.notes);   // mediciones anteriores del historial
+      expHistoryBlocks(L, log, mDate, FICHA.notes, FICHA.authors);   // mediciones anteriores del historial
       expMessageAndDays(L, g('coachMsgTitle'), g('coachMsgBody'), routineDays);
       return L.join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
     }
@@ -4376,12 +4386,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       MEASURE_FIELDS.forEach(function(f) { if (vals[f.k] != null && EXP_LABELS[f.k]) L.push(EXP_LABELS[f.k] + ': ' + withUnit(vals[f.k], f.unit)); });
     }
     // Mediciones anteriores: un bloque [MEDICION AAAA-MM-DD] por cada una (la más reciente va en [ATLETA]); el importador las vuelve a leer
-    function expHistoryBlocks(L, entries, skipDate, notes) {
+    function expHistoryBlocks(L, entries, skipDate, notes, authors) {
       (entries || []).forEach(function(e) {
         if (!e || !isIsoDate(e.d) || e.d === skipDate || !e.v) return;
         L.push('', '[MEDICION ' + e.d + ']');
         if (e.src === 'a') L.push('Origen: anotada por el cliente');
         expMeasureLines(L, e.v);
+        if (authors && authors[e.d]) L.push('Registrada por: ' + expClean(authors[e.d]));
         if (notes && notes[e.d]) L.push('Nota: ' + expClean(notes[e.d]));
       });
     }
@@ -13410,10 +13421,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ================= PESTAÑA «DATOS Y ASISTENCIA» (medidas + gráfico de asistencia + contacto) =================
     var CONTACT_KEY = 'benessere_contact_v1';
-    function contactLoad() { try { var o = JSON.parse(localStorage.getItem(tk(CONTACT_KEY)) || 'null'); return (o && (o.tel || o.cum)) ? o : null; } catch (e) { return null; } }
+    function contactLoad() { try { var o = JSON.parse(localStorage.getItem(tk(CONTACT_KEY)) || 'null'); return (o && (o.tel || o.cum || o.les || o.enf)) ? o : null; } catch (e) { return null; } }
     function remoteContact() {   // coach: lo último que el cliente anotó (viaja en su registro 'meta', campo ct)
       var best = null;
-      loadSessions().forEach(function(x) { if (isMetaSess(x) && x.ct && (x.ct.tel || x.ct.cum) && (!best || x.t > best.t)) best = x; });
+      loadSessions().forEach(function(x) { if (isMetaSess(x) && x.ct && (x.ct.tel || x.ct.cum || x.ct.les || x.ct.enf) && (!best || x.t > best.t)) best = x; });
       return best ? best.ct : null;
     }
     function contactFmtBirthday(iso) { return isIsoDate(iso) ? (+iso.slice(8, 10)) + ' de ' + ATT_MESES[+iso.slice(5, 7) - 1] + ' de ' + iso.slice(0, 4) : ''; }
@@ -13426,7 +13437,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var d = String(c && c.tel || '').replace(/\D/g, ''), wa = d.length === 8 ? '506' + d : d;
         el.innerHTML = '<div style="' + card + '"><div style="font-weight:900; color:var(--primary); margin-bottom:6px;">📞 Datos de contacto</div>' +
           (c ? '<div style="font-size:0.88rem; line-height:1.7;">Teléfono: <b>' + escHtml(contactFmtTel(c.tel) || '—') + '</b>' + (wa ? ' · <a href="https://wa.me/' + escHtml(wa) + '" target="_blank" rel="noopener" style="color:#25d366; font-weight:800;">WhatsApp ↗</a>' : '') +
-            '<br>Cumpleaños: <b>' + escHtml(contactFmtBirthday(c.cum) || '—') + '</b></div>' + (c.t ? '<div style="font-size:0.7rem; color:var(--muted); margin-top:4px;">Actualizado por el cliente el ' + escHtml(String(c.t).slice(0, 10)) + '</div>' : '')
+            '<br>Cumpleaños: <b>' + escHtml(contactFmtBirthday(c.cum) || '—') + '</b>' +
+            (c.les ? '<br>🩹 Lesiones (nota del cliente): <b>' + escHtml(c.les) + '</b>' : '') + (c.enf ? '<br>🩺 Enfermedades / cirugías (nota del cliente): <b>' + escHtml(c.enf) + '</b>' : '') + '</div>' + (c.t ? '<div style="font-size:0.7rem; color:var(--muted); margin-top:4px;">Actualizado por el cliente el ' + escHtml(String(c.t).slice(0, 10)) + '</div>' : '')
             : '<div style="font-size:0.82rem; color:var(--muted);">El cliente todavía no ha anotado su teléfono ni su cumpleaños.</div>') + '</div>';
         return;
       }
@@ -13434,22 +13446,27 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:0.74rem; color:var(--muted); margin-bottom:8px;">Así tu coach puede escribirte y felicitarte en tu cumpleaños 🎂. Solo lo ve el equipo de Benessere.</div>' +
         '<label class="med-lbl">Teléfono (WhatsApp)</label><input type="tel" id="ct_tel" class="med-in" inputmode="tel" placeholder="8888 8888" value="' + escHtml(c ? c.tel || '' : '') + '">' +
         '<label class="med-lbl">Cumpleaños</label><input type="date" id="ct_cum" class="med-in" value="' + escHtml(c ? c.cum || '' : '') + '">' +
+        '<div style="font-weight:800; margin-top:12px;">🩺 Mis notas de salud</div><div style="font-size:0.72rem; color:var(--muted); margin-bottom:4px;">Agrega aquí lo que tu coach deba saber. Los datos básicos de tu ficha (edad, estatura, objetivo y lo que anotó tu coach) los registra tu coach.</div>' +
+        '<label class="med-lbl">Lesiones (agrega una nota)</label><textarea id="ct_les" class="med-in" rows="2" maxlength="300" placeholder="Ej: me duele la rodilla izquierda al bajar escaleras">' + escHtml(c ? c.les || '' : '') + '</textarea>' +
+        '<label class="med-lbl">Enfermedades / cirugías (agrega una nota)</label><textarea id="ct_enf" class="med-in" rows="2" maxlength="300" placeholder="Ej: hipertensión controlada; cirugía de rodilla en 2024">' + escHtml(c ? c.enf || '' : '') + '</textarea>' +
         '<div id="ct_msg" style="font-size:0.78rem; min-height:16px; margin:6px 0; color:var(--muted);"></div>' +
         '<button type="button" class="btn-action-primary" onclick="contactSave()">Guardar mis datos</button></div>';
     }
     function contactSave() {
       if (isCoachView()) return;
       var tEl = document.getElementById('ct_tel'), cEl = document.getElementById('ct_cum'), msg = document.getElementById('ct_msg');
+      var lesEl = document.getElementById('ct_les'), enfEl = document.getElementById('ct_enf');
+      var les = lesEl ? String(lesEl.value || '').trim().slice(0, 300) : '', enf = enfEl ? String(enfEl.value || '').trim().slice(0, 300) : '';
       var tel = String(tEl.value || '').trim(), cum = String(cEl.value || '').trim(), digits = tel.replace(/\D/g, '');
       var bad = function(t) { if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = t; } };
       if (tel && (digits.length < 8 || digits.length > 15)) return bad('Revisa el teléfono: debe tener 8 números (o el código de país + número).');
       if (cum && (!isIsoDate(cum) || cum > todayIso() || cum < '1920-01-01')) return bad('Revisa la fecha de tu cumpleaños.');
-      if (!tel && !cum) return bad('Escribe al menos tu teléfono o tu cumpleaños.');
-      var old = contactLoad(), changed = !old || old.tel !== tel || old.cum !== cum;
-      try { localStorage.setItem(tk(CONTACT_KEY), JSON.stringify({ tel: tel, cum: cum, t: new Date().toISOString() })); } catch (e) {}
+      if (!tel && !cum && !les && !enf) return bad('Escribe al menos tu teléfono, tu cumpleaños o una nota.');
+      var old = contactLoad(), changed = !old || old.tel !== tel || old.cum !== cum || (old.les || '') !== les || (old.enf || '') !== enf;
+      try { localStorage.setItem(tk(CONTACT_KEY), JSON.stringify({ tel: tel, cum: cum, les: les, enf: enf, t: new Date().toISOString() })); } catch (e) {}
       if (changed) {
         try { measurePush(); } catch (e) {}
-        try { remQueue('datos', 'Teléfono: ' + (contactFmtTel(tel) || '—') + ' · Cumpleaños: ' + (contactFmtBirthday(cum) || '—')); } catch (e) {}
+        try { remQueue('datos', 'Teléfono: ' + (contactFmtTel(tel) || '—') + ' · Cumpleaños: ' + (contactFmtBirthday(cum) || '—') + (les ? ' · Lesiones: ' + les : '') + (enf ? ' · Enfermedades/cirugías: ' + enf : '')); } catch (e) {}
       }
       if (msg) { msg.style.color = '#06d6a0'; msg.innerText = '✅ Guardado. ¡Gracias!' + (changed ? ' Tu coach ya recibió el aviso.' : ''); }
     }
@@ -14956,7 +14973,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openRestDays"]', t: 'Días de descanso', x: 'Una sola tarjeta para todos tus descansos: ahí encuentras tu nutrición y recomendaciones de recuperación. Si hoy toca descanso, te lo avisa.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openClasesTab"]', t: 'Clases', x: 'La clase de hoy, las anteriores y los retos, con cronómetro guiado. Al terminar una clase, queda anotada en tu mes con sus calorías estimadas.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openHistorialModal"]', t: 'Historial de Cargas', x: 'Los pesos y marcas de tus entrenos anteriores, para que sepas cuánto levantaste la última vez y puedas superarlo.' },
-      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openDatosTab"]', t: 'Datos y asistencia', x: 'Cómo va tu mes (cuántos entrenamientos llevas frente a los programados), tus medidas con barras para comparar con las anteriores (tu ficha completa, con todas las fechas), tu asistencia por semana y tus datos de contacto. Aquí también puedes ver el resumen del mes pasado.' },
+      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openDatosTab"]', t: 'Datos y asistencia', x: 'Cómo va tu mes (cuántos entrenamientos llevas frente a los programados), tus medidas con barras para comparar con las anteriores (tu ficha completa, con todas las fechas), tu asistencia por semana y tus datos de contacto y notas de salud (lesiones, enfermedades o cirugías) para que tu coach las tenga. Aquí también puedes ver el resumen del mes pasado.' },
       { sel: '#ath_upd_btn', t: 'Actualizar', x: 'Si tu coach cambió algo y no lo ves, toca aquí para traer lo más nuevo.' },
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
@@ -15178,7 +15195,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ================= FICHAS MAESTRAS (pestaña "Fichas" de la hoja de Google) =================
     // Una línea por cliente con todas sus mediciones codificadas. El constructor la lee y la escribe casi en tiempo real,
     // "Datos y asistencia" del cliente la lee, y hay un visor con enlace privado (también para quien solo lleva seguimiento).
-    var FICHA = { list: null, listAt: 0, loading: false, c: '', t: '', rev: '', name: '', notes: {}, texts: {}, deleted: {}, dirty: false, timer: null, saving: false, again: false, q: '' };
+    var FICHA = { list: null, listAt: 0, loading: false, c: '', t: '', rev: '', name: '', notes: {}, texts: {}, authors: {}, dc: [], extra: {}, deleted: {}, dirty: false, timer: null, saving: false, again: false, q: '' };
     function fichaSet(msg, kind) {
       var el = document.getElementById('ficha_status');
       if (!el) return;
@@ -15191,7 +15208,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try {
         var o = JSON.parse(fflate.strFromU8(fflate.inflateSync(b64urlToBytes(String(str || '')))));
         if (!o || typeof o !== 'object') return null;
-        var log = [], notes = {}, texts = {};
+        var log = [], notes = {}, texts = {}, authors = {};
         (Array.isArray(o.m) ? o.m : []).forEach(function(e) {
           if (!e || !isIsoDate(e.d)) return;
           var v = {};
@@ -15202,20 +15219,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           }
           if (Object.keys(v).length) log.push({ d: e.d, v: v });
           if (e.n) notes[e.d] = String(e.n);
+          if (e.o) authors[e.d] = String(e.o).slice(0, 40);
           if (e.t && typeof e.t === 'object') texts[e.d] = e.t;
         });
         log.sort(byDate);
-        return { p: (o.p && typeof o.p === 'object') ? o.p : {}, log: log, notes: notes, texts: texts };
+        return { p: (o.p && typeof o.p === 'object') ? o.p : {}, log: log, notes: notes, texts: texts, authors: authors, dc: Array.isArray(o.dc) ? o.dc.filter(isIsoDate) : [] };
       } catch (e) { return null; }
     }
-    function fichaBuild(perfil, log, notes, texts) {
+    function fichaBuild(perfil, log, notes, texts, authors, dc) {
       var m = normalizeMeasureLog(log).map(function(e) {
         var o = { d: e.d, v: e.v };
         if (notes && notes[e.d]) o.n = notes[e.d];
         if (texts && texts[e.d] && Object.keys(texts[e.d]).length) o.t = texts[e.d];
+        if (authors && authors[e.d]) o.o = authors[e.d];
         return o;
       });
-      return { v: 1, p: perfil, m: m };
+      var out = { v: 1, p: perfil, m: m };
+      if (dc && dc.length) out.dc = dc;
+      return out;
     }
     function fichaHeightCm(s) { var n = parseNum(s); if (n === null) return ''; return n < 3 ? Math.round(n * 100) : n; }
     function fichaSummary(perfil, log) {
@@ -15231,8 +15252,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function fichaPerfilFromForm() {
       var g = function(id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
-      return { nombre: FICHA.name || g('clientName'), edad: g('m_edad'), estatura: g('m_estatura'), objetivo: g('m_objetivo'), frecuencia: g('f_frecuencia'), lesiones: g('f_lesiones'), enfermedades: g('f_enfermedades'), experiencia: g('f_experiencia'), notas: g('f_notas'), tel: g('f_tel') };
+      var pf = { nombre: FICHA.name || g('clientName'), edad: g('m_edad'), estatura: g('m_estatura'), objetivo: g('m_objetivo'), frecuencia: g('f_frecuencia'), lesiones: g('f_lesiones'), enfermedades: g('f_enfermedades'), experiencia: g('f_experiencia'), notas: g('f_notas'), tel: g('f_tel') };
+      Object.keys(FICHA.extra || {}).forEach(function(k) { if (!(k in pf)) pf[k] = FICHA.extra[k]; });   // cumpleaños y notas del cliente viajan intactos
+      return pf;
     }
+    var FICHA_FORM_KEYS = ['nombre', 'edad', 'estatura', 'objetivo', 'frecuencia', 'lesiones', 'enfermedades', 'experiencia', 'notas', 'tel'];
+    function fichaExtraOf(p) { var x = {}; Object.keys(p || {}).forEach(function(k) { if (FICHA_FORM_KEYS.indexOf(k) < 0 && p[k]) x[k] = p[k]; }); return x; }
+    function fichaWho() { var n = (COACH && COACH.name) || ((document.getElementById('coachName') || {}).value || '').trim(); return String(n || 'Coach').slice(0, 40); }
     function fichaFillForm(p) {
       function setv(id, v) { var e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); }
       setv('m_objetivo', p.objetivo); setv('m_estatura', p.estatura); setv('m_edad', p.edad);
@@ -15240,7 +15266,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function fichaUnlink() {
       clearTimeout(FICHA.timer);
-      FICHA.c = ''; FICHA.t = ''; FICHA.rev = ''; FICHA.name = ''; FICHA.notes = {}; FICHA.texts = {}; FICHA.deleted = {}; FICHA.dirty = false; FICHA.saving = false; FICHA.again = false;
+      FICHA.c = ''; FICHA.t = ''; FICHA.rev = ''; FICHA.name = ''; FICHA.notes = {}; FICHA.texts = {}; FICHA.authors = {}; FICHA.dc = []; FICHA.extra = {}; FICHA.deleted = {}; FICHA.dirty = false; FICHA.saving = false; FICHA.again = false;
       fichaRenderPanel();
     }
 
@@ -15283,6 +15309,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           ? '<div class="fch-linked">🗂️ <b>' + escHtml(FICHA.name) + '</b> · ficha ' + escHtml(FICHA.c) + ' <button type="button" class="med-x" title="Desvincular (no borra nada)" onclick="fichaUnlink()">✖</button></div>'
           : '<div class="fch-muted">Sin ficha vinculada: busca al cliente o crea su ficha. Mientras esté vinculada, cada medición que guardes aquí se escribe sola en la hoja.</div>';
       }
+      if (link && FICHA.c) {
+        var ex = FICHA.extra || {}, cn = '';
+        if (ex.lesiones_c) cn += '<div class="fch-muted">🩹 Nota del cliente · lesiones: ' + escHtml(ex.lesiones_c) + '</div>';
+        if (ex.enfermedades_c) cn += '<div class="fch-muted">🩺 Nota del cliente · enfermedades/cirugías: ' + escHtml(ex.enfermedades_c) + '</div>';
+        if (ex.cum) cn += '<div class="fch-muted">🎂 Cumpleaños: ' + escHtml(contactFmtBirthday(ex.cum) || ex.cum) + '</div>';
+        link.innerHTML += cn;
+      }
       if (act) act.style.display = FICHA.c ? 'flex' : 'none';
       if (!box) return;
       var list = FICHA.list || [], q = normName(FICHA.q);
@@ -15313,7 +15346,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var d = (j && j.ok) ? fichaDecode(j.p) : null;
         if (!d) { fichaSet('⚠️ ' + (j && j.ok ? 'La ficha no se pudo leer.' : fichaErrText(j)), 'err'); return; }
         clearTimeout(FICHA.timer);
-        FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.name = j.n || d.p.nombre || ''; FICHA.notes = d.notes; FICHA.texts = d.texts; FICHA.deleted = {}; FICHA.dirty = false;
+        FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.name = j.n || d.p.nombre || ''; FICHA.notes = d.notes; FICHA.texts = d.texts; FICHA.authors = d.authors || {}; FICHA.dc = d.dc || []; FICHA.extra = fichaExtraOf(d.p); FICHA.deleted = {}; FICHA.dirty = false;
         var localOnly = measureLog.some(function(e) { return !d.log.some(function(x) { return x.d === e.d; }); });
         measureLog = fichaUnion(d.log, normalizeMeasureLog(measureLog));
         fichaFillForm(d.p);
@@ -15335,7 +15368,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       FICHA.name = nm;
       var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog);
       fichaSet('Creando la ficha…');
-      postJson({ a: 'ficha_guardar', pin: pin, n: nm, p: fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts)), r: fichaSummary(perfil, log) }, 30000).then(function(j) {
+      postJson({ a: 'ficha_guardar', pin: pin, n: nm, p: fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts, FICHA.authors, FICHA.dc)), r: fichaSummary(perfil, log) }, 30000).then(function(j) {
         if (j && j.ok) { FICHA.c = j.c; FICHA.t = j.t || ''; FICHA.rev = j.rev || ''; FICHA.dirty = false; FICHA.listAt = 0; fichaRenderPanel(); fichaSet('✅ Ficha ' + j.c + ' creada para ' + nm + '.', 'ok'); fichaLoadList(true); }
         else { FICHA.name = ''; fichaSet('⚠️ ' + fichaErrText(j), 'err'); }
       }).catch(function() { FICHA.name = ''; fichaSet('⚠️ Sin conexión con la hoja.', 'err'); });
@@ -15358,7 +15391,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (cn && FICHA.name && normName(cn) !== normName(FICHA.name)) { fichaSet('⚠️ El nombre del cliente cambió: desvincula la ficha de ' + FICHA.name + ' para no mezclar datos.', 'err'); return Promise.resolve(false); }
       FICHA.saving = true;
       var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog);
-      var payload = fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts));
+      var payload = fichaEncode(fichaBuild(perfil, log, FICHA.notes, FICHA.texts, FICHA.authors, FICHA.dc));
       if (payload.length > 44000) { FICHA.saving = false; fichaSet('⚠️ La ficha es demasiado grande para una celda.', 'err'); return Promise.resolve(false); }
       return postJson({ a: 'ficha_guardar', pin: pin, c: FICHA.c, n: FICHA.name, p: payload, rev: FICHA.rev, r: fichaSummary(perfil, log) }, 30000).then(function(j) {
         FICHA.saving = false;
@@ -15376,7 +15409,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             var mine = {}; log.forEach(function(e) { mine[e.d] = 1; });
             var add = d2.log.filter(function(e) { return !mine[e.d] && !FICHA.deleted[e.d]; });
             measureLog = fichaUnion(log, add);
-            add.forEach(function(e) { if (d2.notes[e.d] && !FICHA.notes[e.d]) FICHA.notes[e.d] = d2.notes[e.d]; if (d2.texts[e.d] && !FICHA.texts[e.d]) FICHA.texts[e.d] = d2.texts[e.d]; });
+            add.forEach(function(e) { if (d2.notes[e.d] && !FICHA.notes[e.d]) FICHA.notes[e.d] = d2.notes[e.d]; if (d2.texts[e.d] && !FICHA.texts[e.d]) FICHA.texts[e.d] = d2.texts[e.d]; if (d2.authors[e.d] && !FICHA.authors[e.d]) FICHA.authors[e.d] = d2.authors[e.d]; });
+            FICHA.extra = fichaExtraOf(d2.p); (d2.dc || []).forEach(function(x) { if (FICHA.dc.indexOf(x) < 0) FICHA.dc.push(x); });
             FICHA.rev = j.rev; renderMeasureLog(); FICHA.dirty = true; return fichaSaveNow();
           }
         }
@@ -15443,17 +15477,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
     }
     // Medición agregada desde "Datos y asistencia" (modo coach): también se escribe en la hoja de fichas
-    function fichaSyncFromRoutine(name, log) {
+    function fichaSyncFromRoutine(name, log, delDate, savedDate) {
       var pin = fichaPin(); if (!pin || !String(name || '').trim()) return;
       var ready = FICHA.list ? Promise.resolve() : fichaLoadList(true);
       Promise.resolve(ready).then(function() {
         var f = fichaFind(name);
         var norm = normalizeMeasureLog(log);
-        if (!f) return postJson({ a: 'ficha_guardar', pin: pin, n: String(name).trim(), p: fichaEncode(fichaBuild({ nombre: String(name).trim() }, norm, {}, {})), r: fichaSummary({}, norm) }, 30000).then(function(j) { if (j && j.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' creada en la hoja'); } });
+        if (!f) return postJson({ a: 'ficha_guardar', pin: pin, n: String(name).trim(), p: fichaEncode(fichaBuild({ nombre: String(name).trim() }, norm, {}, {}, savedDate ? (function() { var a = {}; a[savedDate] = fichaWho(); return a; })() : {}, [])), r: fichaSummary({}, norm) }, 30000).then(function(j) { if (j && j.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' creada en la hoja'); } });
         return postJson({ a: 'ficha', pin: pin, c: f.c }, 30000).then(function(j) {
           var d = (j && j.ok) ? fichaDecode(j.p) : null; if (!d) return;
-          var merged = fichaUnion(norm, d.log);
-          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(d.p, merged, d.notes, d.texts)), rev: j.rev, r: fichaSummary(d.p, merged) }, 30000).then(function(j2) { if (j2 && j2.ok) FICHA.listAt = 0; });
+          var merged = fichaUnion(norm, d.log), au = d.authors || {}, dcs = (d.dc || []).slice();
+          if (delDate) { merged = merged.filter(function(e) { return e.d !== delDate; }); delete au[delDate]; if (dcs.indexOf(delDate) < 0) dcs.push(delDate); }
+          if (savedDate) { au[savedDate] = fichaWho(); dcs = dcs.filter(function(x) { return x !== savedDate; }); }
+          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(d.p, merged, d.notes, d.texts, au, dcs)), rev: j.rev, r: fichaSummary(d.p, merged) }, 30000).then(function(j2) { if (j2 && j2.ok) FICHA.listAt = 0; });
         });
       }).catch(function() {});
     }
@@ -15461,8 +15497,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- visor de la ficha (enlace privado, PDF) -----
     var FV = { data: null, key: '', overlay: false };
     function fichaViewHtml(d) {
-      var p = d.p || {}, entries = d.log.map(function(e) { return { d: e.d, v: e.v, src: 'c' }; });
-      var rows = [['Objetivo', p.objetivo], ['Estatura', p.estatura ? (parseNum(p.estatura) < 3 ? Math.round(parseNum(p.estatura) * 100) + ' cm' : p.estatura + (/cm/i.test(p.estatura) ? '' : ' cm')) : ''], ['Edad', p.edad], ['Frecuencia', p.frecuencia], ['Lesiones', p.lesiones], ['Enfermedades', p.enfermedades], ['Experiencia', p.experiencia], ['Notas', p.notas]].filter(function(r) { return r[1] && String(r[1]).trim() && String(r[1]).trim() !== '-'; });
+      var p = d.p || {}, entries = d.log.map(function(e) { return { d: e.d, v: e.v, src: 'c', by: (d.authors || {})[e.d] || '' }; });
+      var rows = [['Objetivo', p.objetivo], ['Estatura', p.estatura ? (parseNum(p.estatura) < 3 ? Math.round(parseNum(p.estatura) * 100) + ' cm' : p.estatura + (/cm/i.test(p.estatura) ? '' : ' cm')) : ''], ['Edad', p.edad], ['Frecuencia', p.frecuencia], ['Lesiones', p.lesiones], ['Enfermedades', p.enfermedades], ['Experiencia', p.experiencia], ['Notas', p.notas], ['Cumpleaños', p.cum ? (contactFmtBirthday(p.cum) || p.cum) : ''], ['Lesiones (nota del cliente)', p.lesiones_c], ['Enfermedades / cirugías (nota del cliente)', p.enfermedades_c]].filter(function(r) { return r[1] && String(r[1]).trim() && String(r[1]).trim() !== '-'; });
       var prof = rows.length ? '<div class="fv-prof">' + rows.map(function(r) { return '<div><span>' + r[0] + '</span><b>' + escHtml(r[1]) + '</b></div>'; }).join('') + '</div>' : '';
       var body;
       if (!entries.length) body = '<div class="med-sum" style="margin:14px 0;">Todavía no hay mediciones registradas.</div>';
@@ -15507,7 +15543,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Desde el constructor: ver la ficha tal como queda (y guardarla en PDF)
     function fichaViewCoach() {
       var perfil = fichaPerfilFromForm();
-      fichaViewShow({ p: perfil, name: perfil.nombre || '', log: normalizeMeasureLog(measureLog), notes: FICHA.notes, texts: FICHA.texts }, true);
+      fichaViewShow({ p: perfil, name: perfil.nombre || '', log: normalizeMeasureLog(measureLog), notes: FICHA.notes, texts: FICHA.texts, authors: FICHA.authors }, true);
     }
     // Enlace privado de la ficha: #f=F001.clave
     function fichaViewerBoot(idc) {
@@ -15567,11 +15603,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (/^\[/.test(line)) { sec = 'X'; return; }   // días, mensaje del coach, etc.: aquí no se usan
         if (!sec) startAtl();   // texto sin encabezados: se lee como [ATLETA]
         var low = line.toLowerCase();
-        if (sec === 'M') { if (/^nota:/.test(low)) cur.n = line.substring(line.indexOf(':') + 1).trim(); else parseImportMeasureLine(line, cur.v); return; }
+        if (sec === 'M') { if (/^nota:/.test(low)) cur.n = line.substring(line.indexOf(':') + 1).trim(); else if (/^registrada por:/.test(low)) cur.by = line.substring(line.indexOf(':') + 1).trim(); else parseImportMeasureLine(line, cur.v); return; }
         if (sec !== 'A') return;
         if (/^nombre:/.test(low)) { out.nombre = line.substring(line.indexOf(':') + 1).trim(); return; }
         if (/^fecha (de la )?medici[oó]n:/.test(low)) { atl.d = line.substring(line.indexOf(':') + 1).trim(); return; }
         if (/^nota (de la )?medici[oó]n:/.test(low)) { atl.n = line.substring(line.indexOf(':') + 1).trim(); return; }
+        if (/^registrada por:/.test(low)) { atl.by = line.substring(line.indexOf(':') + 1).trim(); return; }
         if (/^objetivo:/.test(low)) { out.perfil.objetivo = line.substring(line.indexOf(':') + 1).trim(); return; }
         var pm = low.match(/^(frecuencia|lesiones|enfermedades|experiencia|notas|tel[eé]fono|whatsapp):/);
         if (pm) { out.perfil[perfilIds[pm[1]]] = line.substring(line.indexOf(':') + 1).trim(); return; }
@@ -15596,6 +15633,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else measureLog.push({ d: e.d, v: e.v });
         delete FICHA.deleted[e.d];
         if (e.n) FICHA.notes[e.d] = e.n;
+        FICHA.authors[e.d] = e.by || fichaWho(); FICHA.dc = FICHA.dc.filter(function(x) { return x !== e.d; });
         n++;
       });
       measureLog.sort(byDate);
@@ -15626,7 +15664,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       Promise.resolve(ready).then(function() {
         var f = fichaFind(name);
         if (!cn || normName(cn) !== normName(name)) {   // el constructor tenía a otro cliente (o ninguno): no se mezcla lo suyo
-          measureLog = []; FICHA.notes = {}; FICHA.deleted = {};
+          measureLog = []; FICHA.notes = {}; FICHA.authors = {}; FICHA.dc = []; FICHA.extra = {}; FICHA.deleted = {};
           ['m_objetivo', 'm_estatura', 'm_edad', 'f_frecuencia', 'f_lesiones', 'f_enfermedades', 'f_experiencia', 'f_notas', 'f_tel', 'm_nota'].forEach(function(id) { var e = document.getElementById(id); if (e) e.value = ''; });
         }
         if (cnEl) cnEl.value = name;
@@ -15645,7 +15683,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (perfil.edad) L.push('Edad: ' + perfil.edad);
       if (perfil.objetivo) L.push('Objetivo: ' + expClean(perfil.objetivo));
       [['Frecuencia', 'frecuencia'], ['Lesiones', 'lesiones'], ['Enfermedades', 'enfermedades'], ['Experiencia', 'experiencia'], ['Notas', 'notas'], ['Telefono', 'tel']].forEach(function(r) { if (perfil[r[1]]) L.push(r[0] + ': ' + expClean(perfil[r[1]])); });
-      log.forEach(function(e) { L.push('', '[MEDICION ' + e.d + ']'); expMeasureLines(L, e.v); if (FICHA.notes[e.d]) L.push('Nota: ' + expClean(FICHA.notes[e.d])); });
+      log.forEach(function(e) { L.push('', '[MEDICION ' + e.d + ']'); expMeasureLines(L, e.v); if (FICHA.authors[e.d]) L.push('Registrada por: ' + expClean(FICHA.authors[e.d])); if (FICHA.notes[e.d]) L.push('Nota: ' + expClean(FICHA.notes[e.d])); });
       var t = L.join('\n') + '\n', ta = document.getElementById('ficha_txt');
       if (ta) ta.value = t;
       copyTextSilently(t); showToastTop('📋 Texto de la ficha copiado (' + log.length + ' fechas)');
@@ -15761,6 +15799,48 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       postJson({ a: 'espera_listo', pin: pin, c: c }, 30000).then(function(j) {
         if (j && j.ok) { ESP.list = (ESP.list || []).filter(function(x) { return x.c !== c; }); espRender(); showToastTop('✅ Plan de ' + name + ' procesado: ya tiene su enlace'); }
       }).catch(function() {});
+    }
+
+
+    // Datos básicos de la ficha, solo lectura para el cliente (los registra el coach)
+    function fichaCliCards() {
+      var d = null; try { d = fichaCliData(); } catch (e) {}
+      if (!d) return '';
+      var p = d.p || {};
+      function card(t, v) { v = String(v == null ? '' : v).trim(); return (v && v !== '-') ? '<div class="metric-card"><div class="metric-title">' + t + '</div><div class="metric-val" style="font-size:0.8rem; font-weight:600;">' + escHtml(v) + '</div></div>' : ''; }
+      return card('Edad', p.edad) + card('Frecuencia', p.frecuencia) + card('Experiencia', p.experiencia) + card('Lesiones (registro del coach)', p.lesiones) + card('Enfermedades / cirugías (coach)', p.enfermedades);
+    }
+    // El coach abre al cliente: lo que el cliente anotó (medidas, contacto, notas de salud) pasa a su ficha, marcado como suyo
+    var FCC = { done: {} };
+    function fichaFromClient(st) {
+      var pin = fichaPin(); if (!pin || !st || !athleteRoutineId || FCC.done[athleteRoutineId]) return;
+      var own = remoteOwnMeasures(), ct = remoteContact();
+      if (!own.length && !ct) return;   // el historial del cliente baja en segundo plano: se reintenta cuando llegue
+      FCC.done[athleteRoutineId] = 1;
+      var name = st.clientName, ready = FICHA.list ? Promise.resolve() : fichaLoadList(true);
+      Promise.resolve(ready).then(function() {
+        var f = fichaFind(name); if (!f) return;
+        return postJson({ a: 'ficha', pin: pin, c: f.c }, 30000).then(function(j) {
+          var d = (j && j.ok) ? fichaDecode(j.p) : null; if (!d) return;
+          var log = d.log.slice(), au = JSON.parse(JSON.stringify(d.authors || {})), changed = false;
+          own.forEach(function(e) {
+            if ((d.dc || []).indexOf(e.d) >= 0) return;   // el coach la borró: no se vuelve a traer
+            var i = indexOfDate(log, e.d);
+            if (i < 0) { log.push({ d: e.d, v: e.v }); au[e.d] = 'Cliente'; changed = true; }
+            else if (au[e.d] === 'Cliente' && !sameValues(log[i].v, e.v)) { var v2 = JSON.parse(JSON.stringify(log[i].v)); Object.keys(e.v).forEach(function(k) { v2[k] = e.v[k]; }); log[i] = { d: e.d, v: v2 }; changed = true; }
+          });
+          log.sort(byDate);
+          var pf = JSON.parse(JSON.stringify(d.p)), stamp = ct && ct.t ? String(ct.t).slice(0, 19) : '';
+          if (ct && stamp && pf.cliente_t !== stamp) {   // el cliente actualizó sus datos desde la última vez
+            [['tel', 'tel'], ['cum', 'cum'], ['les', 'lesiones_c'], ['enf', 'enfermedades_c']].forEach(function(m) { if (ct[m[0]]) pf[m[1]] = ct[m[0]]; });
+            pf.cliente_t = stamp; changed = true;
+          }
+          if (!changed) return;
+          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(pf, log, d.notes, d.texts, au, d.dc)), rev: j.rev, r: fichaSummary(pf, log) }, 30000).then(function(j2) {
+            if (j2 && j2.ok) { FICHA.listAt = 0; showToastTop('🗂️ Ficha de ' + name + ' actualizada con lo que anotó el cliente'); }
+          });
+        });
+      }).catch(function() { FCC.done[athleteRoutineId] = 0; });
     }
 
     function fichaClearForm() {
