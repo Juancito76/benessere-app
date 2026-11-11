@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -15276,13 +15276,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!a) { try { var fc = fichaCliData(); a = fc && fc.authors ? fc.authors[d] : ''; } catch (e) {} }
       return a || '';
     }
+    function fichaExists(d) {
+      if (indexOfDate(measureLog, d) >= 0) return true;
+      try { var fc = fichaCliData(); if (fc && fc.log.some(function(e) { return e.d === d; })) return true; } catch (e) {}
+      try { var st = athleteActiveState; if (st && normalizeMeasureLog(st.measureLog).some(function(e) { return e.d === d; })) return true; } catch (e) {}
+      return false;
+    }
     function fichaCanEdit(d) {
-      var a = fichaAuthorOf(d);
-      if (!a || a === 'Cliente') return true;
-      if (COACH && COACH.todos) return true;
+      if (!fichaExists(d)) return true;                 // fecha nueva: cualquier coach puede agregarla
+      if (COACH && COACH.todos) return true;            // el administrador puede con todas
+      var a = fichaAuthorOf(d), hayFicha = false;
+      try { hayFicha = !!(FICHA.c || fichaCliData()); } catch (e) { hayFicha = !!FICHA.c; }
+      if (!a) return !hayFicha;                         // sin autor y ya en una ficha: solo el administrador (sin ficha de por medio es un cliente nuevo en el constructor)
+      if (a === 'Cliente') return true;
       return normName(a) === normName(fichaWho());
     }
-    function fichaLockMsg(d) { return 'La medición del ' + fmtDate(d) + ' la registró ' + fichaAuthorOf(d) + '. Solo esa persona puede editarla o borrarla.\n\nPuedes agregar la tuya con otra fecha.'; }
+    function fichaLockMsg(d) {
+      var a = fichaAuthorOf(d);
+      return 'La medición del ' + fmtDate(d) + (a ? ' la registró ' + a + '. Solo esa persona (o el administrador) puede editarla o borrarla.' : ' ya estaba en la ficha sin autor registrado. Solo el administrador puede editarla o borrarla.') + '\n\nPuedes agregar la tuya con otra fecha.';
+    }
     function fichaFillForm(p) {
       function setv(id, v) { var e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); }
       setv('m_objetivo', p.objetivo); setv('m_estatura', p.estatura); setv('m_edad', p.edad);
