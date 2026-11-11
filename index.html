@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1038,6 +1038,7 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
         <div class="section-title">🗂️ Ficha técnica del cliente</div>
         <button type="button" class="btn btn-secondary" id="fichas_install_btn" style="display:none; width:100%; margin-bottom:8px;" onclick="installApp()">📲 Instalar en esta tablet</button>
         <div id="fichas_login" style="display:none; margin-bottom:10px;"></div>
+        <div id="fichas_full" style="display:none; margin-bottom:10px;"><button type="button" class="btn btn-secondary" style="width:100%;" onclick="fichasOpenFull()">🏠 Abrir constructor completo</button></div>
         <input type="text" id="ficha_q" placeholder="🔎 Buscar cliente por nombre…" oninput="fichaSearch()" autocomplete="off" style="width:100%;">
         <div id="ficha_results"></div>
         <div id="ficha_suggest" style="margin-top:8px;"></div>
@@ -16120,11 +16121,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           try { localStorage.setItem(COACH_PIN_KEY, pin); } catch (e) {}
           var el = document.getElementById('fichas_login'); if (el) { el.style.display = 'none'; el.innerHTML = ''; }
           try { fichaTabOpen(); } catch (e) {}
+          fichasFullSync();
         } else {
           if (j && j.error === 'pin') { try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
           fichasLoginPaint(clientsErrorText(j && j.error));
         }
       }).catch(function(e) { fichasLoginPaint(clientsErrorText(e && e.message)); });
+    }
+    // Solo para el administrador: desde el modo «solo fichas» pasa al constructor completo (con todas sus pestañas)
+    function fichasFullSync() {
+      var el = document.getElementById('fichas_full'); if (!el) return;
+      el.style.display = (document.body.classList.contains('fichas-only') && COACH && COACH.todos) ? '' : 'none';
+    }
+    function fichasOpenFull() {
+      if (!(COACH && COACH.todos)) return;
+      try { location.hash = '#coach'; } catch (e) {}
+      location.reload();
     }
     function fichasOnlyBoot() {
       document.body.classList.add('fichas-only');
