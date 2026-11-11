@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-10-u';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-10-v';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -824,7 +824,7 @@
     <div class="gen-tabs">
       <button type="button" class="gen-tab-btn active" onclick="switchGenTab('tab_builder', this)">🏋️ Planificador de Rutina</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_load_html', this)">🔗 Cargar desde Link</button>
-      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto</button>
+      <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_import', this)">📥 Importación Rápida de Texto<span id="esp_tabcnt"></span></button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_class', this); clsRender(); try { clsySync(false); } catch (e) {}">🎓 Clases y Retos</button>
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
@@ -950,6 +950,21 @@
 
     <!-- TAB 3: IMPORTADOR DE TEXTO -->
     <div id="tab_import" class="gen-view">
+      <section class="section-box" id="esp_panel">
+        <div class="section-title">📥 Planes en espera de procesar <span class="badge" id="esp_count">0</span></div>
+        <p class="fch-muted" style="margin:0 0 8px;">Planes ya armados que esperan en la hoja. Toca «Cargar» para abrir uno en el constructor (se vincula solo con la ficha del cliente); al crear su enlace, el plan sale de esta lista.</p>
+        <div id="esp_list"></div>
+        <div id="esp_status" style="font-size:0.78rem; margin-top:6px; min-height:1em;"></div>
+        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary" onclick="espLoad(true)">🔄 Actualizar lista</button>
+        </div>
+        <details style="margin-top:10px;">
+          <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; color:var(--primary);">➕ Subir planes por lote (texto plano)</summary>
+          <p class="fch-muted" style="margin:6px 0;">Pega uno o varios planes seguidos. Cada plan empieza con <b>[ATLETA]</b> y su línea <b>Nombre:</b>. Si ya hay un plan en espera de ese cliente, se reemplaza por el nuevo.</p>
+          <textarea id="esp_txt" rows="8" style="width:100%; box-sizing:border-box; font-family:monospace; font-size:0.8rem;" placeholder="[ATLETA]&#10;Nombre: Ana Pérez&#10;...&#10;[DIA 1: ...]&#10;...&#10;&#10;[ATLETA]&#10;Nombre: Luis Mora&#10;..."></textarea>
+          <button type="button" class="btn btn-accent" style="margin-top:6px;" onclick="espUploadBatch()">📥 Subir a la cola</button>
+        </details>
+      </section>
       <section class="section-box">
         <div class="section-title">⚡ Importador Rápido por Bloque de Texto <span class="badge">Autorelleno</span></div>
         <div class="import-example" id="importTemplateText">[ATLETA]
@@ -2351,6 +2366,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (btn) btn.classList.add('active');
       if (viewId === 'tab_class') { try { clsySync(false); } catch (e) {} }
       if (viewId === 'tab_athlete') { try { fichaTabOpen(); } catch (e) {} }
+      if (viewId === 'tab_import') { try { espLoad(false); } catch (e) {} }
     }
 
     function updateModulesVisibility() {
@@ -4001,6 +4017,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function parseAndLoadImportData() {
       var raw = document.getElementById('importRawText').value.trim();
       if (!raw) return alert('Pega el texto estructurado primero.');
+      try {   // si el texto es de otro cliente, no se mezclan sus mediciones ni su ficha vinculada con las de este
+        var nm0 = (raw.match(/^Nombre:\s*(.+)$/mi) || [])[1], cn0 = (document.getElementById('clientName').value || '').trim();
+        if (nm0 && ((FICHA.c && normName(nm0) !== normName(FICHA.name)) || (cn0 && normName(nm0) !== normName(cn0)))) { fichaClearForm(); measureLog = []; renderMeasureLog(); }
+      } catch (eN) {}
       var lines = raw.split('\n').map(function(l) { return l.trim(); });
       var curSection = null, curDay = null, parsedDays = [];
       var pendingVigencia = null, currentSlotCounter = 0, lastHandledSlot = 1, lastCircuit = null;
@@ -5164,6 +5184,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       lastShare = { text: text, waUrl: waUrl };
 
       var isShort = link.indexOf('#i=') !== -1;
+      if (isShort) { try { espDone(state.clientName); } catch (eE) {} }
       var title, note;
       if (isShort && modo === 'espera') {
         title = '⏳ Rutina nueva en espera';
@@ -14778,6 +14799,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       updateModulesVisibility();
       initMeasureForm();
       startAutosaveTimer();
+      setTimeout(function() { try { espLoad(false); } catch (e) {} }, 2500);
     }
     var autosaveTimer = null;
     function startAutosaveTimer() {
@@ -15627,6 +15649,118 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var t = L.join('\n') + '\n', ta = document.getElementById('ficha_txt');
       if (ta) ta.value = t;
       copyTextSilently(t); showToastTop('📋 Texto de la ficha copiado (' + log.length + ' fechas)');
+    }
+
+
+    // ================= PLANES EN ESPERA (cola en la pestaña "Espera" de la hoja) =================
+    var ESP = { list: null, loading: false, active: null };
+    function espEnc(t) { return bytesToB64url(fflate.deflateSync(fflate.strToU8(String(t)), { level: 9 })); }
+    function espDec(p) { try { return fflate.strFromU8(fflate.inflateSync(b64urlToBytes(String(p || '')))); } catch (e) { return ''; } }
+    function espSet(msg, kind) {
+      var el = document.getElementById('esp_status'); if (!el) return;
+      el.innerText = msg || ''; el.style.color = kind === 'err' ? '#ff9a9a' : (kind === 'ok' ? 'var(--success)' : 'var(--muted)');
+    }
+    function espErr(j) {
+      var e = j && j.error;
+      if (e === 'pin') return 'El PIN ya no vale: vuelve a entrar como coach.';
+      if (e === 'bloqueado') return 'Demasiados intentos de PIN: espera 15 minutos.';
+      if (e === 'permiso') return 'Ese plan es de otro coach.';
+      if (e === 'clave' || e === 'clave-sin-cambiar') return 'Falta publicar la versión 7 del script de Google (la que trae los planes en espera).';
+      return 'No se pudo conectar con la hoja (' + (e || 'sin respuesta') + ').';
+    }
+    function espLoad(force) {
+      var pin = fichaPin();
+      if (!pin) { espRender(); return Promise.resolve(); }
+      if (ESP.loading) return Promise.resolve();
+      if (!force && ESP.list && ESP.listAt && Date.now() - ESP.listAt < 60000) { espRender(); return Promise.resolve(); }
+      ESP.loading = true; espSet('Cargando planes en espera…');
+      return postJson({ a: 'espera_lista', pin: pin }, 30000).then(function(j) {
+        ESP.loading = false;
+        if (j && j.ok) { ESP.list = j.planes || []; ESP.listAt = Date.now(); espSet(ESP.list.length ? '' : 'No hay planes en espera.'); espRender(); }
+        else espSet('⚠️ ' + espErr(j), 'err');
+      }).catch(function() { ESP.loading = false; espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+    }
+    function espRender() {
+      var n = ESP.list ? ESP.list.length : 0;
+      var c = document.getElementById('esp_count'); if (c) c.innerText = n;
+      var t = document.getElementById('esp_tabcnt'); if (t) t.innerText = n ? ' (' + n + ')' : '';
+      var box = document.getElementById('esp_list'); if (!box) return;
+      if (!ESP.list) { box.innerHTML = ''; return; }
+      box.innerHTML = ESP.list.map(function(f) {
+        var act = ESP.active && ESP.active.c === f.c;
+        return '<div class="fch-row" style="cursor:default;' + (act ? ' border-color:var(--success);' : '') + '"><b>' + escHtml(f.n) + (act ? ' · en el constructor' : '') + '</b><span>' + escHtml(f.c) + ' · ' + escHtml(f.co) + ' · ' + (f.d ? fmtDateTable(String(f.d).slice(0, 10)) : '') + '</span>' +
+          '<div style="display:flex; gap:8px; margin-top:6px;"><button type="button" class="btn btn-accent" style="padding:6px 12px;" onclick="espLoadPlan(\'' + escHtml(f.c) + '\')">📂 Cargar en el constructor</button>' +
+          '<button type="button" class="btn btn-secondary" style="padding:6px 12px;" onclick="espDiscard(\'' + escHtml(f.c) + '\')">🗑 Descartar</button></div></div>';
+      }).join('');
+    }
+    // Cada plan empieza con [ATLETA]; el nombre sale de su línea "Nombre:"
+    function espSplit(raw) {
+      var blocks = String(raw || '').replace(/\r/g, '').split(/\n(?=\s*\[ATLETA\])/).map(function(b) { return b.trim(); }).filter(Boolean), out = [], sinNombre = 0;
+      blocks.forEach(function(b) {
+        if (!/^\[ATLETA\]/i.test(b)) { sinNombre++; return; }
+        var m = b.match(/^Nombre:\s*(.+)$/mi);
+        if (!m || !m[1].trim()) { sinNombre++; return; }
+        out.push({ n: m[1].trim(), text: b });
+      });
+      return { items: out, sinNombre: sinNombre };
+    }
+    function espUploadBatch() {
+      var pin = fichaPin(); if (!pin) { espSet('Entra como coach (con tu PIN) para subir planes.', 'err'); return; }
+      var r = espSplit((document.getElementById('esp_txt') || {}).value || '');
+      if (!r.items.length) { espSet('⚠️ No encontré planes: cada uno debe empezar con [ATLETA] y tener su línea «Nombre:».', 'err'); return; }
+      var items = [], big = [];
+      r.items.forEach(function(it) { var p = espEnc(it.text); if (p.length > 44000) big.push(it.n); else items.push({ n: it.n, p: p }); });
+      if (big.length) { espSet('⚠️ Muy largo para una celda: ' + big.join(', ') + '. Sube esos de uno en uno o acórtalos.', 'err'); return; }
+      espSet('Subiendo ' + items.length + ' plan(es)…');
+      postJson({ a: 'espera_guardar', pin: pin, items: items }, 60000).then(function(j) {
+        if (j && j.ok) {
+          var rep = (j.planes || []).filter(function(x) { return x.r; }).length;
+          var okMsg = '✅ ' + items.length + ' plan(es) subido(s)' + (rep ? ' (' + rep + ' reemplazó al anterior del mismo cliente)' : '') + (r.sinNombre ? ' · ' + r.sinNombre + ' bloque(s) sin nombre se ignoraron' : '') + '.';
+          var ta = document.getElementById('esp_txt'); if (ta) ta.value = '';
+          espLoad(true).then(function() { espSet(okMsg, 'ok'); });
+        } else espSet('⚠️ ' + espErr(j), 'err');
+      }).catch(function() { espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+    }
+    function espLoadPlan(c) {
+      var pin = fichaPin(); if (!pin) { espSet('Entra como coach (con tu PIN).', 'err'); return; }
+      espSet('Abriendo el plan…');
+      postJson({ a: 'espera_ver', pin: pin, c: c }, 30000).then(function(j) {
+        var text = (j && j.ok) ? espDec(j.p) : '';
+        if (!text) { espSet('⚠️ ' + (j && j.ok ? 'El plan no se pudo leer.' : espErr(j)), 'err'); return; }
+        var cnEl = document.getElementById('clientName'), cn = cnEl ? cnEl.value.trim() : '';
+        var hasWork = (routineDays || []).some(function(d) { return (d.items || []).some(function(it) { return (it.sub || []).some(function(sb) { return String(sb.name || '').trim(); }); }); });
+        if (cn && hasWork && normName(cn) !== normName(j.n) && !confirm('El constructor tiene la rutina de ' + cn + '. ¿Reemplazarla por el plan de ' + j.n + '?\n\n(Si no la has enviado, antes copia su enlace o exporta el texto.)')) { espSet(''); return; }
+        document.getElementById('importRawText').value = text;
+        ESP.active = { c: j.c, n: j.n };
+        espSet('✅ Plan de ' + j.n + ' cargado en el constructor.', 'ok'); espRender();
+        parseAndLoadImportData();
+        espAutoLink(j.n);
+      }).catch(function() { espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+    }
+    // Al cargar un plan, se vincula con la ficha del cliente (o se crea si aún no existe)
+    function espAutoLink(name) {
+      var pin = fichaPin(); if (!pin || FICHA.c) return;
+      Promise.resolve(FICHA.list ? null : fichaLoadList(true)).then(function() {
+        var f = fichaFind(name);
+        if (f) fichaOpen(f.c); else fichaCreate();
+      });
+    }
+    function espDiscard(c) {
+      var pin = fichaPin(), it = (ESP.list || []).filter(function(x) { return x.c === c; })[0];
+      if (!pin || !confirm('¿Descartar el plan en espera de ' + (it ? it.n : c) + '?')) return;
+      postJson({ a: 'espera_listo', pin: pin, c: c, nota: 'descartado' }, 30000).then(function(j) {
+        if (j && j.ok) { ESP.list = (ESP.list || []).filter(function(x) { return x.c !== c; }); if (ESP.active && ESP.active.c === c) ESP.active = null; espRender(); espSet('🗑 Plan descartado.', 'ok'); }
+        else espSet('⚠️ ' + espErr(j), 'err');
+      }).catch(function() { espSet('⚠️ Sin conexión con la hoja.', 'err'); });
+    }
+    // Al crear el enlace del cliente cuyo plan venía de la cola, el plan queda como procesado
+    function espDone(name) {
+      if (!ESP.active || normName(ESP.active.n) !== normName(name)) return;
+      var c = ESP.active.c, pin = fichaPin(); ESP.active = null;
+      if (!pin) return;
+      postJson({ a: 'espera_listo', pin: pin, c: c }, 30000).then(function(j) {
+        if (j && j.ok) { ESP.list = (ESP.list || []).filter(function(x) { return x.c !== c; }); espRender(); showToastTop('✅ Plan de ' + name + ' procesado: ya tiene su enlace'); }
+      }).catch(function() {});
     }
 
     function fichaClearForm() {
