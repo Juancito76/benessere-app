@@ -1713,7 +1713,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           (prev ? '<div class="med-delta">' + deltaText(cur.n - prev.n, f.unit) + ' <span>vs ' + fmtDateShort(prev.d) + '</span></div>' : '') +
           (cur.d !== lastDate ? '<div class="med-delta"><span>medido el ' + fmtDateShort(cur.d) + '</span></div>' : '') + '</div>';
       }).join('');
-      var h = '<div class="section-title">👁️ Así lo ve el cliente <span class="badge">Para repasar con él</span></div>' +
+      var h = '<div class="section-title">📋 Informe general <span class="badge">Para repasar con el cliente</span></div>' +
         '<div class="metrics-grid"><div class="metric-card"><div class="metric-title">Objetivo</div><div class="metric-val" style="color:var(--accent); font-size:0.85rem;">' + escHtml(gv('m_objetivo') || '-') + '</div></div>' +
         '<div class="metric-card"><div class="metric-title">Estatura</div><div class="metric-val">' + escHtml(gv('m_estatura') || '-') + '</div></div></div>' +
         '<div class="med-h">Última medición · ' + fmtDate(lastDate) + '</div><div class="metrics-grid">' + cards + '</div>' +
