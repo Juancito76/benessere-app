@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-11-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-11-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1034,7 +1034,6 @@ Cena: 1.5 palmas Proteína + 2 puños Vegetales + 1 pulgar Grasa
     <div id="tab_athlete" class="gen-view">
       <section class="section-box" id="ficha_panel">
         <div class="section-title">🗂️ Ficha técnica del cliente</div>
-        <p class="fch-muted" style="margin:0 0 8px;">Cada cliente tiene su ficha técnica. Vincula al cliente y cada medición que guardes aquí se guarda sola en su ficha; el cliente la ve en «Datos y asistencia» o con su enlace de ficha.</p>
         <input type="text" id="ficha_q" placeholder="🔎 Buscar cliente por nombre…" oninput="fichaSearch()" autocomplete="off" style="width:100%;">
         <div id="ficha_results"></div>
         <div id="ficha_suggest" style="margin-top:8px;"></div>
@@ -15332,7 +15331,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (link) {
         link.innerHTML = FICHA.c
           ? '<div class="fch-linked">🗂️ <b>' + escHtml(FICHA.name) + '</b> · ficha ' + escHtml(FICHA.c) + ' <button type="button" class="med-x" title="Desvincular (no borra nada)" onclick="fichaUnlink()">✖</button></div>'
-          : '<div class="fch-muted">Sin ficha vinculada: busca al cliente o crea su ficha. Mientras esté vinculada, cada medición que guardes aquí se guarda sola en su ficha.</div>';
+          : '';
       }
       if (link && FICHA.c) {
         var ex = FICHA.extra || {}, cn = '';
