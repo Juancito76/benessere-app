@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-12-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-12-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6168,7 +6168,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { id: '2026-11-10-clase-donde', title: '📍 Entra a la clase donde la necesites', text: 'En los bloques de la clase con varias rondas o ejercicios, toca el botón azul de arriba («Ronda 2 de 4»), elige en qué ronda y ejercicio estás y toca «Empezar aquí».' },
       { id: '2026-11-10-temporizador', title: '⏱ Temporizador renovado', text: 'El botón azul de arriba dice en qué serie vas, «Última vez» ahora se llama «Marca anterior», los botones −15/+15 del descanso son cuadrados y, si superas una marca, verás una celebración 🏆.' }
     ];
-    var NT_SEEN = {};
+    var NT_SEEN = {}, NT_LIST = [];
     function ntOffKey(id) { return 'benessere_notice_off_' + id; }
     function ntIsOff(id) { try { return localStorage.getItem(ntOffKey(id)) === '1'; } catch (e) { return false; } }
     function noticesMaybe() {
@@ -6177,13 +6177,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var list = APP_NOTICES.filter(function(n) { return !ntIsOff(n.id) && !NT_SEEN[n.id]; });
         if (!list.length) return;
         list.forEach(function(n) { NT_SEEN[n.id] = true; });
+        NT_LIST = list;
         var m = document.createElement('div'); m.id = 'nt_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100050';
-        m.innerHTML = '<div class="modal-inner" style="text-align:center; max-height:86vh; overflow:auto;"><div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📢 Novedades en la app</div>' +
-          list.map(function(n) { return '<div class="nt-item"><b>' + escHtml(n.title) + '</b><p>' + escHtml(n.text) + '</p></div>'; }).join('') +
-          '<label style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; font-size:.85rem; font-weight:800; color:#fff;"><input type="checkbox" id="nt_off_all" data-nt-ids="' + escHtml(list.map(function(n) { return n.id; }).join(',')) + '" style="width:20px; height:20px; accent-color:#06d6a0;"> No mostrar más</label>' +
-          '<button type="button" class="btn-action-primary" style="margin-top:10px;" onclick="noticesClose()">Entendido</button></div>';
+        m.innerHTML = '<div class="modal-inner" style="text-align:center;"><div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📢 Mira los últimos cambios</div>' +
+          '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="noticesExpand()">Ver cambios</button>' +
+          '<button type="button" onclick="noticesClose()" style="display:block; width:100%; margin-top:8px; background:#1c1c1c; color:#fff; border:1px solid #444; border-radius:10px; padding:11px; font-weight:800; cursor:pointer;">Después</button></div>';
         document.body.appendChild(m); m.classList.add('active');
       } catch (e) {}
+    }
+    // «Ver cambios»: la ventanita pasa a mostrar la lista completa, con su «No mostrar más»
+    function noticesExpand() {
+      var m = document.getElementById('nt_modal'), list = NT_LIST; if (!m || !list.length) return;
+      m.innerHTML = '<div class="modal-inner" style="text-align:center; max-height:86vh; overflow:auto;"><div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📢 Novedades en la app</div>' +
+        list.map(function(n) { return '<div class="nt-item"><b>' + escHtml(n.title) + '</b><p>' + escHtml(n.text) + '</p></div>'; }).join('') +
+        '<label style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; font-size:.85rem; font-weight:800; color:#fff;"><input type="checkbox" id="nt_off_all" data-nt-ids="' + escHtml(list.map(function(n) { return n.id; }).join(',')) + '" style="width:20px; height:20px; accent-color:#06d6a0;"> No mostrar más</label>' +
+        '<button type="button" class="btn-action-primary" style="margin-top:10px;" onclick="noticesClose()">Entendido</button></div>';
     }
     function noticesClose() {
       var m = document.getElementById('nt_modal'); if (!m) return;
