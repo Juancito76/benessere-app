@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-12-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-12-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8911,7 +8911,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Los datos se comparten por un script de Google aparte (REC_URL_DEFAULT o la dirección pegada en la pestaña); sin él, todo queda en este dispositivo.
     var REC_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzHwQspUXtKP90BTtcjzOlDpiHQNJJv2O-eq_tsRMRnyzEzVc9bqaVFa8rIE_bBPk1Y/exec';   // dirección del script de Recepción (termina en /exec)
     var REC_KEY = 'bn_rec_v1', REC_PIN_KEY = 'bn_rec_pin', REC_URL_KEY = 'bn_rec_url';
-    var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [], checked: {}, force: 'auto', queue: null, week: '', sentLog: {} };
+    var REC = { only: false, pin: '', rol: '', quien: '', people: {}, contacts: {}, tpls: [], sent: {}, meta: {}, open: '', filt: 'todos', q: '', sel: {}, tsel: {}, msgs: {}, lim: 60, note: '', tplOpen: false, impOpen: false, loaded: false, list: [], checked: {}, force: 'auto', queue: null, week: '', sentLog: {}, nuevos: [] };   // nuevos: personas que entraron a la lista con una carga del Excel y antes no aparecían ({k, n, f: fecha de la carga})
     var REC_COLORS = { falta: '#ff4d4d', poco: '#ffd166', felicitacion: '#06d6a0', cumple: '#ff8fd1', renovar: '#ff9f43', otro: '#9aa4b2' };   // color del punto de «mensaje enviado» según el tipo
     function recLogSent(k, tipo) {   // anota un envío (fecha + tipo) en el historial de ese cliente
       var rec = { f: new Date().toISOString(), tipo: tipo, quien: REC.quien || '' };
@@ -8928,14 +8928,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recUrl() { var u = REC_URL_DEFAULT; if (!u) { try { u = localStorage.getItem(REC_URL_KEY) || ''; } catch (e) {} } return /^https:\/\/script\.google\.com\//.test(u) ? u : ''; }
     function recPost(body) { return fetchJson(recUrl(), { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }, 40000); }
     function recLoadLocal() {
-      try { var o = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (o) { REC.people = o.people || {}; REC.contacts = o.contacts || {}; REC.tpls = o.tpls || []; REC.sent = o.sent || {}; REC.sentLog = o.sentLog || {}; REC.meta = o.meta || {}; } } catch (e) {}
+      try { var o = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (o) { REC.people = o.people || {}; REC.contacts = o.contacts || {}; REC.tpls = o.tpls || []; REC.sent = o.sent || {}; REC.sentLog = o.sentLog || {}; REC.meta = o.meta || {}; REC.nuevos = o.nuevos || []; } } catch (e) {}
       recEnsureTpls();
     }
     function recEnsureTpls() {   // siempre debe haber al menos un mensaje de cada tipo básico
       if (!REC.tpls || !REC.tpls.length) REC.tpls = [];
       REC_DEF_TPLS.forEach(function(d) { if (!REC.tpls.some(function(t) { return t.tipo === d.tipo; })) REC.tpls.push(Object.assign({}, d)); });
     }
-    function recSaveLocal() { try { localStorage.setItem(REC_KEY, JSON.stringify({ people: REC.people, contacts: REC.contacts, tpls: REC.tpls, sent: REC.sent, sentLog: REC.sentLog, meta: REC.meta })); } catch (e) {} }
+    function recSaveLocal() { try { localStorage.setItem(REC_KEY, JSON.stringify({ people: REC.people, contacts: REC.contacts, tpls: REC.tpls, sent: REC.sent, sentLog: REC.sentLog, meta: REC.meta, nuevos: REC.nuevos })); } catch (e) {} }
     function recEl() {
       var m = document.getElementById('rec_view');
       if (!m) { m = document.createElement('div'); m.id = 'rec_view'; m.className = 'view-screen'; m.style.zIndex = '100010'; document.body.appendChild(m); }
@@ -9010,8 +9010,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         try {
           var parsed = attParseFile(new Uint8Array(fr.result), f.name);
           if (!parsed.used) { showToastTop('No encontré asistencias válidas en ese archivo.'); inp.value = ''; return; }
+          var prevPpl = REC.people || {}, hadList = Object.keys(prevPpl).length > 0;
+          var fresh = hadList ? Object.keys(parsed.people).filter(function(k) { return !prevPpl[k]; }) : [];   // la primera carga no cuenta: todos serían «nuevos»
           recMerge(parsed);
           var msg = '✅ Reporte cargado: ' + Object.keys(parsed.people).length + ' personas, del ' + fmtDateShort(parsed.from) + ' al ' + fmtDateShort(parsed.to) + '.';
+          if (fresh.length) {
+            var cutN = new Date(); cutN.setDate(cutN.getDate() - 21); var cutNI = isoOfDate(cutN), nowI = todayIso();
+            REC.nuevos = (REC.nuevos || []).filter(function(x) { return x && x.f >= cutNI && fresh.indexOf(x.k) < 0; });
+            fresh.forEach(function(k) { REC.nuevos.push({ k: k, n: parsed.people[k].n, f: nowI }); });
+            recSaveLocal();
+            var nn = fresh.slice(0, 4).map(function(k) { return parsed.people[k].n; }).join(', ');
+            msg += ' 🆕 ' + fresh.length + (fresh.length === 1 ? ' persona nueva' : ' personas nuevas') + ' en la lista: ' + nn + (fresh.length > 4 ? ' y ' + (fresh.length - 4) + ' más' : '') + '.';
+          } else if (hadList) { msg += ' No entró nadie nuevo a la lista.'; }
           if (recUrl() && REC.pin) {
             var arr = Object.keys(parsed.people).map(function(k) { return { k: k, n: parsed.people[k].n, d: parsed.people[k].d.join(','), x: (parsed.people[k].x || []).join(',') }; });
             recPost({ a: 'rec_asist', pin: REC.pin, personas: arr, meta: { from: parsed.from, to: parsed.to, rep: parsed.rep }, quien: REC.quien || '' }).then(function(j) {
@@ -9277,6 +9287,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recSetFilter(f) { REC.filt = f; REC.lim = 60; REC.open = ''; recRender(); }
     function recMore() { REC.lim += 60; recRender(); }
     function recSearch(v) { REC.q = v; REC.lim = 60; recRender(); var e = document.getElementById('rec_q'); if (e) { e.focus(); try { e.setSelectionRange(v.length, v.length); } catch (x) {} } }
+    function recNuevosSet() { var m = {}; (REC.nuevos || []).forEach(function(x) { if (x && x.k && REC.people[x.k]) m[x.k] = 1; }); return m; }
+    function recPersonShown(k) { return !!REC.people[k]; }
+    function recNuevosVisto() { REC.nuevos = []; if (REC.filt === 'nuevos') REC.filt = 'todos'; recSaveLocal(); recRender(); }
     function recBuildList() {
       var ref = (REC.meta.to && REC.meta.to > (REC.meta.rep || '')) ? REC.meta.to : (REC.meta.rep || REC.meta.to || todayIso()), out = [];
       Object.keys(REC.people).forEach(function(k) {
@@ -9288,19 +9301,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function recRender() {
       var v = recEl(), B = recBuildList(), all = B.all, ref = B.ref, hasData = Object.keys(REC.people).length > 0;
-      var cnt = { out: 0, out1: 0, out2: 0, out3: 0, low: 0, mid: 0, great: 0, gone: 0, cumple: 0, sintel: 0, denied: 0 };
-      all.forEach(function(o) { cnt[o.kd.base]++; if (o.kd.ow) cnt['out' + o.kd.ow]++; if (o.kd.bd <= 7) cnt.cumple++; if (o.kd.denied) cnt.denied++; var c = REC.contacts[o.k]; if (!c || cleanPhone(c.t).length < 10) cnt.sintel++; });
+      var cnt = { out: 0, out1: 0, out2: 0, out3: 0, low: 0, mid: 0, great: 0, gone: 0, cumple: 0, sintel: 0, denied: 0, nuevos: 0 }, nuevosSet = recNuevosSet();
+      all.forEach(function(o) { cnt[o.kd.base]++; if (o.kd.ow) cnt['out' + o.kd.ow]++; if (o.kd.bd <= 7) cnt.cumple++; if (o.kd.denied) cnt.denied++; if (nuevosSet[o.k]) cnt.nuevos++; var c = REC.contacts[o.k]; if (!c || cleanPhone(c.t).length < 10) cnt.sintel++; });
       var f = REC.filt, q = attKey(REC.q), items = all.filter(function(o) {
         if (q && attKey(o.p.n).indexOf(q) < 0) return false;
         if (f === 'todos') return o.kd.base !== 'gone' || q;
         if (f === 'cumple') return o.kd.bd <= 7;
+        if (f === 'nuevos') return !!nuevosSet[o.k];
         if (f === 'denied') return o.kd.denied;
         if (f === 'sintel') { var c = REC.contacts[o.k]; return !c || cleanPhone(c.t).length < 10; }
         if (f === 'out1' || f === 'out2' || f === 'out3') return o.kd.base === 'out' && ('out' + o.kd.ow) === f;
         return o.kd.base === f;
       });
       var rank = { out: 0, low: 1, mid: 2, great: 3, gone: 4 };
-      items.sort(function(a, b) { if (f === 'cumple') return a.kd.bd - b.kd.bd; if (f === 'denied') return (b.kd.lastX > a.kd.lastX) ? 1 : -1; var d = rank[a.kd.base] - rank[b.kd.base]; if (d) return d; if (a.kd.base === 'out') return b.st.ago - a.st.ago; if (a.kd.base === 'low' || a.kd.base === 'mid') return b.st.ago - a.st.ago; return attKey(a.p.n) < attKey(b.p.n) ? -1 : 1; });
+      items.sort(function(a, b) { if (f === 'cumple') return a.kd.bd - b.kd.bd; if (f === 'nuevos') return attKey(a.p.n) < attKey(b.p.n) ? -1 : 1; if (f === 'denied') return (b.kd.lastX > a.kd.lastX) ? 1 : -1; var d = rank[a.kd.base] - rank[b.kd.base]; if (d) return d; if (a.kd.base === 'out') return b.st.ago - a.st.ago; if (a.kd.base === 'low' || a.kd.base === 'mid') return b.st.ago - a.st.ago; return attKey(a.p.n) < attKey(b.p.n) ? -1 : 1; });
       REC.list = items;
       var h = '<div style="max-width:680px; margin:0 auto;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div style="font-size:1.15rem; font-weight:900; color:var(--primary);">🚪 Recepción</div>' +
@@ -9311,6 +9325,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var up = REC.meta.up, ageD = up ? Math.floor((Date.now() - new Date(up).getTime()) / 86400000) : -1;
       h += '<div style="background:' + (!up || ageD >= 3 ? '#3a2a10' : '#102418') + '; border:1px solid ' + (!up || ageD >= 3 ? '#8a6d1a' : '#1f6b3b') + '; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">' +
         (up ? '📅 <b>Última carga del Excel:</b> ' + escHtml(recFmtDT(up)) + '<br><span style="color:var(--muted); font-size:0.74rem;">El reporte cubre del ' + fmtDate(REC.meta.from) + ' al ' + fmtDate(REC.meta.to) + (ageD >= 3 ? ' · <b style="color:#ffd166;">hace ' + ageD + ' días: carga uno nuevo</b>' : '') + '</span>' : '⚠️ Todavía no se ha cargado ningún Excel de accesos.') + '</div>';
+      if (cnt.nuevos) {
+        var nl = (REC.nuevos || []).filter(function(x) { return recPersonShown(x.k); });
+        h += '<div style="background:#0f2a22; border:1px solid #06d6a0; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">' +
+          '<div style="font-weight:900; color:#06d6a0;">🆕 Nuevos en la lista (' + cnt.nuevos + ')</div>' +
+          '<div style="font-size:0.74rem; color:#cfe; margin-top:4px; line-height:1.5;">' + nl.map(function(x) { return escHtml(x.n) + ' <span style="color:var(--muted);">(' + fmtDateShort(x.f) + ')</span>'; }).join(' · ') + '</div>' +
+          '<div style="font-size:0.68rem; color:var(--muted); margin-top:4px;">Son personas que entraron con la última carga del Excel y antes no aparecían en la lista.</div>' +
+          '<div style="display:flex; gap:6px; margin-top:6px;"><button type="button" onclick="recSetFilter(\'nuevos\')" style="flex:1; background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:8px; padding:6px; font-size:0.74rem; font-weight:800; cursor:pointer;">Ver solo los nuevos</button>' +
+          '<button type="button" onclick="recNuevosVisto()" style="flex:1; background:transparent; border:1px solid #888; color:#ddd; border-radius:8px; padding:6px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Visto</button></div></div>';
+      }
       h += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">' +
         '<label style="flex:1; min-width:140px; text-align:center; border:1px dashed var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">📁 Cargar Excel de accesos<input type="file" accept=".xlsx,.csv,.xls,.txt" style="display:none;" onchange="recPickFile(this)"></label>' +
         '<button type="button" onclick="REC.impOpen=!REC.impOpen; recRender();" style="flex:1; min-width:140px; background:transparent; border:1px solid var(--primary); color:var(--primary); border-radius:10px; padding:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">📞 Cargar teléfonos</button>' +
@@ -9341,7 +9364,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } else {
         h += '<div style="font-size:0.66rem; color:var(--muted); margin:-2px 0 8px;">Cada grupo de 7 casillas es una semana (L K M J V S D), de la más antigua a la más reciente, y el número es cuántos días vino. El <b>punto de color</b> sobre un día es un mensaje enviado ese día: <span style="color:#ff4d4d;">●</span> falta · <span style="color:#ffd166;">●</span> poco · <span style="color:#06d6a0;">●</span> felicitación · <span style="color:#ff8fd1;">●</span> cumpleaños · <span style="color:#ff9f43;">●</span> acceso denegado. <span style="color:#06d6a0; font-weight:800;">Verde</span> = vino · <span style="color:#ff8a8a; font-weight:800;">rojo</span> = acceso denegado · gris = no vino · con borde = sin datos.</div>';
         h += '<div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px;">';
-        [['todos', 'Todos', all.length - cnt.gone], ['out', '🔴 Sin venir', cnt.out], ['low', '🟡 Poco (1)', cnt.low], ['mid', '🔵 Normal (2)', cnt.mid], ['great', '🟢 Impecable (3+)', cnt.great], ['cumple', '🎂 Cumple', cnt.cumple], ['denied', '🚫 Denegados', cnt.denied], ['sintel', '📵 Sin teléfono', cnt.sintel], ['gone', '💤 30+ días', cnt.gone]].forEach(function(x) {
+        [['todos', 'Todos', all.length - cnt.gone]].concat(cnt.nuevos ? [['nuevos', '🆕 Nuevos', cnt.nuevos]] : []).concat([['out', '🔴 Sin venir', cnt.out], ['low', '🟡 Poco (1)', cnt.low], ['mid', '🔵 Normal (2)', cnt.mid], ['great', '🟢 Impecable (3+)', cnt.great], ['cumple', '🎂 Cumple', cnt.cumple], ['denied', '🚫 Denegados', cnt.denied], ['sintel', '📵 Sin teléfono', cnt.sintel], ['gone', '💤 30+ días', cnt.gone]]).forEach(function(x) {
           h += '<button type="button" onclick="recSetFilter(\'' + x[0] + '\')" style="border-radius:999px; padding:6px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; border:1px solid ' + (f === x[0] ? 'var(--primary)' : '#444') + '; background:' + (f === x[0] ? 'var(--primary)' : 'transparent') + '; color:' + (f === x[0] ? '#000' : '#ccc') + ';">' + x[1] + ' · ' + x[2] + '</button>';
         });
         h += '</div>';
@@ -9370,7 +9393,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var info = st.ago < 0 ? 'Sin entradas en el reporte' : (st.ago < 0 || st.ago >= 7 ? '<b>' + st.ago + ' días</b> sin venir' : (st.ago === 0 ? 'Vino hoy' : 'Última vez: hace ' + st.ago + ' d')) + ((o.p.d.length || st.month) ? ' · mes: <b>' + st.month + '</b>' : '') + (kd.denied ? ' · <b style="color:#ff8a8a;">🚫 acceso denegado ' + fmtDateShort(kd.lastX) + '</b>' : '');
       var bday = kd.bd === 0 ? ' · <b style="color:#ff8fd1;">🎂 HOY</b>' : (kd.bd <= 7 ? ' · 🎂 en ' + kd.bd + ' d' : '');
       var h = '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid ' + col + '; border-radius:10px; padding:9px 10px; margin-bottom:6px;">' +
-        '<div style="display:flex; gap:8px; align-items:flex-start;"><input type="checkbox" ' + (REC.checked[k] ? 'checked ' : '') + 'onchange="recCheck(' + i + ',this.checked)" style="width:20px; height:20px; margin-top:2px; flex-shrink:0;"><div onclick="recToggle(' + i + ')" style="cursor:pointer; flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
+        '<div style="display:flex; gap:8px; align-items:flex-start;"><input type="checkbox" ' + (REC.checked[k] ? 'checked ' : '') + 'onchange="recCheck(' + i + ',this.checked)" style="width:20px; height:20px; margin-top:2px; flex-shrink:0;"><div onclick="recToggle(' + i + ')" style="cursor:pointer; flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-weight:800; color:#fff; font-size:0.88rem;">' + escHtml(o.p.n) + (recNuevosSet()[k] ? ' <span style="background:#06d6a0; color:#000; border-radius:999px; padding:1px 7px; font-size:0.62rem; font-weight:900; vertical-align:middle;">🆕 NUEVO</span>' : '') + '</div><div style="font-size:0.8rem;">' + (cleanPhone(c.t).length >= 10 ? '📞' : '📵') + (REC.open === k ? ' ▴' : ' ▾') + '</div></div>' +
         '<div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">' + info + bday + sentTxt + '</div>' + recWeekStrip(o.p, o.k) + '</div></div>';
       if (REC.open === k) {
         var tipo = REC.sel[k] || recDefaultType(kd), tps = REC.tpls.filter(function(t) { return t.tipo === tipo; }), tid = REC.tsel[k] || (tps[0] && tps[0].id) || '', tpl = REC.tpls.filter(function(t) { return t.id === tid; })[0] || tps[0];
