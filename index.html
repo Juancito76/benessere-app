@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-12-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-12-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10820,7 +10820,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var lastAll = (r === rounds && s === n - 1); if (lastAll) continue;
           var nr = (s < n - 1) ? r : r + 1, ns = (s < n - 1) ? s + 1 : 0, nrep = repAt(nr, ns);
           var ntxt = isTimeText(nrep) && tp !== 'escalera' ? '' : clsRepsTxt(null, nrep);
-          if (rest > 0) phases.push({ t: 'rest', d: rest, st: 'Descanso', r: r, si: -1, nextName: names[ns], note: ntxt });
+          var gapR = (s === n - 1 && clsSecs(c.entreRondas) > 0) ? clsSecs(c.entreRondas) : rest;   // al cerrar la ronda: "Entre: 30 s" si existe
+          if (gapR > 0) phases.push({ t: 'rest', d: gapR, st: 'Descanso', r: r, si: -1, nextName: names[ns], note: ntxt });
           if (cambio > 0 && s < n - 1) phases.push({ t: 'trans', d: cambio, st: names[ns], r: r, si: ns, kind: 'next', lbl: 'Cambio de estación' });
         }
       }
@@ -14156,6 +14157,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       // "Entre: 20 burpees" -> después de cada ejercicio (menos el último) se mete ese ejercicio fijo, sin descanso de por medio
       clase.items.forEach(function(it) {
         var e = String(it.circ.entre || '').trim(); if (!e) return;
+        if (/^\d+(?:[.,]\d+)?\s*(?:s|seg|segs|segundos?|min|mins|minutos?)?$/i.test(e) || /^\d{1,2}:\d{2}$/.test(e)) {   // "Entre: 30 s" = descanso entre rondas (no un ejercicio)
+          it.circ.entreRondas = /^\d+(?:[.,]\d+)?$/.test(e) ? e + ' s' : e; it.circ.entre = ''; return;
+        }
         var m = e.match(/^(\d+)\s*(?:reps?|repeticiones)?\s*(?:de\s+)?(.+)$/i) || e.match(/^(.+?)\s*(?:x|×)\s*(\d+)$/i);
         if (!m) { warns.push('No entendí "Entre: ' + e + '" (ejemplo: Entre: 20 burpees).'); return; }
         var n = /^\d+$/.test(m[1]) ? m[1] : m[2], nm = (/^\d+$/.test(m[1]) ? m[2] : m[1]).trim();
@@ -14175,7 +14179,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (cc.tipo === 'portiempo') return 'Termínalo lo más rápido que puedas' + (cc.limite ? ' · límite ' + escHtml(cc.limite) : '');
       if (cc.tipo === 'escalera') return 'Escalera: ' + escHtml(cc.repsList) + ' reps';
       if (cc.tipo === 'pausa') return 'Pausa de ' + escHtml(cc.total);
-      return rtxt + (cc.trabajo ? ' · trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · descanso ' + escHtml(cc.descanso) : '') + (cc.cambio ? ' · cambio ' + escHtml(cc.cambio) : '');
+      return rtxt + (cc.trabajo ? ' · trabajo ' + escHtml(cc.trabajo) : '') + (cc.descanso ? ' · descanso ' + escHtml(cc.descanso) : '') + (cc.cambio ? ' · cambio ' + escHtml(cc.cambio) : '') + (cc.entreRondas ? ' · entre rondas ' + escHtml(cc.entreRondas) : '');
     }
     function clsLibVideo(name) {
       var lib = getVideoLibrary(), key = normExName(name);
@@ -14426,7 +14430,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var out = [(c.k === 'r' ? 'Reto: ' : 'Clase: ') + c.t + ' | Fecha: ' + c.f + (c.m ? ' | Musculos: ' + c.m : '')];
       c.items.forEach(function(it) {
         var cc = it.circ;
-        out.push('Circuito: ' + cc.nombre + (cc.rondas ? ' | Rondas: ' + cc.rondas : '') + (cc.trabajo ? ' | Trabajo: ' + cc.trabajo : '') + (cc.descanso ? ' | Descanso: ' + cc.descanso : '') + (cc.cambio ? ' | Cambio: ' + cc.cambio : '') + (cc.entre ? ' | Entre: ' + cc.entre : '') + (cc.tipo ? ' | Tipo: ' + CLS_TIPO_NAME[cc.tipo] : '') + (cc.total ? ' | Tiempo: ' + cc.total : '') + (cc.cada ? ' | Cada: ' + cc.cada : '') + (cc.seq ? ' | Secuencia: si' : '') + (cc.limite ? ' | Limite: ' + cc.limite : '') + (cc.repsList ? ' | Reps: ' + cc.repsList : '') + (cc.notas ? ' | Notas: ' + cc.notas : ''));
+        out.push('Circuito: ' + cc.nombre + (cc.rondas ? ' | Rondas: ' + cc.rondas : '') + (cc.trabajo ? ' | Trabajo: ' + cc.trabajo : '') + (cc.descanso ? ' | Descanso: ' + cc.descanso : '') + (cc.cambio ? ' | Cambio: ' + cc.cambio : '') + (cc.entre ? ' | Entre: ' + cc.entre : (cc.entreRondas ? ' | Entre: ' + cc.entreRondas : '')) + (cc.tipo ? ' | Tipo: ' + CLS_TIPO_NAME[cc.tipo] : '') + (cc.total ? ' | Tiempo: ' + cc.total : '') + (cc.cada ? ' | Cada: ' + cc.cada : '') + (cc.seq ? ' | Secuencia: si' : '') + (cc.limite ? ' | Limite: ' + cc.limite : '') + (cc.repsList ? ' | Reps: ' + cc.repsList : '') + (cc.notas ? ' | Notas: ' + cc.notas : ''));
         it.sub.filter(function(sb) { return !sb.filler; }).forEach(function(sb) { out.push('Estacion: ' + sb.name + (sb.reps ? ' | Reps: ' + sb.reps : '') + (sb.uni ? ' | Unilateral: si' : '') + (sb.notes ? ' | Notas: ' + sb.notes : '') + (sb.video ? ' | Video: ' + sb.video : '')); });
       });
       return out.join('\n');
