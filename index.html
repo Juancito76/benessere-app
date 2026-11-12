@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-12-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-12-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -12941,6 +12941,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var snap = JSON.stringify(st.routineDays);
       var W = EDX.w, vd = parseInt(cur.vigenciaDesde, 10) || 1;
       var fut = EDX.fut.map(function(oi) { return d.items[oi]; });   // se toman antes de mover posiciones
+      // Si se cambió un video por otro, el nuevo sustituye al anterior en toda la rutina y en la biblioteca (el viejo ya no debe volver a salir)
+      var vidSwaps = [];
+      function edxCollectSwaps(pf, item) { (item.sub || []).forEach(function(sub, k) {
+        var o = ytIdStrict(sub.video), nv = edxVal('edx_' + pf + '_' + k + '_video'), n = ytIdStrict(nv);
+        if (o && n && o !== n) vidSwaps.push({ o: o, url: nv });
+      }); }
+      edxCollectSwaps('cur', cur); fut.forEach(function(o, n) { edxCollectSwaps('f' + n, o); });
       if (vd < W) {
         var past = JSON.parse(JSON.stringify(cur)); past.vigenciaHasta = W - 1;
         var now = JSON.parse(JSON.stringify(cur)); now.vigenciaDesde = W;
@@ -12950,6 +12957,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         edxReadInto('cur', cur);
       }
       fut.forEach(function(o, n) { edxReadInto('f' + n, o); });
+      vidSwaps.forEach(function(sw) {   // mismo video viejo en otros días, versiones o alternativas de esta rutina → el nuevo
+        (st.routineDays || []).forEach(function(dd) { (dd.items || []).forEach(function(it2) { (it2.sub || []).forEach(function(sb) {
+          if (ytIdStrict(sb.video) === sw.o) sb.video = sw.url;
+          if (ytIdStrict(sb.altVideo) === sw.o) sb.altVideo = sw.url;
+        }); }); });
+      });
       var btn = document.getElementById('edx_save'), msg = document.getElementById('edx_msg');
       if (btn) { btn.disabled = true; btn.innerText = 'Guardando…'; }
       var payloadText;
@@ -12960,6 +12973,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           document.querySelectorAll('#athlete_client_view .view-screen.active').forEach(function(el) { if (el.id) openIds.push(el.id); });
           var scrollY = window.scrollY || 0;
           closeModal('edx_modal');
+          try {   // biblioteca: todo ejercicio que tenía el video viejo pasa al nuevo
+            var lib = getVideoLibrary(), libCh = false;
+            vidSwaps.forEach(function(sw) { Object.keys(lib).forEach(function(kn) { if (ytIdStrict(lib[kn]) === sw.o) { lib[kn] = sw.url; libCh = true; try { vidLibQueue(kn, sw.url); } catch (e2) {} } }); });
+            if (libCh) setVideoLibrary(lib);
+          } catch (e) {}
           coachCacheSet(athleteRoutineId, payloadText);
           if (EDX_FROM_REP) {   // arregló un video reportado: de vuelta a «Mis clientes» para seguir con los demás avisos
             EDX_FROM_REP = false;
