@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-12-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-12-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -9015,7 +9015,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           recMerge(parsed);
           var msg = '✅ Reporte cargado: ' + Object.keys(parsed.people).length + ' personas, del ' + fmtDateShort(parsed.from) + ' al ' + fmtDateShort(parsed.to) + '.';
           if (fresh.length) {
-            var cutN = new Date(); cutN.setDate(cutN.getDate() - 21); var cutNI = isoOfDate(cutN), nowI = todayIso();
+            var cutN = new Date(); cutN.setMonth(cutN.getMonth() - 3); var cutNI = isoOfDate(cutN), nowI = todayIso();
             REC.nuevos = (REC.nuevos || []).filter(function(x) { return x && x.f >= cutNI && fresh.indexOf(x.k) < 0; });
             fresh.forEach(function(k) { REC.nuevos.push({ k: k, n: parsed.people[k].n, f: nowI }); });
             recSaveLocal();
@@ -9287,7 +9287,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function recSetFilter(f) { REC.filt = f; REC.lim = 60; REC.open = ''; recRender(); }
     function recMore() { REC.lim += 60; recRender(); }
     function recSearch(v) { REC.q = v; REC.lim = 60; recRender(); var e = document.getElementById('rec_q'); if (e) { e.focus(); try { e.setSelectionRange(v.length, v.length); } catch (x) {} } }
-    function recNuevosSet() { var m = {}; (REC.nuevos || []).forEach(function(x) { if (x && x.k && REC.people[x.k]) m[x.k] = 1; }); return m; }
+    function recNuevosSet() { var m = {}, c = new Date(); c.setMonth(c.getMonth() - 3); var ci = isoOfDate(c); (REC.nuevos || []).forEach(function(x) { if (x && x.k && x.f >= ci && REC.people[x.k]) m[x.k] = 1; }); return m; }   // dura 3 meses desde que entró a la lista
     function recPersonShown(k) { return !!REC.people[k]; }
     function recNuevosVisto() { REC.nuevos = []; if (REC.filt === 'nuevos') REC.filt = 'todos'; recSaveLocal(); recRender(); }
     function recBuildList() {
@@ -9326,7 +9326,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       h += '<div style="background:' + (!up || ageD >= 3 ? '#3a2a10' : '#102418') + '; border:1px solid ' + (!up || ageD >= 3 ? '#8a6d1a' : '#1f6b3b') + '; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">' +
         (up ? '📅 <b>Última carga del Excel:</b> ' + escHtml(recFmtDT(up)) + '<br><span style="color:var(--muted); font-size:0.74rem;">El reporte cubre del ' + fmtDate(REC.meta.from) + ' al ' + fmtDate(REC.meta.to) + (ageD >= 3 ? ' · <b style="color:#ffd166;">hace ' + ageD + ' días: carga uno nuevo</b>' : '') + '</span>' : '⚠️ Todavía no se ha cargado ningún Excel de accesos.') + '</div>';
       if (cnt.nuevos) {
-        var nl = (REC.nuevos || []).filter(function(x) { return recPersonShown(x.k); });
+        var nsT = recNuevosSet(), nl = (REC.nuevos || []).filter(function(x) { return nsT[x.k]; });
         h += '<div style="background:#0f2a22; border:1px solid #06d6a0; border-radius:10px; padding:9px 10px; font-size:0.8rem; margin-bottom:10px;">' +
           '<div style="font-weight:900; color:#06d6a0;">🆕 Nuevos en la lista (' + cnt.nuevos + ')</div>' +
           '<div style="font-size:0.74rem; color:#cfe; margin-top:4px; line-height:1.5;">' + nl.map(function(x) { return escHtml(x.n) + ' <span style="color:var(--muted);">(' + fmtDateShort(x.f) + ')</span>'; }).join(' · ') + '</div>' +
