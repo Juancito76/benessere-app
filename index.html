@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-12-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-12-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -10238,7 +10238,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!String(n).trim()) { try { n = document.getElementById('coachName').value; } catch (e2) {} }
       return displayCoach(n);
     }
-    function demoFloatOpen(url, check, useIt, delName) {
+    function demoFloatOpen(url, check, useIt, delName, noDel) {   // noDel: muestra la comprobación pero sin el botón «Eliminar» de la biblioteca (editor de ejercicio)
       var id = ytIdStrict(url); if (!id) return false;
       demoFloatClose();
       var safe = String(url).replace(/[^A-Za-z0-9_\-.~:\/?#\[\]@!$&'()*+,;=%]/g, '');
@@ -10248,7 +10248,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       w.innerHTML = '<div style="width:100%;max-width:960px;background:#111;border:2px solid #00e5ff;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.8);">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#1a1a1a;">' +
           '<b style="color:#fff;font-size:.85rem;">🎥 Demostración</b>' +
-          '<span>' + (check ? '<button type="button" id="demo_float_del" style="background:transparent;color:#ff8a80;border:1px solid #ff8a80;border-radius:8px;font-weight:800;font-size:.8rem;padding:6px 10px;margin-right:8px;">🗑️ Eliminar</button>' : '') + (useIt ? '<button type="button" id="demo_float_use" style="background:#06d6a0;color:#000;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;margin-right:8px;">✔ Usar</button>' : '') + '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:12px;">Abrir en YouTube ↗</a>' +
+          '<span>' + (check && !noDel ? '<button type="button" id="demo_float_del" style="background:transparent;color:#ff8a80;border:1px solid #ff8a80;border-radius:8px;font-weight:800;font-size:.8rem;padding:6px 10px;margin-right:8px;">🗑️ Eliminar</button>' : '') + (useIt ? '<button type="button" id="demo_float_use" style="background:#06d6a0;color:#000;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;margin-right:8px;">✔ Usar</button>' : '') + '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:12px;">Abrir en YouTube ↗</a>' +
           '<button type="button" id="demo_float_x" aria-label="Cerrar" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;">✖ Cerrar</button></span>' +
         '</div>' +
         '<div style="position:relative;width:100%;' + (portrait ? 'height:min(78vh,' + Math.round(window.innerWidth * 1.3) + 'px);' : 'aspect-ratio:16/9;max-height:78vh;') + 'background:#000;">' +
@@ -10259,7 +10259,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
       document.body.appendChild(w);
       document.getElementById('demo_float_x').onclick = demoFloatClose;
-      if (check) document.getElementById('demo_float_del').onclick = function() { demoFloatDelete(url, delName); };
+      if (check && !noDel) document.getElementById('demo_float_del').onclick = function() { demoFloatDelete(url, delName); };
       if (useIt) document.getElementById('demo_float_use').onclick = function() { demoFloatClose(); try { pickVideoChoose(String(url).trim()); } catch (e) { console.error(e); } };
       if (check) {   // desde el constructor: además del video, dice si la app lo podrá mostrar a los clientes
         try { vidCheckQ(id).then(function(st) {
@@ -12835,11 +12835,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         (isCirc ? '' : '<div><label>Series</label><input type="text" id="edx_' + p + '_' + sIdx + '_series" value="' + edxAttr(sub.series) + '"></div>') +
         '<div><label>' + (isCirc ? 'Reps / tiempo' : 'Reps o tiempo') + '</label><input type="text" id="edx_' + p + '_' + sIdx + '_reps" value="' + edxAttr(sub.reps) + '"></div></div>';
       h += '<label>Notas</label><input type="text" id="edx_' + p + '_' + sIdx + '_notes" value="' + edxAttr(sub.notes) + '">';
-      h += '<label>Video (enlace de YouTube, opcional)</label><input type="text" id="edx_' + p + '_' + sIdx + '_video" value="' + edxAttr(sub.video) + '">';
+      h += '<label>Video (enlace de YouTube, opcional)</label><input type="text" id="edx_' + p + '_' + sIdx + '_video" value="' + edxAttr(sub.video) + '">' +
+        '<div style="margin-top:6px;"><button type="button" class="btn-pick-ex" onclick="edxTestVideo(\'edx_' + p + '_' + sIdx + '_video\')" title="Ver este video en la ventana flotante para confirmar que se reproduce">▶ Probar</button></div>';
       h += '<div style="display:flex; gap:14px; margin-top:8px; font-size:0.78rem;">' +
         '<label style="margin:0; text-transform:none; font-size:0.78rem; color:#ddd;"><input type="checkbox" id="edx_' + p + '_' + sIdx + '_uni"' + (subIsUni(sub) ? ' checked' : '') + '> Unilateral</label>' +
         '<label style="margin:0; text-transform:none; font-size:0.78rem; color:#ddd;"><input type="checkbox" id="edx_' + p + '_' + sIdx + '_peso"' + (subUsesWeight(sub) ? ' checked' : '') + '> Usa peso</label></div></div>';
       return h;
+    }
+    // «▶ Probar» en el editor de ejercicio: abre el link que está escrito en ese campo en la ventana flotante del constructor (con la comprobación de si la app lo puede mostrar)
+    function edxTestVideo(inpId) {
+      var el = document.getElementById(inpId), val = el ? String(el.value || '').trim() : '';
+      if (!val) { alert('Ese campo todavía no tiene ningún link de video.'); return; }
+      if (!/^https?:\/\//i.test(val)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (demoFloatOpen(val, true, false, '', true)) return;
+      window.open(val, '_blank', 'noopener');
     }
     function edxRestHtml(p, item) {
       if (item.type === 'circuito') return '';
