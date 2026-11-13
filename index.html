@@ -10645,17 +10645,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         (check ? '<div id="demo_float_st" style="padding:8px 10px;font-size:.78rem;font-weight:700;color:#aaa;">⏳ Revisando si se puede mostrar en la app…</div>' : '') +
         '</div>' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:#1a1a1a;">' +
-          '<span style="display:flex;gap:6px;">' +
+          '<span style="display:flex;align-items:center;gap:8px;">' +
           '<button type="button" id="demo_float_speed" title="Reproducir a media velocidad" style="background:transparent;color:#00e5ff;border:1px solid #00e5ff;border-radius:8px;font-weight:800;font-size:.76rem;padding:5px 10px;">🐢 0.5×</button>' +
-          '<button type="button" id="demo_float_fs" title="Pantalla completa" style="background:transparent;color:#00e5ff;border:1px solid #00e5ff;border-radius:8px;font-weight:800;font-size:.76rem;padding:5px 10px;">⛶ Pantalla completa</button>' +
+          '<span style="color:#00e5ff;font-weight:800;font-size:.68rem;letter-spacing:.2px;white-space:nowrap;">Benessere Gym / ' + escHtml(demoCoachTxt()) + '</span>' +
           '</span>' +
-          '<span style="display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;">' + '<div style="background:#00e5ff;color:#001418;font-weight:900;font-size:.78rem;padding:5px 14px 6px;border-radius:10px;letter-spacing:.2px;">Benessere Gym / ' + escHtml(demoCoachTxt()) + '</div><span id="demo_nav_slot"></span></span>' +
+          '<span id="demo_nav_slot" style="display:flex;justify-content:flex-end;align-items:flex-end;"></span>' +
         '</div></div>';
       w.addEventListener('click', function(e) { if (e.target === w) demoFloatClose(); });
       document.body.appendChild(w);
       document.getElementById('demo_float_x').onclick = demoFloatClose;
       document.getElementById('demo_float_speed').onclick = demoToggleSpeed;
-      document.getElementById('demo_float_fs').onclick = demoToggleFullscreen;
       if (check && !noDel) document.getElementById('demo_float_del').onclick = function() { demoFloatDelete(url, delName); };
       if (useIt) document.getElementById('demo_float_use').onclick = function() { demoFloatClose(); try { pickVideoChoose(String(url).trim()); } catch (e) { console.error(e); } };
       if (check) {   // desde el constructor: además del video, dice si la app lo podrá mostrar a los clientes
@@ -10761,7 +10760,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       } catch (e) {}
     }
     function demoFloatClose() { var w = document.getElementById('demo_float'); if (w) w.remove(); clearInterval(DEMO_REM_T); DEMO_REM_T = null; DEMO_SLOW = false; }
-    // ----- Velocidad 0.5× (útil para ver bien la técnica) y pantalla completa con auto-rotate, en la ventana de demostración -----
+    // ----- Velocidad 0.5× (útil para ver bien la técnica) en la ventana de demostración -----
     var DEMO_SLOW = false;
     function demoToggleSpeed() {
       var fr = document.getElementById('demo_float_iframe'); if (!fr || !fr.contentWindow) return;
@@ -10769,21 +10768,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { fr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackRate', args: [DEMO_SLOW ? 0.5 : 1] }), '*'); } catch (e) {}
       var b = document.getElementById('demo_float_speed');
       if (b) { b.innerText = DEMO_SLOW ? '▶ Velocidad normal' : '🐢 0.5×'; b.style.background = DEMO_SLOW ? '#00e5ff' : 'transparent'; b.style.color = DEMO_SLOW ? '#001418' : '#00e5ff'; }
-    }
-    async function demoToggleFullscreen() {
-      var box = document.getElementById('demo_float_iframe'); var wrap = box && box.closest('div'); if (!box) return;
-      var target = wrap && wrap.parentElement ? wrap : box;   // el contenedor con position:relative (así el botón de sonido/pastilla también entran en pantalla completa)
-      try {
-        if (!document.fullscreenElement) {
-          if (target.requestFullscreen) await target.requestFullscreen();
-          else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
-          try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (eOr) {}   // celular: gira solo a horizontal (no todos los navegadores lo permiten fuera de PWA instalada)
-        } else {
-          try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (eOr) {}
-          if (document.exitFullscreen) await document.exitFullscreen();
-          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        }
-      } catch (e) { try { await appAlert('Tu navegador no permite pantalla completa aquí. Puedes girar el celular de lado para ver el video más grande.'); } catch (e2) {} }
     }
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') demoFloatClose(); });
     document.addEventListener('click', function(e) {   // «Ver demostración»: ventana flotante; si el link no es de YouTube, abre como siempre
