@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-13-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-13-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -113,6 +113,13 @@
     }
     .gen-tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
     .gen-tab-btn.demo-btn { border-color: var(--accent); color: var(--accent); }
+
+    .gen-more-wrap { position: static; display: inline-block; }
+    .gen-more-badge { position: absolute; top: -4px; right: -4px; background: #ffb300; color: #000; font-size: 0.62rem; font-weight: 900; border-radius: 999px; min-width: 16px; height: 16px; display: none; align-items: center; justify-content: center; padding: 0 3px; }
+    .gen-more-menu { display: none; position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; min-width: 240px; max-width: calc(100vw - 20px); z-index: 10050; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    .gen-more-menu.open { display: block; }
+    .gen-more-menu .gen-tab-btn { display: block; width: 100%; text-align: left; margin-bottom: 4px; white-space: normal; }
+    .gen-more-menu .gen-tab-btn:last-child { margin-bottom: 0; }
 
     .gen-view { display: none; }
     .gen-view.active { display: block; }
@@ -224,6 +231,8 @@
       display: flex; justify-content: space-between; align-items: center;
       z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.7);
     }
+    /* La barra de acciones (Actualizar, Enviar por WhatsApp, etc.) solo aplica al Planificador: en otras pestañas sobra y tapa contenido */
+    body:has(#tab_builder:not(.active)) .export-bar { display: none; }
     #tab_class .edx-sub { background:#161616; border:1px solid #2c2c2c; border-radius:10px; padding:10px; margin-top:10px; }
     #tab_class .edx-sub label { display:block; margin:8px 0 3px; font-size:0.7rem; font-weight:800; color:var(--muted); text-transform:uppercase; }
     #tab_class .edx-sub input[type=text], #tab_class .edx-sub input[type=date], #tab_class .edx-sub select { display:block; width:100%; box-sizing:border-box; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:9px; font-size:0.88rem; }
@@ -880,43 +889,54 @@
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_athlete', this)">👤 Datos Atleta & Medidas</button>
       <button type="button" class="gen-tab-btn" onclick="switchGenTab('tab_class', this); clsRender(); try { clsySync(false); } catch (e) {}">🎓 Clases y Retos</button>
       <button type="button" class="gen-tab-btn" onclick="openCoachClients()">👥 Mis clientes</button>
-      <button type="button" class="gen-tab-btn" onclick="openAnnounceEditor()">📢 Anuncios</button>
-      <button type="button" class="gen-tab-btn" id="btn_frase_dia" onclick="openFraseEditor()">✨ Frase del día</button>
-      <button type="button" class="gen-tab-btn" onclick="openReception(false)">🚪 Recepción</button>
-      <button type="button" class="gen-tab-btn" id="coach_install_btn" style="display:none;" onclick="installApp()">📲 Instalar en esta tablet</button>
-      <button type="button" class="gen-tab-btn demo-btn" onclick="loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
+      <div class="gen-more-wrap">
+        <button type="button" class="gen-tab-btn" id="gen_more_btn" onclick="genMoreToggle()">⚙️ Más <span id="gen_more_badge" class="gen-more-badge"></span></button>
+        <div class="gen-more-menu" id="gen_more_menu">
+          <button type="button" class="gen-tab-btn" onclick="genMoreToggle(true); openAnnounceEditor()">📢 Anuncios</button>
+          <button type="button" class="gen-tab-btn" id="btn_frase_dia" onclick="genMoreToggle(true); openFraseEditor()">✨ Frase del día</button>
+          <button type="button" class="gen-tab-btn" onclick="genMoreToggle(true); openReception(false)">🚪 Recepción</button>
+          <button type="button" class="gen-tab-btn" id="coach_install_btn" style="display:none;" onclick="genMoreToggle(true); installApp()">📲 Instalar en esta tablet</button>
+          <button type="button" class="gen-tab-btn demo-btn" onclick="genMoreToggle(true); loadDemoRoutine()">✨ Cargar Ejemplo (Cliente Benessere)</button>
+        </div>
+      </div>
     </div>
 
     <!-- TAB 1: PLANIFICADOR -->
     <div id="tab_builder" class="gen-view active">
       <section class="section-box">
         <div class="section-title">
-          💾 Guardado de la Rutina
-          <span class="badge">Borradores</span>
+          🏃 Datos del Atleta
+          <span class="badge">Cliente</span>
         </div>
-        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:12px; line-height:1.5;">
-          Guarda tu progreso mientras armas la rutina, así no lo perdés si se cierra la pestaña por accidente. El guardado es manual: nunca se carga solo, vos elegís cuándo abrir un borrador.
-        </p>
-        <div class="form-grid" style="margin-bottom:10px;">
-          <button type="button" class="btn btn-accent" onclick="saveDraftPrompt()">💾 Guardar borrador</button>
-          <button type="button" class="btn btn-secondary" onclick="openDraftList()">📂 Abrir borrador guardado</button>
-          <button type="button" class="btn btn-secondary" onclick="downloadDraftFile()">⬇️ Descargar como archivo</button>
-          <button type="button" class="btn btn-secondary" onclick="document.getElementById('draftFileInput').click()">📤 Cargar desde archivo</button>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Género del Saludo</label>
+            <select id="clientGender">
+              <option value="o">Masculino (Bienvenido)</option>
+              <option value="a">Femenino (Bienvenida)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Nombre del Atleta</label><input type="text" id="clientName" placeholder="Nombre de cliente"></div>
+          <div class="form-group"><label>WhatsApp Atleta</label><input type="text" id="clientPhone" placeholder="Ej: 50688888888"></div>
+          <div class="form-group"><label>Fecha de Inicio</label><input type="date" id="startDate"></div>
+          <div class="form-group"><label>Duración (Semanas)</label><input type="number" id="durationWeeks" min="1" max="24" value="4"></div>
+          <div class="form-group"><label>Tiempo por sesión (min, opcional)</label><input type="number" id="sessionMin" min="10" max="180" step="5" placeholder="Ej: 60" onchange="renderDays()"></div>
         </div>
-        <input type="file" id="draftFileInput" accept=".json" style="display:none;" onchange="loadDraftFromFile(this)">
-        <p id="draftStatus" style="font-size:0.75rem; color:var(--muted); margin-top:6px; line-height:1.5;"></p>
       </section>
 
       <section class="section-box">
-        <div class="section-title">
-          🎥 Biblioteca de Videos
-          <span class="badge">Se arma sola</span>
+        <div class="section-title">💬 Mensaje del Coach <span class="badge">Nota Inicial</span></div>
+        <div class="form-grid">
+          <div class="form-group full-width"><label>Título</label><input type="text" id="coachMsgTitle" placeholder="Ej: ¡Bienvenido a tu nuevo bloque de fuerza!"></div>
+          <div class="form-group full-width"><label>Pautas y Enfoque</label><textarea id="coachMsgBody" placeholder="Pautas técnicas, descansos, sobrecarga progresiva y metas del bloque..."></textarea></div>
         </div>
-        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:12px; line-height:1.5;">
-          Cada vez que ponés un link de YouTube en un ejercicio, queda guardado acá automáticamente con su nombre — sin que tengas que hacer nada extra. Es tu catálogo propio de "qué video va con qué ejercicio", reutilizable entre rutinas.
-        </p>
-        <button type="button" class="btn btn-secondary" style="width:100%;" onclick="openVideoLibrary()">📚 Ver biblioteca de videos</button>
-        <button type="button" class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="reviewVideos()">🔎 Revisar videos (¿se pueden incrustar?)</button>
+      </section>
+
+      <section class="section-box">
+        <div class="section-title">📋 Programación de Días <span class="badge" id="daysCounterBadge">1 Día</span></div>
+        <div id="daysList"></div>
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="addNewDay()">➕ Añadir Nuevo Día</button>
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="addRestDay()">🌙 Añadir Día de Descanso</button>
       </section>
 
       <section class="section-box">
@@ -950,37 +970,32 @@
 
       <section class="section-box">
         <div class="section-title">
-          🏃 Datos del Atleta
-          <span class="badge">Cliente</span>
+          🎥 Biblioteca de Videos
+          <span class="badge">Se arma sola</span>
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Género del Saludo</label>
-            <select id="clientGender">
-              <option value="o">Masculino (Bienvenido)</option>
-              <option value="a">Femenino (Bienvenida)</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Nombre del Atleta</label><input type="text" id="clientName" placeholder="Nombre de cliente"></div>
-          <div class="form-group"><label>WhatsApp Atleta</label><input type="text" id="clientPhone" placeholder="Ej: 50688888888"></div>
-          <div class="form-group"><label>Fecha de Inicio</label><input type="date" id="startDate"></div>
-          <div class="form-group"><label>Duración (Semanas)</label><input type="number" id="durationWeeks" min="1" max="24" value="4"></div>
-        </div>
+        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:12px; line-height:1.5;">
+          Cada vez que ponés un link de YouTube en un ejercicio, queda guardado acá automáticamente con su nombre — sin que tengas que hacer nada extra. Es tu catálogo propio de "qué video va con qué ejercicio", reutilizable entre rutinas.
+        </p>
+        <button type="button" class="btn btn-secondary" style="width:100%;" onclick="openVideoLibrary()">📚 Ver biblioteca de videos</button>
+        <button type="button" class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="reviewVideos()">🔎 Revisar videos (¿se pueden incrustar?)</button>
       </section>
 
       <section class="section-box">
-        <div class="section-title">💬 Mensaje del Coach <span class="badge">Nota Inicial</span></div>
-        <div class="form-grid">
-          <div class="form-group full-width"><label>Título</label><input type="text" id="coachMsgTitle" placeholder="Ej: ¡Bienvenido a tu nuevo bloque de fuerza!"></div>
-          <div class="form-group full-width"><label>Pautas y Enfoque</label><textarea id="coachMsgBody" placeholder="Pautas técnicas, descansos, sobrecarga progresiva y metas del bloque..."></textarea></div>
+        <div class="section-title">
+          💾 Guardado de la Rutina
+          <span class="badge">Borradores</span>
         </div>
-      </section>
-
-      <section class="section-box">
-        <div class="section-title">📋 Programación de Días <span class="badge" id="daysCounterBadge">1 Día</span></div>
-        <div id="daysList"></div>
-        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="addNewDay()">➕ Añadir Nuevo Día</button>
-        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="addRestDay()">🌙 Añadir Día de Descanso</button>
+        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:12px; line-height:1.5;">
+          Guarda tu progreso mientras armas la rutina, así no lo perdés si se cierra la pestaña por accidente. El guardado es manual: nunca se carga solo, vos elegís cuándo abrir un borrador.
+        </p>
+        <div class="form-grid" style="margin-bottom:10px;">
+          <button type="button" class="btn btn-accent" onclick="saveDraftPrompt()">💾 Guardar borrador</button>
+          <button type="button" class="btn btn-secondary" onclick="openDraftList()">📂 Abrir borrador guardado</button>
+          <button type="button" class="btn btn-secondary" onclick="downloadDraftFile()">⬇️ Descargar como archivo</button>
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('draftFileInput').click()">📤 Cargar desde archivo</button>
+        </div>
+        <input type="file" id="draftFileInput" accept=".json" style="display:none;" onchange="loadDraftFromFile(this)">
+        <p id="draftStatus" style="font-size:0.75rem; color:var(--muted); margin-top:6px; line-height:1.5;"></p>
       </section>
     </div>
 
@@ -2481,6 +2496,35 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return APP_BASE_URL;
     }
 
+    function genMorePosition() {
+      var m = document.getElementById('gen_more_menu'), btn = document.getElementById('gen_more_btn');
+      var r = btn && btn.getBoundingClientRect();
+      if (!m || !r) return;
+      var w = Math.min(240, window.innerWidth - 20);
+      var left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8);
+      m.style.left = left + 'px';
+      m.style.top = (r.bottom + 6) + 'px';
+      m.style.width = w + 'px';
+    }
+    function genMoreToggle(forceClose) {
+      var m = document.getElementById('gen_more_menu');
+      if (!m) return;
+      if (forceClose === true) { m.classList.remove('open'); return; }
+      // La fila de pestañas es "position: sticky", y eso la vuelve el bloque contenedor de cualquier descendiente "fixed" dentro de ella:
+      // el menú terminaría posicionado relativo a la fila (y recortado por su scroll), no a la pantalla. Se saca al <body> para evitarlo.
+      if (m.parentElement !== document.body) document.body.appendChild(m);
+      var opening = !m.classList.contains('open');
+      m.classList.toggle('open');
+      // Doble rAF: si el botón estaba fuera de vista, el navegador aún puede estar desplazando la fila de pestañas al tocarlo; se espera a que el layout se asiente antes de medir su posición.
+      if (opening) requestAnimationFrame(function() { requestAnimationFrame(genMorePosition); });
+    }
+    document.addEventListener('click', function(ev) {
+      var wrap = document.querySelector('.gen-more-wrap');
+      var m = document.getElementById('gen_more_menu');
+      if (!wrap || !m || !m.classList.contains('open')) return;
+      if (!wrap.contains(ev.target) && !m.contains(ev.target)) m.classList.remove('open');
+    });
+
     function switchGenTab(viewId, btn) {
       document.querySelectorAll('.gen-view').forEach(function(v) { v.classList.remove('active'); });
       document.querySelectorAll('.gen-tab-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -2554,6 +2598,40 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (card && card.classList.contains('day-closed')) { var b = card.querySelector('.day-toggle'); if (b) b.click(); }
       } catch (e) {}
     }
+    // Tiempo estimado de un día de rutina, en minutos. Reps sin tiempo se aproximan a ~3.5 s por repetición (misma referencia que guiadoToSecs).
+    function estRepSecs(reps, series) {
+      var n = parseInt(series, 10) || 1;
+      if (isTimeText(reps)) { var s = parseSecs(reps); return (s || 30) * n; }
+      var m = String(reps || '').match(/(\d+)(?:\s*(?:-|–|a)\s*(\d+))?/);
+      var r = m ? parseInt(m[2] || m[1], 10) : 10;
+      return Math.round(r * 3.5) * n;
+    }
+    function estDaySecs(day) {
+      if (!day || day.rest) return 0;
+      var total = 0;
+      (day.items || []).forEach(function(it) {
+        if (it.type === 'circuito') {
+          var c = it.circ || {}, rondas = parseInt(c.rondas, 10) || 1, nSt = (it.sub || []).length || 1;
+          var work = parseSecs(c.trabajo) || 30, rest = parseSecs(c.descanso) || 0;
+          total += rondas * nSt * (work + rest);
+          return;
+        }
+        var restBetween = parseSecs(it.rest) || 0;
+        (Array.isArray(it.sub) ? it.sub : []).forEach(function(sub) {
+          if (!String(sub.name || '').trim()) return;
+          var series = parseInt(sub.series, 10) || 1;
+          total += estRepSecs(sub.reps, series) + restBetween * Math.max(0, series - 1);
+        });
+      });
+      return total;
+    }
+    function estDayLabel(day) {
+      var secs = estDaySecs(day);
+      if (!secs) return '';
+      var mins = Math.round(secs / 60);
+      return mins + ' min aprox.';
+    }
+
     function renderDays() {
       var container = document.getElementById('daysList');
       if (!container) return;
@@ -2624,11 +2702,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
 
         var dayOpen = DAYS_OPEN.get(day) === true, nEx = (day.items || []).length;
+        var sessMinInput = document.getElementById('sessionMin'), sessMin = sessMinInput ? parseInt(sessMinInput.value, 10) : 0;
+        var estMin = day.rest ? 0 : Math.round(estDaySecs(day) / 60);
+        var estOver = !!(sessMin && estMin && estMin > sessMin);
+        var estHtml = (!day.rest && estMin) ? ' · <span style="' + (estOver ? 'color:#ff5252; font-weight:900;' : '') + '">⏱ ' + estMin + ' min' + (estOver ? ' (más que los ' + sessMin + ' min de la sesión)' : '') + '</span>' : '';
         dayDiv.className = 'day-card' + (dayOpen ? '' : ' day-closed');
         dayDiv.innerHTML = '<div class="day-header">' +
           '<button type="button" class="day-toggle" onclick="dayCardToggle(this, ' + dayIndex + ')" aria-label="Abrir o cerrar el día"><span class="day-chev">' + (dayOpen ? '▼' : '▶') + '</span></button>' +
           '<input type="text" class="day-title-input" value="' + escHtml(day.title || 'Día') + '" oninput="routineDays[' + dayIndex + '].title = this.value">' +
-          '<span class="day-sum">' + (day.rest ? '🌙 descanso' : nEx + (nEx === 1 ? ' bloque' : ' bloques')) + '</span>' +
+          '<span class="day-sum">' + (day.rest ? '🌙 descanso' : nEx + (nEx === 1 ? ' bloque' : ' bloques')) + estHtml + '</span>' +
           '<button type="button" class="btn btn-danger" style="font-size:0.75rem; padding:4px 8px;" onclick="removeDay(' + dayIndex + ')" title="Eliminar día">🗑️<span class="del-t"> Eliminar Día</span></button>' +
         '</div>' +
         '<div class="day-body">' +
@@ -2731,6 +2813,37 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       if (!bad.length) return true;
       return confirm('⚠️ Hay caminadora dentro de una biserie, triserie o circuito:\n\n• ' + bad.join('\n• ') + '\n\nA veces está ocupada o la pierden al bajarse. Lo recomendado es cambiarla por skipping alto, saltos de tijera o cuerda, y dejar la caminadora sola como cardio.\n\n¿Enviar la rutina de todos modos?');
+    }
+    // ---- Guardia de calidad: descansos largos y calentamientos incompletos. Solo avisa, no bloquea ----
+    function qualityScan() {
+      var restTooLong = [], warmShort = [];
+      routineDays.forEach(function(d, di) {
+        if (!d || d.rest) return;
+        var label = d.title || ('Día ' + (di + 1));
+        (d.items || []).forEach(function(it) {
+          if (it.type !== 'circuito') {
+            var rs = parseSecs(it.rest);
+            if (rs && rs > 60) restTooLong.push(label + ': ' + (it.sub || []).map(function(sb) { return sb && sb.name; }).filter(Boolean).join(' + ') + ' (' + it.rest + ')');
+          } else {
+            var crs = parseSecs((it.circ || {}).descanso);
+            if (crs && crs > 60) restTooLong.push(label + ': ' + ((it.circ || {}).nombre || 'Circuito') + ' (' + it.circ.descanso + ')');
+          }
+        });
+        var warmItems = (d.items || []).filter(function(it) { return (it.sub || []).some(function(sb) { return isWarmName(sb && sb.name); }); });
+        warmItems.forEach(function(it) {
+          var n = (it.sub || []).filter(function(sb) { return sb && String(sb.name || '').trim(); }).length;
+          if (n > 0 && n < 3) warmShort.push(label + ': calentamiento con ' + n + (n === 1 ? ' ejercicio' : ' ejercicios'));
+        });
+      });
+      return { restTooLong: restTooLong, warmShort: warmShort };
+    }
+    function qualityGuard() {
+      var r = qualityScan();
+      if (!r.restTooLong.length && !r.warmShort.length) return true;
+      var msg = '⚠️ Revisa antes de enviar:\n\n';
+      if (r.restTooLong.length) msg += '⏱ Descansos de más de 60 s:\n• ' + r.restTooLong.join('\n• ') + '\n\n';
+      if (r.warmShort.length) msg += '🔥 Calentamientos con menos de 3 ejercicios:\n• ' + r.warmShort.join('\n• ') + '\n\n';
+      return confirm(msg + '¿Enviar de todos modos?');
     }
     // ---- Guardia de Vigencia: ningún ejercicio puede salir dos veces en la misma semana de un día ----
     // Detecta (vigAudit), arregla lo que es seguro (vigAutoFix) y avisa antes de enviar (vigGuard). Revisa también a todos los clientes (vigScanClients, solo lectura).
@@ -5422,6 +5535,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       if (!videoGuard() || !guiadoGuard()) return;
       if (!treadmillGuard()) return;
+      if (!qualityGuard()) return;
       if (!vigGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
@@ -6060,7 +6174,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var nm = ''; try { nm = String(new Function('return ' + pvNamePath(path) + ';')() || '').trim(); } catch (e) {}
       var inLib = nm ? findVideoInLibrary(nm) : '';
       DEMO_FIELD = path;
-      if (demoFloatOpen(val, true, false, (inLib && String(inLib).trim() === val) ? libKeyFor(nm) : '')) return;
+      if (demoFloatOpen(val, true, false, (inLib && String(inLib).trim() === val) ? libKeyFor(nm) : '', false, nm)) return;
       window.open(val, '_blank', 'noopener');
     }
     // Nombre exacto con que está guardado en la biblioteca (la búsqueda ignora mayúsculas y espacios)
@@ -6177,7 +6291,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       link = String(link || '').trim();
       if (!/^https?:\/\//i.test(link)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
       DEMO_FIELD = '';
-      if (demoFloatOpen(link, true, true, name || '')) return;
+      if (demoFloatOpen(link, true, true, name || '', false, name || '')) return;
       window.open(link, '_blank', 'noopener');
     }
     // Quita un video de la biblioteca (compartida entre coaches: se borra para todos). Pide confirmación.
@@ -6273,6 +6387,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
+      { id: '2026-11-13b-demo', title: '🎥 Ya sabes qué ejercicio estás viendo', text: 'La ventana de «Ver demostración» ahora muestra arriba el nombre del ejercicio, y si tu bloque sigue corriendo mientras ves el video, aparece cuánto tiempo falta.' },
       { id: '2026-11-13-pestanas', title: '🔢 Bloques más grandes y numerados', text: 'Las pestañas de cada bloque ahora son más altas, para tocarlas fácil, y llevan su número (1, 2, 3…). Cuando terminas un bloque, el número cambia a ✔. El parpadeo sigue igual: te muestra dónde vas.' },
       { id: '2026-11-13-serie', title: '🔵 El botón de serie cambió de lugar', text: 'En el temporizador, el botón azul que dice en qué serie o ronda vas ahora está arriba a la derecha. «Minimizar» pasó adentro de «⚙️ Más», para que no se toque por error.' },
       { id: '2026-11-13-video', title: '🎥 El video se ve completo al girar el celular', text: 'La ventana de «Ver demostración» ahora cabe entera con el celular acostado: el botón «Cerrar» siempre queda a la vista.' },
@@ -10400,6 +10515,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var m = String(url || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^#\s]*&)?v=|embed\/|shorts\/|v\/))([A-Za-z0-9_-]{11})/);
       return m ? m[1] : '';
     }
+    // Lee t=/start= (y opcionalmente end=) del enlace, en segundos. Acepta "90" y "1m30s". Así el video no reinicia siempre desde la intro.
+    function ytTimeParam(url, name) {
+      var m = String(url || '').match(new RegExp('[?&#]' + name + '=([^&]+)'));
+      if (!m) return 0;
+      var v = decodeURIComponent(m[1]);
+      if (/^\d+$/.test(v)) return parseInt(v, 10);
+      var mm = v.match(/(\d+)h/), ss = v.match(/(\d+)m/), s2 = v.match(/(\d+)s/);
+      var secs = (mm ? parseInt(mm[1], 10) * 3600 : 0) + (ss ? parseInt(ss[1], 10) * 60 : 0) + (s2 ? parseInt(s2[1], 10) : 0);
+      return secs || 0;
+    }
+    function ytStartSecs(url) { return ytTimeParam(url, 't') || ytTimeParam(url, 'start'); }
+    function ytEndSecs(url) { return ytTimeParam(url, 'end'); }
     // ----- Demostración en ventana flotante: el video se ve dentro de la app, sin abrir otra pestaña -----
     // Nombre del coach que atiende a esta persona (el de su rutina; en el constructor, el del perfil del coach)
     function demoCoachTxt() {
@@ -10408,10 +10535,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!String(n).trim()) { try { n = document.getElementById('coachName').value; } catch (e2) {} }
       return displayCoach(n);
     }
-    function demoFloatOpen(url, check, useIt, delName, noDel) {   // noDel: muestra la comprobación pero sin el botón «Eliminar» de la biblioteca (editor de ejercicio)
+    function demoFloatOpen(url, check, useIt, delName, noDel, exName) {   // noDel: muestra la comprobación pero sin el botón «Eliminar» de la biblioteca (editor de ejercicio); exName: nombre fijo del ejercicio, si se conoce de entrada
       var id = ytIdStrict(url); if (!id) return false;
       demoFloatClose();
       var safe = String(url).replace(/[^A-Za-z0-9_\-.~:\/?#\[\]@!$&'()*+,;=%]/g, '');
+      var startS = ytStartSecs(url), endS = ytEndSecs(url);
       var w = document.createElement('div'); w.id = 'demo_float';
       w.style.cssText = 'position:fixed;inset:0;z-index:100015;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:6px;';
       var portrait = window.innerHeight > window.innerWidth;   // celular de pie: ventana más alta (sirve para videos verticales); acostado o escritorio: 16:9 y más ancha
@@ -10419,12 +10547,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var narrow = window.innerWidth < 380;   // pantalla chica: «Abrir en YouTube» se acorta para que «Cerrar» no baje a otra fila
       w.innerHTML = '<div style="width:100%;max-width:960px;background:#111;border:2px solid #00e5ff;border-radius:14px;overflow:hidden auto;max-height:calc(100vh - 8px);box-shadow:0 10px 40px rgba(0,0,0,.8);">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#1a1a1a;">' +
-          '<b style="color:#fff;font-size:.85rem;white-space:nowrap;">🎥 Demostración</b>' +
+          '<b id="demo_float_name" style="color:#fff;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;">' + (exName ? escHtml(exName) : '🎥 Demostración') + '</b>' +
           '<span style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;min-width:0;">' + (check && !noDel ? '<button type="button" id="demo_float_del" style="background:transparent;color:#ff8a80;border:1px solid #ff8a80;border-radius:8px;font-weight:800;font-size:.8rem;padding:6px 10px;margin-right:8px;">🗑️ Eliminar</button>' : '') + (useIt ? '<button type="button" id="demo_float_use" style="background:#06d6a0;color:#000;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;margin-right:8px;">✔ Usar</button>' : '') + '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#9aa;font-size:.75rem;margin-right:' + (narrow ? 8 : 12) + 'px;white-space:nowrap;">' + (narrow ? 'YouTube ↗' : 'Abrir en YouTube ↗') + '</a>' +
           '<button type="button" id="demo_float_x" aria-label="Cerrar" style="background:#ff1744;color:#fff;border:0;border-radius:8px;font-weight:800;font-size:.9rem;padding:6px 12px;white-space:nowrap;flex:0 0 auto;">✖ Cerrar</button></span>' +
         '</div>' +
         '<div style="position:relative;width:100%;' + (portrait ? 'height:' + Math.min(roomH, Math.round(window.innerWidth * 1.3)) + 'px;' : 'height:' + Math.min(roomH, Math.round(Math.min(window.innerWidth - 16, 960) * 9 / 16)) + 'px;') + 'background:#000;">' +
-          '<iframe title="Demostración" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam() + '"></iframe>' +
+          '<iframe title="Demostración" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + (startS ? '&start=' + startS : '') + (endS ? '&end=' + endS : '') + ytOriginParam() + '"></iframe>' +
+          '<div id="demo_float_rem" style="display:none;position:absolute;top:8px;right:8px;z-index:2;background:rgba(0,0,0,.72);color:#ffd60a;font-weight:900;font-size:.85rem;padding:5px 12px;border-radius:999px;pointer-events:none;"></div>' +
         (check ? '<div id="demo_float_st" style="padding:8px 10px;font-size:.78rem;font-weight:700;color:#aaa;">⏳ Revisando si se puede mostrar en la app…</div>' : '') +
         '</div>' +
         '<div style="display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;padding-right:14px;"><div style="background:#00e5ff;color:#001418;font-weight:900;font-size:.78rem;padding:5px 14px 6px;border-radius:0 0 10px 10px;letter-spacing:.2px;">Benessere Gym / ' + escHtml(demoCoachTxt()) + '</div><span id="demo_nav_slot"></span></div></div>';
@@ -10439,7 +10568,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           var i = vidStInfo(st, ''); el.style.color = i.c; el.innerText = i.t.replace(/ \(el problema.*$/, '').replace(' Pruébalo con "Ver video".', ' Mira si el video de arriba reproduce.');
         }); } catch (e) {}
       }
+      if (!check) demoRemStart();   // en el modo del cliente (no en la prueba del coach): pastilla con lo que falta del bloque, mientras ve la demostración
       return true;
+    }
+    // Pastilla «falta X» sobre el video: mientras el cliente ve la demostración, el bloque sigue corriendo solo
+    var DEMO_REM_T = null;
+    function demoRemTick() {
+      var el = document.getElementById('demo_float_rem');
+      if (!el || !document.getElementById('demo_float')) { clearInterval(DEMO_REM_T); DEMO_REM_T = null; return; }
+      if (!CT.active || CT.done || CT.paused || !CT.phases[CT.i] || CT.phases[CT.i].open) { el.style.display = 'none'; return; }
+      var remain = Math.ceil((CT.end - Date.now()) / 1000);
+      if (remain < 0) { el.style.display = 'none'; return; }
+      el.style.display = 'block';
+      el.innerText = '⏱ Falta ' + tmrFmt(remain);
+    }
+    function demoRemStart() {
+      clearInterval(DEMO_REM_T);
+      demoRemTick();
+      DEMO_REM_T = setInterval(demoRemTick, 500);
     }
     // «🗑️ Eliminar» en la ventana de prueba de un video: lo quita de la biblioteca (compartida entre coaches). Si el video venía de un campo de ejercicio, también lo vacía.
     function demoFloatDelete(url, delName) {
@@ -10475,7 +10621,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       if (cur < 0) return;
       var okN = items.filter(function(x) { return x.ok; }).length, lastI = -1; items.forEach(function(x, i) { if (x.ok) lastI = i; });
-      demoToast(demoNavLabel(items[cur], cur === lastI && okN > 1, okN > 1));   // al abrir: explica qué ejercicio se está viendo
+      demoSetFixedName(items[cur].name);   // el nombre queda fijo en el encabezado, no solo 2 s en un cartel
+      demoToast(demoNavLabel(items[cur], cur === lastI && okN > 1, okN > 1));   // al abrir: explica además qué ejercicio y con qué reps/tiempo
       if (okN < 2) return;
       DEMO_NAV = { items: items, cur: cur };
       var slot = document.getElementById('demo_nav_slot'); if (!slot) return;
@@ -10483,6 +10630,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('demo_next').onclick = demoNavNext;
     }
     function demoNavLabel(it, isLast, multi) { return (!multi ? 'Ejercicio' : (isLast ? 'Último ejercicio' : 'Ejercicio ' + it.pos)) + ': ' + it.name + (it.reps ? ' × ' + it.reps : ''); }
+    // Pone el nombre del ejercicio fijo en el encabezado de la ventana flotante (en vez de depender solo del cartel temporal)
+    function demoSetFixedName(name) {
+      var el = document.getElementById('demo_float_name');
+      if (el && name) el.innerText = name;
+    }
     // Cartel de 2 s sobre el video: «Estás viendo» + el ejercicio
     function demoToast(label) {
       var fr = document.querySelector('#demo_float iframe'), box = fr && fr.parentNode; if (!box) return;
@@ -10500,7 +10652,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       N.cur = n;
       var lastOk = -1; N.items.forEach(function(x, i) { if (x.ok) lastOk = i; });
       var id = ytIdStrict(it.href), fr = document.querySelector('#demo_float iframe');
-      if (fr) fr.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + ytOriginParam();
+      var nStartS = ytStartSecs(it.href), nEndS = ytEndSecs(it.href);
+      if (fr) fr.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&playsinline=1&rel=0&modestbranding=1&loop=1&playlist=' + id + (nStartS ? '&start=' + nStartS : '') + (nEndS ? '&end=' + nEndS : '') + ytOriginParam();
+      demoSetFixedName(it.name);
       demoToast(demoNavLabel(it, n === lastOk, true));
       try {   // el aviso de «el video no se ve» pasa a ser del video nuevo; y el ejercicio queda marcado como visto
         var hold = document.getElementById('demo_hold');
@@ -10508,7 +10662,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (it.id) { GD_DEMO['b:' + it.id] = true; setTimeout(function() { try { guidePaintAll(); } catch (e2) {} }, 400); }
       } catch (e) {}
     }
-    function demoFloatClose() { var w = document.getElementById('demo_float'); if (w) w.remove(); }
+    function demoFloatClose() { var w = document.getElementById('demo_float'); if (w) w.remove(); clearInterval(DEMO_REM_T); DEMO_REM_T = null; }
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') demoFloatClose(); });
     document.addEventListener('click', function(e) {   // «Ver demostración»: ventana flotante; si el link no es de YouTube, abre como siempre
       var a = e.target && e.target.closest ? e.target.closest('.btn-yt-demo') : null; if (!a) return;
@@ -10558,7 +10712,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       CT.vidId = id; CT.vidMuted = true;
       box.style.display = 'block';
-      box.innerHTML = '<iframe id="tm_vframe" title="Demostración" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute; inset:0; width:100%; height:100%; border:0; pointer-events:none;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&controls=0&playsinline=1&modestbranding=1&rel=0&enablejsapi=1' + ytOriginParam() + '"></iframe>' +
+      var tmStartS = ytStartSecs(CT.demoUrl), tmEndS = ytEndSecs(CT.demoUrl);
+      box.innerHTML = '<iframe id="tm_vframe" title="Demostración" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute; inset:0; width:100%; height:100%; border:0; pointer-events:none;" src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&controls=0&playsinline=1&modestbranding=1&rel=0&enablejsapi=1' + (tmStartS ? '&start=' + tmStartS : '') + (tmEndS ? '&end=' + tmEndS : '') + ytOriginParam() + '"></iframe>' +
         '<button type="button" id="tm_vsnd" aria-label="Sonido del video" style="position:absolute; left:8px; bottom:8px; height:36px; border-radius:18px; background:rgba(0,0,0,0.72); color:#fff; border:1px solid #aaa; font-size:0.82rem; font-weight:800; line-height:1; padding:0 14px; z-index:2;">🔇 Activar sonido</button>';
       var fr = document.getElementById('tm_vframe');
       document.getElementById('tm_vsnd').onclick = function() {   // activar/quitar el audio del video (por defecto va en silencio)
@@ -10723,7 +10878,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     function ctOpenDemo() {
       if (!CT.demoUrl) return;
-      if (demoFloatOpen(CT.demoUrl)) return;
+      if (demoFloatOpen(CT.demoUrl, false, false, '', false, CT.demoName || '')) return;
       try { window.open(CT.demoUrl, '_blank', 'noopener'); } catch (e) {}
     }
     function ctTogglePause() {
@@ -13504,6 +13659,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
       if (!videoGuard() || !guiadoGuard()) return;
       if (!treadmillGuard()) return;
+      if (!qualityGuard()) return;
       if (!vigGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState(), id = editingRoutine.id, pin = COACH.pin;
@@ -13536,6 +13692,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         : '¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
       if (!videoGuard() || !guiadoGuard()) return;
       if (!treadmillGuard()) return;
+      if (!qualityGuard()) return;
       if (!vigGuard()) return;
       ensureMeasureSaved();
       var state = getBuilderState();
