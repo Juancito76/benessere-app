@@ -238,6 +238,11 @@
     #tab_class .edx-sub input[type=text], #tab_class .edx-sub input[type=date], #tab_class .edx-sub select { display:block; width:100%; box-sizing:border-box; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:9px; font-size:0.88rem; }
     #tab_class .edx-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
     .export-bar .btn { flex: 1 1 auto; }
+    .export-more-wrap { position: static; }
+    .export-more-menu { display: none; position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; min-width: 220px; max-width: calc(100vw - 20px); z-index: 10050; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    .export-more-menu.open { display: block; }
+    .export-more-menu .btn { display: block; width: 100%; margin-bottom: 6px; }
+    .export-more-menu .btn:last-child { margin-bottom: 0; }
     @media (max-width: 640px) {   /* celular: sin el texto de marca y con los botones en 2 columnas, para que la barra no se coma la pantalla */
       .export-bar { flex-direction: column; align-items: stretch; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
       .export-bar > div { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
@@ -598,6 +603,8 @@
     .med-chip-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin: 4px 0 8px; }
     .med-chip { flex: 0 0 auto; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.78rem; font-weight: 700; cursor: pointer; }
     .hist-sess > summary::-webkit-details-marker { display: none; }
+    .alt-field-box > summary::-webkit-details-marker { display: none; }
+    .alt-field-box[open] > summary { color: var(--primary) !important; }
     .hist-sess .hist-arrow { color: var(--primary); font-size: 1rem; transition: transform .2s; transform: rotate(-90deg); }
     .hist-sess[open] .hist-arrow { transform: rotate(0deg); }
     .med-chip.active { background: var(--primary); color: #000; border-color: var(--primary); }
@@ -638,9 +645,14 @@
     .view-title { letter-spacing: .5px; }
     .view-screen.active { animation: vsIn .22s ease-out; }
     @keyframes vsIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    /* Pantalla de inicio del cliente */
-    .home-logo { width: 150px; max-width: 46vw; height: auto; margin: 0 auto 6px; display: block; filter: drop-shadow(0 0 14px rgba(0,229,255,.35)); }
-    .brand-slogan { margin-bottom: 22px; font-weight: 800; }
+    /* Pantalla de inicio del cliente: header más compacto (11/2026) — mismo contenido, menos aire entre bloques antes de llegar a lo útil */
+    .home-logo { width: 92px; max-width: 30vw; height: auto; margin: 0 auto 2px; display: block; filter: drop-shadow(0 0 14px rgba(0,229,255,.35)); }
+    .home-screen .brand-top { font-size: 1.25rem; margin-bottom: 0; }
+    .brand-slogan { margin-bottom: 10px; font-weight: 800; font-size: .82rem; }
+    .home-screen .welcome-box { margin-bottom: 10px; }
+    .home-screen .welcome-label { font-size: .82rem; }
+    .home-screen .client-title { font-size: 1.25rem; margin-top: 1px; }
+    .home-screen .week-tracker-pill { margin-bottom: 10px; }
     .capsule-btn { box-shadow: 0 4px 14px rgba(0,0,0,.4); }
     .btn-coach { background: var(--grad-accent); box-shadow: 0 4px 16px rgba(255,109,0,.3); }
     .btn-historial { background: linear-gradient(180deg, #1c1c1c, #151515); box-shadow: 0 0 14px rgba(0,229,255,.12); }
@@ -867,7 +879,7 @@
       <img class="hd-logo" src="icons/logo.png" alt="" onerror="this.style.display='none'">
       <div class="header-title">
         <h1>Generador Pro Benessere</h1>
-        <p>Benessere Gym • Enlace Ultra-Compacto para WhatsApp • v10</p>
+        <p>Benessere Gym • Constructor de rutinas</p>
       </div>
       <div class="header-brand">
         <div class="gym-name">BENESSERE GYM</div>
@@ -1217,11 +1229,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
         <button type="button" id="btn_update_routine" class="btn btn-accent" style="display:none;" onclick="updateEditingRoutine()">🔄 Actualizar rutina</button>
         <button type="button" id="btn_queue_routine" class="btn" style="display:none; border:1px solid #ffb703; color:#ffb703; background:transparent;" onclick="queueEditingRoutine()">⏳ Guardar como rutina en espera</button>
-        <button type="button" class="btn btn-accent" style="font-size:0.85rem; padding:12px 14px;" onclick="saveAndResetBuilder()" title="Guarda un borrador y deja el constructor limpio para el próximo cliente">💾➡️🧹 Guardar y reiniciar</button>
-        <button type="button" class="btn btn-secondary" style="color:#ffd60a; border-color:#ffd60a;" onclick="previewBuilderRoutine()" title="Abre la rutina que estás armando como la vería el cliente. Nada se guarda ni se envía.">👁️ Vista previa</button>
-        <button type="button" class="btn btn-export-pdf" onclick="generateGymPDF()">📄 PDF Ficha</button>
-        <button type="button" class="btn btn-export-download" onclick="downloadManualHTML()">💾 Guardar HTML</button>
         <button type="button" class="btn btn-export-wa" onclick="generateDirectWhatsAppLink()">📲 Enviar por WhatsApp</button>
+        <div class="export-more-wrap">
+          <button type="button" class="btn btn-secondary" id="export_more_btn" onclick="exportMoreToggle()">⋯ Más acciones</button>
+          <div class="export-more-menu" id="export_more_menu">
+            <button type="button" class="btn btn-accent" onclick="exportMoreToggle(true); saveAndResetBuilder()" title="Guarda un borrador y deja el constructor limpio para el próximo cliente">💾➡️🧹 Guardar y reiniciar</button>
+            <button type="button" class="btn btn-secondary" style="color:var(--primary); border-color:var(--primary);" onclick="exportMoreToggle(true); previewBuilderRoutine()" title="Abre la rutina que estás armando como la vería el cliente. Nada se guarda ni se envía.">👁️ Vista previa</button>
+            <button type="button" class="btn btn-export-pdf" onclick="exportMoreToggle(true); generateGymPDF()">📄 PDF Ficha</button>
+            <button type="button" class="btn btn-export-download" onclick="exportMoreToggle(true); downloadManualHTML()">💾 Guardar HTML</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1711,15 +1728,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       return v;
     }
-    function saveMeasureEntry() {
+    async function saveMeasureEntry() {
       if (fichaNeedCoach()) return;
       var d = document.getElementById('m_fecha').value;
-      if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
+      if (!isIsoDate(d)) { await appAlert('Elige la fecha de la medición.'); return; }
       var v = readMeasureForm();
-      if (!Object.keys(v).length) { alert('Escribe al menos una medida (por ejemplo el peso) antes de guardar.'); return; }
-      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
+      if (!Object.keys(v).length) { await appAlert('Escribe al menos una medida (por ejemplo el peso) antes de guardar.'); return; }
+      if (!fichaCanEdit(d)) { await appAlert(fichaLockMsg(d)); return; }
       var i = indexOfDate(measureLog, d);
-      if (i >= 0 && !sameValues(measureLog[i].v, v) && !confirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Reemplazarla con estos valores?')) return;
+      if (i >= 0 && !sameValues(measureLog[i].v, v) && !(await appConfirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Reemplazarla con estos valores?'))) return;
       if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
       measureLog.sort(byDate);
       renderMeasureLog();
@@ -1732,7 +1749,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (st) st.innerText = '✅ Medición del ' + fmtDate(d) + ' guardada en el historial.';
     }
     // Antes de crear un enlace: que las medidas escritas en el formulario no se pierdan por olvidar "Guardar"
-    function ensureMeasureSaved() {
+    async function ensureMeasureSaved() {
       var el = document.getElementById('m_fecha');
       if (!el) return;
       var d = el.value, v = readMeasureForm();
@@ -1740,7 +1757,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var i = indexOfDate(measureLog, d);
       if (i >= 0 && sameValues(measureLog[i].v, v)) return;
       if (!fichaCanEdit(d)) return;
-      if (measureLog.length === 0 || confirm((i >= 0 ? 'La medición del ' + fmtDate(d) + ' tiene cambios sin guardar.' : 'Hay una medición del ' + fmtDate(d) + ' sin guardar en el historial.') + '\n\n¿Guardarla antes de crear el enlace?')) {
+      if (measureLog.length === 0 || (await appConfirm((i >= 0 ? 'La medición del ' + fmtDate(d) + ' tiene cambios sin guardar.' : 'Hay una medición del ' + fmtDate(d) + ' sin guardar en el historial.') + '\n\n¿Guardarla antes de crear el enlace?'))) {
         if (i >= 0) measureLog[i] = { d: d, v: v }; else measureLog.push({ d: d, v: v });
         measureLog.sort(byDate);
         FICHA.authors[d] = fichaStampName(FICHA.authors[d]);
@@ -2496,33 +2513,38 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return APP_BASE_URL;
     }
 
-    function genMorePosition() {
-      var m = document.getElementById('gen_more_menu'), btn = document.getElementById('gen_more_btn');
+    // Menú "Más" genérico: botón + panel que se posiciona con JS y se saca al <body>, para no heredar
+    // el bloque contenedor de un ancestro "sticky" o "fixed" (lo volvería a posicionar y recortar ahí, no en la pantalla).
+    function dropMenuPosition(menuId, btnId) {
+      var m = document.getElementById(menuId), btn = document.getElementById(btnId);
       var r = btn && btn.getBoundingClientRect();
       if (!m || !r) return;
       var w = Math.min(240, window.innerWidth - 20);
       var left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8);
+      var h = m.offsetHeight || 220;
+      var openUp = (r.bottom + 6 + h) > window.innerHeight && r.top - 6 - h > 0;   // si no cabe debajo (ej. barra pegada abajo) y sí cabe arriba, se abre hacia arriba
       m.style.left = left + 'px';
-      m.style.top = (r.bottom + 6) + 'px';
+      m.style.top = (openUp ? (r.top - 6 - h) : (r.bottom + 6)) + 'px';
       m.style.width = w + 'px';
     }
-    function genMoreToggle(forceClose) {
-      var m = document.getElementById('gen_more_menu');
+    function dropMenuToggle(menuId, btnId, forceClose) {
+      var m = document.getElementById(menuId);
       if (!m) return;
       if (forceClose === true) { m.classList.remove('open'); return; }
-      // La fila de pestañas es "position: sticky", y eso la vuelve el bloque contenedor de cualquier descendiente "fixed" dentro de ella:
-      // el menú terminaría posicionado relativo a la fila (y recortado por su scroll), no a la pantalla. Se saca al <body> para evitarlo.
       if (m.parentElement !== document.body) document.body.appendChild(m);
       var opening = !m.classList.contains('open');
       m.classList.toggle('open');
-      // Doble rAF: si el botón estaba fuera de vista, el navegador aún puede estar desplazando la fila de pestañas al tocarlo; se espera a que el layout se asiente antes de medir su posición.
-      if (opening) requestAnimationFrame(function() { requestAnimationFrame(genMorePosition); });
+      // Doble rAF: si el botón estaba fuera de vista, el navegador aún puede estar desplazando su fila al tocarlo; se espera a que el layout se asiente antes de medir su posición.
+      if (opening) requestAnimationFrame(function() { requestAnimationFrame(function() { dropMenuPosition(menuId, btnId); }); });
     }
+    function genMoreToggle(forceClose) { dropMenuToggle('gen_more_menu', 'gen_more_btn', forceClose); }
+    function exportMoreToggle(forceClose) { dropMenuToggle('export_more_menu', 'export_more_btn', forceClose); }
     document.addEventListener('click', function(ev) {
-      var wrap = document.querySelector('.gen-more-wrap');
-      var m = document.getElementById('gen_more_menu');
-      if (!wrap || !m || !m.classList.contains('open')) return;
-      if (!wrap.contains(ev.target) && !m.contains(ev.target)) m.classList.remove('open');
+      [['.gen-more-wrap', 'gen_more_menu'], ['.export-more-wrap', 'export_more_menu']].forEach(function(pair) {
+        var wrap = document.querySelector(pair[0]), m = document.getElementById(pair[1]);
+        if (!wrap || !m || !m.classList.contains('open')) return;
+        if (!wrap.contains(ev.target) && !m.contains(ev.target)) m.classList.remove('open');
+      });
     });
 
     function switchGenTab(viewId, btn) {
@@ -2760,8 +2782,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ---- Alternativa "¿Máquina ocupada?" (23/10/2026): ejercicio de peso libre o corporal que el cliente puede usar en lugar del prescrito, con su propio video ----
     function altFieldsHtml(path, sub) {
       var showDemos = false; try { showDemos = document.getElementById('featureDemos').checked; } catch (e) {}
-      return '<div class="form-group alt-field-box" style="grid-column: span 2; border:1px dashed var(--border); border-radius:8px; padding:8px;">' +
-        '<label>🔁 Alternativa si la máquina está ocupada (opcional)</label>' +
+      var hasAlt = !!(String(sub.alt || '').trim() || String(sub.altVideo || '').trim());   // si ya tiene algo cargado, se muestra abierta; si no, colapsada para no ocupar espacio de más
+      return '<details class="form-group alt-field-box" style="grid-column: span 2; border:1px dashed var(--border); border-radius:8px; padding:0;"' + (hasAlt ? ' open' : '') + '>' +
+        '<summary style="cursor:pointer; padding:8px; font-weight:700; font-size:0.85rem; color:var(--muted); list-style:none;">🔁 + Alternativa si la máquina está ocupada (opcional)</summary>' +
+        '<div style="padding:0 8px 8px;">' +
         '<input type="text" value="' + escHtml(sub.alt || '') + '" oninput="' + path + '.alt = this.value" onblur="suggestAltVideo(' + jsArg(path) + ')" placeholder="Ej: Sentadilla goblet con mancuerna">' +
         '<div class="demo-field-box" style="display:' + (showDemos ? 'block' : 'none') + '; margin-top:6px;">' +
           '<label>Video de la alternativa</label>' +
@@ -2769,7 +2793,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" class="btn-pick-ex" onclick="openPickVideo(' + jsArg(path + '.altVideo') + ')">🎥 Elegir</button>' +
           '<button type="button" class="btn-pick-ex" onclick="testVideoLink(' + jsArg(path + '.altVideo') + ')">▶ Probar</button><button type="button" class="btn-pick-ex" onclick="openYouTubeFor(' + jsArg(path + '.altVideo') + ')" title="Buscar este ejercicio en YouTube">▶️ YouTube</button></div>' +
         '</div>' +
-      '</div>';
+        '</div>' +
+      '</details>';
     }
     // Guarda el par alternativa→video en la biblioteca (misma biblioteca compartida que los ejercicios)
     function rememberAltVideo(basePath) {
@@ -2804,7 +2829,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
     }
     document.addEventListener('input', function(e) { var t = e.target; if (t && t.closest && t.closest('#daysList')) scanTreadmill(); });
-    function treadmillGuard() {
+    async function treadmillGuard() {
       var bad = [];
       routineDays.forEach(function(d) {
         (d.items || []).forEach(function(it) {
@@ -2812,7 +2837,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
       });
       if (!bad.length) return true;
-      return confirm('⚠️ Hay caminadora dentro de una biserie, triserie o circuito:\n\n• ' + bad.join('\n• ') + '\n\nA veces está ocupada o la pierden al bajarse. Lo recomendado es cambiarla por skipping alto, saltos de tijera o cuerda, y dejar la caminadora sola como cardio.\n\n¿Enviar la rutina de todos modos?');
+      return await appConfirm('⚠️ Hay caminadora dentro de una biserie, triserie o circuito:\n\n• ' + bad.join('\n• ') + '\n\nA veces está ocupada o la pierden al bajarse. Lo recomendado es cambiarla por skipping alto, saltos de tijera o cuerda, y dejar la caminadora sola como cardio.\n\n¿Enviar la rutina de todos modos?');
     }
     // ---- Guardia de calidad: descansos largos y calentamientos incompletos. Solo avisa, no bloquea ----
     function qualityScan() {
@@ -2837,13 +2862,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       return { restTooLong: restTooLong, warmShort: warmShort };
     }
-    function qualityGuard() {
+    async function qualityGuard() {
       var r = qualityScan();
       if (!r.restTooLong.length && !r.warmShort.length) return true;
       var msg = '⚠️ Revisa antes de enviar:\n\n';
       if (r.restTooLong.length) msg += '⏱ Descansos de más de 60 s:\n• ' + r.restTooLong.join('\n• ') + '\n\n';
       if (r.warmShort.length) msg += '🔥 Calentamientos con menos de 3 ejercicios:\n• ' + r.warmShort.join('\n• ') + '\n\n';
-      return confirm(msg + '¿Enviar de todos modos?');
+      return await appConfirm(msg + '¿Enviar de todos modos?');
     }
     // ---- Guardia de Vigencia: ningún ejercicio puede salir dos veces en la misma semana de un día ----
     // Detecta (vigAudit), arregla lo que es seguro (vigAutoFix) y avisa antes de enviar (vigGuard). Revisa también a todos los clientes (vigScanClients, solo lectura).
@@ -2933,7 +2958,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return iss.slice(0, 12).map(function(x) { var w = x.weeks; return '• ' + x.day + ': «' + x.name + '» sale ' + x.count + ' veces en ' + (w.length === 1 ? 'la semana ' + w[0] : 'las semanas ' + w[0] + (w.length > 2 ? ' a ' : ' y ') + w[w.length - 1]); }).join('\n') + (iss.length > 12 ? '\n… y ' + (iss.length - 12) + ' más' : '');
     }
     // Antes de enviar/guardar: true = seguir. Ofrece arreglar solo lo seguro; si no, deja decidir.
-    function vigGuard() {
+    async function vigGuard() {
       var dur = (document.getElementById('durationWeeks') || {}).value;
       var iss = vigAudit(routineDays, dur);
       if (!iss.length) return true;
@@ -2941,15 +2966,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var snap = JSON.stringify(routineDays);
       var n = vigAutoFix(routineDays, dur);
       if (n && !vigAudit(routineDays, dur).length) {
-        if (confirm(msg + 'Puedo arreglarlo solo: cada copia pasa a ser una versión de su fase (' + n + ' ejercicios). Aceptar = arreglar ahora; luego revisa y vuelve a enviar.\nCancelar = no tocar nada.')) { try { renderDays(); } catch (e) {} alert('✅ Vigencia arreglada. Revisa los días y vuelve a tocar enviar.'); return false; }
+        if (await appConfirm(msg + 'Puedo arreglarlo solo: cada copia pasa a ser una versión de su fase (' + n + ' ejercicios). Aceptar = arreglar ahora; luego revisa y vuelve a enviar.\nCancelar = no tocar nada.')) { try { renderDays(); } catch (e) {} await appAlert('✅ Vigencia arreglada. Revisa los días y vuelve a tocar enviar.'); return false; }
         routineDays = JSON.parse(snap);   // no aceptó: queda como estaba
-        return confirm('¿Enviar así de todos modos?\n\nAceptar = enviar con los ejercicios repetidos\nCancelar = volver a revisar');
+        return await appConfirm('¿Enviar así de todos modos?\n\nAceptar = enviar con los ejercicios repetidos\nCancelar = volver a revisar');
       }
       routineDays = JSON.parse(snap);
-      return confirm(msg + 'No es un caso que pueda arreglar solo con seguridad. Revisa las líneas «Vigencia» de esos ejercicios.\n\nAceptar = enviar así de todos modos\nCancelar = volver a revisar');
+      return await appConfirm(msg + 'No es un caso que pueda arreglar solo con seguridad. Revisa las líneas «Vigencia» de esos ejercicios.\n\nAceptar = enviar así de todos modos\nCancelar = volver a revisar');
     }
     // Al importar: avisa en el momento, con la opción de arreglar
-    function vigAfterImport() {
+    async function vigAfterImport() {
       try {
         var dur = (document.getElementById('durationWeeks') || {}).value;
         var iss = vigAudit(routineDays, dur);
@@ -2957,8 +2982,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var snap = JSON.stringify(routineDays), n = vigAutoFix(routineDays, dur);
         var msg = '⚠️ Revisión de Vigencia: estos ejercicios salen repetidos el mismo día:\n\n' + vigIssuesText(iss) + '\n\n';
         if (n && !vigAudit(routineDays, dur).length) {
-          if (confirm(msg + 'Puedo arreglarlo solo (' + n + ' ejercicios): cada copia pasa a ser una versión de su fase.\n\nAceptar = arreglar ahora\nCancelar = dejarlo como está')) { renderDays(); showToastTop('✅ Vigencia arreglada.'); return; }
-        } else { alert(msg + 'No lo puedo arreglar solo con seguridad: revisa las líneas «Vigencia» de esos ejercicios en el texto.'); }
+          if (await appConfirm(msg + 'Puedo arreglarlo solo (' + n + ' ejercicios): cada copia pasa a ser una versión de su fase.\n\nAceptar = arreglar ahora\nCancelar = dejarlo como está')) { renderDays(); showToastTop('✅ Vigencia arreglada.'); return; }
+        } else { await appAlert(msg + 'No lo puedo arreglar solo con seguridad: revisa las líneas «Vigencia» de esos ejercicios en el texto.'); }
         routineDays = JSON.parse(snap); renderDays();
       } catch (e) {}
     }
@@ -3194,10 +3219,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return updateErrorText(o && o.r && o.r.error);
       }).catch(function(e) { return (e && e.message === 'verificacion') ? 'verificacion' : updateErrorText(e && e.message); });
     }
-    function vigFixClient(k) {
+    async function vigFixClient(k) {
       var x = VIGSCAN.res[k]; if (!x || x.busy || x.done) return;
       if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
-      if (!confirm('Arreglar la Vigencia de ' + x.name + '?\n\n' + x.notes.join('\n') + '\n\nCada copia repetida pasa a ser una versión de su fase (1-2, 3-4, 5+…). No se cambian los ejercicios ni el texto.')) return;
+      if (!(await appConfirm('Arreglar la Vigencia de ' + x.name + '?\n\n' + x.notes.join('\n') + '\n\nCada copia repetida pasa a ser una versión de su fase (1-2, 3-4, 5+…). No se cambian los ejercicios ni el texto.'))) return;
       x.busy = true;
       vigFixCore(x).then(function(r) {
         x.busy = false;
@@ -3206,11 +3231,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
     }
     // Todos los seguros de una vez, uno tras otro. Cada uno se verifica por separado: si alguno no pasa, se salta y queda marcado.
-    function vigFixAll() {
+    async function vigFixAll() {
       var list = VIGSCAN.res.filter(function(x) { return x.fixable && !x.done; });
       if (!list.length || VIGSCAN.fixing) return;
       if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
-      if (!confirm('Arreglar la Vigencia de ' + list.length + ' clientes?\n\n' + list.map(function(x) { return '• ' + x.name; }).join('\n') + '\n\nCada copia repetida pasa a ser una versión de su fase. No se cambian los ejercicios ni el texto, y cada cliente se verifica antes de guardar (si uno no pasa, se salta).')) return;
+      if (!(await appConfirm('Arreglar la Vigencia de ' + list.length + ' clientes?\n\n' + list.map(function(x) { return '• ' + x.name; }).join('\n') + '\n\nCada copia repetida pasa a ser una versión de su fase. No se cambian los ejercicios ni el texto, y cada cliente se verifica antes de guardar (si uno no pasa, se salta).'))) return;
       VIGSCAN.fixing = true;
       var ok = 0, skipped = [], n = 0;
       pendOverlay('vig_scan', '<div class="pend-ttl">🛠 Arreglando…</div><div class="pend-txt" id="vig_fix_txt">0 de ' + list.length + '</div>');
@@ -3415,13 +3440,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.querySelectorAll('.video-missing').forEach(function(el) { el.classList.remove('video-missing'); });
     }
     document.addEventListener('input', function(e) { var t = e.target; if (t && t.classList && t.classList.contains('video-missing')) t.classList.remove('video-missing'); });
-    function videoGuard() {
+    async function videoGuard() {
       var demos = document.getElementById('featureDemos');
       if (!demos || !demos.checked) { clearVideoMissingMarks(); return true; }
       // Antes de avisar que falta un video, trae los que ya están guardados en la biblioteca con el mismo nombre
       try { if (autoFillVideosFromLibrary() > 0) { renderDays(); setTimeout(vidBadgeAll, 150); } } catch (e) {}
       var miss = missingVideos();
-      if (!miss.length) { clearVideoMissingMarks(); return embedGuard(); }
+      if (!miss.length) { clearVideoMissingMarks(); return await embedGuard(); }
       switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
       clearVideoMissingMarks();
       var first = null;
@@ -3432,7 +3457,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       try { vmOpen(); } catch (eVm) {
         var shown = miss.slice(0, 8).map(function(m) { return '• ' + m.label; }).join('\n');
-        alert('🎥 Falta el video de ' + miss.length + ' ejercicio(s) o alternativa(s):\n\n' + shown);
+        await appAlert('🎥 Falta el video de ' + miss.length + ' ejercicio(s) o alternativa(s):\n\n' + shown);
       }
       if (first) { dayEnsureOpen(first); try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
       return false;
@@ -3487,7 +3512,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // ---- Guardia de incrustación: antes de enviar/actualizar avisa de videos que no se pueden mostrar en la app y lleva a ellos ----
     // Usa la comprobación automática (se hace sola en segundo plano al cargar/escribir los videos). Si el coach decide enviar igual, se respeta.
-    function embedGuard() {
+    async function embedGuard() {
       var bad = [], unknown = {}, markSel = [];
       routineDays.forEach(function(d, di) {
         if (d.rest) return;
@@ -3508,7 +3533,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var unk = Object.keys(unknown);
       if (unk.length) {
         unk.forEach(function(id) { vidCheckQ(id); });
-        alert('⏳ Estoy comprobando ' + unk.length + ' video' + (unk.length > 1 ? 's' : '') + ' para saber si se pueden mostrar en la app.\n\nEspera unos segundos y vuelve a tocar el botón.');
+        await appAlert('⏳ Estoy comprobando ' + unk.length + ' video' + (unk.length > 1 ? 's' : '') + ' para saber si se pueden mostrar en la app.\n\nEspera unos segundos y vuelve a tocar el botón.');
         return false;
       }
       if (!bad.length) { clearVideoMissingMarks(); return true; }
@@ -3516,7 +3541,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       clearVideoMissingMarks();
       markSel.forEach(function(sel) { var el = document.querySelector(sel); if (el) { el.classList.add('video-missing'); if (!first) first = el; } });
       var shown = bad.slice(0, 8).map(function(m) { return '• ' + m.label + (m.st === 'missing' ? ' (privado, borrado o no existe)' : ' (no permite incrustación)'); }).join('\n');
-      var go = confirm('🎥 ' + bad.length + (bad.length > 1 ? ' videos no se podrán mostrar' : ' video no se podrá mostrar') + ' dentro de la app:\n\n' + shown + (bad.length > 8 ? '\n• … y ' + (bad.length - 8) + ' más' : '') + '\n\nAceptar = ir a corregirlos\nCancelar = enviar de todos modos (el cliente solo verá el botón "Ver demostración")');
+      var go = await appConfirm('🎥 ' + bad.length + (bad.length > 1 ? ' videos no se podrán mostrar' : ' video no se podrá mostrar') + ' dentro de la app:\n\n' + shown + (bad.length > 8 ? '\n• … y ' + (bad.length - 8) + ' más' : '') + '\n\nAceptar = ir a corregirlos\nCancelar = enviar de todos modos (el cliente solo verá el botón "Ver demostración")');
       if (!go) { clearVideoMissingMarks(); return true; }
       switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
       if (first) { dayEnsureOpen(first); try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); } catch (e) {} }
@@ -3559,7 +3584,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       renderDays();
     }
 
-    function removeDay(index) { if (confirm('¿Eliminar este día?')) { routineDays.splice(index, 1); renderDays(); } }
+    async function removeDay(index) { if (await appConfirm('¿Eliminar este día?')) { routineDays.splice(index, 1); renderDays(); } }
     // Plantillas de HIIT (puntos de partida editables). Descanso después de CADA intervalo, también el último.
     var HIIT_TEMPLATES = {
       caminadora: { nombre: 'HIIT caminadora', rondas: '10', trabajo: '30 s', descanso: '30 s', etqT: 'Rápido', etqD: 'Despacio', rpeT: '8', rpeD: '4', ajuste: 'Elevación 6', est: ['Caminadora'] },
@@ -3649,7 +3674,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       DAYS_OPEN.set(routineDays[routineDays.length - 1], true);
       renderDays();
     }
-    function addStation(di, ii) { var itH = routineDays[di].items[ii]; if (itH.circ && itH.circ.tipo === 'hiit' && (itH.sub || []).length >= 3) { alert('Un HIIT lleva máximo 3 ejercicios (de preferencia peso corporal o peso libre).'); return; } itH.sub.push({ name: '', series: '', reps: '', notes: '', video: '' }); renderDays(); }
+    async function addStation(di, ii) { var itH = routineDays[di].items[ii]; if (itH.circ && itH.circ.tipo === 'hiit' && (itH.sub || []).length >= 3) { await appAlert('Un HIIT lleva máximo 3 ejercicios (de preferencia peso corporal o peso libre).'); return; } itH.sub.push({ name: '', series: '', reps: '', notes: '', video: '' }); renderDays(); }
     function removeStation(di, ii, si) { var it = routineDays[di].items[ii]; if (it.sub.length > 1) { it.sub.splice(si, 1); renderDays(); } }
     function fld(label, path, val, span2, withPicker) {
       var blurAttr = withPicker ? (' onblur="suggestVideoFromLibrary(' + jsArg(path.replace(/\.name$/, '')) + ')"') : '';
@@ -3708,21 +3733,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         (c.notas ? '<div class="ex-notes">📌 ' + escHtml(c.notas) + '</div>' : '') + '</div>';
     }
 
-    function copyTemplateExample() {
+    async function copyTemplateExample() {
       var text = document.getElementById('importTemplateText').innerText;
       navigator.clipboard.writeText(text);
-      alert('¡Plantilla copiada al portapapeles!');
+      await appAlert('¡Plantilla copiada al portapapeles!');
     }
 
     // ================= RESTAURADOR UNIVERSAL (RECUPERA TODOS LOS DÍAS) =================
     // Carga una rutina anterior a partir de un enlace: enlace corto/largo propio del
     // constructor (#i= o #q=) se resuelve directo; cualquier otro enlace se descarga
     // como texto y se procesa con el mismo lector universal que "pegar código HTML".
-    function loadRoutineFromUrl() {
+    async function loadRoutineFromUrl() {
       var urlInput = document.getElementById('loadFromUrlInput');
       var status = document.getElementById('loadFromUrlStatus');
       var url = (urlInput.value || '').trim();
-      if (!url) { alert('Pega primero el enlace de la rutina anterior.'); return; }
+      if (!url) { await appAlert('Pega primero el enlace de la rutina anterior.'); return; }
 
       var mi = url.match(/#i=([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{20,200})?/);
       if (mi) { if (status) status.innerText = ''; restoreFromShare(mi[1]); return; }
@@ -3730,14 +3755,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var mq = url.match(/#q=([A-Za-z0-9_-]+)/);
       if (mq) {
         var stQ = decodePayload('q', mq[1]);
-        if (!stQ) { alert('El enlace largo parece incompleto o dañado.'); return; }
+        if (!stQ) { await appAlert('El enlace largo parece incompleto o dañado.'); return; }
         applyRestoredState(stQ);
-        alert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
+        await appAlert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
         return;
       }
 
-      if (!/^https?:\/\//i.test(url)) { alert('Ese enlace no parece válido. Debe empezar con http:// o https://'); return; }
+      if (!/^https?:\/\//i.test(url)) { await appAlert('Ese enlace no parece válido. Debe empezar con http:// o https://'); return; }
 
       if (status) status.innerText = 'Descargando el archivo desde el enlace…';
       fetch(url, { redirect: 'follow' })
@@ -3749,33 +3774,33 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (status) status.innerText = '';
           parseAndRestoreFromHtmlString(txt);
         })
-        .catch(function(e) {
+        .catch(async function(e) {
           if (status) status.innerText = '';
-          alert('No se pudo descargar ese enlace. Revisa que sea público y termine en .html, o que sea un enlace corto del constructor (#i=...). Detalle: ' + (e && e.message ? e.message : 'error de red'));
+          await appAlert('No se pudo descargar ese enlace. Revisa que sea público y termine en .html, o que sea un enlace corto del constructor (#i=...). Detalle: ' + (e && e.message ? e.message : 'error de red'));
         });
     }
 
     function restoreFromShare(id) {
       fetchJson(SHARE_SCRIPT_URL + '?id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000)
-        .then(function(j) {
+        .then(async function(j) {
           var st = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
-          if (!st) return alert('No se pudo cargar esa rutina desde el enlace corto (puede haber sido eliminada de la hoja).');
+          if (!st) return await appAlert('No se pudo cargar esa rutina desde el enlace corto (puede haber sido eliminada de la hoja).');
           if (pendDue(st)) st = pendPromote(st);   // si ya empezó su rutina nueva, se carga esa
           applyRestoredState(st);
-          alert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
+          await appAlert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
           switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
         })
-        .catch(function() { alert('No se pudo conectar para cargar ese enlace corto. Revisa tu internet.'); });
+        .catch(async function() { await appAlert('No se pudo conectar para cargar ese enlace corto. Revisa tu internet.'); });
     }
 
-    function parseAndRestoreFromHtmlString(rawInput) {
+    async function parseAndRestoreFromHtmlString(rawInput) {
       var pasteEl = document.getElementById('pasteHtmlCode');
       var raw = (rawInput != null ? rawInput : (pasteEl ? pasteEl.value : '')).trim();
       if (raw && raw.length < 3000) {
         var mi = raw.match(/#i=([A-Za-z0-9]{6,32})(?:\.[A-Za-z0-9_-]{20,200})?/);
         if (mi) { restoreFromShare(mi[1]); return; }
       }
-      if (!raw) return alert('Por favor selecciona un archivo HTML o pega su código primero.');
+      if (!raw) return await appAlert('Por favor selecciona un archivo HTML o pega su código primero.');
 
       var state = null;
 
@@ -3870,11 +3895,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
 
       if (!state) {
-        return alert('No se encontró la estructura de rutina en este archivo. Asegúrate de que sea un archivo de Benessere Gym.');
+        return await appAlert('No se encontró la estructura de rutina en este archivo. Asegúrate de que sea un archivo de Benessere Gym.');
       }
 
       applyRestoredState(state);
-      alert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
+      await appAlert('¡Rutina anterior cargada con éxito! Se montaron ' + routineDays.length + ' días de entrenamiento.');
       switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
     }
 
@@ -4117,19 +4142,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
     }
 
-    function deleteDraft(id) {
-      if (!confirm('¿Eliminar este borrador? No se puede deshacer.')) return;
+    async function deleteDraft(id) {
+      if (!(await appConfirm('¿Eliminar este borrador? No se puede deshacer.'))) return;
       localStorage.removeItem(DRAFTS_PREFIX + id);
       var idx = getDraftsIndex().filter(function(d) { return d.id !== id; });
       setDraftsIndex(idx);
       drawDraftList();   // refresca la lista abierta (conserva lo que se buscó)
     }
 
-    function deleteAllDrafts() {
+    async function deleteAllDrafts() {
       var n = getDraftsIndex().length;
       if (!n) return;
-      if (!confirm('¿Borrar los ' + n + ' borradores guardados en este dispositivo? No se puede deshacer.')) return;
-      if (!confirm('Última confirmación: se borrarán TODOS los borradores (' + n + '). ¿Seguro?')) return;
+      if (!(await appConfirm('¿Borrar los ' + n + ' borradores guardados en este dispositivo? No se puede deshacer.'))) return;
+      if (!(await appConfirm('Última confirmación: se borrarán TODOS los borradores (' + n + '). ¿Seguro?'))) return;
       try {
         var keys = [];
         for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(DRAFTS_PREFIX) === 0) keys.push(k); }
@@ -4175,7 +4200,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // para el siguiente cliente — incluye campos que el Importador de Texto no toca
     // (ficha antropométrica, teléfono, historial de medidas), que es justo lo que se
     // arrastra por accidente si solo se pega texto nuevo encima de una rutina anterior.
-    function saveAndResetBuilder() {
+    async function saveAndResetBuilder() {
       var currentName = document.getElementById('clientName').value.trim();
       if (currentName || routineDays.length > 1 || (routineDays[0] && routineDays[0].items && routineDays[0].items.length)) {
         var suggested = (currentName || 'Sin nombre') + ' — ' + todayIso();
@@ -4190,9 +4215,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           idx.unshift({ id: id, label: label, savedAt: new Date().toISOString() });
           setDraftsIndex(idx);
         } catch (e) {
-          if (!confirm('⚠️ No se pudo guardar el borrador (¿memoria del navegador llena?). ¿Reiniciar de todas formas y perder lo que hay ahora?')) return;
+          if (!(await appConfirm('⚠️ No se pudo guardar el borrador (¿memoria del navegador llena?). ¿Reiniciar de todas formas y perder lo que hay ahora?'))) return;
         }
-      } else if (!confirm('¿Reiniciar el constructor? No hay nada que valga la pena guardar todavía.')) {
+      } else if (!(await appConfirm('¿Reiniciar el constructor? No hay nada que valga la pena guardar todavía.'))) {
         return;
       }
 
@@ -4304,7 +4329,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     function parseAndLoadImportData() {
       var raw = document.getElementById('importRawText').value.trim();
-      if (!raw) return alert('Pega el texto estructurado primero.');
+      if (!raw) return appAlert('Pega el texto estructurado primero.');
       try {   // si el texto es de otro cliente, no se mezclan sus mediciones ni su ficha vinculada con las de este
         var nm0 = (raw.match(/^Nombre:\s*(.+)$/mi) || [])[1], cn0 = (document.getElementById('clientName').value || '').trim();
         if (nm0 && ((FICHA.c && normName(nm0) !== normName(FICHA.name)) || (cn0 && normName(nm0) !== normName(cn0)))) { fichaClearForm(); measureLog = []; renderMeasureLog(); }
@@ -4600,10 +4625,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (importNote && nMeas) { var nd = isIsoDate(importMeasDate) ? importMeasDate : (isIsoDate(document.getElementById('startDate').value) ? document.getElementById('startDate').value : todayIso()); FICHA.notes[nd] = importNote; }
         if (nHist || nMeas || importPerfil) { try { fichaSuggest(); } catch (e) {} fichaTouch(); }   // si hay ficha vinculada, lo importado se escribe en la hoja
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-        alert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días' + (nMeas ? ' y ' + nMeas + ' medidas (revísalas en "👤 Datos Atleta & Medidas").' : '.') + (nHist ? '\nTambién se cargaron ' + nHist + ' medición(es) anterior(es) en el historial.' : ''));
+        appAlert('¡Importación exitosa! Se cargaron ' + parsedDays.length + ' días' + (nMeas ? ' y ' + nMeas + ' medidas (revísalas en "👤 Datos Atleta & Medidas").' : '.') + (nHist ? '\nTambién se cargaron ' + nHist + ' medición(es) anterior(es) en el historial.' : ''));
         vigAfterImport();
       } else {
-        alert('No se detectaron días válidos.');
+        appAlert('No se detectaron días válidos.');
       }
     }
 
@@ -5293,11 +5318,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       b.innerText = PRUEBA.preview ? '👁️ VISTA PREVIA · no se guarda · Volver ✖' : '🧪 PRUEBA · no se guarda · Salir ✖';
     }
-    function pruebaToggle() {
+    async function pruebaToggle() {
       if (PRUEBA.preview) { previewExit(); return; }   // en la vista previa no se recarga la app: se vuelve al constructor tal como estaba
       if (!PRUEBA.on) {
-        if (!confirm('🧪 Modo prueba\n\nPodrás abrir los perfiles de los clientes y experimentar (marcar pesos, cerrar entrenos, editar).\nNada se guarda en el celular ni se envía a la hoja.\n\n¿Activarlo?')) return;
-        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar el modo prueba.'); return; }
+        if (!(await appConfirm('🧪 Modo prueba\n\nPodrás abrir los perfiles de los clientes y experimentar (marcar pesos, cerrar entrenos, editar).\nNada se guarda en el celular ni se envía a la hoja.\n\n¿Activarlo?'))) return;
+        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { await appAlert('No se pudo iniciar el modo prueba.'); return; }
         PRUEBA.on = true; pruebaBanner(); pruebaLabel();
       } else {
         PRUEBA.on = false; PRUEBA.data = null;
@@ -5521,10 +5546,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       setTimeout(function() { cp.innerText = '📋 Copiar mensaje'; }, 3000);
     }
 
-    function generateDirectWhatsAppLink() {
+    async function generateDirectWhatsAppLink() {
       var coachNameField = document.getElementById('coachName');
       if (!coachNameField.value.trim()) {
-        alert('Escribe primero el nombre del Coach en "Perfil del Coach".');
+        await appAlert('Escribe primero el nombre del Coach en "Perfil del Coach".');
         switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
         window.scrollTo(0, 0);
         coachNameField.focus();
@@ -5533,11 +5558,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var baseUrl = getAppBaseUrl();
       if (!baseUrl) return;
 
-      if (!videoGuard() || !guiadoGuard()) return;
-      if (!treadmillGuard()) return;
-      if (!qualityGuard()) return;
-      if (!vigGuard()) return;
-      ensureMeasureSaved();
+      if (!(await videoGuard()) || !(await guiadoGuard())) return;
+      if (!(await treadmillGuard())) return;
+      if (!(await qualityGuard())) return;
+      if (!(await vigGuard())) return;
+      await ensureMeasureSaved();
       var state = getBuilderState();
       var payloadText = encodePayload(buildUltraCompactState(state));
       // Enlace largo: la rutina completa dentro del enlace (funciona sin servidor)
@@ -6071,6 +6096,44 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function openModal(id) { var el = document.getElementById(id); if (el) el.classList.add('active'); }
     function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('active'); try { wkSuggestPaint(); } catch (e) {} }   // al volver a la pantalla principal se actualiza el día sugerido (se apaga si ya entrenó o está entrenando)
 
+    // ================= MODAL DE ALERTA / CONFIRMACIÓN (reemplaza alert()/confirm() nativos) =================
+    // appAlert(msg) devuelve una Promise que resuelve cuando el usuario cierra el aviso.
+    // appConfirm(msg, opts) devuelve una Promise<boolean> (true = aceptar, false = cancelar/fuera del modal).
+    // opts: { okText, cancelText, danger } — danger pinta el botón de aceptar en rojo (para acciones destructivas).
+    function appModalBase(msg, buttonsHtml) {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed; inset:0; z-index:100200; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; padding:16px;';
+      wrap.innerHTML = '<div style="background:var(--card,#1b1b1b); border:1px solid var(--border,#333); border-radius:14px; padding:18px; max-width:380px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,.6);">' +
+        '<div style="color:#fff; font-size:0.92rem; line-height:1.5; white-space:pre-wrap; margin-bottom:16px;">' + escHtml(String(msg == null ? '' : msg)) + '</div>' +
+        '<div style="display:flex; gap:8px; justify-content:flex-end;">' + buttonsHtml + '</div></div>';
+      document.body.appendChild(wrap);
+      return wrap;
+    }
+    function appAlert(msg, okText) {
+      return new Promise(function(resolve) {
+        var ok = 'am_ok_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        var wrap = appModalBase(msg, '<button type="button" id="' + ok + '" style="background:var(--primary); color:#000; border:none; border-radius:8px; padding:9px 18px; font-weight:800; font-size:0.85rem; cursor:pointer;">' + escHtml(okText || 'OK') + '</button>');
+        function done() { try { document.body.removeChild(wrap); } catch (e) {} resolve(); }
+        document.getElementById(ok).onclick = done;
+        wrap.addEventListener('click', function(ev) { if (ev.target === wrap) done(); });
+      });
+    }
+    function appConfirm(msg, opts) {
+      opts = opts || {};
+      return new Promise(function(resolve) {
+        var okId = 'am_ok_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        var cancelId = 'am_cc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        var okColor = opts.danger ? 'background:#ff6b6b; color:#000;' : 'background:var(--primary); color:#000;';
+        var buttons = '<button type="button" id="' + cancelId + '" style="background:transparent; color:#aaa; border:1px solid #444; border-radius:8px; padding:9px 16px; font-weight:800; font-size:0.85rem; cursor:pointer;">' + escHtml(opts.cancelText || 'Cancelar') + '</button>' +
+          '<button type="button" id="' + okId + '" style="' + okColor + ' border:none; border-radius:8px; padding:9px 18px; font-weight:800; font-size:0.85rem; cursor:pointer;">' + escHtml(opts.okText || 'Aceptar') + '</button>';
+        var wrap = appModalBase(msg, buttons);
+        function done(v) { try { document.body.removeChild(wrap); } catch (e) {} resolve(v); }
+        document.getElementById(okId).onclick = function() { done(true); };
+        document.getElementById(cancelId).onclick = function() { done(false); };
+        wrap.addEventListener('click', function(ev) { if (ev.target === wrap) done(false); });
+      });
+    }
+
     // ================= SELECTOR DE EJERCICIOS (Clasificación → Ejercicio) =================
     // Al elegir un ejercicio del inventario, se escribe directo en el campo de nombre indicado por targetPath.
     var pickExState = { targetPath: null, category: null };
@@ -6287,16 +6350,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       '</div>';
     }
     // Abre el link guardado en una pestaña nueva, sin elegirlo
-    function pickVideoTest(link, name) {
+    async function pickVideoTest(link, name) {
       link = String(link || '').trim();
-      if (!/^https?:\/\//i.test(link)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (!/^https?:\/\//i.test(link)) { await appAlert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
       DEMO_FIELD = '';
       if (demoFloatOpen(link, true, true, name || '', false, name || '')) return;
       window.open(link, '_blank', 'noopener');
     }
     // Quita un video de la biblioteca (compartida entre coaches: se borra para todos). Pide confirmación.
-    function pickVideoDelete(name) {
-      if (!confirm('¿Eliminar "' + name + '" de la biblioteca de videos?\n\nComo la biblioteca es compartida, se borra para todos los coaches. Los ejercicios que ya tienen ese link en una rutina no cambian.')) return;
+    async function pickVideoDelete(name) {
+      if (!(await appConfirm('¿Eliminar "' + name + '" de la biblioteca de videos?\n\nComo la biblioteca es compartida, se borra para todos los coaches. Los ejercicios que ya tienen ese link en una rutina no cambian.'))) return;
       forgetExerciseVideo(name);
       renderPickVideo();
       if (document.getElementById('videoLibBody')) renderVideoLibrary();
@@ -12629,7 +12692,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Coach: ' + escHtml(displayCoach(last.coach)) + ' · Última rutina: ' + escHtml(String(last.f || '').slice(0, 10)) + (g.days.length > 1 ? ' · ' + g.days.length + ' rutinas' : '') + '</div>' + (isOff ? '<div style="margin-top:4px; font-size:0.7rem; font-weight:700; color:#ffb347;">🔌 Desconectado: ya no ve la rutina ni las actualizaciones</div>' : '') + attWeekTag(g.name, last.id) + '</div>' +
           '<div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" onclick="editClientRoutine(\'' + escHtml(last.id) + '\')" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">✏️ Editar</button>' +
           '<button type="button" onclick="cloneClientRoutine(\'' + escHtml(last.id) + '\')" title="Usar esta rutina como base para otro cliente" style="background:transparent; color:#b388ff; border:1px solid #b388ff; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">📋 Clonar</button>' +
-          '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:#ffd60a; border:1px solid #ffd60a; border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
+          '<button type="button" onclick="pruebaClient(\'' + escHtml(last.id) + '\')" title="Abrir este perfil para hacer pruebas: nada se guarda ni se envía" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:9px 10px; font-weight:800; font-size:0.8rem; cursor:pointer;">🧪 Probar</button>' +
           '<button type="button" onclick="openClientRoutine(\'' + escHtml(last.id) + '\')" style="background:var(--primary); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:800; font-size:0.8rem; cursor:pointer;">Entrenar</button></div></div>';
         CLMENU[k] = { key: k, name: g.name, id: last.id, off: isOff };
         html += '<div style="margin-top:6px;"><button type="button" onclick="clientMenuOpen(' + jsArg(k) + ')" style="background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:6px; padding:5px 14px; font-size:0.78rem; font-weight:800; cursor:pointer;">⚙️ Opciones</button></div>';
@@ -13654,25 +13717,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function cancelEditRoutine() { editingRoutine = null; showEditBanner(''); }
     // Desde «Editar»: lo que está en el constructor se guarda como rutina NUEVA en espera (la actual del cliente no se toca) y empieza sola en la fecha que elijas
-    function queueEditingRoutine() {
+    async function queueEditingRoutine() {
       if (!editingRoutine) return;
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
-      if (!videoGuard() || !guiadoGuard()) return;
-      if (!treadmillGuard()) return;
-      if (!qualityGuard()) return;
-      if (!vigGuard()) return;
-      ensureMeasureSaved();
+      if (!COACH) { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      if (!(await videoGuard()) || !(await guiadoGuard())) return;
+      if (!(await treadmillGuard())) return;
+      if (!(await qualityGuard())) return;
+      if (!(await vigGuard())) return;
+      await ensureMeasureSaved();
       var state = getBuilderState(), id = editingRoutine.id, pin = COACH.pin;
       if (editingRoutine.coach) state.coachName = editingRoutine.coach;
       if (editingRoutine.name) state.clientName = editingRoutine.name;   // mismo nombre de siempre: el historial del cliente va por nombre
       var btn = document.getElementById('btn_queue_routine'); if (btn) btn.disabled = true;
       var done = function() { if (btn) btn.disabled = false; };
-      fetchRoutine(id).then(function(j) {
+      fetchRoutine(id).then(async function(j) {
         if (!j || !j.ok || !j.p) throw new Error('respuesta');
         var cur = decodePayload('q', j.p); if (!cur) throw new Error('respuesta');
         var eff = (!cur.off && pendDue(cur)) ? pendPromote(cur) : cur, today = todayIso(), endIso = routineEndIso(eff);
         if (cur.off || !isIsoDate(eff.startDate) || eff.startDate > today || !endIso || endIso < today) {
-          done(); alert('Este cliente no tiene una rutina en curso (ya terminó, aún no empieza o está desconectado), así que no hay nada que esperar. Usa «Actualizar rutina» y empezará de inmediato.'); return;
+          done(); await appAlert('Este cliente no tiene una rutina en curso (ya terminó, aún no empieza o está desconectado), así que no hay nada que esperar. Usa «Actualizar rutina» y empezará de inmediato.'); return;
         }
         pendSendModal(id, j.p, cur, eff, endIso, state, pin, function(r) {
           done();
@@ -13682,19 +13745,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           showEditBanner('✅ Quedó en espera: empieza el ' + fechaLargaEs(state.startDate) + '. La rutina actual de ' + (editingRoutine.name || 'el cliente') + ' no se tocó.');
           try { finishShare(state, getAppBaseUrl() + '#i=' + id, '', 'espera'); } catch (e) {}
         });
-      }).catch(function(e) { done(); alert('No se pudo preparar: ' + updateErrorText(e && e.message)); });
+      }).catch(async function(e) { done(); await appAlert('No se pudo preparar: ' + updateErrorText(e && e.message)); });
     }
-    function updateEditingRoutine() {
+    async function updateEditingRoutine() {
       if (!editingRoutine) return;
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
-      if (!confirm(editingRoutine.target === 'pend'
+      if (!COACH) { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+      if (!(await appConfirm(editingRoutine.target === 'pend'
         ? '¿Actualizar la rutina EN ESPERA de ' + editingRoutine.name + '? Su rutina actual no se toca; este cambio lo verá cuando empiece la nueva.'
-        : '¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.')) return;
-      if (!videoGuard() || !guiadoGuard()) return;
-      if (!treadmillGuard()) return;
-      if (!qualityGuard()) return;
-      if (!vigGuard()) return;
-      ensureMeasureSaved();
+        : '¿Actualizar la rutina de ' + editingRoutine.name + '? Se cambiará en su enlace actual y la verá la próxima vez que abra su rutina.'))) return;
+      if (!(await videoGuard()) || !(await guiadoGuard())) return;
+      if (!(await treadmillGuard())) return;
+      if (!(await qualityGuard())) return;
+      if (!(await vigGuard())) return;
+      await ensureMeasureSaved();
       var state = getBuilderState();
       if (editingRoutine.coach) state.coachName = editingRoutine.coach;   // se conserva el coach original de la rutina
       var editWaiting = editingRoutine.target === 'pend';
@@ -13702,7 +13765,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try {
         payloadText = encodePayload(buildUltraCompactState(state));
         if (!editWaiting && editingRoutine.nextRaw) payloadText = payloadWithNext(payloadText, editingRoutine.nextRaw) || payloadText;   // la rutina en espera se conserva
-      } catch (eP) { alert('No se pudo preparar el cambio.'); return; }
+      } catch (eP) { await appAlert('No se pudo preparar el cambio.'); return; }
       var btn = document.getElementById('btn_update_routine');
       btn.disabled = true; btn.innerText = 'Actualizando…';
       // Editando la que está en espera: se parte de lo último que tiene el cliente en la hoja y solo se cambia la rutina en espera
@@ -13718,7 +13781,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (finalP.length > PEND_MAX) { var er = new Error('grande'); er.big = true; throw er; }
         payloadText = finalP;
         return postJson({ a: 'actualizar', id: editingRoutine.id, p: finalP, pin: COACH.pin });
-      }).then(function(j) {
+      }).then(async function(j) {
         btn.disabled = false;
         if (j && j.ok) {
           try { coachCacheSet(editingRoutine.id, payloadText); } catch (eC) {}
@@ -13727,12 +13790,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         } else {
           showEditBanner('');
           if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
-          alert('No se pudo actualizar: ' + updateErrorText(j && j.error));
+          await appAlert('No se pudo actualizar: ' + updateErrorText(j && j.error));
         }
-      }).catch(function(e) {
+      }).catch(async function(e) {
         btn.disabled = false; showEditBanner('');
-        if (e && e.big) { alert('No se pudo actualizar: la rutina actual y la que está en espera juntas pesan demasiado para un solo enlace. Acorta una de las dos.'); return; }
-        alert('No se pudo actualizar: ' + updateErrorText(e && e.message));
+        if (e && e.big) { await appAlert('No se pudo actualizar: la rutina actual y la que está en espera juntas pesan demasiado para un solo enlace. Acorta una de las dos.'); return; }
+        await appAlert('No se pudo actualizar: ' + updateErrorText(e && e.message));
       });
     }
 
@@ -16591,12 +16654,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function espLoadPlan(c) {
       var pin = fichaPin(); if (!pin) { espSet('Entra como coach (con tu PIN).', 'err'); return; }
       espSet('Abriendo el plan…');
-      postJson({ a: 'espera_ver', pin: pin, c: c }, 30000).then(function(j) {
+      postJson({ a: 'espera_ver', pin: pin, c: c }, 30000).then(async function(j) {
         var text = (j && j.ok) ? espDec(j.p) : '';
         if (!text) { espSet('⚠️ ' + (j && j.ok ? 'El plan no se pudo leer.' : espErr(j)), 'err'); return; }
         var cnEl = document.getElementById('clientName'), cn = cnEl ? cnEl.value.trim() : '';
         var hasWork = (routineDays || []).some(function(d) { return (d.items || []).some(function(it) { return (it.sub || []).some(function(sb) { return String(sb.name || '').trim(); }); }); });
-        if (cn && hasWork && normName(cn) !== normName(j.n) && !confirm('El constructor tiene la rutina de ' + cn + '. ¿Reemplazarla por el plan de ' + j.n + '?\n\n(Si no la has enviado, antes copia su enlace o exporta el texto.)')) { espSet(''); return; }
+        if (cn && hasWork && normName(cn) !== normName(j.n) && !(await appConfirm('El constructor tiene la rutina de ' + cn + '. ¿Reemplazarla por el plan de ' + j.n + '?\n\n(Si no la has enviado, antes copia su enlace o exporta el texto.)'))) { espSet(''); return; }
         document.getElementById('importRawText').value = text;
         ESP.active = { c: j.c, n: j.n };
         espSet('✅ Plan de ' + j.n + ' cargado en el constructor.', 'ok'); espRender();
