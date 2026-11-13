@@ -359,6 +359,12 @@
     .capsule-group .cap-card.day-on::after { content: '⏱ ENTRENANDO HOY'; position: absolute; top: -10px; right: 12px; background: #06d6a0; color: #000; font-weight: 900; font-size: 0.68rem; letter-spacing: .3px; padding: 3px 10px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
     .capsule-btn.cap-card.day-on .cap-s { color: #06d6a0; font-weight: 800; }
     @media (prefers-reduced-motion: reduce) { .capsule-group .cap-card.day-sug { animation: none; box-shadow: var(--shadow-card), 0 0 0 2px var(--c); } }
+    #ath_start_today { margin: 2px 0 14px; }
+    .start-today-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: none; border-radius: 16px; background: linear-gradient(135deg, #06d6a0, #00b4d8); color: #00281a; font-size: 1.02rem; font-weight: 900; cursor: pointer; box-shadow: 0 4px 18px rgba(6,214,160,.35); animation: vsIn .3s ease-out backwards, startTodayPulse 2.6s ease-in-out .4s infinite; }
+    .start-today-btn:active { transform: scale(.97); filter: brightness(.95); }
+    .start-today-sub { text-align: center; font-size: 0.74rem; color: var(--muted); margin-top: 6px; }
+    @keyframes startTodayPulse { 0%, 100% { box-shadow: 0 4px 18px rgba(6,214,160,.35); } 50% { box-shadow: 0 4px 26px rgba(6,214,160,.6); } }
+    @media (prefers-reduced-motion: reduce) { .start-today-btn { animation: none; } }
     .gd-legend { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin: 4px 0 10px; text-align: center; }
     .gd-guide { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 12px; margin: 8px 0 10px; text-align: left; font-size: 0.82rem; color: #eee; line-height: 1.5; }
     .gd-guide b { color: #ffee00; }
@@ -588,6 +594,8 @@
     .goals-table input { width: 100%; background: #151515; border: 1px solid #333; color: #fff; padding: 5px 8px; border-radius: 4px; font-size: 0.8rem; outline: none; }
 
     .btn-action-primary { width: 100%; padding: 12px; background: var(--accent); color: #fff; font-weight: 800; font-size: 0.85rem; border: none; border-radius: 8px; cursor: pointer; }
+    .day-bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 420; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(11,11,11,0), #0b0b0b 22%); }
+    .day-bottom-bar .day-bar-end { margin: 0; border-radius: 14px; padding: 15px; font-size: 1rem; font-weight: 900; box-shadow: 0 -2px 16px rgba(0,0,0,.4); }
     .btn-action-wa { width: 100%; padding: 12px; background: #25d366; color: #000; font-weight: 800; font-size: 0.85rem; border: none; border-radius: 8px; cursor: pointer; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; padding: 16px; }
     .modal-overlay.active { display: flex; }
@@ -1257,6 +1265,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div id="ath_weekPanel" style="display:none;"></div>
       <div id="ath_pend_box" style="display:none;"></div>
       <div class="frase-dia" id="ath_frase" style="display:none;"></div>
+      <div id="ath_start_today" style="display:none;"></div>
       <div class="capsule-group" id="ath_capsuleGroup"></div>
       <div style="text-align:center; margin:14px 0 6px;">
         <button type="button" id="ath_upd_btn" onclick="manualUpdate()" style="background:#161616; color:#fff; border:1px solid #444; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:700; cursor:pointer;">🔄 Actualizar</button>
@@ -5930,15 +5939,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" class="btn-restore-all-day" onclick="marcasMenu(\'' + d.id + '\')">⚡ Montar marcas</button>' +
           exercisesHtml +
           '<div id="dc_card_' + d.id + '"></div>' +
-          '<div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">' +
-            '<button class="btn-action-primary" id="btn_save_' + d.id + '" onclick="archiveCurrentDay(\'' + d.id + '\')">💾 Guardar Día y Actualizar Marca Anterior</button>' +
-            '<button class="btn-action-wa" onclick="sendWhatsAppReport(\'' + d.id + '\')">📲 Enviar Reporte a ' + escHtml(athleteCoachName) + '</button>' +
-          '</div>' +
+          '<div style="height:84px;"></div>' +   // espacio para que la barra fija no tape el final de la lista
         '</div>' +
-        nutritionSectionHtml;
+        nutritionSectionHtml +
+        '<div class="day-bottom-bar" id="day_bar_' + d.id + '" style="display:none;">' +
+          '<button type="button" class="btn-action-primary day-bar-end" id="day_bar_end_' + d.id + '" onclick="dayCloseAndReport(\'' + d.id + '\')">🏁 Terminar entreno</button>' +
+        '</div>';
 
         if (isRest) {
-          dayScreen.querySelectorAll('.progression-banner, .equipment-banner, .btn-restore-all-day, .btn-action-primary, .btn-action-wa, .wk-bar').forEach(function(el) { el.style.display = 'none'; });
+          dayScreen.querySelectorAll('.progression-banner, .equipment-banner, .btn-restore-all-day, .btn-action-primary, .btn-action-wa, .wk-bar, .day-bottom-bar').forEach(function(el) { el.style.display = 'none'; });
         }
         daysContainer.appendChild(dayScreen);
       });
@@ -8264,9 +8273,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       wkNmCommit(o.c || 0, o.h || 0);
       closeModal('wk_end_modal');
       if (CLOSE_PENDING === dayId) { dayCloseSave(dayId); return; }   // venía de "Cerrar entreno": se guardan las marcas solas
-      // Lleva al cliente al botón "Guardar Día" y lo hace palpitar para que no se le olvide actualizar sus marcas
+      // Lleva al cliente al botón "Terminar entreno" de la barra fija y lo hace palpitar para que no se le olvide actualizar sus marcas
       try {
-        var sb = document.getElementById('btn_save_' + dayId);
+        var sb = document.getElementById('day_bar_end_' + dayId);
         if (sb) {
           setTimeout(function() {
             sb.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -8563,9 +8572,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Sugerencia del día en la pantalla principal (sin ventana emergente): la tarjeta del día que le toca parpadea suave y dice «Te toca hoy».
     // Si hoy ya entrenó, está entrenando ahora o es la vista del coach, no se marca nada (no se le insiste).
+    // Botón destacado «▶ Empezar mi entreno de hoy» en la pantalla principal: un toque abre directo el día que le toca
+    function startTodayPaint() {
+      var box = document.getElementById('ath_start_today'); if (!box) return;
+      try {
+        if (!athleteActiveState || isCoachView() || WK.start) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        var days = athleteActiveState.routineDays || [], idx = wkNextDayIndex();
+        if (idx < 0 || !days[idx] || days[idx].rest) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        var today = todayIso();
+        if (loadWorkouts().some(function(s) { return sessDateIso(s) === today; })) { box.style.display = 'none'; box.innerHTML = ''; return; }   // hoy ya entrenó: no se le insiste
+        var d = days[idx];
+        box.style.display = 'block';
+        box.innerHTML = '<button type="button" class="start-today-btn" onclick="openDay(\'' + d.id + '\')">▶ Empezar mi entreno de hoy</button>' +
+          '<div class="start-today-sub">' + escHtml(dayNameOf(d) || 'Tu entrenamiento') + '</div>';
+      } catch (e) {}
+    }
     function wkSuggestPaint() {
       var cards = document.querySelectorAll('#ath_capsuleGroup .cap-card[data-day]');
       for (var i = 0; i < cards.length; i++) { cards[i].classList.remove('day-sug'); cards[i].classList.remove('day-on'); }
+      try { startTodayPaint(); } catch (eSt) {}
       try {   // el día que está en proceso (cronómetro en marcha) se marca para que, si el cliente se sale, lo identifique al volver
         if (WK.start && WK.dayId) for (var k = 0; k < cards.length; k++) if (cards[k].getAttribute('data-day') === WK.dayId) cards[k].classList.add('day-on');
       } catch (eOn) {}
@@ -11613,6 +11638,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }   // abre "¡Entreno terminado!"; al tocar "Listo" se guardan las marcas
       dayCloseSave(dayId);
     }
+    // Botón único de la barra fija: envía el reporte por WhatsApp (si hay marcas anotadas, antes de que se limpien al guardar) y cierra el entreno
+    async function dayCloseAndReport(dayId) {
+      try { if (dayHasMarks(dayId)) await sendWhatsAppReport(dayId); } catch (e) {}
+      await dayClose(dayId);
+    }
     function dayQuickDone(dayId) {   // un toque: «entrené hoy» sin anotar nada ni contestar preguntas
       try { recordActivity(dayId, (WK.start && WK.dayId === dayId) ? 0 : wkTakeDuration(dayId)); wkToast('✅ Listo, quedó registrado que entrenaste hoy.'); } catch (e) {}
       setTimeout(function() { try { dcPaint(dayId); } catch (e) {} }, 300);
@@ -11632,19 +11662,28 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function dcSet(box, html) { if (box.getAttribute('data-h') === html) return; box.setAttribute('data-h', html); box.innerHTML = html; }
     function dcPaint(dayId) {
       var box = document.getElementById('dc_card_' + dayId); if (!box) return;
-      var blocks = guideBlocks(dayId), N = blocks.length; if (!N) { dcSet(box, ''); return; }
+      var blocks = guideBlocks(dayId), N = blocks.length; if (!N) { dcSet(box, ''); var bar0 = document.getElementById('day_bar_' + dayId); if (bar0) bar0.style.display = 'none'; return; }
       var st = gdStatus(dayId, blocks), nDone = st.filter(function(x) { return x === 'done'; }).length;
       var running = !!(WK.start && WK.dayId === dayId), marks = dayHasMarks(dayId), saved = daySavedToday(dayId) && !marks;
       var timeTxt = running ? '▶ corriendo · <span class="dc-clk"></span>' : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0 ? '✔ terminado' : (saved ? '✔ terminado' : 'sin iniciar'));
       var all = nDone >= N;
-      if (!saved && !marks && !running && nmTodayFor(dayId)) { dcSet(box, '<div class="dc-card"><div class="dc-t">✅ Quedó registrado que entrenaste hoy</div><div class="dc-l">Tu coach ya lo puede ver. ¡Buen trabajo! 💪</div></div>'); return; }
-      if (saved) { dcSet(box, '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div></div>'); return; }
+      if (!saved && !marks && !running && nmTodayFor(dayId)) { dcSet(box, '<div class="dc-card"><div class="dc-t">✅ Quedó registrado que entrenaste hoy</div><div class="dc-l">Tu coach ya lo puede ver. ¡Buen trabajo! 💪</div></div>'); dayBarPaint(dayId); return; }
+      if (saved) { dcSet(box, '<div class="dc-card"><div class="dc-t">✅ Entreno de hoy cerrado</div><div class="dc-l">Tu tiempo y tus marcas quedaron guardados. ¡Buen trabajo! 💪</div></div>'); dayBarPaint(dayId); return; }
       dcSet(box, '<div class="dc-card' + (all ? ' on' : '') + '"><div class="dc-t">🏁 ' + (all ? '¡Terminaste! Cierra tu entreno' : 'Al terminar, cierra tu entreno') + '</div>' +
-        '<div class="dc-l">📋 Bloques: <b>' + nDone + ' de ' + N + '</b><br>⏱ Cronómetro: <b>' + timeTxt + '</b><br>💾 Marcas: <b>' + (marks ? 'anotadas, falta guardar' : 'sin anotar') + '</b></div>' +
-        '<button type="button" class="dc-b" onclick="dayClose(\'' + dayId + '\')">🏁 Cerrar entreno</button>' +
-        '<button type="button" onclick="dayQuickDone(\'' + dayId + '\')" style="width:100%; margin-top:8px; background:transparent; color:#06d6a0; border:1.5px solid #06d6a0; border-radius:12px; padding:13px; font-weight:900; font-size:0.95rem; cursor:pointer;">✅ Ya entrené hoy (solo avisar)</button>' +
-        '<div style="font-size:0.7rem; color:#8a8a8a; margin-top:6px;">Termina el cronómetro, te pregunta lo de tu reloj y guarda tus pesos y reps.</div></div>');
+        '<div class="dc-l">📋 Bloques: <b>' + nDone + ' de ' + N + '</b><br>⏱ Cronómetro: <b>' + timeTxt + '</b><br>💾 Marcas: <b>' + (marks ? 'anotadas, falta guardar' : 'sin anotar') + '</b></div></div>');
       var ck = box.querySelector('.dc-clk'); if (ck) ck.textContent = wkFmt((Date.now() - WK.start) / 1000);
+      dayBarPaint(dayId);
+    }
+    // Barra fija inferior del día: un solo botón "🏁 Terminar entreno" (guarda marcas si hay, o solo avisa si no) + Enviar Reporte
+    function dayBarPaint(dayId) {
+      var bar = document.getElementById('day_bar_' + dayId); if (!bar) return;
+      var blocks = guideBlocks(dayId), N = blocks.length;
+      var marks = dayHasMarks(dayId), saved = daySavedToday(dayId) && !marks;
+      if (saved || (!marks && !N && nmTodayFor(dayId))) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+      var label = marks ? '🏁 Terminar y enviar reporte' : '✅ Terminar (ya entrené hoy)';
+      var btn = document.getElementById('day_bar_end_' + dayId);
+      if (btn && btn.getAttribute('data-lbl') !== label) { btn.innerText = label; btn.setAttribute('data-lbl', label); }
     }
 
     // ----- Marcos de neón y "Vas aquí": cada bloque muestra si está hecho, en curso o pendiente; los hechos se cierran -----
