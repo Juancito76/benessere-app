@@ -1729,7 +1729,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return v;
     }
     async function saveMeasureEntry() {
-      if (fichaNeedCoach()) return;
+      if (await fichaNeedCoach()) return;
       var d = document.getElementById('m_fecha').value;
       if (!isIsoDate(d)) { await appAlert('Elige la fecha de la medición.'); return; }
       var v = readMeasureForm();
@@ -1765,10 +1765,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         fichaTouch();
       }
     }
-    function editMeasureEntry(d) {
+    async function editMeasureEntry(d) {
       var i = indexOfDate(measureLog, d);
       if (i < 0) return;
-      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
+      if (!fichaCanEdit(d)) { await appAlert(fichaLockMsg(d)); return; }
       document.getElementById('m_fecha').value = d;
       MEASURE_FIELDS.forEach(function(f) {
         var n = measureLog[i].v[f.k];
@@ -1780,10 +1780,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var fld = document.getElementById('m_fecha');
       if (fld && fld.scrollIntoView) fld.scrollIntoView({ block: 'center' });
     }
-    function deleteMeasureEntry(d) {
-      if (fichaNeedCoach()) return;
-      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
-      if (!confirm('¿Borrar la medición del ' + fmtDate(d) + '?')) return;
+    async function deleteMeasureEntry(d) {
+      if (await fichaNeedCoach()) return;
+      if (!fichaCanEdit(d)) { await appAlert(fichaLockMsg(d)); return; }
+      if (!(await appConfirm('¿Borrar la medición del ' + fmtDate(d) + '?'))) return;
       measureLog = measureLog.filter(function(e) { return e.d !== d; });
       FICHA.deleted[d] = 1; delete FICHA.notes[d]; delete FICHA.authors[d]; if (FICHA.dc.indexOf(d) < 0) FICHA.dc.push(d);
       renderMeasureLog();
@@ -1992,18 +1992,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="med-h">Historial de mediciones</div>' + medTableHtml(entries, coachMeasureOn() ? 'cv' : 'athlete') +
         '<div class="med-sum">● = medición del coach &nbsp; 👤 = medición que anotó ' + (isCoachView() ? 'el cliente' : 'tú') + '</div>';
     }
-    function saveOwnMeasure(sendToCoach) {
+    async function saveOwnMeasure(sendToCoach) {
       var st = athleteActiveState;
       if (!st) return;
       var d = document.getElementById('med_new_date').value;
-      if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
+      if (!isIsoDate(d)) { await appAlert('Elige la fecha de la medición.'); return; }
       var v = {};
       MEASURE_FIELDS.forEach(function(f) {
         var n = parseNum(document.getElementById('med_new_' + f.k).value);
         if (n !== null) v[f.k] = n;
       });
       var keys = Object.keys(v);
-      if (!keys.length) { alert('Escribe al menos una medida (por ejemplo tu peso).'); return; }
+      if (!keys.length) { await appAlert('Escribe al menos una medida (por ejemplo tu peso).'); return; }
       var own = loadOwnMeasures(st.clientName), i = indexOfDate(own, d);
       if (i >= 0) { Object.keys(v).forEach(function(k) { own[i].v[k] = v[k]; }); } else { own.push({ d: d, v: v }); }
       own.sort(byDate);
@@ -2026,9 +2026,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var oldLog = st.measureLog;
       st.measureLog = newLog;
       var payloadText;
-      try { payloadText = encodePayload(buildUltraCompactState(st)); } catch (e) { st.measureLog = oldLog; alert('No se pudo preparar la medición.'); return; }
+      try { payloadText = encodePayload(buildUltraCompactState(st)); } catch (e) { st.measureLog = oldLog; appAlert('No se pudo preparar la medición.'); return; }
       showToastTop('Guardando…');
-      postJson({ a: 'actualizar', id: athleteRoutineId, p: payloadText, pin: COACH.pin }).then(function(j) {
+      postJson({ a: 'actualizar', id: athleteRoutineId, p: payloadText, pin: COACH.pin }).then(async function(j) {
         if (j && j.ok) {
           coachCacheSet(athleteRoutineId, payloadText);
           try { fichaSyncFromRoutine(st.clientName, newLog, delDate, savedDate); } catch (e) {}
@@ -2042,22 +2042,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         } else {
           st.measureLog = oldLog;
           if (j && j.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
-          alert('No se pudo guardar: ' + updateErrorText(j && j.error));
+          await appAlert('No se pudo guardar: ' + updateErrorText(j && j.error));
         }
-      }).catch(function(e) { st.measureLog = oldLog; alert('No se pudo guardar: ' + updateErrorText(e && e.message)); });
+      }).catch(async function(e) { st.measureLog = oldLog; await appAlert('No se pudo guardar: ' + updateErrorText(e && e.message)); });
     }
-    function coachSaveMeasure() {
+    async function coachSaveMeasure() {
       var st = athleteActiveState;
       if (!st || !coachMeasureOn()) return;
       var d = document.getElementById('med_new_date').value;
-      if (!isIsoDate(d)) { alert('Elige la fecha de la medición.'); return; }
+      if (!isIsoDate(d)) { await appAlert('Elige la fecha de la medición.'); return; }
       var v = {};
       MEASURE_FIELDS.forEach(function(f) { var n = parseNum(document.getElementById('med_new_' + f.k).value); if (n !== null) v[f.k] = n; });
-      if (!Object.keys(v).length) { alert('Escribe al menos una medida (por ejemplo el peso).'); return; }
-      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
+      if (!Object.keys(v).length) { await appAlert('Escribe al menos una medida (por ejemplo el peso).'); return; }
+      if (!fichaCanEdit(d)) { await appAlert(fichaLockMsg(d)); return; }
       var log = coachMeasureBase(st), i = indexOfDate(log, d);
       if (i >= 0) {
-        if (!confirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Actualizarla con lo que escribiste? (lo que dejes en blanco se conserva)')) return;
+        if (!(await appConfirm('Ya hay una medición del ' + fmtDate(d) + '. ¿Actualizarla con lo que escribiste? (lo que dejes en blanco se conserva)'))) return;
         Object.keys(v).forEach(function(k) { log[i].v[k] = v[k]; });
       } else log.push({ d: d, v: v });
       log.sort(byDate);
@@ -2066,13 +2066,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       athMedKey = Object.keys(v)[0];
       coachPersistMeasures(st, log, '✅ Medición del ' + fmtDate(d) + ' guardada en la rutina de ' + (st.clientName || 'el cliente') + '.', '', d);
     }
-    function coachDeleteMeasure(d) {
+    async function coachDeleteMeasure(d) {
       var st = athleteActiveState;
       if (!st || !coachMeasureOn()) return;
-      if (!fichaCanEdit(d)) { alert(fichaLockMsg(d)); return; }
+      if (!fichaCanEdit(d)) { await appAlert(fichaLockMsg(d)); return; }
       var log = coachMeasureBase(st);
-      if (log.length && log[0].d === d) { alert('La medición del inicio no se borra desde aquí.'); return; }
-      if (!confirm('¿Borrar la medición de seguimiento del ' + fmtDate(d) + '? Se quita también de la rutina del cliente.')) return;
+      if (log.length && log[0].d === d) { await appAlert('La medición del inicio no se borra desde aquí.'); return; }
+      if (!(await appConfirm('¿Borrar la medición de seguimiento del ' + fmtDate(d) + '? Se quita también de la rutina del cliente.'))) return;
       coachPersistMeasures(st, log.filter(function(e) { return e.d !== d; }), '🗑 Medición del ' + fmtDate(d) + ' borrada.', d);
     }
     function sendMeasureToCoach(st, d, v) {
@@ -2080,9 +2080,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       MEASURE_FIELDS.forEach(function(f) { if (v[f.k] != null) lines.push('• ' + f.label + ': ' + withUnit(v[f.k], f.unit)); });
       window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(lines.join('\n')), '_blank');
     }
-    function deleteOwnMeasure(d) {
+    async function deleteOwnMeasure(d) {
       var st = athleteActiveState;
-      if (!st || !confirm('¿Borrar tu medición del ' + fmtDate(d) + '?')) return;
+      if (!st || !(await appConfirm('¿Borrar tu medición del ' + fmtDate(d) + '?'))) return;
       saveOwnMeasures(st.clientName, loadOwnMeasures(st.clientName).filter(function(e) { return e.d !== d; }));
       renderAthleteMeasures();
       measurePush();
@@ -2292,10 +2292,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // Descarga toda la biblioteca como un .json — para pasarla a otro coach/dispositivo,
     // o como respaldo fuera del navegador.
-    function downloadVideoLibrary() {
+    async function downloadVideoLibrary() {
       var lib = getVideoLibrary();
       var count = Object.keys(lib).length;
-      if (count === 0) { alert('Todavía no hay videos guardados para exportar.'); return; }
+      if (count === 0) { await appAlert('Todavía no hay videos guardados para exportar.'); return; }
       var blob = new Blob([JSON.stringify(lib, null, 2)], { type: 'application/json' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -2311,13 +2311,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var file = input.files && input.files[0];
       if (!file) return;
       var reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         var incoming;
         try {
           incoming = JSON.parse(e.target.result);
           if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) throw new Error('formato inválido');
         } catch (err) {
-          alert('Ese archivo no se pudo leer (¿es un .json de biblioteca de videos válido?).');
+          await appAlert('Ese archivo no se pudo leer (¿es un .json de biblioteca de videos válido?).');
           input.value = '';
           return;
         }
@@ -2334,7 +2334,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
         setVideoLibrary(lib);
         renderVideoLibrary();
-        alert('Biblioteca combinada: ' + added + ' ejercicio(s) nuevo(s), ' + updated + ' actualizado(s) con el video del archivo.');
+        await appAlert('Biblioteca combinada: ' + added + ' ejercicio(s) nuevo(s), ' + updated + ' actualizado(s) con el video del archivo.');
         input.value = '';
       };
       reader.readAsText(file);
@@ -5331,7 +5331,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Botón «🧪 Probar» del perfil de cada cliente: activa el modo prueba (si no lo estaba) y abre ese perfil; nada se guarda ni se envía.
     // Para cerrar la prueba y dejar todo como estaba: «Salir ✖» (abajo a la izquierda).
-    function pruebaClient(id, which) {
+    async function pruebaClient(id, which) {
       if (!COACH) return;
       if (!which) {   // primero se mira si el cliente tiene una rutina en espera: si la tiene, se pregunta cuál probar
         var stEl = document.getElementById('cl_status');
@@ -5349,7 +5349,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return;
       }
       if (!PRUEBA.on) {
-        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar el modo prueba.'); return; }
+        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { await appAlert('No se pudo iniciar el modo prueba.'); return; }
         PRUEBA.on = true; pruebaBanner();
         showToastTop('🧪 Modo prueba: nada se guarda ni se envía. Para salir toca «Salir ✖» abajo a la izquierda.');
       }
@@ -5380,7 +5380,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- «👁️ Vista previa» (barra inferior del constructor): abre la rutina que se está armando, tal como la vería el cliente, en modo prueba.
     // No necesita enlace ni enviarla: se arma el mismo paquete que iría en el enlace y se abre desde ahí. Nada se guarda ni se envía.
     // Para volver al constructor (con todo lo que había escrito, sin recargar): «← Constructor» o «Volver ✖». -----
-    function previewBuilderRoutine() {
+    async function previewBuilderRoutine() {
       if (PRUEBA.preview) return;
       var st = null;
       try {
@@ -5390,10 +5390,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var payloadText = encodePayload(buildUltraCompactState(bs));
         st = decodePayload('q', payloadText);   // igual que lo recibiría el cliente
       } catch (e) { console.error(e); st = null; }
-      if (!st || !(st.routineDays || []).length) { alert('Agrega al menos un día de entrenamiento para ver la vista previa.'); return; }
+      if (!st || !(st.routineDays || []).length) { await appAlert('Agrega al menos un día de entrenamiento para ver la vista previa.'); return; }
       PRUEBA.previewOwns = !PRUEBA.on;
       if (!PRUEBA.on) {
-        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { alert('No se pudo iniciar la vista previa.'); return; }
+        try { PRUEBA.data = PRUEBA.snapshot(); } catch (e) { await appAlert('No se pudo iniciar la vista previa.'); return; }
         PRUEBA.on = true;
       }
       PRUEBA.client = true; PRUEBA.preview = true;
@@ -5404,7 +5404,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       [RESUME_KEY, WK_KEY, ANN_SEEN, PENDING_KEY].forEach(function(k) { delete PRUEBA.data[k]; });
       try { WK.start = 0; WK.dayId = ''; ANN_CHECKED = false; } catch (e) {}
       GD_OPEN = {}; GD_DEMO = {};
-      try { renderAthleteApp(st); } catch (e) { console.error(e); previewExit(); alert('No se pudo mostrar la vista previa.'); return; }
+      try { renderAthleteApp(st); } catch (e) { console.error(e); previewExit(); await appAlert('No se pudo mostrar la vista previa.'); return; }
       pruebaBanner();
       var cw = document.getElementById('ath_congratsWaBtn'); if (cw) cw.style.display = '';
       var pill = document.getElementById('coach_mode_pill'); if (pill) pill.style.display = 'none';
@@ -6228,12 +6228,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var url = nm ? 'https://www.youtube.com/results?search_query=' + encodeURIComponent(nm + ' ejercicio') : 'https://www.youtube.com/';
       window.open(url, '_blank', 'noopener');
     }
-    function testVideoLink(path) {
+    async function testVideoLink(path) {
       var val = '';
       try { val = new Function('return ' + path + ';')() || ''; } catch (e) { val = ''; }
       val = String(val).trim();
-      if (!val) { alert('Ese campo todavía no tiene ningún link de video.'); return; }
-      if (!/^https?:\/\//i.test(val)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (!val) { await appAlert('Ese campo todavía no tiene ningún link de video.'); return; }
+      if (!/^https?:\/\//i.test(val)) { await appAlert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
       var nm = ''; try { nm = String(new Function('return ' + pvNamePath(path) + ';')() || '').trim(); } catch (e) {}
       var inLib = nm ? findVideoInLibrary(nm) : '';
       DEMO_FIELD = path;
@@ -6869,15 +6869,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
     }
 
-    function restoreSingleLoad(fieldId) {
+    async function restoreSingleLoad(fieldId) {
       var p = lastMarkFor(fieldId);
       if (!p) return;
       fillSetsFrom(fieldId, p.sets, true);
       saveTracker();
-      alert('Marca montada para ' + (p.name || 'el ejercicio') + ': ' + markSummary(p));
+      await appAlert('Marca montada para ' + (p.name || 'el ejercicio') + ': ' + markSummary(p));
     }
 
-    function restoreAllDayLoads(dayId) {
+    async function restoreAllDayLoads(dayId) {
       var dayEl = document.getElementById(dayId);
       if (!dayEl) return;
       var count = 0;
@@ -6885,18 +6885,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var key = h.getAttribute('data-key'), p = lastMarkFor(key);
         if (p && fillSetsFrom(key, p.sets, true) > 0) count++;
       });
-      if (count > 0) { saveTracker(); alert('Se montaron ' + count + ' marcas previas en la rutina.'); }
-      else alert('No hay marcas guardadas para este día.');
+      if (count > 0) { saveTracker(); await appAlert('Se montaron ' + count + ' marcas previas en la rutina.'); }
+      else await appAlert('No hay marcas guardadas para este día.');
     }
 
     // ----- Montar las marcas de un entreno guardado (por fecha) -----
     var PICK = { dayId: '', list: [] };
-    function openSessionPicker(dayId) {
+    async function openSessionPicker(dayId) {
       var dayEl = document.getElementById(dayId); if (!dayEl) return;
       var dt = normName(dayEl.getAttribute('data-day-title'));
       var list = loadSessions().filter(function(s) { return normName(s.day) === dt && (s.ex || []).length; })
         .sort(function(a, b) { return String(b.t || b.d || '').localeCompare(String(a.t || a.d || '')); }).slice(0, 12);
-      if (!list.length) return alert('Todavía no hay entrenos guardados de este día.');
+      if (!list.length) return await appAlert('Todavía no hay entrenos guardados de este día.');
       PICK = { dayId: dayId, list: list };
       var old = document.getElementById('pick_overlay'); if (old) old.remove();
       var o = document.createElement('div');
@@ -6923,16 +6923,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       return count;
     }
-    function mountSession(i) {
+    async function mountSession(i) {
       var s = PICK.list[i], dayEl = document.getElementById(PICK.dayId);
       if (!s || !dayEl) return;
       var count = applySessionToDay(s, dayEl);
       var ov = document.getElementById('pick_overlay'); if (ov) ov.remove();
       saveTracker();
-      alert(count ? ('Listo: se montaron ' + count + ' ejercicios del ' + (s.hd || 'entreno') + '.') : 'Ese entreno no coincide con los ejercicios actuales.');
+      await appAlert(count ? ('Listo: se montaron ' + count + ' ejercicios del ' + (s.hd || 'entreno') + '.') : 'Ese entreno no coincide con los ejercicios actuales.');
     }
     // Desde el Historial: monta todo el entreno guardado de un solo toque (sin ir ejercicio por ejercicio)
-    function mountWholeSession(t) {
+    async function mountWholeSession(t) {
       var s = null;
       loadSessions().forEach(function(x) { if (x.t === t) s = x; });
       if (!s) return;
@@ -6944,11 +6944,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!count) {   // el día se llama distinto ahora: se busca por ejercicios en toda la rutina
         days.forEach(function(el) { var c = applySessionToDay(s, el); if (c) { count += c; if (!shown) shown = el; } });
       }
-      if (!count) { alert('Ese entreno no coincide con los ejercicios actuales de tu rutina.'); return; }
+      if (!count) { await appAlert('Ese entreno no coincide con los ejercicios actuales de tu rutina.'); return; }
       saveTracker();
       closeModal('ath_modal_historial');
       if (shown) openModal(shown.id);   // se abre el día para ver las marcas ya montadas
-      alert('Listo: se montó todo el día (' + count + ' ejercicio' + (count === 1 ? '' : 's') + ') del ' + (s.hd || 'entreno') + '.');
+      await appAlert('Listo: se montó todo el día (' + count + ' ejercicio' + (count === 1 ? '' : 's') + ') del ' + (s.hd || 'entreno') + '.');
     }
 
     function archiveCurrentDay(dayId) {
@@ -7047,16 +7047,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function selectHistEx(i) { histExSel = i; renderHistorial(); }
     function normExName(n) { return String(n || '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
-    function mountFromSession(t, idx) {
+    async function mountFromSession(t, idx) {
       var s = null;
       loadSessions().forEach(function(x) { if (x.t === t) s = x; });
       var ex = s && s.ex ? s.ex[idx] : null;
       if (!ex) return;
-      if (!document.getElementById('sets_' + ex.k)) { alert('Ese ejercicio ya no está en tu rutina actual.'); return; }
+      if (!document.getElementById('sets_' + ex.k)) { await appAlert('Ese ejercicio ya no está en tu rutina actual.'); return; }
       fillSetsFrom(ex.k, mkMark(ex, '').sets, true);
       saveTracker();
       closeModal('ath_modal_historial');
-      alert('Marca montada para ' + (ex.n || 'el ejercicio') + ': ' + exDetailText(ex));
+      await appAlert('Marca montada para ' + (ex.n || 'el ejercicio') + ': ' + exDetailText(ex));
     }
 
     function openHistorialModal() { renderHistorial(); openModal('ath_modal_historial'); histSyncUi(); }
@@ -7211,8 +7211,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div class="med-table-wrap"><table class="med-table"><thead><tr><th>Fecha</th><th>Carga</th><th>Series</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }
 
-    function clearHistorialData() {
-      if (confirm('¿Reiniciar todo el historial de cargas (por fecha y por ejercicio)?')) {
+    async function clearHistorialData() {
+      if (await appConfirm('¿Reiniciar todo el historial de cargas (por fecha y por ejercicio)?')) {
         var keysToRemove = [];
         for (var i = 0; i < localStorage.length; i++) {
           var k = localStorage.key(i);
@@ -7253,7 +7253,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(msg), '_blank');
       } else if (lastActiveDayId) sendWhatsAppReport(lastActiveDayId);
     }
-    function sendWhatsAppReport(dayId) {
+    async function sendWhatsAppReport(dayId) {
       var dayEl = document.getElementById(dayId);
       var title = dayEl.getAttribute('data-day-title') || 'Entrenamiento';
       var cName = athleteActiveState ? athleteActiveState.clientName : 'Atleta';
@@ -7268,13 +7268,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           count++;
         }
       });
-      if (!count) return alert('No hay registros anotados hoy para reportar.');
+      if (!count) return await appAlert('No hay registros anotados hoy para reportar.');
       var wkSec = (WK.start && WK.dayId === dayId) ? Math.round((Date.now() - WK.start) / 1000) : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || localStorage.getItem(tk('wklast_' + dayId)) || '0', 10) || 0);
       if (wkSec > 0) msg += '⏱ *Tiempo total de entreno: ' + wkFmt(wkSec) + '*\n';
       window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(msg), '_blank');
     }
 
-    function loadDemoRoutine() {
+    async function loadDemoRoutine() {
       document.getElementById('clientName').value = 'Darshan Vera';
       document.getElementById('clientGender').value = 'o';
       document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
@@ -7347,7 +7347,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       renderDays();
       switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]);
-      alert('¡Ejemplo cargado con éxito!');
+      await appAlert('¡Ejemplo cargado con éxito!');
     }
 
     function downloadManualHTML() {
@@ -7820,8 +7820,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return '<div class="wk-bar" id="wk_bar_' + dayId + '"><div class="wk-time" id="wk_time_' + dayId + '">0:00</div><div class="wk-lbl" id="wk_lbl_' + dayId + '">Tiempo total de entreno</div>' +
         '<button type="button" class="wk-btn" id="wk_btn_' + dayId + '" onclick="wkToggle(\'' + dayId + '\')">▶ Iniciar entreno</button></div>';
     }
-    function wkToggle(dayId) {
-      if (WK.dayId === dayId && WK.start) { if (Date.now() - WK.start < 600000) wkCancel(dayId); else wkEnd(dayId); } else wkStart(dayId);
+    async function wkToggle(dayId) {
+      if (WK.dayId === dayId && WK.start) { if (Date.now() - WK.start < 600000) await wkCancel(dayId); else wkEnd(dayId); } else await wkStart(dayId);
     }
     // Descarta un entreno abierto por error: no se registra nada (ni tiempo ni sesión)
     // Los primeros 10 min el botón del cronómetro es «Cancelar entreno» (por si lo inició sin querer: no se registra nada); después pasa a «Final del entrenamiento»
@@ -7832,9 +7832,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (b.innerText !== txt) b.innerText = txt;
       if (b.className !== cls) b.className = cls;
     }
-    function wkCancel(dayId) {
+    async function wkCancel(dayId) {
       if (!(WK.start && WK.dayId === dayId)) return;
-      if (!confirm('¿Cancelar este entreno? No quedará nada registrado.')) return;
+      if (!(await appConfirm('¿Cancelar este entreno? No quedará nada registrado.'))) return;
       wkDiscard(dayId);
       try { wkSuggestPaint(); wkToast('Entreno cancelado. No se registró nada.'); } catch (e) {}
     }
@@ -7847,14 +7847,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function wkDayName(id) { var el = document.getElementById(id); return (el && el.getAttribute('data-day-title')) || 'otro día'; }
     // Devuelve false si el cliente cancela (no se inicia nada)
-    function wkStart(dayId) {
+    async function wkStart(dayId) {
       if (WK.start && WK.dayId !== dayId) {
         var oldId = WK.dayId;
         if (!dayHasMarks(oldId)) {   // abrió un día por error y ahora entra al correcto: se ofrece quedarse con el de hoy y descartar el abierto
-          if (!confirm('Tienes abierto el entreno de «' + wkDayName(oldId) + '», y vas a empezar «' + wkDayName(dayId) + '».\n\nAceptar = continuar el entreno de hoy en «' + wkDayName(dayId) + '» y descartar el de «' + wkDayName(oldId) + '» (no se registra)\nCancelar = seguir con «' + wkDayName(oldId) + '»')) return false;
+          if (!(await appConfirm('Tienes abierto el entreno de «' + wkDayName(oldId) + '», y vas a empezar «' + wkDayName(dayId) + '».\n\nAceptar = continuar el entreno de hoy en «' + wkDayName(dayId) + '» y descartar el de «' + wkDayName(oldId) + '» (no se registra)\nCancelar = seguir con «' + wkDayName(oldId) + '»'))) return false;
           wkDiscard(oldId);
         } else {
-          if (!confirm('Tienes otro entreno en marcha (con marcas anotadas). ¿Terminarlo y empezar este?')) return false;
+          if (!(await appConfirm('Tienes otro entreno en marcha (con marcas anotadas). ¿Terminarlo y empezar este?'))) return false;
           wkEnd(oldId, true);
         }
       } else if (!WK.start && !PRUEBA.on) {   // ya registró hoy: antes de abrir otro registro se pregunta (evita dobles registros por toques accidentales)
@@ -7865,7 +7865,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
         if (doneT.length) {
           var lastT = doneT[doneT.length - 1];
-          if (!confirm('Ya entrenaste hoy' + (lastT.day ? ' (' + lastT.day + (lastT.dur ? ', ' + wkHM(lastT.dur) : '') + ')' : '') + '.\n\n¿Seguro que quieres hacer un registro adicional?\n\nAceptar = sí, otro entreno hoy\nCancelar = no, fue un toque sin querer')) return false;
+          if (!(await appConfirm('Ya entrenaste hoy' + (lastT.day ? ' (' + lastT.day + (lastT.dur ? ', ' + wkHM(lastT.dur) : '') + ')' : '') + '.\n\n¿Seguro que quieres hacer un registro adicional?\n\nAceptar = sí, otro entreno hoy\nCancelar = no, fue un toque sin querer'))) return false;
         }
       }
       tmrAudio();
@@ -8067,7 +8067,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         m.classList.add('active');
       } catch (e) {}
     }
-    function wkNagStart(dayId) { closeModal('wk_nag_modal'); wkStart(dayId); }
+    async function wkNagStart(dayId) { closeModal('wk_nag_modal'); await wkStart(dayId); }
     function wkNagExit(dayId) { delete WK_NAG[dayId]; closeModal('wk_nag_modal'); closeModal(dayId); }   // abrió el día por error: sale sin elegir y, si lo vuelve a abrir, se le pregunta de nuevo
 
     // Entreno que el cliente dejó sin cerrar: a las 3 h se cierra solo. El día cuenta como entrenado ("sin cerrar"), sin tiempo ni calorías inventados;
@@ -8743,13 +8743,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       Promise.all([worker(), worker(), worker()]);   // 3 consultas a la vez
     }
     // El coach marca a mano que un cliente entrenó (cuando fue al gym pero la app no registró nada)
-    function cwMark(id, off) {
+    async function cwMark(id, off) {
       if (!COACH) return;
       var row = null; CW.rows.forEach(function(r) { if (r.id === id) row = r; }); if (!row) return;
       var dt = new Date(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + (off || 0));
       var d = isoOfDate(dt);
       if (row.st && row.st.last === d) { showToastTop('Ya figura como entrenado ' + (off ? 'ayer' : 'hoy') + '.'); return; }
-      if (!confirm('¿Marcar que ' + row.name + ' entrenó ' + (off ? 'ayer' : 'hoy') + '?\n\nQueda registrado como entrenamiento sin marcas.')) return;
+      if (!(await appConfirm('¿Marcar que ' + row.name + ' entrenó ' + (off ? 'ayer' : 'hoy') + '?\n\nQueda registrado como entrenamiento sin marcas.'))) return;
       var now = new Date(), tIso = off ? dt.toISOString() : now.toISOString();
       var hd = dt.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + (off ? '' : now.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' }));
       var sess = { d: d, t: tIso, hd: hd.trim(), day: 'Marcado por el coach', ex: [], nm: 1, o: COACH.name, man: 1 };
@@ -9067,8 +9067,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       fr.onerror = function() { showToastTop('No se pudo abrir el archivo.'); };
       fr.readAsArrayBuffer(f);
     }
-    function attClear() {
-      if (!confirm('¿Borrar el reporte de asistencias cargado en este dispositivo? Los clientes y rutinas no se tocan.')) return;
+    async function attClear() {
+      if (!(await appConfirm('¿Borrar el reporte de asistencias cargado en este dispositivo? Los clientes y rutinas no se tocan.'))) return;
       try { localStorage.removeItem(ATT_KEY); } catch (e) {}
       ATT.data = null; ATT.mc = {}; ATT.open = ''; renderAttendance(); try { renderCoachWeek(); } catch (e) {}
     }
@@ -9463,7 +9463,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ---- mensajes (plantillas) ----
     function recTplSet(i, field, val) { if (REC.tpls[i]) REC.tpls[i][field] = val; }
     function recTplAdd() { REC.tpls.push({ id: 't' + Date.now().toString(36), tipo: 'otro', titulo: 'Nuevo mensaje', texto: 'Hola {nombre} 👋 ' }); REC.tplOpen = true; recRender(); }
-    function recTplDel(i) { if (!confirm('¿Borrar este mensaje?')) return; REC.tpls.splice(i, 1); recRender(); }
+    async function recTplDel(i) { if (!(await appConfirm('¿Borrar este mensaje?'))) return; REC.tpls.splice(i, 1); recRender(); }
     function recTplClose() {   // cierra sin guardar: se descartan los cambios no guardados
       try { var o = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (o && o.tpls && o.tpls.length) REC.tpls = o.tpls; else REC.tpls = REC_DEF_TPLS.map(function(t) { return Object.assign({}, t); }); } catch (e) {}
       REC.tplOpen = false; recRender(); window.scrollTo(0, 0); var v = document.getElementById('rec_view'); if (v) v.scrollTop = 0;
@@ -9493,9 +9493,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else showToastTop('✅ Mensajes guardados.');
       REC.tplOpen = false; REC.msgs = {}; recRender();
     }
-    function recSetUrl() {
+    async function recSetUrl() {
       var cur = recUrl(), u = prompt('Pega la dirección del script de Recepción (termina en /exec):', cur); if (u == null) return;
-      u = u.trim(); if (u && !/^https:\/\/script\.google\.com\/.+\/exec$/.test(u)) { alert('Esa dirección no parece correcta. Debe empezar con https://script.google.com/ y terminar en /exec'); return; }
+      u = u.trim(); if (u && !/^https:\/\/script\.google\.com\/.+\/exec$/.test(u)) { await appAlert('Esa dirección no parece correcta. Debe empezar con https://script.google.com/ y terminar en /exec'); return; }
       try { if (u) localStorage.setItem(REC_URL_KEY, u); else localStorage.removeItem(REC_URL_KEY); } catch (e) {}
       REC.rol = ''; REC.pin = ''; openReception(REC.only);
     }
@@ -9897,7 +9897,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!guide && !resume && extra !== true && mtGateOpen(ci, srId, extra)) return;
       startCircuitTimerGo(ci, srId, extra, guide, resume);
     }
-    function startCircuitTimerGo(ci, srId, extra, guide, resume) {
+    async function startCircuitTimerGo(ci, srId, extra, guide, resume) {
       altSyncCi(ci);
       var src = athCircuits[ci];
       if (!src) return;
@@ -9913,7 +9913,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       if (extra) c.rondas = (typeof extra === 'number') ? String(Math.max(1, (parseInt(src.rondas, 10) || 1) - extra)) : '1';   // número = retomar; true = "1 serie más"
       var built = buildCircuitPhases(c);
-      if (built.err) { alert(built.err); return; }
+      if (built.err) { await appAlert(built.err); return; }
       if (startSt > 0 && !built.hiit && startSt < built.nSt) {   // salta directo al ejercicio donde se quedó (conserva el "Prepárate" inicial para ver la demo)
         var tgt = -1;
         for (var pi = 1; pi < built.phases.length; pi++) { var pp = built.phases[pi]; if (pp.t === 'work' && pp.r === 1 && pp.si === startSt) { tgt = pi; break; } }
@@ -10109,16 +10109,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('tm_plus').onclick = ctPlus5;
       document.getElementById('tm_rnd').onclick = clsAmrapPlus;
       document.getElementById('tm_stop').onclick = ctStop;
-      document.getElementById('tm_exit').onclick = function() {
+      document.getElementById('tm_exit').onclick = async function() {
         if (guiadoOn() && CT.guide && !CT.guide.cls) {   // modo guiado: al salir queda la ventana con «Continuar» para retomar donde iba
           var gd0 = CT.guide.dayId;
-          if (!confirm('¿Salir del entreno?\n\nPuedes continuar después donde ibas.')) return;
+          if (!(await appConfirm('¿Salir del entreno?\n\nPuedes continuar después donde ibas.'))) return;
           try { ctSaveResume(true); } catch (e) {}
           ctClose(); delete WK_NAG[gd0];
           setTimeout(function() { try { gmOpenDay(gd0); } catch (e) {} }, 250);
           return;
         }
-        if (CT.done || confirm('¿Salir del temporizador?\n\nEl bloque queda pendiente. Si ya lo terminaste, toca «✅ Completado» en su pestaña.')) ctClose();
+        if (CT.done || (await appConfirm('¿Salir del temporizador?\n\nEl bloque queda pendiente. Si ya lo terminaste, toca «✅ Completado» en su pestaña.'))) ctClose();
       };
       document.getElementById('tm_demo').onclick = ctOpenDemo;
       document.getElementById('tm_vtog').onclick = ctVidToggle; ctVidLabel(); ctPipInit();
@@ -10659,14 +10659,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       DEMO_REM_T = setInterval(demoRemTick, 500);
     }
     // «🗑️ Eliminar» en la ventana de prueba de un video: lo quita de la biblioteca (compartida entre coaches). Si el video venía de un campo de ejercicio, también lo vacía.
-    function demoFloatDelete(url, delName) {
+    async function demoFloatDelete(url, delName) {
       var link = String(url || '').trim(), lib = getVideoLibrary(), names = [];
       if (delName) names = [delName];
       else Object.keys(lib).forEach(function(k) { if (String(lib[k] || '').trim() === link) names.push(k); });
       var msg = names.length
         ? '¿Eliminar de la biblioteca de videos?\n\n' + names.map(function(n) { return '• ' + n; }).join('\n') + '\n\nComo la biblioteca es compartida, se borra para todos los coaches. Los ejercicios que ya tienen ese link en una rutina no cambian.'
         : 'Este video no está en la biblioteca. ¿Quitarlo solo del campo del ejercicio?';
-      if (!confirm(msg)) return;
+      if (!(await appConfirm(msg))) return;
       names.forEach(function(n) { forgetExerciseVideo(n); });
       if (DEMO_FIELD) { try { new Function('v', DEMO_FIELD + ' = v;')(''); } catch (e) {} try { renderDays(); setTimeout(vidBadgeAll, 150); } catch (e) {} }
       DEMO_FIELD = '';
@@ -11270,10 +11270,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       clsRunBlock(G, pos);
     }
     function clsGo() { var G = CT.guide; ctGuideClear(); if (!G || !G.cls) return; clsRunBlock(G, G.pos + 1, null, true); }   // viene de la pantalla de «Bloque listo»: sin el «Prepárate» de 5 s
-    function clsRunBlock(G, pos, resume, noReady) {
+    async function clsRunBlock(G, pos, resume, noReady) {
       var it = G.clase.items[pos]; if (!it) return;
       var built = buildClassPhases(it, G.clase.items[pos + 1]);
-      if (built.err) { alert(built.err); return; }
+      if (built.err) { await appAlert(built.err); return; }
       var skipReady = resume ? !!resume.nr : !!noReady;   // al retomar se conserva la misma forma del bloque
       if (skipReady && built.phases.length > 1 && built.phases[0].t === 'ready') built.phases.shift();
       CT.noReady = skipReady;
@@ -11328,11 +11328,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).join('');
       box.style.display = 'flex';
     }
-    function clsGoBlock(i) {
+    async function clsGoBlock(i) {
       var G = CT.guide; if (!G || !G.cls || !G.clase.items[i]) return;
       var nm = G.clase.items[i].circ.nombre || ('Bloque ' + (i + 1));
       if (i === G.pos) { var b0 = document.getElementById('tm_blkl'); if (b0) b0.style.display = 'none'; return; }
-      if (!confirm('¿Ir a «' + nm + '»?')) return;
+      if (!(await appConfirm('¿Ir a «' + nm + '»?'))) return;
       var ex = document.getElementById('tm_extra'); if (ex) ex.classList.remove('on'); document.body.classList.remove('tm-extra-open');
       var bx = document.getElementById('tm_blkl'); if (bx) bx.style.display = 'none';
       clsRunBlock(G, i);
@@ -11579,19 +11579,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       return out;
     }
-    function startGuidedDay(dayId) {
+    async function startGuidedDay(dayId) {
       var blocks = guideBlocks(dayId); if (!blocks.length) return;
       var pos = 0;
       for (var i = 0; i < blocks.length; i++) { var r = SR[blocks[i].srId]; if (!(r && r.cur >= r.base)) { pos = i; break; } }   // arranca en el primer bloque que aún no se ha hecho
       var rs = resumeLoad('g');   // ¿salió a la mitad la vez anterior?
       if (rs && rs.dayId === dayId && blocks[rs.pos] && blocks[rs.pos].ci === rs.ci) {
-        if (confirm('Dejaste este entreno guiado a medias (bloque ' + (rs.pos + 1) + ' de ' + blocks.length + ').\n\nAceptar = continuar donde ibas\nCancelar = empezar de nuevo')) {
-          if (!(WK.start && WK.dayId === dayId) && wkStart(dayId) === false) return;
+        if (await appConfirm('Dejaste este entreno guiado a medias (bloque ' + (rs.pos + 1) + ' de ' + blocks.length + ').\n\nAceptar = continuar donde ibas\nCancelar = empezar de nuevo')) {
+          if (!(WK.start && WK.dayId === dayId) && (await wkStart(dayId)) === false) return;
           guideRun(dayId, blocks, rs.pos, rs); return;
         }
         resumeClear();
       }
-      if (!(WK.start && WK.dayId === dayId) && wkStart(dayId) === false) return;   // si no había iniciado el entreno, lo inicia (si cancela el aviso de "ya entrenaste hoy", no sigue)
+      if (!(WK.start && WK.dayId === dayId) && (await wkStart(dayId)) === false) return;   // si no había iniciado el entreno, lo inicia (si cancela el aviso de "ya entrenaste hoy", no sigue)
       guideRun(dayId, blocks, pos);
     }
     // ----- Cerrar el entreno del día: una sola acción (termina el cronómetro, pregunta el reloj y guarda las marcas) -----
@@ -11605,9 +11605,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var dayEl = document.getElementById(dayId), dt = normName(dayEl ? (dayEl.getAttribute('data-day-title') || '') : ''), today = todayIso();
       return loadWorkouts().some(function(x) { return sessDateIso(x) === today && normName(x.day) === dt && (x.ex || []).length; });
     }
-    function dayClose(dayId) {
+    async function dayClose(dayId) {
       var blocks = guideBlocks(dayId), st = blocks.length ? gdStatus(dayId, blocks) : [], left = st.filter(function(x) { return x !== 'done'; }).length;
-      if (left > 0 && !confirm('Aún ' + (left === 1 ? 'te falta 1 bloque' : 'te faltan ' + left + ' bloques') + '. ¿Cerrar el entreno de todos modos?\n\nPodrás volver a este día y terminarlos hasta el domingo.')) return;
+      if (left > 0 && !(await appConfirm('Aún ' + (left === 1 ? 'te falta 1 bloque' : 'te faltan ' + left + ' bloques') + '. ¿Cerrar el entreno de todos modos?\n\nPodrás volver a este día y terminarlos hasta el domingo.'))) return;
       try { gdLeftSave(dayId, blocks, st); } catch (e) {}
       CLOSE_PENDING = dayId;
       if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }   // abre "¡Entreno terminado!"; al tocar "Listo" se guardan las marcas
@@ -11927,13 +11927,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       m.classList.add('active');
       return true;
     }
-    function gmStart(dayId) {
+    async function gmStart(dayId) {
       closeModal('wk_nag_modal');
       var blocks = guideBlocks(dayId); if (!blocks.length) return;
       var pos = 0;
       for (var i = 0; i < blocks.length; i++) { var r = SR[blocks[i].srId]; if (!(r && r.cur >= r.base)) { pos = i; break; } }
       var rs = resumeLoad('g');
-      if (!(WK.start && WK.dayId === dayId) && wkStart(dayId) === false) return;
+      if (!(WK.start && WK.dayId === dayId) && (await wkStart(dayId)) === false) return;
       if (rs && rs.dayId === dayId && blocks[rs.pos] && blocks[rs.pos].ci === rs.ci) guideRun(dayId, blocks, rs.pos, rs);   // salió a la mitad: sigue donde iba, sin preguntar
       else { resumeClear(); guideRun(dayId, blocks, pos); }
     }
@@ -12850,20 +12850,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       return st;
     }
-    function cvRemoveSave() {
+    async function cvRemoveSave() {
       if (!CV.rem || !CV.state || CV.busy) return;
       var di = CV.rem.di, ii = CV.rem.ii, w = CV.week;
       var it0 = CV.state.routineDays[di].items[ii];
       var nm = (it0.sub || []).map(function(s) { return s.name || ''; }).filter(Boolean).join(' + ') || 'este bloque';
       var scopeEl = document.querySelector('input[name=cvr_scope]:checked'), scope = scopeEl ? scopeEl.value : 'only';
-      if (!confirm('Quitar «' + nm + '» de la rutina de ' + CV.name + ':\n\n' + (scope === 'only' ? 'Solo la semana ' + w : 'Desde la semana ' + w + ' en adelante') + '\n\nSe actualiza su mismo link y lo verá la próxima vez que abra la app. Si te equivocas, puedes deshacerlo desde este visor.')) return;
+      if (!(await appConfirm('Quitar «' + nm + '» de la rutina de ' + CV.name + ':\n\n' + (scope === 'only' ? 'Solo la semana ' + w : 'Desde la semana ' + w + ' en adelante') + '\n\nSe actualiza su mismo link y lo verá la próxima vez que abra la app. Si te equivocas, puedes deshacerlo desde este visor.'))) return;
       var np, ns;
       try {
         ns = decodePayload('q', CV.raw); if (!ns) throw new Error('x');
         cvApplyRemove(ns, di, ii, w, scope);
         np = encodePayload(buildUltraCompactState(ns));
         var chk = decodePayload('q', np); if (!chk || !(chk.routineDays || []).length) throw new Error('x');
-      } catch (e) { console.error(e); alert('No se pudo preparar el cambio. No se guardó nada.'); return; }
+      } catch (e) { console.error(e); await appAlert('No se pudo preparar el cambio. No se guardó nada.'); return; }
       CV.busy = true; showToastTop('Guardando…'); cvRender();
       fetchRoutine(CV.id).then(function(j) {   // si alguien cambió la rutina mientras tanto, no se pisa
         if (!j || !j.ok || j.p !== CV.raw) throw new Error('cambio');
@@ -12872,9 +12872,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!r2 || !r2.ok) { if (r2 && r2.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} } throw new Error((r2 && r2.error) || 'guardado'); }
         CV.undoP = CV.raw; CV.raw = np; CV.state = decodePayload('q', np); CV.rem = null; CV.busy = false;
         coachCacheSet(CV.id, np); showToastTop('✅ Bloque quitado. Link actualizado.'); cvRender();
-      }).catch(function(e) {
+      }).catch(async function(e) {
         CV.busy = false; cvRender();
-        alert((e && e.message === 'cambio') ? 'Esa rutina cambió mientras la editabas (otro coach o una actualización). No se guardó nada: ciérrala y ábrela de nuevo.' : 'No se pudo guardar: ' + updateErrorText(e && e.message));
+        await appAlert((e && e.message === 'cambio') ? 'Esa rutina cambió mientras la editabas (otro coach o una actualización). No se guardó nada: ciérrala y ábrela de nuevo.' : 'No se pudo guardar: ' + updateErrorText(e && e.message));
       });
     }
     // Aplica el cambio a una copia del estado: parte el ejercicio en tramos de vigencia (antes / esta semana / después) y vuelve a unir los iguales
@@ -12898,7 +12898,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
       return st;
     }
-    function cvSave() {
+    async function cvSave() {
       if (!CV.edit || !CV.state || CV.busy) return;
       var di = CV.edit.di, ii = CV.edit.ii, w = CV.week;
       var it0 = CV.state.routineDays[di].items[ii], patch = { subs: [], rondas: null }, changed = false;
@@ -12911,14 +12911,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (it0.circ) { var rd = document.getElementById('cve_rondas'); if (rd) { patch.rondas = String(rd.value).trim(); if (patch.rondas !== String(it0.circ.rondas || '')) changed = true; } }
       if (!changed) { showToastTop('No cambiaste nada.'); return; }
       var scopeEl = document.querySelector('input[name=cve_scope]:checked'), scope = scopeEl ? scopeEl.value : 'from';
-      if (!confirm('Guardar el cambio para ' + CV.name + ':\n\n' + (scope === 'only' ? 'Solo la semana ' + w : 'Desde la semana ' + w + ' en adelante') + '\n\nSe actualiza su mismo link y lo verá la próxima vez que abra la app. Si te equivocas, puedes deshacerlo desde este visor.')) return;
+      if (!(await appConfirm('Guardar el cambio para ' + CV.name + ':\n\n' + (scope === 'only' ? 'Solo la semana ' + w : 'Desde la semana ' + w + ' en adelante') + '\n\nSe actualiza su mismo link y lo verá la próxima vez que abra la app. Si te equivocas, puedes deshacerlo desde este visor.'))) return;
       var np, ns;
       try {
         ns = decodePayload('q', CV.raw); if (!ns) throw new Error('x');
         cvApplyEdit(ns, di, ii, w, scope, patch);
         np = encodePayload(buildUltraCompactState(ns));
         var chk = decodePayload('q', np); if (!chk || !(chk.routineDays || []).length) throw new Error('x');
-      } catch (e) { console.error(e); alert('No se pudo preparar el cambio. No se guardó nada.'); return; }
+      } catch (e) { console.error(e); await appAlert('No se pudo preparar el cambio. No se guardó nada.'); return; }
       CV.busy = true; showToastTop('Guardando…'); cvRender();
       fetchRoutine(CV.id).then(function(j) {   // si alguien cambió la rutina mientras tanto, no se pisa
         if (!j || !j.ok || j.p !== CV.raw) throw new Error('cambio');
@@ -12927,19 +12927,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!r2 || !r2.ok) { if (r2 && r2.error === 'pin') { COACH = null; try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} } throw new Error((r2 && r2.error) || 'guardado'); }
         CV.undoP = CV.raw; CV.raw = np; CV.state = decodePayload('q', np); CV.edit = null; CV.busy = false;
         coachCacheSet(CV.id, np); showToastTop('✅ Guardado. Link actualizado.'); cvRender();
-      }).catch(function(e) {
+      }).catch(async function(e) {
         CV.busy = false; cvRender();
-        alert((e && e.message === 'cambio') ? 'Esa rutina cambió mientras la editabas (otro coach o una actualización). No se guardó nada: ciérrala y ábrela de nuevo.' : 'No se pudo guardar: ' + updateErrorText(e && e.message));
+        await appAlert((e && e.message === 'cambio') ? 'Esa rutina cambió mientras la editabas (otro coach o una actualización). No se guardó nada: ciérrala y ábrela de nuevo.' : 'No se pudo guardar: ' + updateErrorText(e && e.message));
       });
     }
-    function cvUndo() {
+    async function cvUndo() {
       if (!CV.undoP || CV.busy) return;
-      if (!confirm('¿Deshacer el último cambio hecho desde este visor y volver la rutina de ' + CV.name + ' a como estaba?')) return;
+      if (!(await appConfirm('¿Deshacer el último cambio hecho desde este visor y volver la rutina de ' + CV.name + ' a como estaba?'))) return;
       CV.busy = true; cvRender();
       postJson({ a: 'actualizar', id: CV.id, p: CV.undoP, pin: COACH.pin }).then(function(r2) {
         if (!r2 || !r2.ok) throw new Error((r2 && r2.error) || 'guardado');
         CV.raw = CV.undoP; CV.state = decodePayload('q', CV.raw); CV.undoP = null; CV.busy = false; coachCacheSet(CV.id, CV.raw); showToastTop('↩️ Cambio deshecho.'); cvRender();
-      }).catch(function(e) { CV.busy = false; cvRender(); alert('No se pudo deshacer: ' + updateErrorText(e && e.message)); });
+      }).catch(async function(e) { CV.busy = false; cvRender(); await appAlert('No se pudo deshacer: ' + updateErrorText(e && e.message)); });
     }
     function cvWeeksHtml(st) {
       var src = st, waiting = null;
@@ -13066,10 +13066,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Aplica una acción del script a cada enlace del cliente, uno por uno; al final recarga la lista
     function clientBatch(ids, mk, label, done) {
       var i = 0, fail = 0, last = '', st = document.getElementById('cl_status');
-      (function next() {
+      (async function next() {
         if (i >= ids.length) {
           if (st) st.innerText = '';
-          if (fail) alert('⚠️ ' + label + ': ' + fail + ' de ' + ids.length + ' enlaces con error (' + last + ').' + ((last === 'clave' || last === 'datos') ? '\n\nFalta publicar la versión 8 del script de Google.' : ''));
+          if (fail) await appAlert('⚠️ ' + label + ': ' + fail + ' de ' + ids.length + ' enlaces con error (' + last + ').' + ((last === 'clave' || last === 'datos') ? '\n\nFalta publicar la versión 8 del script de Google.' : ''));
           else showToastTop('✅ ' + label + ' (' + ids.length + ' enlace' + (ids.length > 1 ? 's' : '') + ')');
           try { refreshClientList(); } catch (e) {}
           if (done) done(!fail); return;
@@ -13087,20 +13087,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!nuevo || nuevo === name) return;
       clientBatch(ids, function(id) { return { a: 'rutina_editar', pin: COACH.pin, id: id, atleta: nuevo }; }, 'Nombre cambiado a ' + nuevo);
     }
-    function coachDeleteClient(name) {
+    async function coachDeleteClient(name) {
       if (!COACH || !COACH.todos) return;
       var ids = clientIdsOf(name); if (!ids.length) { showToastTop('No encontré enlaces de ' + name + '.'); return; }
-      if (!confirm('🗑 Borrar a ' + name + ' de la lista\n\nSe borran sus ' + ids.length + ' enlace' + (ids.length > 1 ? 's' : '') + ' de la hoja. Los links que ya le enviaste dejan de funcionar y no se puede deshacer. Su ficha no se toca.\n\n¿Borrar?')) return;
+      if (!(await appConfirm('🗑 Borrar a ' + name + ' de la lista\n\nSe borran sus ' + ids.length + ' enlace' + (ids.length > 1 ? 's' : '') + ' de la hoja. Los links que ya le enviaste dejan de funcionar y no se puede deshacer. Su ficha no se toca.\n\n¿Borrar?'))) return;
       clientBatch(ids, function(id) { return { a: 'rutina_borrar', pin: COACH.pin, id: id }; }, 'Enlaces de ' + name + ' borrados');
     }
     // «🧭 Habilitar recorrido»: activa (o reinicia) las ventanitas explicativas de un cliente que ya tenía la app. Se marca en todas sus rutinas.
     var tourBusy = false;
-    function coachHabilitarRecorrido(name) {
+    async function coachHabilitarRecorrido(name) {
       if (!COACH || tourBusy) return;
       var k = normName(name), ids = [];
       clientRows.forEach(function(r) { if (normName(r.atleta) === k && r.id && ids.indexOf(r.id) < 0) ids.push(r.id); });
       if (!ids.length) { showToastTop('No encontré rutinas de ' + name + '.'); return; }
-      if (!confirm('🧭 Habilitar recorrido a ' + name + '\n\nLa próxima vez que abra la app le saldrán ventanitas cortas que explican para qué sirve cada botón (en los bloques, el temporizador y las marcas). Cada una tiene su «No mostrar más».\n\nSi ya las había visto, volverán a salir.\n\n¿Habilitar?')) return;
+      if (!(await appConfirm('🧭 Habilitar recorrido a ' + name + '\n\nLa próxima vez que abra la app le saldrán ventanitas cortas que explican para qué sirve cada botón (en los bloques, el temporizador y las marcas). Cada una tiene su «No mostrar más».\n\nSi ya las había visto, volverán a salir.\n\n¿Habilitar?'))) return;
       tourBusy = true;
       var gen = tourNewGen(), i = 0, failed = 0, st = document.getElementById('cl_status');
       function next() {
@@ -13131,7 +13131,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       next();
     }
     var coachOffBusy = false;
-    function coachToggleClientOff(name) {
+    async function coachToggleClientOff(name) {
       if (!COACH || coachOffBusy) return;
       var k = normName(name), ids = [];
       clientRows.forEach(function(r) { if (normName(r.atleta) === k && r.id && ids.indexOf(r.id) < 0) ids.push(r.id); });
@@ -13140,7 +13140,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var ask = wantOff
         ? '🔌 Desconectar a ' + name + '\n\nYa no verá la rutina interactiva ni recibirá actualizaciones del constructor; al abrir la app verá un mensaje de despedida cariñoso con tu WhatsApp.\n\nNo se borra nada: su historial queda en la hoja y puedes reconectarlo cuando regrese.\n\n¿Desconectar?'
         : '🔗 Reconectar a ' + name + '\n\nVolverá a ver su rutina y a recibir las actualizaciones.\n\n¿Reconectar?';
-      if (!confirm(ask)) return;
+      if (!(await appConfirm(ask))) return;
       coachOffBusy = true;
       var st = document.getElementById('cl_status'), done = 0, changed = 0, failed = 0, i = 0;
       function next() {
@@ -13211,9 +13211,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         (canUndo ? '<button type="button" class="pend-btn pend-warn" onclick="coachUndoCycle()">↩️ Deshacer el último reinicio de ciclo</button>' : '') +
         '<button type="button" class="pend-btn pend-cancel" onclick="pendCloseOverlay(\'coach_reset_menu\')">Cancelar</button>');
     }
-    function coachResetSession() {
+    async function coachResetSession() {
       if (!(isCoachView() || pruebaAsClient()) || !COACH_SNAP || COACH_SNAP.id !== athleteRoutineId) { showToastTop('No hay nada que reiniciar.'); return; }
-      if (!confirm('↺ Reiniciar rutina\n\nLa rutina vuelve a como estaba cuando la abriste: se borran las marcas, los bloques completados y el cronómetro de esta sesión.\n\n(Lo que ya se haya enviado a la hoja del cliente no se borra desde aquí; para ensayar sin enviar nada usa 🧪 Probar en el perfil del cliente.)\n\n¿Reiniciar?')) return;
+      if (!(await appConfirm('↺ Reiniciar rutina\n\nLa rutina vuelve a como estaba cuando la abriste: se borran las marcas, los bloques completados y el cronómetro de esta sesión.\n\n(Lo que ya se haya enviado a la hoja del cliente no se borra desde aquí; para ensayar sin enviar nada usa 🧪 Probar en el perfil del cliente.)\n\n¿Reiniciar?'))) return;
       try { if (typeof rtClose === 'function') rtClose(); if (typeof ctClose === 'function' && CT.active) ctClose(); } catch (e) {}
       try { if (WK.tick) clearInterval(WK.tick); WK.start = 0; WK.dayId = ''; WK.tick = null; tmrWakeOff(); } catch (e) {}
       try {
@@ -13248,7 +13248,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       GD_OPEN = {}; GD_DEMO = {};
       return coachShowRoutine(id, np, false, null) === 'ok';
     }
-    function coachRestartCycle() {
+    async function coachRestartCycle() {
       pendCloseOverlay('coach_reset_menu');
       var id = athleteRoutineId, sim = pruebaAsClient(), today = todayIso();
       if (!id || !COACH_SNAP || COACH_SNAP.id !== id) { showToastTop('No hay nada que reiniciar.'); return; }
@@ -13256,15 +13256,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var esperaMsg = 'Este cliente tiene una rutina en espera, así que no se puede reiniciar el ciclo de la actual. Quita la rutina en espera o cámbiale la fecha (botón ⏳ en su pantalla) y vuelve a intentarlo.';
       if (sim) {   // modo prueba: solo en pantalla
         var base = (CYC_SIM && CYC_SIM.id === id) ? CYC_SIM.p : coachCacheGet(id), r0 = base ? coachCycleP(base, today) : { err: 'datos' };
-        if (r0.err === 'espera') { alert(esperaMsg); return; }
+        if (r0.err === 'espera') { await appAlert(esperaMsg); return; }
         if (!r0.np) { showToastTop('No se pudo reiniciar el ciclo; sal a «Clientes» y ábrela de nuevo.'); return; }
         CYC_SIM = { id: id, p: r0.np };
         var snapS = COACH_SNAP;
         if (coachCycleApply(id, r0.np)) { COACH_SNAP = snapS; showToastTop('🔄 Ciclo reiniciado (solo en la prueba): semana 1.'); }
         return;
       }
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
-      if (!confirm('🔄 Reiniciar el ciclo de ' + name + '\n\nEmpieza de nuevo HOY en la semana 1 de ' + total + '. Se actualiza su mismo enlace y lo verá la próxima vez que abra su rutina.\n\nSe conservan sus marcas, entrenos y medidas.\n\n¿Reiniciar el ciclo?')) return;
+      if (!COACH) { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
+      if (!(await appConfirm('🔄 Reiniciar el ciclo de ' + name + '\n\nEmpieza de nuevo HOY en la semana 1 de ' + total + '. Se actualiza su mismo enlace y lo verá la próxima vez que abra su rutina.\n\nSe conservan sus marcas, entrenos y medidas.\n\n¿Reiniciar el ciclo?'))) return;
       showToastTop('Reiniciando ciclo…');
       fetchRoutine(id).then(function(j) {   // se parte siempre de lo último que hay en la hoja
         if (!j || !j.ok || !j.p) throw new Error('respuesta');
@@ -13282,24 +13282,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var snapR = COACH_SNAP;
         if (coachCycleApply(id, o.np)) { COACH_SNAP = snapR; showToastTop('🔄 Ciclo de ' + name + ' reiniciado: semana 1 desde hoy.'); }
         else showToastTop('Ciclo reiniciado en su enlace. Sal a «Clientes» y ábrela de nuevo para verla.');
-      }).catch(function(e) {
+      }).catch(async function(e) {
         var m = e && e.message;
-        if (m === 'espera') alert(esperaMsg);
-        else alert('No se pudo reiniciar el ciclo. No se cambió nada: ' + (m === 'grande' ? 'la rutina pesa demasiado para guardarla.' : updateErrorText(m)));
+        if (m === 'espera') await appAlert(esperaMsg);
+        else await appAlert('No se pudo reiniciar el ciclo. No se cambió nada: ' + (m === 'grande' ? 'la rutina pesa demasiado para guardarla.' : updateErrorText(m)));
       });
     }
-    function coachUndoCycle() {
+    async function coachUndoCycle() {
       pendCloseOverlay('coach_reset_menu');
       var u = CYC_UNDO, id = athleteRoutineId;
       if (!u || u.id !== id || !COACH) return;
-      if (!confirm('↩️ ¿Volver el ciclo de ' + ((athleteActiveState && athleteActiveState.clientName) || 'este cliente') + ' a como estaba antes del reinicio?')) return;
+      if (!(await appConfirm('↩️ ¿Volver el ciclo de ' + ((athleteActiveState && athleteActiveState.clientName) || 'este cliente') + ' a como estaba antes del reinicio?'))) return;
       postJson({ a: 'actualizar', id: id, p: u.p, pin: COACH.pin }).then(function(r) {
         if (!r || !r.ok) throw new Error((r && r.error) || 'guardado');
         CYC_UNDO = null; coachCacheSet(id, u.p);
         var snapU = COACH_SNAP;
         if (coachShowRoutine(id, u.p, false, null) === 'ok') COACH_SNAP = snapU;
         showToastTop('↩️ Ciclo vuelto a como estaba.');
-      }).catch(function(e) { alert('No se pudo deshacer: ' + updateErrorText(e && e.message)); });
+      }).catch(async function(e) { await appAlert('No se pudo deshacer: ' + updateErrorText(e && e.message)); });
     }
     function coachShowRoutine(id, p, keepSnap, mut) {
       var state = decodePayload('q', p);
@@ -13379,10 +13379,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
     // Botón «Salir»: en modo coach vuelve a la lista de clientes; en el celular del cliente intenta cerrar la app y, si el navegador no lo permite, deja una pantalla de despedida
-    function salirApp() {
+    async function salirApp() {
       if (PRUEBA.preview) { previewExit(); return; }
       if (isCoachView()) { exitClientRoutine(); return; }
-      if (WK.start && !confirm('Tu entreno sigue corriendo y se conserva al volver. ¿Salir de la app?')) return;
+      if (WK.start && !(await appConfirm('Tu entreno sigue corriendo y se conserva al volver. ¿Salir de la app?'))) return;
       try { window.close(); } catch (e) {}
       setTimeout(function() {
         if (document.getElementById('bye_screen')) return;
@@ -13469,10 +13469,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return h;
     }
     // «▶ Probar» en el editor de ejercicio: abre el link que está escrito en ese campo en la ventana flotante del constructor (con la comprobación de si la app lo puede mostrar)
-    function edxTestVideo(inpId) {
+    async function edxTestVideo(inpId) {
       var el = document.getElementById(inpId), val = el ? String(el.value || '').trim() : '';
-      if (!val) { alert('Ese campo todavía no tiene ningún link de video.'); return; }
-      if (!/^https?:\/\//i.test(val)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (!val) { await appAlert('Ese campo todavía no tiene ningún link de video.'); return; }
+      if (!/^https?:\/\//i.test(val)) { await appAlert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
       if (demoFloatOpen(val, true, false, '', true)) return;
       window.open(val, '_blank', 'noopener');
     }
@@ -13550,9 +13550,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       m.innerHTML = h;
       openModal('edx_modal');
     }
-    function saveEditEx() {
+    async function saveEditEx() {
       var st = athleteActiveState; if (!st || !EDX || !isCoachView()) return;
-      if (!athleteRoutineId) { alert('Esta rutina no tiene enlace corto, no se puede actualizar desde aquí.'); return; }
+      if (!athleteRoutineId) { await appAlert('Esta rutina no tiene enlace corto, no se puede actualizar desde aquí.'); return; }
       var pendIn = document.querySelector('#edx_modal input[data-vst="wait"]'), badIn = document.querySelector('#edx_modal input[data-vst="bad"]'), msg0 = document.getElementById('edx_msg');
       if (pendIn || badIn) { if (msg0) { msg0.style.color = '#ff6b6b'; msg0.innerText = pendIn ? 'Espera un momento: estoy revisando el video…' : 'Ese video no se puede mostrar en la app. Pega otro enlace antes de guardar.'; } return; }
       var d = st.routineDays[EDX.di], cur = d.items[EDX.ii]; if (!cur) return;
@@ -13653,17 +13653,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var myReq = ++EDIT_REQ;
       var expectName = ''; try { clientRows.forEach(function(r) { if (r && r.id === id) expectName = r.atleta || ''; }); } catch (eN) {}
       var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Abriendo rutina para editar… puede tardar unos segundos';
-      fetchRoutine(id).then(function(j) {
+      fetchRoutine(id).then(async function(j) {
         if (myReq !== EDIT_REQ) return;   // ya tocó otro cliente: esta respuesta es vieja
         var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
         if (!state) { if (st) st.innerText = 'No se pudo abrir esa rutina.'; return; }
         // Seguridad: el nombre guardado dentro de la rutina debe ser el del cliente que se tocó en la lista
         if (expectName && state.clientName && !sameClientName(state.clientName, expectName)) {
           if (st) st.innerText = '⚠️ No se abrió: el enlace de ' + expectName + ' trae la rutina de ' + state.clientName + '.';
-          alert('⚠️ No se abrió para editar.\n\nTocaste a «' + expectName + '», pero la rutina guardada en su enlace dice «' + state.clientName + '».\n\nNo guardes nada sobre ese enlace hasta revisarlo (puedes usar 🔎 Visor o 📤 Exportar a texto plano para verlo).');
+          await appAlert('⚠️ No se abrió para editar.\n\nTocaste a «' + expectName + '», pero la rutina guardada en su enlace dice «' + state.clientName + '».\n\nNo guardes nada sobre ese enlace hasta revisarlo (puedes usar 🔎 Visor o 📤 Exportar a texto plano para verlo).');
           return;
         }
-        if (state.off && !confirm('Este cliente está desconectado.\n\nSi guardas cambios y los envías, volverá a ver su rutina (se reconecta).\n\n¿Seguir editando?')) { if (st) st.innerText = ''; return; }
+        if (state.off && !(await appConfirm('Este cliente está desconectado.\n\nSi guardas cambios y los envías, volverá a ver su rutina (se reconecta).\n\n¿Seguir editando?'))) { if (st) st.innerText = ''; return; }
         // Rutina en espera: si ya empezó, esa es la rutina del cliente; si todavía no, se elige cuál de las dos editar
         var pendRaw = payloadNextArr(j.p), waiting = (state.next && !pendDue(state)) ? state.next : null;
         var dueWait = pendDue(state);
@@ -13713,9 +13713,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).catch(function(e) { if (st) st.innerText = clientsErrorText(e && e.message); });
     }
     // Clonar: abre la rutina de un cliente como base para otro. Deja en blanco todo lo personal y crea un enlace NUEVO al enviarla (la original no se toca).
-    function cloneClientRoutine(id) {
+    async function cloneClientRoutine(id) {
       if (!COACH) return;
-      var keepNutri = confirm('📋 Clonar esta rutina para otro cliente.\n\n¿Copiar también la alimentación (comidas y calorías)?\n\nAceptar = copiarla\nCancelar = clonar solo el entrenamiento');
+      var keepNutri = await appConfirm('📋 Clonar esta rutina para otro cliente.\n\n¿Copiar también la alimentación (comidas y calorías)?\n\nAceptar = copiarla\nCancelar = clonar solo el entrenamiento');
       var st = document.getElementById('cl_status'); if (st) st.innerText = '⏳ Clonando rutina… puede tardar unos segundos';
       fetchRoutine(id).then(function(j) {
         var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
@@ -13930,8 +13930,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!isIsoDate(d) || d <= today) { err('Elige una fecha desde mañana.'); return; }
         apply(function(arr) { arr[2] = d; return arr; }, '✅ La rutina nueva ahora empieza el ' + fechaLargaEs(d) + '.');
       };
-      document.getElementById('pend_coach_del').onclick = function() {
-        if (!confirm('¿Quitar la rutina en espera de ' + (st.clientName || 'este cliente') + '? Seguirá solo con la actual.')) return;
+      document.getElementById('pend_coach_del').onclick = async function() {
+        if (!(await appConfirm('¿Quitar la rutina en espera de ' + (st.clientName || 'este cliente') + '? Seguirá solo con la actual.'))) return;
         apply(function() { return null; }, '🗑️ Se quitó la rutina en espera.');
       };
     }
@@ -14477,8 +14477,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
 
     // Constructor: editor de anuncios
-    function openAnnounceEditor() {
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+    async function openAnnounceEditor() {
+      if (!COACH) { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
       var m = document.getElementById('ann_edit_modal');
       if (!m) { m = document.createElement('div'); m.id = 'ann_edit_modal'; m.className = 'modal-overlay ex-edit-modal'; m.style.zIndex = '100004'; document.body.appendChild(m); }
       ANN_LIST = []; FR_LIST = [];
@@ -14500,8 +14500,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       for (var i = 0; i < n; i++) { var d = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i); out.push(d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())); }
       return out;
     }
-    function openFraseEditor() {
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
+    async function openFraseEditor() {
+      if (!COACH) { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); return; }
       var m = document.getElementById('fr_edit_modal');
       if (!m) { m = document.createElement('div'); m.id = 'fr_edit_modal'; m.className = 'modal-overlay ex-edit-modal'; m.style.zIndex = '100004'; document.body.appendChild(m); }
       ANN_LIST = []; FR_LIST = []; FR_OK = false;
@@ -14640,8 +14640,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" onclick="closeModal(\'fr_edit_modal\')" style="background:#1c1c1c; color:#fff; border:1px solid #444; border-radius:10px; padding:0 16px; font-weight:800; cursor:pointer;">Cerrar</button></div></div>';
       m.innerHTML = h;
     }
-    function frPublish() {
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
+    async function frPublish() {
+      if (!COACH) { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
       var msg = document.getElementById('fr_msg'), btn = document.getElementById('fr_pub');
       if (!FR_OK) { msg.style.color = '#ff6b6b'; msg.innerText = 'No se pudieron leer las frases y anuncios actuales; ciérralo y ábrelo otra vez para no borrarlos.'; return; }
       frReadForm();
@@ -14689,8 +14689,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function annAdd() { annReadForm(); ANN_LIST.push({ i: 'a' + Date.now().toString(36), t: '', m: '', d: todayIso(), h: '' }); renderAnnEditor(''); }
     function annDelete(k) { annReadForm(); ANN_LIST.splice(k, 1); renderAnnEditor(''); }
-    function annPublish() {
-      if (!COACH) { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
+    async function annPublish() {
+      if (!COACH) { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); return; }
       annReadForm();
       ANN_LIST = ANN_LIST.filter(function(a) { return a.m || a.t; }).map(function(a) { if (!a.m) { a.m = a.t; a.t = ''; } return a; });
       var bad = ANN_LIST.filter(function(a) { return a.d && a.h && a.h < a.d; });
@@ -14734,7 +14734,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { var o = JSON.parse(localStorage.getItem(CLS_KEY) || 'null'); if (o && Array.isArray(o.lista)) { CLS = { lista: o.lista, hoy: o.hoy || '', hoyD: o.hoyD || '', dirty: !!o.dirty, del: o.del || {}, known: o.known || null, hu: o.hu || 0, hh: o.hh || '' }; return; } } catch (e) {}
       CLS = { lista: [], hoy: '', hoyD: '', dirty: false };
     }
-    function clsSave(clean) { if (!clean) { try { clsySchedule(); } catch (e1) {} } if (!clean) CLS.dirty = true; try { clsStamp(); } catch (e0) {} try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); return true; } catch (e) { alert('No se pudo guardar la clase: la memoria del navegador está llena. Tu texto sigue en pantalla. Libera espacio (borra borradores viejos desde «Borradores») y vuelve a tocar Guardar.'); return false; } }
+    function clsSave(clean) { if (!clean) { try { clsySchedule(); } catch (e1) {} } if (!clean) CLS.dirty = true; try { clsStamp(); } catch (e0) {} try { localStorage.setItem(CLS_KEY, JSON.stringify(CLS)); return true; } catch (e) { CLS_SAVE_ERR = 'No se pudo guardar la clase: la memoria del navegador está llena. Tu texto sigue en pantalla. Libera espacio (borra borradores viejos desde «Borradores») y vuelve a tocar Guardar.'; return false; } }
+    var CLS_SAVE_ERR = '';
+    async function clsSaveAlertIfFailed(ok) { if (!ok && CLS_SAVE_ERR) { var m = CLS_SAVE_ERR; CLS_SAVE_ERR = ''; await appAlert(m); } return ok; }
     function clsProps(str) {
       var out = {};
       String(str || '').split('|').forEach(function(pr) {
@@ -14897,7 +14899,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       h += '<button type="button" class="btn btn-accent" style="width:100%; margin-top:4px;" onclick="clsBatchSave()">💾 Guardar todas (' + CLS_BATCH.length + ')' + (nOn ? ' · ' + nOn + ' activa' + (nOn === 1 ? '' : 's') : '') + '</button></div>';
       box.innerHTML = h;
     }
-    function clsBatchSave() {
+    async function clsBatchSave() {
       if (!CLS_BATCH || !CLS_BATCH.length) return;
       clsLoad();
       var nuevas = 0, actual = 0, activas = 0, stamp = Date.now().toString(36);
@@ -14908,7 +14910,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (ex) { rec.id = ex.id; if (ex.para && ex.para.length) rec.para = ex.para; CLS.lista[CLS.lista.indexOf(ex)] = rec; actual++; }
         else { rec.id = 'c' + stamp + i; CLS.lista.push(rec); nuevas++; }
       });
-      if (!clsSave()) { clsLoad(); return; }   // no se pudo guardar: se deja todo en pantalla para reintentar
+      if (!(await clsSaveAlertIfFailed(clsSave()))) { clsLoad(); return; }   // no se pudo guardar: se deja todo en pantalla para reintentar
       var n = CLS_BATCH.length;
       clsClearForm(); clsRender();
       var m = document.getElementById('clsMsg');
@@ -15015,11 +15017,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }); });
       return out;
     }
-    function clsTestVideo(bi, si) {
+    async function clsTestVideo(bi, si) {
       var c = CLS_WORK, sb = c && c.items[bi] && c.items[bi].sub[si]; var v = String((sb && sb.video) || '').trim();
       var el = document.getElementById('clsV_' + bi + '_' + si); if (el && el.value.trim() && el.value.trim() !== v) { clsSetVideo(bi, si, el.value); v = el.value.trim(); }
-      if (!v) { alert('Ese ejercicio todavía no tiene ningún link de video.'); return; }
-      if (!/^https?:\/\//i.test(v)) { alert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
+      if (!v) { await appAlert('Ese ejercicio todavía no tiene ningún link de video.'); return; }
+      if (!/^https?:\/\//i.test(v)) { await appAlert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
       DEMO_FIELD = '';
       if (demoFloatOpen(v, true)) return;
       window.open(v, '_blank', 'noopener');
@@ -15035,15 +15037,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (v) rememberExerciseVideo(sb.name, v);   // queda en la biblioteca para la próxima clase
       clsRenderPreview();
     }
-    function clsStore(asToday) {
+    async function clsStore(asToday) {
       var c = CLS_WORK; if (!c) return;
       clsReadHead();
-      if (!c.t.trim()) { alert('Ponle un título.'); return; }
+      if (!c.t.trim()) { await appAlert('Ponle un título.'); return; }
       var fv = clsMissingVideos(c);
-      if (fv.length && !confirm('Faltan videos en: ' + fv.join(', ') + '.\n\n¿Guardar la clase de todos modos?')) return;
+      if (fv.length && !(await appConfirm('Faltan videos en: ' + fv.join(', ') + '.\n\n¿Guardar la clase de todos modos?'))) return;
       var rec = JSON.parse(JSON.stringify(c)); delete rec._pick;
       if (rec.para && !rec.para.length) delete rec.para;
-      if (c._pick && !(rec.para && rec.para.length) && !confirm('Marcaste «Solo estos clientes» pero no elegiste ninguno: la clase la verán todos. ¿Guardar así?')) return;
+      if (c._pick && !(rec.para && rec.para.length) && !(await appConfirm('Marcaste «Solo estos clientes» pero no elegiste ninguno: la clase la verán todos. ¿Guardar así?'))) return;
       if (!rec.id) rec.id = 'c' + Date.now().toString(36);
       var i = -1; CLS.lista.forEach(function(x, k) { if (x.id === rec.id) i = k; });
       var isNew = i < 0;
@@ -15051,7 +15053,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       else { rec.vis = !rec.prog && rec.f <= todayIso(); CLS.lista.push(rec); }   // clase o reto nuevo con fecha de hoy o pasada: queda disponible para los clientes (se oculta desde la casilla)
       if (asToday && rec.k === 'c') { CLS.hoy = rec.id; CLS.hoyD = rec.f > todayIso() ? rec.f : todayIso(); }
       if (CLS.hoy === rec.id && rec.k !== 'c') CLS.hoy = '';
-      if (!clsSave()) { clsLoad(); return; }   // no se pudo guardar: se deja todo en pantalla para reintentar
+      if (!(await clsSaveAlertIfFailed(clsSave()))) { clsLoad(); return; }   // no se pudo guardar: se deja todo en pantalla para reintentar
       document.getElementById('clsMsg').style.color = '#06d6a0';
       document.getElementById('clsMsg').innerText = '✅ Guardada: ' + rec.t + (CLS.hoy === rec.id ? ' (clase de hoy)' : (rec.vis ? ' (ya está disponible para tus clientes, ordenada por su fecha)' : '')) + '.';
       clsClearForm(); clsRender();
@@ -15077,9 +15079,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function clsFind(id) { for (var i = 0; i < CLS.lista.length; i++) { if (CLS.lista[i].id === id) return CLS.lista[i]; } return null; }
     function clsSetToday(id) { var c = clsFind(id); if (!c || c.k !== 'c') return; CLS.hoy = id; CLS.hoyD = c.f > todayIso() ? c.f : todayIso(); clsSave(); clsRender(); clsAutoPublish(); }
     function clsToggleVis(id) { var c = clsFind(id); if (!c) return; c.vis = !c.vis; clsSave(); clsRender(); if (clsLinkId()) clsAutoPublish(); }
-    function clsDelete(id) {
+    async function clsDelete(id) {
       var c = clsFind(id); if (!c) return;
-      if (!confirm('¿Borrar "' + c.t + '"?')) return;
+      if (!(await appConfirm('¿Borrar "' + c.t + '"?'))) return;
       CLS.lista = CLS.lista.filter(function(x) { return x.id !== id; }); if (CLS.hoy === id) { CLS.hoy = ''; CLS.hoyD = ''; }
       clsSave(); clsRender();
     }
@@ -15410,10 +15412,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }));
     }
     function clsSetPubMsg(txt, col) { CLS_PUBMSG = txt ? '<span style="color:' + col + ';">' + txt + '</span>' : ''; var m = document.getElementById('clsPubMsg'); if (m) m.innerHTML = CLS_PUBMSG; }
-    function clsPublish(auto) {
-      if (!COACH) { clsEnsureCoach(function(ok) { if (ok) clsPublish(auto); else { alert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); } }); return; }
+    async function clsPublish(auto) {
+      if (!COACH) { clsEnsureCoach(async function(ok) { if (ok) clsPublish(auto); else { await appAlert('Primero entra a "👥 Mis clientes" con tu PIN.'); openCoachClients(); } }); return; }
       clsLoad();
-      if (!clsHoyId() && !CLS.lista.some(function(c) { return c.vis || c.prog; })) { if (!confirm('No hay clase de hoy ni clases/retos habilitados. ¿Publicar la portada vacía?')) return; }
+      if (!clsHoyId() && !CLS.lista.some(function(c) { return c.vis || c.prog; })) { if (!(await appConfirm('No hay clase de hoy ni clases/retos habilitados. ¿Publicar la portada vacía?'))) return; }
       var payloadText = clsEncode(), id = clsLinkId(), btn = document.getElementById('clsPubBtn');
       if (payloadText.length > 45000) { clsSetPubMsg('Son demasiadas clases habilitadas para un solo link. Deshabilita algunas anteriores.', '#ff6b6b'); return; }
       if (btn) { btn.disabled = true; btn.innerText = 'Publicando…'; }
@@ -16062,11 +16064,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function fichaExtraOf(p) { var x = {}; Object.keys(p || {}).forEach(function(k) { if (FICHA_FORM_KEYS.indexOf(k) < 0 && p[k]) x[k] = p[k]; }); return x; }
     // El nombre del coach es obligatorio para guardar en la ficha (queda como autor de cada medición)
     function fichaWhoStrict() { return ((COACH && COACH.name) || ((document.getElementById('coachName') || {}).value || '')).trim(); }
-    function fichaNeedCoach() {
+    async function fichaNeedCoach() {
       var n = ((COACH && COACH.name) || ((document.getElementById('coachName') || {}).value || '')).trim();
       if (n) return false;
       var el = document.getElementById('coachName');
-      alert('Escribe el nombre del coach (campo «Nombre del Coach» del Planificador) o entra con tu PIN antes de guardar. Así queda registrado quién hizo cada medición.');
+      await appAlert('Escribe el nombre del coach (campo «Nombre del Coach» del Planificador) o entra con tu PIN antes de guardar. Así queda registrado quién hizo cada medición.');
       try { if (el) { switchGenTab('tab_builder', document.querySelector('.gen-tab-btn')); el.focus(); } } catch (e) {}
       return true;
     }
@@ -16244,11 +16246,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).catch(function() { fichaSet('⚠️ Sin conexión.', 'err'); });
     }
     // Borra la ficha abierta de la hoja (solo administrador). No se puede deshacer
-    function fichaDelete() {
+    async function fichaDelete() {
       var pin = fichaPin(); if (!pin || !FICHA.c) return;
       if (!(COACH && COACH.todos)) { fichaSet('Solo el administrador puede borrar fichas.', 'err'); return; }
       var code = FICHA.c, name = FICHA.name;
-      if (!confirm('🗑 Borrar la ficha ' + code + ' de ' + name + '\n\nSe borra de la hoja con todas sus mediciones y no se puede deshacer.\n\n¿Borrarla?')) return;
+      if (!(await appConfirm('🗑 Borrar la ficha ' + code + ' de ' + name + '\n\nSe borra de la hoja con todas sus mediciones y no se puede deshacer.\n\n¿Borrarla?'))) return;
       fichaSet('Borrando la ficha…');
       postJson({ a: 'ficha_borrar', pin: pin, c: code }, 30000).then(function(j) {
         if (j && j.ok) {
@@ -16288,13 +16290,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (localOnly) fichaTouch();
       }).catch(function() { fichaSet('⚠️ Sin conexión.', 'err'); });
     }
-    function fichaCreate() {
-      if (fichaNeedCoach()) return;
+    async function fichaCreate() {
+      if (await fichaNeedCoach()) return;
       var pin = fichaPin(), nm = ((document.getElementById('clientName') || {}).value || '').trim();
       if (!pin) { fichaSet('Entra como coach (con tu PIN) para usar las fichas.', 'err'); return; }
-      if (!nm) { alert('Escribe primero el nombre del cliente (arriba, en el constructor).'); return; }
+      if (!nm) { await appAlert('Escribe primero el nombre del cliente (arriba, en el constructor).'); return; }
       var ex = fichaFind(nm);
-      if (ex) { if (confirm('Ya existe la ficha de ' + ex.n + ' (' + ex.c + '). ¿Vincularla en vez de crear otra?')) fichaOpen(ex.c); return; }
+      if (ex) { if (await appConfirm('Ya existe la ficha de ' + ex.n + ' (' + ex.c + '). ¿Vincularla en vez de crear otra?')) fichaOpen(ex.c); return; }
       FICHA.name = nm;
       var perfil = fichaPerfilFromForm(), log = normalizeMeasureLog(measureLog);
       fichaSet('Creando la ficha…');
@@ -16374,9 +16376,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!FICHA.c || !FICHA.t) { fichaSet('Guarda la ficha primero para tener su enlace.', 'err'); return; }
       copyTextSilently(fichaLink()); showToastTop('🔗 Enlace de la ficha copiado');
     }
-    function fichaSendWa() {
+    async function fichaSendWa() {
       var pin = fichaPin();
-      if (!FICHA.c) { alert('Primero vincula o crea la ficha del cliente.'); return; }
+      if (!FICHA.c) { await appAlert('Primero vincula o crea la ficha del cliente.'); return; }
       if (!pin) { fichaSet('Entra como coach (con tu PIN) para enviar.', 'err'); return; }
       fichaSet('Guardando y preparando el envío…');
       Promise.resolve(fichaSaveNow()).then(function(ok) {
@@ -16580,8 +16582,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       renderMeasureLog();
       return { med: n, perfil: np, blocked: blocked };
     }
-    function fichaImportText() {
-      if (fichaNeedCoach()) return;
+    async function fichaImportText() {
+      if (await fichaNeedCoach()) return;
       var raw = (document.getElementById('ficha_txt') || {}).value || '';
       if (!raw.trim()) { fichaSet('Pega primero el texto.', 'err'); return; }
       var P = fichaParseText(raw);
@@ -16723,9 +16725,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (f) fichaOpen(f.c); else fichaCreate();
       });
     }
-    function espDiscard(c) {
+    async function espDiscard(c) {
       var pin = fichaPin(), it = (ESP.list || []).filter(function(x) { return x.c === c; })[0];
-      if (!pin || !confirm('¿' + ((COACH && COACH.todos) ? 'Borrar' : 'Descartar') + ' el plan en espera de ' + (it ? it.n : c) + '?')) return;
+      if (!pin || !(await appConfirm('¿' + ((COACH && COACH.todos) ? 'Borrar' : 'Descartar') + ' el plan en espera de ' + (it ? it.n : c) + '?'))) return;
       var borrar = !!(COACH && COACH.todos);   // el administrador borra la fila de la hoja; los demás coaches solo la marcan como descartada
       postJson(borrar ? { a: 'espera_borrar', pin: pin, c: c } : { a: 'espera_listo', pin: pin, c: c, nota: 'descartado' }, 30000).then(function(j) {
         if (j && j.ok) { ESP.list = (ESP.list || []).filter(function(x) { return x.c !== c; }); if (ESP.active && ESP.active.c === c) ESP.active = null; espRender(); espSet('🗑 Plan descartado.', 'ok'); }
