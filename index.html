@@ -116,6 +116,9 @@
 
     .gen-more-wrap { position: static; display: inline-block; }
     .gen-more-badge { position: absolute; top: -4px; right: -4px; background: #ffb300; color: #000; font-size: 0.62rem; font-weight: 900; border-radius: 999px; min-width: 16px; height: 16px; display: none; align-items: center; justify-content: center; padding: 0 3px; }
+    /* Ítem 30/47: badge visual de la bandeja de "Mis clientes" (contador, con pulso suave mientras haya algo sin atender) */
+    .cl-notif-dot { display: inline-block; background: #ff3b30; color: #fff; font-size: 0.68rem; font-weight: 900; border-radius: 999px; padding: 2px 8px; margin-left: 4px; vertical-align: middle; animation: clNotifPulse 1.6s ease-in-out infinite; }
+    @keyframes clNotifPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
     .gen-more-menu { display: none; position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; min-width: 240px; max-width: calc(100vw - 20px); z-index: 10050; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
     .gen-more-menu.open { display: block; }
     .gen-more-menu .gen-tab-btn { display: block; width: 100%; text-align: left; margin-bottom: 4px; white-space: normal; }
@@ -1288,6 +1291,30 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       </div>
     </div>
 
+    <!-- Ítem 33: aviso más completo del cliente a su coach (motivo + comentario + día/ejercicio si aplica) -->
+    <div id="ath_modal_avisar" class="view-screen">
+      <div class="top-nav-bar">
+        <button class="back-btn" onclick="closeModal('ath_modal_avisar')">← Volver</button>
+        <div class="view-title">Avisar a mi coach</div>
+        <div style="width:50px;"></div>
+      </div>
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px;">
+        <label class="med-lbl">¿Sobre qué es?</label>
+        <select id="av_motivo" class="med-in">
+          <option value="duda">❓ Duda de un ejercicio</option>
+          <option value="molestia">🩹 Molestia o dolor</option>
+          <option value="asistencia">🚫 No puedo asistir</option>
+          <option value="otro">💬 Otro</option>
+        </select>
+        <label class="med-lbl">Día o ejercicio (opcional)</label>
+        <input type="text" id="av_ref" class="med-in" maxlength="80" placeholder="Ej: Día 2 · Sentadilla búlgara">
+        <label class="med-lbl">Cuéntale a tu coach</label>
+        <textarea id="av_comment" class="med-in" rows="4" maxlength="500" placeholder="Escribe aquí los detalles…"></textarea>
+        <div id="av_msg" style="font-size:0.78rem; min-height:16px; margin:6px 0; color:var(--muted);"></div>
+        <button type="button" class="btn-action-primary" onclick="athAvisarSend()">📣 Enviar aviso</button>
+      </div>
+    </div>
+
     <div id="ath_daysContainer"></div>
 
     <div id="ath_modal_historial" class="view-screen">
@@ -1398,6 +1425,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div id="cl_status" style="font-size:0.72rem; color:var(--muted); margin-bottom:10px;"></div>
       <div id="cl_list"></div>
     </div>
+  </div>
+
+  <!-- Ítem 34: historial de reportes ya resueltos (guardado en este dispositivo/navegador; ver nota junto a vrepHistAdd) -->
+  <div id="modal_vrep_hist" class="view-screen" style="z-index:96;">
+    <div class="top-nav-bar">
+      <button class="back-btn" onclick="closeModal('modal_vrep_hist')">← Volver</button>
+      <div class="view-title">📜 Reportes resueltos</div>
+      <div style="width:50px;"></div>
+    </div>
+    <div style="font-size:0.76rem; color:var(--muted); margin-bottom:10px;">Avisos de clientes y tareas que ya marcaste como atendidos, resueltos desde este mismo celular o computadora.</div>
+    <div id="cl_hist"></div>
   </div>
 
   <!-- Botón para volver a la lista mientras se entrena a un cliente (solo modo coach) -->
@@ -5728,6 +5766,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
       var dayColors = ['#2f69ff', '#8338ec', '#00b4d8', '#06d6a0', '#ef476f'];
       var capsuleHtml = capCard('#ff6d00', '💬', 'Nota del Coach', 'Un mensaje para ti', "openModal('ath_modal_coach')");
+      if (!isCoachView()) capsuleHtml += capCard('#ff9e00', '📣', 'Avisar a mi coach', 'Duda, molestia o cualquier aviso', 'athAvisarOpen()');
       var nTr = 0, restIds = [];
       state.routineDays.forEach(function(d, i) {
         if (d.rest) { restIds.push(d.id); return; }   // los descansos van juntos en una sola tarjeta
@@ -6060,10 +6099,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       d.innerHTML = '<div style="background:#1a1f2b;border:1px solid #4d8bff;border-radius:14px;padding:18px;max-width:340px;color:#fff;text-align:center;">' +
         '<div style="font-size:2rem;">⚖️</div><div style="font-weight:900;font-size:1.05rem;margin:6px 0;">Toca pesarte y medirte</div>' +
         '<div style="font-size:.85rem;color:#c9d1e0;line-height:1.4;">Ya llevas ' + (k * 4) + ' semanas. Pésate en ayunas y avísale a tu coach para ver tu avance.</div>' +
-        '<div style="display:flex;gap:8px;margin-top:14px;"><button type="button" id="rem_later" style="flex:1;background:transparent;border:1px solid #6b7488;color:#c9d1e0;border-radius:8px;padding:9px;font-weight:700;">Luego</button>' +
-        '<button type="button" id="rem_ok" style="flex:1;background:#06d6a0;border:none;color:#04251c;border-radius:8px;padding:9px;font-weight:900;">Ya me pesé</button></div></div>';
+        '<div style="display:flex;gap:8px;margin-top:14px;"><button type="button" id="rem_later" style="flex:1;background:transparent;border:1px solid #6b7488;color:#c9d1e0;border-radius:8px;padding:9px;font-weight:700;font-size:0.82rem;">Luego</button>' +
+        '<button type="button" id="rem_week" style="flex:1;background:transparent;border:1px solid #ffb703;color:#ffb703;border-radius:8px;padding:9px;font-weight:700;font-size:0.82rem;">📅 1 semana</button></div>' +
+        '<button type="button" id="rem_ok" style="width:100%;margin-top:8px;background:#06d6a0;border:none;color:#04251c;border-radius:8px;padding:9px;font-weight:900;">Ya me pesé</button></div>';
       document.body.appendChild(d);
       document.getElementById('rem_later').onclick = function() { var R = remLoad(); R.snz = Date.now() + 86400000; remSave(R); d.remove(); };
+      // Ítem 49: posponer el aviso de pesaje recurrente una semana completa (no solo hasta mañana como «Luego»)
+      document.getElementById('rem_week').onclick = function() { var R = remLoad(); R.snz = Date.now() + 7 * 86400000; remSave(R); d.remove(); };
       document.getElementById('rem_ok').onclick = function() { var R = remLoad(); R['pes' + k] = 1; remSave(R); d.remove(); };
     }
 
@@ -6102,8 +6144,21 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { pairInit(); } catch (e) {}
     }
 
-    function openModal(id) { var el = document.getElementById(id); if (el) el.classList.add('active'); }
-    function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('active'); try { wkSuggestPaint(); } catch (e) {} }   // al volver a la pantalla principal se actualiza el día sugerido (se apaga si ya entrenó o está entrenando)
+    // Ítem 30: auto-refresco de la bandeja de "Mis clientes" (vrepInboxRefresh) mientras esa pantalla está abierta;
+    // el intervalo se limpia siempre al cerrarla (back, o cualquier closeModal('modal_clients') programático) para no dejarlo corriendo de fondo.
+    var CL_POLL_IV = null, CL_POLL_MS = 25000;
+    function openModal(id) {
+      var el = document.getElementById(id); if (el) el.classList.add('active');
+      if (id === 'modal_clients') {
+        clearInterval(CL_POLL_IV);
+        CL_POLL_IV = setInterval(function() { try { if (COACH && document.visibilityState !== 'hidden') vrepInboxRefresh(); } catch (e) {} }, CL_POLL_MS);
+      }
+    }
+    function closeModal(id) {
+      var el = document.getElementById(id); if (el) el.classList.remove('active');
+      if (id === 'modal_clients' && CL_POLL_IV) { clearInterval(CL_POLL_IV); CL_POLL_IV = null; }
+      try { wkSuggestPaint(); } catch (e) {}
+    }   // al volver a la pantalla principal se actualiza el día sugerido (se apaga si ya entrenó o está entrenando)
 
     // ================= MODAL DE ALERTA / CONFIRMACIÓN (reemplaza alert()/confirm() nativos) =================
     // appAlert(msg) devuelve una Promise que resuelve cuando el usuario cierra el aviso.
@@ -12308,6 +12363,34 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { wkToast('✅ Listo, le avisé a tu coach. ¡Gracias!'); } catch (e) {}
       var q = vrepQ(); q.push(rep); vrepSaveQ(q); vrepFlush();
     }
+    // Ítem 33: "Avisar a mi coach" con motivo, comentario y (si el cliente lo da) referencia al día/ejercicio.
+    // Reusa la misma cola confiable de avisos (vrepQ/vrepFlush) que ya usan los reportes de video, así que no necesita nada nuevo del Apps Script.
+    var AV_MOTIVOS = { duda: '❓ Duda de un ejercicio', molestia: '🩹 Molestia o dolor', asistencia: '🚫 No puedo asistir', otro: '💬 Otro' };
+    function athAvisarOpen() {
+      if (isCoachView()) return;
+      var mo = document.getElementById('av_motivo'), ref = document.getElementById('av_ref'), c = document.getElementById('av_comment'), msg = document.getElementById('av_msg');
+      if (mo) mo.value = 'duda';
+      if (c) c.value = '';
+      if (msg) msg.innerText = '';
+      if (ref) {
+        var pre = '';
+        try { if (lastActiveDayId) { var de = document.getElementById(lastActiveDayId); if (de) pre = de.getAttribute('data-day-title') || ''; } } catch (e) {}
+        ref.value = pre;
+      }
+      openModal('ath_modal_avisar');
+    }
+    function athAvisarSend() {
+      if (isCoachView()) return;
+      var mo = document.getElementById('av_motivo'), ref = document.getElementById('av_ref'), c = document.getElementById('av_comment'), msg = document.getElementById('av_msg');
+      var motivo = mo ? mo.value : 'otro', refTxt = ref ? String(ref.value || '').trim().slice(0, 80) : '', comment = c ? String(c.value || '').trim().slice(0, 500) : '';
+      if (!comment) { if (msg) { msg.style.color = '#ff6b6b'; msg.innerText = 'Escribe un comentario para tu coach.'; } return; }
+      var st = athleteActiveState || {};
+      var rep = { t: new Date().toISOString(), k: 'rep', tipo: 'aviso', cli: st.clientName || '', dia: refTxt, ej: '', url: '', rid: athleteRoutineId || '',
+        coach: st.coachName ? displayCoach(st.coachName) : '', mot: (AV_MOTIVOS[motivo] || motivo) + ': ' + comment, n: 0 };
+      var q = vrepQ(); q.push(rep); vrepSaveQ(q); vrepFlush();
+      closeModal('ath_modal_avisar');
+      try { wkToast('✅ Listo, le avisé a tu coach. ¡Gracias!'); } catch (e) {}
+    }
     function vrepQ() { try { var a = JSON.parse(localStorage.getItem(VREP_Q) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
     function vrepSaveQ(a) { try { localStorage.setItem(VREP_Q, JSON.stringify(a.slice(-30))); } catch (e) {} }
     // Envío en cola: si no hay internet se reintenta al abrir la app. Primero al buzón de reportes del script de Google; si el script aún no lo tiene,
@@ -12345,56 +12428,83 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (j && j.ok && Array.isArray(j.reportes)) { VREP_INBOX = j.reportes; vrepBadge(); vrepInboxRender(); }
       }).catch(function() {});
     }
+    // Ítem 30/47: el contador separa lo que ya confirmó un reporte del cliente (vrepGroups + tareas con src:'in', sincronizado por la
+    // hoja de Google vía a:'reporte'/'reportes'/'reporte_ok') de lo que el coach calculó solo en este dispositivo y el cliente aún no
+    // reportó (tareas con src:'al', alertsOpen — ver el comentario junto a ALERTS_KEY sobre por qué eso no viaja entre dispositivos).
     function vrepBadge() {
-      var n = VREP_INBOX.length + (typeof alertsOpen === 'function' ? alertsOpen().length : 0), b = document.querySelector('.gen-tab-btn[onclick="openCoachClients()"]');
-      if (b) b.innerText = '👥 Mis clientes' + (n ? ' · 🔔 ' + n : '');
+      var b = document.querySelector('.gen-tab-btn[onclick="openCoachClients()"]'); if (!b) return;
+      var tasks = (typeof alertsTasks === 'function') ? alertsTasks() : [];
+      var cliN = vrepGroups().length + tasks.filter(function(x) { return x.src === 'in'; }).length;
+      var coachN = tasks.filter(function(x) { return x.src === 'al'; }).length;
+      var n = cliN + coachN;
+      if (!n) { b.innerHTML = '👥 Mis clientes'; return; }
+      b.innerHTML = '👥 Mis clientes <span class="cl-notif-dot" title="' + cliN + ' avisos de clientes' + (coachN ? ' + ' + coachN + ' calculados por el coach' : '') + '">🔔 ' + cliN + (coachN ? '+' + coachN : '') + '</span>';
     }
     function vrepInboxRender() { vrepInboxRender0(); try { alertsPaint(); vrepBadge(); } catch (e) {} }
     function vrepIsTask(r) { return !!r && (r.tipo === 'pesaje' || r.tipo === 'ciclo'); }   // recordatorios que genera la app sola (no los escribe el cliente)
+    // Ítem 31: agrupa reportes repetidos (mismo cliente + tipo + día + ejercicio/motivo) en una sola fila con contador "×N",
+    // en vez de una fila por cada aviso idéntico (ej. el cliente toca "¿no se ve?" varias veces sobre el mismo video).
+    function vrepDupKey(r) {
+      return [r.tipo || '', normName(r.cli), String(r.dia || '').trim().toLowerCase(), String(r.ej || '').trim().toLowerCase(), String(r.mot || '').trim().toLowerCase()].join('|');
+    }
+    function vrepGroups() {
+      var map = {}, order = [];
+      VREP_INBOX.forEach(function(r, i) {
+        if (vrepIsTask(r)) return;   // pesaje/ciclo van aparte: alertsPaint ya los agrupa con su propio arreglo "dup"
+        var k = vrepDupKey(r);
+        if (!map[k]) { map[k] = { rep: r, idxs: [i] }; order.push(map[k]); }
+        else { map[k].idxs.push(i); if (new Date(r.t) > new Date(map[k].rep.t)) map[k].rep = r; }
+      });
+      order.sort(function(a, b) { return new Date(b.rep.t) - new Date(a.rep.t); });
+      return order;
+    }
     function vrepInboxRender0() {
       var box = document.getElementById('cl_reports'); if (!box) return;
-      var nCli = VREP_INBOX.filter(function(r) { return !vrepIsTask(r); }).length;
-      if (!nCli) { box.innerHTML = ''; return; }
+      var groups = vrepGroups();
+      if (!groups.length) { box.innerHTML = ''; return; }
       box.innerHTML = '<div style="background:#2a1512; border:1px solid #8a3b30; border-radius:10px; padding:10px 12px; margin-bottom:12px;">' +
-        '<div style="font-size:0.85rem; font-weight:900; color:#ff9a93; margin-bottom:6px;">🔔 Avisos de los clientes (' + nCli + ')</div>' +
-        VREP_INBOX.map(function(r, i) {
-          if (vrepIsTask(r)) return '';   // pesaje / fin de ciclo: van en las listas compactas de abajo (alertsPaint)
+        '<div style="font-size:0.85rem; font-weight:900; color:#ff9a93; margin-bottom:6px;">🔔 Avisos de los clientes (' + groups.length + ')</div>' +
+        groups.map(function(g) {
+          var r = g.rep, i = g.idxs[g.idxs.length - 1], idxsLit = '[' + g.idxs.join(',') + ']';
+          var cntTag = g.idxs.length > 1 ? ' <span style="background:#8a3b30; color:#fff; border-radius:999px; padding:1px 7px; font-size:0.68rem; font-weight:900;">×' + g.idxs.length + '</span>' : '';
           var when = ''; try { when = new Date(r.t).toLocaleString('es-CR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
           if (r.tipo === 'datos') {
             return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
-              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · 📝 Actualizó sus datos personales</div>' +
+              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · 📝 Actualizó sus datos personales' + cntTag + '</div>' +
               '<div style="color:#ff9a93;">' + escHtml(r.mot || '') + '</div>' +
               '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + '</div>' +
               '<div style="display:flex; gap:8px; margin-top:6px;">' + (r.rid ? '<button type="button" onclick="coachOpenDatos(\'' + escHtml(r.rid) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">📋 Ver datos</button>' : '') +
-              '<button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Listo</button></div></div>';
+              '<button type="button" onclick="vrepResolveGroup(' + idxsLit + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Listo</button></div></div>';
           }
           if (r.tipo === 'sentir') {   // modo guiado: respuesta a «¿Cómo te sentiste?» (solo llegan «regular» y «me costó»)
             return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
-              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + escHtml(r.mot || '') + '</div>' +
+              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + escHtml(r.mot || '') + cntTag + '</div>' +
               (r.dia ? '<div style="color:#ff9a93;">' + escHtml(r.dia) + '</div>' : '') +
               '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + '</div>' +
               '<div style="display:flex; gap:8px; margin-top:6px;">' + (r.rid ? '<button type="button" onclick="openClientRoutine(\'' + escHtml(r.rid) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">Abrir cliente</button>' : '') +
-              '<button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Visto</button></div></div>';
+              '<button type="button" onclick="vrepResolveGroup(' + idxsLit + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Visto</button></div></div>';
           }
-          if (r.tipo === 'pesaje' || r.tipo === 'ciclo') {
+          if (r.tipo === 'aviso') {   // ítem 33: aviso libre del cliente (motivo + comentario, con día/ejercicio si lo dio)
             return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
-              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + (r.tipo === 'pesaje' ? '⚖️ Toca pesaje' : '⏰ Fin de ciclo cerca') + '</div>' +
+              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · 📣 Avisó a su coach' + (r.dia ? ' · ' + escHtml(r.dia) : '') + cntTag + '</div>' +
               '<div style="color:#ff9a93;">' + escHtml(r.mot || '') + '</div>' +
               '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + '</div>' +
-              '<div style="display:flex; gap:8px; margin-top:6px;"><button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">' + (r.tipo === 'pesaje' ? '✔ Ya se pesó' : '✔ Ya está su rutina actualizada') + '</button></div></div>';
+              '<div style="display:flex; gap:8px; margin-top:6px;">' + (r.rid ? '<button type="button" onclick="openClientRoutine(\'' + escHtml(r.rid) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">Abrir cliente</button>' : '') +
+              '<button type="button" onclick="vrepResolveGroup(' + idxsLit + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Visto</button></div></div>';
           }
           return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
-            '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + escHtml(r.dia || 'día sin nombre') + '</div>' +
+            '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · ' + escHtml(r.dia || 'día sin nombre') + cntTag + '</div>' +
             '<div>Ejercicio: <b>' + escHtml(r.ej || '-') + '</b>' + (r.mot ? ' <span style="color:#ff9a93;">(' + escHtml(r.mot) + ')</span>' : '') + '</div>' +
             '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + (r.coach ? ' · ' + escHtml(r.coach) : '') + '</div>' +
             (ytIdStrict(r.url) ? '<div id="vrep_st_' + i + '" style="font-size:0.74rem; font-weight:700; margin-top:4px; color:' + vidStInfo(r._st || VID_CHK[ytIdStrict(r.url)], r.mot).c + ';">' + vidStInfo(r._st || VID_CHK[ytIdStrict(r.url)], r.mot).t + '</div>' : '') +
             '<div style="display:flex; gap:8px; margin-top:6px;">' +
             (/^https?:\/\//i.test(String(r.url || '')) ? '<a href="' + escHtml(r.url) + '" target="_blank" rel="noopener" style="color:var(--primary); font-weight:800; font-size:0.78rem;">Ver video ↗</a>' : '') +
             (r.id ? '<button type="button" onclick="vrepOpenFix(' + i + ')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✏️ Reemplazar video</button>' : '') +
-            '<button type="button" onclick="vrepResolve(' + i + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Ya lo arreglé</button></div></div>';
+            '<button type="button" onclick="vrepResolveGroup(' + idxsLit + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Ya lo arreglé</button></div></div>';
         }).join('') + '</div>';
-      // Comprobación automática de cada video reportado: dice si hoy sí/no se puede incrustar
-      VREP_INBOX.forEach(function(r, i) {
+      // Comprobación automática de cada video reportado: dice si hoy sí/no se puede incrustar (una sola vez por grupo, no por duplicado)
+      groups.forEach(function(g) {
+        var r = g.rep, i = g.idxs[g.idxs.length - 1];
         var id = ytIdStrict(r.url); if (!id || r._st) return;
         vidCheckQ(id).then(function(st) {
           r._st = st;
@@ -12437,16 +12547,60 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         vidBadgeAll();   // el video actual (el que falló) también muestra su comprobación
       }, 120);
     }
-    function vrepResolve(i) {
-      var r = VREP_INBOX[i], pin = vrepPin(); if (!r || !pin) return;
-      VREP_INBOX.splice(i, 1); vrepBadge(); vrepInboxRender();
-      postJson({ a: 'reporte_ok', pin: pin, t: r.t }).catch(function() {});
+    // Resuelve uno o varios avisos agrupados (ítem 31) a la vez; de mayor a menor índice para que el splice no corra los que faltan.
+    function vrepResolveGroup(idxs) {
+      var pin = vrepPin(); if (!pin || !idxs || !idxs.length) return;
+      idxs.slice().sort(function(a, b) { return b - a; }).forEach(function(i) {
+        var r = VREP_INBOX[i]; if (!r) return;
+        VREP_INBOX.splice(i, 1);
+        postJson({ a: 'reporte_ok', pin: pin, t: r.t }).catch(function() {});
+        try { vrepHistAdd(r); } catch (e) {}
+      });
+      vrepBadge(); vrepInboxRender();
+    }
+    function vrepResolve(i) { vrepResolveGroup([i]); }   // compatibilidad: resolver un solo aviso
+    // Ítem 34: historial de reportes/tareas ya resueltos, guardado SOLO en este dispositivo/navegador (localStorage).
+    // El Apps Script actual no devuelve los reportes ya atendidos con su fecha de resolución (a:'reporte_ok' solo los marca/retira),
+    // así que un historial igual en todos los dispositivos del coach necesitaría una acción nueva ahí (p. ej. "reportes_historial",
+    // que devuelva también los ya resueltos con la fecha en que se resolvieron). Mientras eso no exista, este historial es local.
+    var VREP_HIST_KEY = 'bn_vrep_hist_v1';
+    function vrepHistLoad() { try { var a = JSON.parse(localStorage.getItem(VREP_HIST_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+    function vrepHistSave(a) { try { localStorage.setItem(VREP_HIST_KEY, JSON.stringify(a.slice(-200))); } catch (e) {} }
+    function vrepHistAdd(r) {
+      if (!r) return;
+      var a = vrepHistLoad();
+      a.push({ t: r.t || '', cli: r.cli || '', tipo: r.tipo || '', dia: r.dia || '', ej: r.ej || '', mot: r.mot || '', resuelto: new Date().toISOString(), por: (COACH && COACH.name) || '' });
+      vrepHistSave(a);
+    }
+    function vrepHistOpen() { vrepHistRender(); openModal('modal_vrep_hist'); }
+    function vrepHistRender() {
+      var box = document.getElementById('cl_hist'); if (!box) return;
+      var a = vrepHistLoad().slice().reverse();
+      if (!a.length) { box.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); padding:10px 0;">Todavía no hay reportes resueltos en este dispositivo.</div>'; return; }
+      box.innerHTML = a.map(function(h) {
+        var when = ''; try { when = new Date(h.resuelto).toLocaleString('es-CR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
+        var tipoTxt = h.tipo === 'pesaje' ? '⚖️ Pesaje' : h.tipo === 'ciclo' ? '⏰ Fin de ciclo' : h.tipo === 'datos' ? '📝 Datos' : h.tipo === 'sentir' ? '🙂 Sentir' : h.tipo === 'aviso' ? '📣 Aviso' : '🎥 Video';
+        return '<div style="border-top:1px solid #2a2a2a; padding:7px 0; font-size:0.8rem; line-height:1.4;">' +
+          '<div><b>' + escHtml(h.cli || 'Cliente') + '</b> · ' + tipoTxt + (h.dia ? ' · ' + escHtml(h.dia) : '') + (h.ej ? ' · ' + escHtml(h.ej) : '') + '</div>' +
+          (h.mot ? '<div style="color:var(--muted);">' + escHtml(h.mot) + '</div>' : '') +
+          '<div style="color:var(--muted); font-size:0.7rem;">Resuelto ' + escHtml(when) + (h.por ? ' · ' + escHtml(h.por) : '') + '</div></div>';
+      }).join('');
     }
 
 
     // ----- Avisos propios del coach: toca pesaje / se acaba el ciclo -----
     // La app revisa por su cuenta las rutinas de los clientes (no depende de que ellos abran su app) y deja el aviso en «Mis clientes»
     // hasta que lo marques como atendido, igual que los videos reportados. Se guardan en este dispositivo.
+    //
+    // ÍTEM 32 (saltado a propósito — depende del backend): lo que SÍ está sincronizado entre dispositivos del coach es el estado
+    // "atendido" de los reportes que manda el propio cliente (VREP_INBOX: a:'reporte' para crearlos, a:'reportes' para leerlos desde
+    // cualquier celular/PC con el mismo PIN, a:'reporte_ok' para marcarlos resueltos) — eso ya vive en la hoja de Google, no hace falta
+    // tocar nada. Lo que NO está sincronizado es el "done" de las tareas que el COACH calcula solo (alertsScan, abajo), cuando el
+    // cliente todavía no mandó su propio reporte: ese estado se guarda únicamente en este dispositivo (ALERTS_KEY, localStorage), así
+    // que si Juan marca "✔" en un celular y luego abre "Mis clientes" desde otra computadora, esa tarea vuelve a salir como pendiente.
+    // Sincronizar también esa parte necesitaría un endpoint nuevo en el Apps Script (por ejemplo una acción "alerta_ok" que reciba
+    // {pin, id, tipo, key} y la guarde en una hoja/registro aparte, más una acción de lectura que la devuelva) que hoy no existe.
+    // Por eso se deja como estaba (estado local por dispositivo) en vez de simular una sincronización que no hay.
     var ALERTS_KEY = 'bn_alerts_v1', ALERTS_BUSY = false, ALERTS_SHOW = false;   // «Por atender» arranca cerrado
     function alertsLoad() { try { var o = JSON.parse(localStorage.getItem(ALERTS_KEY) || '{}') || {}; return { list: Array.isArray(o.list) ? o.list : [], done: o.done || {}, ts: o.ts || 0 }; } catch (e) { return { list: [], done: {}, ts: 0 }; } }
     function alertsSave(o) { try { localStorage.setItem(ALERTS_KEY, JSON.stringify(o)); } catch (e) {} }
@@ -12527,9 +12681,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pes = a.filter(function(x) { return x.tipo === 'pesaje'; }), cic = a.filter(function(x) { return x.tipo === 'ciclo'; });
       function row(x) {
         var gi = a.indexOf(x), ago = alertsAgo(x.d);
+        var cntTag = (x.dup && x.dup.length) ? ' <span style="background:#8a7a30; color:#fff; border-radius:999px; padding:1px 7px; font-size:0.65rem; font-weight:900;">×' + (x.dup.length + 1) + '</span>' : '';   // ítem 31
+        var srcTag = x.src === 'al' ? ' · <span style="color:#8d99ae;">calculado por el coach</span>' : ' · <span style="color:#06d6a0;">avisó el cliente</span>';   // ítem 47: de dónde salió este aviso
         return '<div style="border-top:1px solid #4a401c; padding:7px 0; display:flex; align-items:center; gap:8px;">' +
-          '<div style="flex:1; min-width:0;"><div style="font-size:0.86rem; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escHtml(x.name) + '</div>' +
-          '<div style="font-size:0.72rem; color:#ffd166; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escHtml(x.det) + (ago ? ' · ' + ago : '') + '</div></div>' +
+          '<div style="flex:1; min-width:0;"><div style="font-size:0.86rem; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escHtml(x.name) + cntTag + '</div>' +
+          '<div style="font-size:0.72rem; color:#ffd166; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escHtml(x.det) + (ago ? ' · ' + ago : '') + srcTag + '</div></div>' +
+          '<button type="button" onclick="alertsWa(' + gi + ')" title="Recordar por WhatsApp" aria-label="Recordar por WhatsApp" style="flex:none; background:#25d366; border:none; color:#04251c; border-radius:8px; padding:8px 10px; font-size:0.9rem; font-weight:800; cursor:pointer;">💬</button>' +
           (x.id ? '<button type="button" onclick="alertsGo(' + gi + ')" style="flex:none; background:#4d8bff; border:none; color:#fff; border-radius:8px; padding:8px 11px; font-size:0.78rem; font-weight:800; cursor:pointer; white-space:nowrap;">' + (x.tipo === 'pesaje' ? '📋 Medir' : 'Abrir') + '</button>' : '') +
           '<button type="button" onclick="alertsTaskDone(' + gi + ')" title="' + (x.tipo === 'pesaje' ? 'Ya se pesó' : 'Ya está su rutina actualizada') + '" aria-label="' + (x.tipo === 'pesaje' ? 'Ya se pesó' : 'Ya está su rutina actualizada') + '" style="flex:none; background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:8px; padding:8px 11px; font-size:0.78rem; font-weight:800; cursor:pointer; white-space:nowrap;">✔ ' + (x.tipo === 'pesaje' ? 'Ya se pesó' : 'Listo') + '</button></div>';
       }
@@ -12548,6 +12705,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var x = ALERTS_TASKS[gi]; if (!x || !x.id) return;
       if (x.tipo === 'pesaje') coachOpenDatos(x.id, true); else openClientRoutine(x.id);
     }
+    // Ítem 50: recordatorio de un toque por WhatsApp. Esta lista junta muchos clientes a la vez y no tiene a mano el teléfono de
+    // cada uno (solo se conoce cuando el propio cliente lo anotó y el coach abrió SU rutina — ver remoteContact()/contactBoxPaint),
+    // así que se reutiliza el mismo patrón ya usado en Recepción y Asistencia para esta misma situación: abre WhatsApp con el
+    // mensaje ya escrito y el coach elige el contacto, en vez de fallar o inventar un número.
+    function alertsWa(gi) {
+      var x = ALERTS_TASKS[gi]; if (!x) return;
+      var motTxt = x.tipo === 'pesaje' ? ('pesarte y medirte (' + (x.det || 'toca pesaje') + ')') : 'preparar tu nueva rutina, que tu ciclo ya casi termina';
+      var msg = 'Hola ' + (x.name || '') + ', te escribe tu coach de Benessere Gym 💪. Te recuerdo ' + motTxt + ' cuando puedas. ¡Avísame!';
+      try { window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener'); } catch (e) {}
+    }
     // «✔»: cierra el aviso, venga de la app del cliente o del constructor (y sus repetidos)
     function alertsTaskDone(gi) {
       var x = ALERTS_TASKS[gi]; if (!x) return;
@@ -12555,11 +12722,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function alertsCloseFor(tipo, name, id) {
       var nn = normName(name), pin = vrepPin(), o = alertsLoad(), ch = false;
-      o.list.forEach(function(a) { if (a.tipo === tipo && ((id && a.id === id) || normName(a.name) === nn) && !o.done[a.key]) { o.done[a.key] = todayIso(); ch = true; } });
+      o.list.forEach(function(a) { if (a.tipo === tipo && ((id && a.id === id) || normName(a.name) === nn) && !o.done[a.key]) { o.done[a.key] = todayIso(); ch = true; try { vrepHistAdd({ t: a.t, cli: a.name, tipo: a.tipo, mot: a.mot }); } catch (e) {} } });
       if (ch) alertsSave(o);
       var keep = [];
       (VREP_INBOX || []).forEach(function(r) {
-        if (r.tipo === tipo && ((id && r.rid === id) || normName(r.cli) === nn)) { if (pin) postJson({ a: 'reporte_ok', pin: pin, t: r.t }).catch(function() {}); }
+        if (r.tipo === tipo && ((id && r.rid === id) || normName(r.cli) === nn)) { if (pin) postJson({ a: 'reporte_ok', pin: pin, t: r.t }).catch(function() {}); try { vrepHistAdd(r); } catch (e) {} }
         else keep.push(r);
       });
       VREP_INBOX = keep;
@@ -13063,6 +13230,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         { label: '📊 Resúmenes', desc: 'Resúmenes de asistencia para enviar', fn: function() { asistManualRun(); } },
         { label: '🔍 Vigencias', desc: 'Revisa ejercicios repetidos y rutinas en espera vencidas (no cambia nada)', fn: function() { vigScanClients(); } },
         { label: '🔗 Links', desc: 'Revisa los videos de todos los clientes (no cambia nada)', fn: function() { linkScanClients(); } },
+        { label: '📜 Reportes resueltos', desc: 'Historial de avisos ya atendidos en este dispositivo', fn: function() { vrepHistOpen(); } },
         { label: '🚪 Asistencia', fn: function() { openAttendance(); } },
         { label: '📈 Esta semana', fn: function() { openCoachWeek(); } },
         { label: '🔄 Actualizar lista', fn: function() { refreshClientList(); }, color: '#8d99ae' },
