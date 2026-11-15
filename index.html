@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-13-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-14-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -12465,7 +12465,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       box.innerHTML = '<div style="background:#2a1512; border:1px solid #8a3b30; border-radius:10px; padding:10px 12px; margin-bottom:12px;">' +
         '<div style="font-size:0.85rem; font-weight:900; color:#ff9a93; margin-bottom:6px;">🔔 Avisos de los clientes (' + groups.length + ')</div>' +
         groups.map(function(g) {
-          var r = g.rep, i = g.idxs[g.idxs.length - 1], idxsLit = '[' + g.idxs.join(',') + ']';
+          var r = g.rep, i = (VREP_INBOX.indexOf(g.rep) >= 0 ? VREP_INBOX.indexOf(g.rep) : g.idxs[g.idxs.length - 1]), idxsLit = '[' + g.idxs.join(',') + ']';   // «Reemplazar» usa el aviso más reciente (el que se muestra), no el último de la lista
           var cntTag = g.idxs.length > 1 ? ' <span style="background:#8a3b30; color:#fff; border-radius:999px; padding:1px 7px; font-size:0.68rem; font-weight:900;">×' + g.idxs.length + '</span>' : '';
           var when = ''; try { when = new Date(r.t).toLocaleString('es-CR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
           if (r.tipo === 'datos') {
@@ -12504,7 +12504,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         }).join('') + '</div>';
       // Comprobación automática de cada video reportado: dice si hoy sí/no se puede incrustar (una sola vez por grupo, no por duplicado)
       groups.forEach(function(g) {
-        var r = g.rep, i = g.idxs[g.idxs.length - 1];
+        var r = g.rep, i = (VREP_INBOX.indexOf(g.rep) >= 0 ? VREP_INBOX.indexOf(g.rep) : g.idxs[g.idxs.length - 1]);
         var id = ytIdStrict(r.url); if (!id || r._st) return;
         vidCheckQ(id).then(function(st) {
           r._st = st;
@@ -12528,12 +12528,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     var EDX_FROM_REP = false;
     function vrepEditFound(r) {
       var st = athleteActiveState, want = ytIdStrict(r.url), W = ATH_WEEK, best = null;
+      // El mismo video puede estar en varios ejercicios (se reutilizan links). Se elige el que coincide con el aviso:
+      // mismo nombre de ejercicio y mismo día (lo que vio el cliente), luego el que está vigente esta semana.
+      var wantEj = normName(r.ej || ''), wantDia = normName(r.dia || '');
       (st.routineDays || []).forEach(function(d, di) { (d.items || []).forEach(function(it, ii) {
-        var has = (it.sub || []).some(function(sb) { return want ? ytIdStrict(sb.video) === want : String(sb.video || '').trim() === String(r.url || '').trim(); });
-        if (!has) return;
+        var subHit = null;
+        (it.sub || []).forEach(function(sb) {
+          var hit = want ? ytIdStrict(sb.video) === want : String(sb.video || '').trim() === String(r.url || '').trim();
+          if (hit && (!subHit || (wantEj && normName(sb.name || '') === wantEj))) subHit = sb;
+        });
+        if (!subHit) return;
         var vd = parseInt(it.vigenciaDesde, 10) || 1, vh = it.vigenciaHasta ? parseInt(it.vigenciaHasta, 10) : 9999;
         var cubre = vd <= W && W <= vh;
-        if (!best || (cubre && !best.cubre)) best = { di: di, ii: ii, cubre: cubre };
+        var score = (wantEj && normName(subHit.name || '') === wantEj ? 4 : 0) + (wantDia && normName(d.title || '') === wantDia ? 2 : 0) + (cubre ? 1 : 0);
+        if (!best || score > best.score) best = { di: di, ii: ii, cubre: cubre, score: score };
       }); });
       if (!best) { showToastTop('No encontré ese video en la rutina (quizá ya lo cambiaste). Revisa el ejercicio "' + (r.ej || '') + '".'); return; }
       openEditEx(best.di, best.ii);
