@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-14-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-16-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -969,7 +969,7 @@
         </div>
         <div class="form-grid">
           <div class="form-group"><label>Nombre del Coach *</label><input type="text" id="coachName" placeholder="Ej: Juan, María, Kenneth" autocomplete="off"></div>
-          <div class="form-group full-width"><div style="font-size:0.78rem; color:var(--muted); background:#111; border:1px solid #2a2a2a; border-radius:8px; padding:10px 12px; line-height:1.5;">🔒 Los reportes de los atletas llegan al WhatsApp del gimnasio (8494 9226). Ese número, el enlace de la app y los enlaces cortos están fijos: no se pueden ver ni editar aquí.</div></div>
+          <div class="form-group full-width"><div style="font-size:0.78rem; color:var(--muted); background:#111; border:1px solid #2a2a2a; border-radius:8px; padding:10px 12px; line-height:1.5;">🔒 Las marcas de los atletas llegan a la hoja del gimnasio (ya no se envía reporte por WhatsApp). El enlace de la app y los enlaces cortos están fijos: no se pueden ver ni editar aquí.</div></div>
         </div>
         <div class="toggles-panel">
           <label class="toggle-item">
@@ -1394,7 +1394,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           </div>
         </div>
         <button class="btn-action-primary" style="margin-bottom:8px;" onclick="congratsAccept()">Aceptar y Continuar</button>
-        <button class="btn-action-wa" id="ath_congratsWaBtn" onclick="sendWhatsAppFromCongrats()">📲 Enviar Reporte al Coach</button>
       </div>
     </div>
   </div>
@@ -5748,8 +5747,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       athleteCoachPhone = CONFIG_COACH_PHONE;   // fijo: se ignora cualquier número que traiga el enlace
       // Los identificadores del enlace solo pueden tener letras, números, guion y guion bajo
       (state.routineDays || []).forEach(function(d, i) { d.id = String(d.id == null ? '' : d.id).replace(/[^A-Za-z0-9_-]/g, '') || ('d' + (i + 1)); });
-      var congratsBtn = document.getElementById('ath_congratsWaBtn');
-      if (congratsBtn) congratsBtn.innerText = '📲 Enviar Reporte a ' + athleteCoachName;
       document.getElementById('coach_builder_view').style.display = 'none';
       document.getElementById('athlete_message_view').style.display = 'none';
       document.getElementById('athlete_client_view').style.display = 'block';
@@ -7304,40 +7301,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       pushSession(s);   // se sube a la hoja para que el cliente (y su coach) lo vean en cualquier celular
     }
     function congratsAccept() { congratsCommit(); closeModal('modal_congrats'); }
-    function sendWhatsAppFromCongrats() {
-      congratsCommit();
-      closeModal('modal_congrats');
-      if (lastSavedSess) {   // los campos ya se limpiaron al guardar: el reporte sale de lo que se acaba de guardar
-        var s = lastSavedSess, cName = athleteActiveState ? athleteActiveState.clientName : 'Atleta';
-        var msg = '*Reporte Benessere Gym - ' + (s.day || 'Entrenamiento') + '*\nAtleta: *' + cName + '*\nCoach: *' + athleteCoachName + '*\n\n';
-        s.ex.forEach(function(e) { msg += '• *' + e.n + '*\n   Hoy: ' + exDetailText(e) + '\n\n'; });
-        if (s.dur) msg += '⏱ *Tiempo total de entreno: ' + wkFmt(s.dur) + '*\n';
-        if (s.kc) msg += '🔥 *Calorías estimadas: ~' + s.kc + ' kcal*' + (s.wc ? ' (reloj: ' + s.wc + ' kcal)' : '') + (s.hr ? ' · pulso promedio ' + s.hr : '') + '\n';
-        else if (s.wc || s.hr) msg += '⌚ *Reloj:* ' + (s.wc ? s.wc + ' kcal ' : '') + (s.hr ? '· pulso promedio ' + s.hr : '') + '\n';
-        window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(msg), '_blank');
-      } else if (lastActiveDayId) sendWhatsAppReport(lastActiveDayId);
-    }
-    async function sendWhatsAppReport(dayId) {
-      var dayEl = document.getElementById(dayId);
-      var title = dayEl.getAttribute('data-day-title') || 'Entrenamiento';
-      var cName = athleteActiveState ? athleteActiveState.clientName : 'Atleta';
-      var msg = '*Reporte Benessere Gym - ' + title + '*\nAtleta: *' + cName + '*\nCoach: *' + athleteCoachName + '*\n\n';
-      var count = 0;
-      dayEl.querySelectorAll('.exercise-variant:not([style*="display: none"]) .exercise-item-box:not(.alt-off)').forEach(function(box) {
-        var name = box.querySelector('.ex-name');
-        var rd = readBoxSets(box);
-        var prev = box.querySelector('.prev-load-badge');
-        if (name && rd.counted) {
-          msg += '• *' + name.innerText + '*\n   Hoy: ' + exDetailText({ sets: rd.list, tm: rd.timed }) + '\n   _' + (prev ? prev.innerText : '') + '_\n\n';
-          count++;
-        }
-      });
-      if (!count) return await appAlert('No hay registros anotados hoy para reportar.');
-      var wkSec = (WK.start && WK.dayId === dayId) ? Math.round((Date.now() - WK.start) / 1000) : (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || localStorage.getItem(tk('wklast_' + dayId)) || '0', 10) || 0);
-      if (wkSec > 0) msg += '⏱ *Tiempo total de entreno: ' + wkFmt(wkSec) + '*\n';
-      window.open('https://wa.me/' + athleteCoachPhone + '?text=' + encodeURIComponent(msg), '_blank');
-    }
-
     async function loadDemoRoutine() {
       document.getElementById('clientName').value = 'Darshan Vera';
       document.getElementById('clientGender').value = 'o';
@@ -11677,9 +11640,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }   // abre "¡Entreno terminado!"; al tocar "Listo" se guardan las marcas
       dayCloseSave(dayId);
     }
-    // Botón único de la barra fija: envía el reporte por WhatsApp (si hay marcas anotadas, antes de que se limpien al guardar) y cierra el entreno
+    // Botón único de la barra fija: cierra el entreno (ya no se envía reporte por WhatsApp; el coach ve las marcas en la hoja)
     async function dayCloseAndReport(dayId) {
-      try { if (dayHasMarks(dayId)) await sendWhatsAppReport(dayId); } catch (e) {}
       await dayClose(dayId);
     }
     function dayQuickDone(dayId) {   // un toque: «entrené hoy» sin anotar nada ni contestar preguntas
@@ -11713,14 +11675,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var ck = box.querySelector('.dc-clk'); if (ck) ck.textContent = wkFmt((Date.now() - WK.start) / 1000);
       dayBarPaint(dayId);
     }
-    // Barra fija inferior del día: un solo botón "🏁 Terminar entreno" (guarda marcas si hay, o solo avisa si no) + Enviar Reporte
+    // Barra fija inferior del día: un solo botón "🏁 Terminar entreno" (guarda marcas si hay, o solo avisa si no)
     function dayBarPaint(dayId) {
       var bar = document.getElementById('day_bar_' + dayId); if (!bar) return;
       var blocks = guideBlocks(dayId), N = blocks.length;
       var marks = dayHasMarks(dayId), saved = daySavedToday(dayId) && !marks;
       if (saved || (!marks && !N && nmTodayFor(dayId))) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
-      var label = marks ? '🏁 Terminar y enviar reporte' : '✅ Terminar (ya entrené hoy)';
+      var label = marks ? '🏁 Terminar y guardar' : '✅ Terminar (ya entrené hoy)';
       var btn = document.getElementById('day_bar_end_' + dayId);
       if (btn && btn.getAttribute('data-lbl') !== label) { btn.innerText = label; btn.setAttribute('data-lbl', label); }
     }
