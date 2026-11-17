@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-17-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-17-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2910,6 +2910,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     async function qualityGuard() {
       var r = qualityScan();
+      var uniq = function(arr, max) { var seen = {}, out = arr.filter(function(x) { if (seen[x]) return false; seen[x] = 1; return true; }); return out.length > max ? out.slice(0, max).concat(['… y ' + (out.length - max) + ' más']) : out; };
+      r.restTooLong = uniq(r.restTooLong, 10); r.warmShort = uniq(r.warmShort, 10);   // las versiones por fase repiten el mismo renglón: se muestra una vez y la lista no se desborda
       if (!r.restTooLong.length && !r.warmShort.length) return true;
       var msg = '⚠️ Revisa antes de enviar:\n\n';
       if (r.restTooLong.length) msg += '⏱ Descansos de más de 60 s:\n• ' + r.restTooLong.join('\n• ') + '\n\n';
@@ -6168,9 +6170,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function appModalBase(msg, buttonsHtml) {
       var wrap = document.createElement('div');
       wrap.style.cssText = 'position:fixed; inset:0; z-index:100200; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; padding:16px;';
-      wrap.innerHTML = '<div style="background:var(--card,#1b1b1b); border:1px solid var(--border,#333); border-radius:14px; padding:18px; max-width:380px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,.6);">' +
-        '<div style="color:#fff; font-size:0.92rem; line-height:1.5; white-space:pre-wrap; margin-bottom:16px;">' + escHtml(String(msg == null ? '' : msg)) + '</div>' +
-        '<div style="display:flex; gap:8px; justify-content:flex-end;">' + buttonsHtml + '</div></div>';
+      wrap.innerHTML = '<div style="background:var(--card,#1b1b1b); border:1px solid var(--border,#333); border-radius:14px; padding:18px; max-width:380px; width:100%; max-height:calc(100vh - 32px); display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.6);">' +
+        '<div style="color:#fff; font-size:0.92rem; line-height:1.5; white-space:pre-wrap; margin-bottom:16px; overflow-y:auto; flex:1 1 auto; min-height:0; overscroll-behavior:contain;">' + escHtml(String(msg == null ? '' : msg)) + '</div>' +
+        '<div style="display:flex; gap:8px; justify-content:flex-end; flex:none;">' + buttonsHtml + '</div></div>';
       document.body.appendChild(wrap);
       return wrap;
     }
