@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-16-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-17-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -3351,8 +3351,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function vidNextFabSync() {
       var fab = document.getElementById('vid_next_fab');
       try {
-        var demos = document.getElementById('featureDemos'), tb = document.getElementById('tab_builder');
-        var on = !!(demos && demos.checked && tb && tb.classList.contains('active') && !PRUEBA.on && typeof routineDays !== 'undefined');
+        var demos = document.getElementById('featureDemos'), bv = document.getElementById('coach_builder_view');
+        var inB = !!bv && bv.style.display !== 'none' && getComputedStyle(bv).display !== 'none';   // dentro del constructor del coach, en cualquier pestaña
+        var on = !!(demos && demos.checked && inB && !PRUEBA.on && typeof routineDays !== 'undefined');
         var n = on ? videoIssues().length : 0;
         if (!n) { if (fab) fab.style.display = 'none'; VNEXT_I = 0; return; }
         if (!fab) {
@@ -3366,6 +3367,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     function vidNextGo() {
       var miss = videoIssues(); if (!miss.length) { vidNextFabSync(); return; }
+      try { var tbv = document.getElementById('tab_builder'); if (tbv && !tbv.classList.contains('active')) switchGenTab('tab_builder', document.querySelectorAll('.gen-tab-btn')[0]); } catch (e) {}   // si estás en otra pestaña, vuelve al planificador donde están los espacios de video
       clearVideoMissingMarks();
       for (var t = 0; t < miss.length; t++) {
         var m = miss[(VNEXT_I + t) % miss.length];
