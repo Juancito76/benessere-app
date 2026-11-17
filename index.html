@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-17-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-17-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -3560,7 +3560,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // ---- Guardia de incrustación: antes de enviar/actualizar avisa de videos que no se pueden mostrar en la app y lleva a ellos ----
     // Usa la comprobación automática (se hace sola en segundo plano al cargar/escribir los videos). Si el coach decide enviar igual, se respeta.
-    async function embedGuard() {
+    async function embedGuard(_waited) {
       var bad = [], unknown = {}, markSel = [];
       routineDays.forEach(function(d, di) {
         if (d.rest) return;
@@ -3579,10 +3579,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         });
       });
       var unk = Object.keys(unknown);
-      if (unk.length) {
-        unk.forEach(function(id) { vidCheckQ(id); });
-        await appAlert('⏳ Estoy comprobando ' + unk.length + ' video' + (unk.length > 1 ? 's' : '') + ' para saber si se pueden mostrar en la app.\n\nEspera unos segundos y vuelve a tocar el botón.');
-        return false;
+      if (unk.length && !_waited) {
+        // Espera sola a que terminen las comprobaciones (antes pedía volver a tocar el botón); máximo 2 minutos, y lo que no responda no bloquea
+        var tw = setInterval(function() { var left = Object.keys(unknown).filter(function(id) { return !VID_CHK[id] && !VID_TRY[id]; }).length; try { showToastTop('⏳ Comprobando videos… faltan ' + left + ' de ' + unk.length, 1600); } catch (e) {} }, 1500);
+        try { await Promise.race([Promise.all(unk.map(function(id) { return vidCheckQ(id); })), new Promise(function(r) { setTimeout(r, 120000); })]); } catch (e) {}
+        clearInterval(tw);
+        return await embedGuard(true);
       }
       if (!bad.length) { clearVideoMissingMarks(); return true; }
       var first = null;
