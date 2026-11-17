@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-17-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-17-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -13928,7 +13928,45 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       u.innerText = (editingRoutine.target === 'pend' ? '🔄 Actualizar la rutina en espera de ' : '🔄 Actualizar rutina de ') + (editingRoutine.name || 'cliente');
       u.style.display = 'inline-block';
     }
-    function cancelEditRoutine() { editingRoutine = null; showEditBanner(''); }
+    function cancelEditRoutine() {
+      try { if (editingRoutine) AUTOLINK.off[normName(editingRoutine.name || '')] = 1; } catch (e) {}   // si lo cancela a propósito, no se vuelve a enlazar solo con ese nombre
+      editingRoutine = null; showEditBanner('');
+    }
+    // Enlace automático: si lo que está en el constructor es de un cliente que YA tiene rutina (mismo nombre), salen solos «Actualizar rutina» y «Dejar en espera»,
+    // sin tener que pasar por «Editar» (que reemplazaría lo que montaste, por ejemplo un plan cargado de «Planes en espera» o pegado en texto plano).
+    var AUTOLINK = { busy: false, off: {}, last: '' };
+    function autoLinkExisting() {
+      try {
+        if (!COACH || editingRoutine || AUTOLINK.busy || (typeof PRUEBA !== 'undefined' && PRUEBA.on)) return;
+        var bv = document.getElementById('coach_builder_view');
+        if (!bv || bv.style.display === 'none' || getComputedStyle(bv).display === 'none') return;
+        var nmEl = document.getElementById('clientName'); var nm = nmEl ? String(nmEl.value || '').trim() : ''; if (!nm) return;
+        var k = normName(nm); if (!k || AUTOLINK.off[k]) return;
+        if (!(clientRows || []).length || Date.now() - (AUTOLINK.t || 0) > 300000) {   // la lista de clientes solo se trae al abrir «Mis clientes»: aquí se trae sola (y se refresca cada 5 min)
+          if (AUTOLINK.loading) return;
+          AUTOLINK.loading = true; AUTOLINK.t = Date.now();
+          postJson({ a: 'listar', pin: COACH.pin }).then(function(j) { AUTOLINK.loading = false; if (j && j.ok) clientRows = j.rutinas || []; }).catch(function() { AUTOLINK.loading = false; });
+          return;
+        }
+        var row = null;   // el servidor las entrega de la más nueva a la más vieja: vale la primera
+        (clientRows || []).some(function(r) { if (r && r.id && normName(r.atleta).indexOf('__') !== 0 && sameClientName(r.atleta, nm)) { row = r; return true; } return false; });
+        if (!row) return;
+        AUTOLINK.busy = true;
+        fetchRoutine(row.id).then(function(j) {
+          AUTOLINK.busy = false;
+          if (editingRoutine) return;
+          var state = (j && j.ok && j.p) ? decodePayload('q', j.p) : null; if (!state) { AUTOLINK.off[k] = 1; return; }
+          if (state.clientName && !sameClientName(state.clientName, nm)) { AUTOLINK.off[k] = 1; return; }   // el enlace trae a otra persona: no se enlaza
+          var pendRaw = payloadNextArr(j.p), waiting = (state.next && !pendDue(state)) ? state.next : null;
+          if (pendDue(state)) state = pendPromote(state);
+          var nmNow = document.getElementById('clientName'); if (!nmNow || normName(nmNow.value) !== k) return;   // cambió el nombre mientras tanto
+          editingRoutine = { id: row.id, name: state.clientName || row.atleta || nm, coach: state.coachName || '', target: 'cur', nextRaw: waiting ? pendRaw : null };
+          showEditBanner('');
+          showToastTop('🔗 ' + (editingRoutine.name) + ' ya tiene rutina: usa «Actualizar rutina» o «Dejar en espera».', 4000);
+        }).catch(function() { AUTOLINK.busy = false; AUTOLINK.off[k] = 1; });
+      } catch (e) { AUTOLINK.busy = false; }
+    }
+    setInterval(autoLinkExisting, 2000);
     // Desde «Editar»: lo que está en el constructor se guarda como rutina NUEVA en espera (la actual del cliente no se toca) y empieza sola en la fecha que elijas
     async function queueEditingRoutine() {
       if (!editingRoutine) return;
