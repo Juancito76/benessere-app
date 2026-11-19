@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-17-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-18-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -365,6 +365,8 @@
     #ath_start_today { margin: 2px 0 14px; }
     .start-today-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: none; border-radius: 16px; background: linear-gradient(135deg, #06d6a0, #00b4d8); color: #00281a; font-size: 1.02rem; font-weight: 900; cursor: pointer; box-shadow: 0 4px 18px rgba(6,214,160,.35); animation: vsIn .3s ease-out backwards, startTodayPulse 2.6s ease-in-out .4s infinite; }
     .start-today-btn:active { transform: scale(.97); filter: brightness(.95); }
+    .nutri-home-btn { width: 100%; margin-top: 10px; padding: 13px; border-radius: 14px; border: 1.5px solid #ffb703; background: transparent; color: #ffb703; font-size: .95rem; font-weight: 800; cursor: pointer; }
+    .nutri-home-btn:active { transform: scale(.97); }
     .start-today-sub { text-align: center; font-size: 0.74rem; color: var(--muted); margin-top: 6px; }
     @keyframes startTodayPulse { 0%, 100% { box-shadow: 0 4px 18px rgba(6,214,160,.35); } 50% { box-shadow: 0 4px 26px rgba(6,214,160,.6); } }
     @media (prefers-reduced-motion: reduce) { .start-today-btn { animation: none; } }
@@ -6517,6 +6519,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
+      { id: '2026-11-18-nutri-inicio', title: '🍽 Tu alimentación, directo desde el inicio', text: 'En la pantalla principal hay un botón «🍽 Nutrición de hoy» para anotar lo que comiste, sin pasar por el entreno. Y si hoy ya entrenaste, la app ya no te pregunta si vas a empezar.' },
       { id: '2026-11-13b-demo', title: '🎥 Ya sabes qué ejercicio estás viendo', text: 'La ventana de «Ver demostración» ahora muestra arriba el nombre del ejercicio, y si tu bloque sigue corriendo mientras ves el video, aparece cuánto tiempo falta.' },
       { id: '2026-11-13-pestanas', title: '🔢 Bloques más grandes y numerados', text: 'Las pestañas de cada bloque ahora son más altas, para tocarlas fácil, y llevan su número (1, 2, 3…). Cuando terminas un bloque, el número cambia a ✔. El parpadeo sigue igual: te muestra dónde vas.' },
       { id: '2026-11-13-serie', title: '🔵 El botón de serie cambió de lugar', text: 'En el temporizador, el botón azul que dice en qué serie o ronda vas ahora está arriba a la derecha. «Minimizar» pasó adentro de «⚙️ Más», para que no se toque por error.' },
@@ -8079,7 +8082,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (!d || d.rest || WK.start || WK_NAG[dayId]) return;
         if (parseInt(localStorage.getItem(tk('wkdur_' + dayId)) || '0', 10) > 0) return;   // ya lo terminó y falta guardar
         var today = todayIso(), dt = normName(d.title);
-        if (loadWorkouts().some(function(x) { return sessDateIso(x) === today && normName(x.day) === dt; })) return;   // este día ya quedó registrado hoy
+        if (loadWorkouts().some(function(x) { return sessDateIso(x) === today; })) return;   // hoy ya quedó registrado un entreno (de este día o de otro): no se le pregunta si empieza
         WK_NAG[dayId] = true;
         if (guiadoOn() && gmOpenDay(dayId)) return;   // modo guiado: un solo botón grande «Empezar»
         var m = document.getElementById('wk_nag_modal');
@@ -8597,18 +8600,34 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // Sugerencia del día en la pantalla principal (sin ventana emergente): la tarjeta del día que le toca parpadea suave y dice «Te toca hoy».
     // Si hoy ya entrenó, está entrenando ahora o es la vista del coach, no se marca nada (no se le insiste).
     // Botón destacado «▶ Empezar mi entreno de hoy» en la pantalla principal: un toque abre directo el día que le toca
+    function nutriTodayDay() {   // día cuya alimentación toca hoy: el que entrenó hoy; si no, el que le toca; con alimentación escrita
+      var days = (athleteActiveState && athleteActiveState.routineDays) || [], today = todayIso(), pick = null;
+      var hasN = function(d) { var f = (d && d.diet) || {}; return !!(String(f.desayuno || '').trim() || String(f.snack || '').trim() || String(f.almuerzo || '').trim() || String(f.cena || '').trim()); };
+      var done = loadWorkouts().filter(function(x) { return sessDateIso(x) === today && x.day; }).sort(function(a, b) { return String(b.t || '') < String(a.t || '') ? -1 : 1; })[0];
+      if (done) days.forEach(function(d) { if (!pick && normName(d.title) === normName(done.day)) pick = d; });
+      if (!pick) { var idx = wkNextDayIndex(); if (idx >= 0 && days[idx]) pick = days[idx]; }
+      if (!pick || !hasN(pick)) { var alt = null; days.forEach(function(d) { if (!alt && hasN(d)) alt = d; }); pick = alt || pick; }
+      return pick;
+    }
+    function nutriHoyHome() {   // desde la pantalla principal: abre la alimentación de hoy sin preguntar por el entreno
+      var d = nutriTodayDay(); if (!d) return;
+      openDay(d.id, true);
+      try { switchDaySection(d.id, 'nutricion'); } catch (e) {}
+    }
     function startTodayPaint() {
       var box = document.getElementById('ath_start_today'); if (!box) return;
       try {
         if (!athleteActiveState || isCoachView() || WK.start) { box.style.display = 'none'; box.innerHTML = ''; return; }
-        var days = athleteActiveState.routineDays || [], idx = wkNextDayIndex();
-        if (idx < 0 || !days[idx] || days[idx].rest) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        var days = athleteActiveState.routineDays || [], idx = wkNextDayIndex(), html = '';
         var today = todayIso();
-        if (loadWorkouts().some(function(s) { return sessDateIso(s) === today; })) { box.style.display = 'none'; box.innerHTML = ''; return; }   // hoy ya entrenó: no se le insiste
-        var d = days[idx];
-        box.style.display = 'block';
-        box.innerHTML = '<button type="button" class="start-today-btn" onclick="openDay(\'' + d.id + '\')">▶ Empezar mi entreno de hoy</button>' +
-          '<div class="start-today-sub">' + escHtml(dayNameOf(d) || 'Tu entrenamiento') + '</div>';
+        var trainedToday = loadWorkouts().some(function(s) { return sessDateIso(s) === today; });   // hoy ya entrenó: no se le insiste con el entreno
+        if (!(idx < 0 || !days[idx] || days[idx].rest || trainedToday)) {
+          var d = days[idx];
+          html += '<button type="button" class="start-today-btn" onclick="openDay(\'' + d.id + '\')">▶ Empezar mi entreno de hoy</button>' +
+            '<div class="start-today-sub">' + escHtml(dayNameOf(d) || 'Tu entrenamiento') + '</div>';
+        }
+        if (nutriOn() && nutriTodayDay()) html += '<button type="button" class="nutri-home-btn" onclick="nutriHoyHome()">🍽 Nutrición de hoy</button>';
+        box.style.display = html ? 'block' : 'none'; box.innerHTML = html;
       } catch (e) {}
     }
     function wkSuggestPaint() {
@@ -15966,6 +15985,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_weekDisplay', t: 'Tu semana', x: 'Aquí ves en qué semana de tu rutina vas. Cada semana puede traer cambios en las series o las repeticiones.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="ath_modal_coach"]', t: 'Nota del Coach', x: 'Un mensaje de tu coach para ti: objetivos, ajustes y recomendaciones.' },
       { sel: '#ath_capsuleGroup .capsule-btn[data-day]', t: 'Tus días de entrenamiento', x: 'Cada tarjeta es un día de entrenamiento de tu rutina. Tócala para ver tus ejercicios. El día que estás haciendo dice «Entrenando hoy», para que si sales de la app lo encuentres fácil.' },
+      { sel: '#ath_start_today .nutri-home-btn', t: 'Nutrición de hoy', x: 'Toca este botón para ver tu alimentación del día y anotar lo que llevas (calorías, agua, sueño y pasos), sin tener que abrir el entreno. Si ya entrenaste hoy, la app no te pregunta si vas a empezar.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openRestDays"]', t: 'Días de descanso', x: 'Una sola tarjeta para todos tus descansos: ahí encuentras tu nutrición y recomendaciones de recuperación. Si hoy toca descanso, te lo avisa.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openClasesTab"]', t: 'Clases', x: 'La clase de hoy, las anteriores y los retos, con cronómetro guiado. Al terminar una clase, queda anotada en tu mes con sus calorías estimadas.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openHistorialModal"]', t: 'Historial de Cargas', x: 'Los pesos y marcas de tus entrenos anteriores, para que sepas cuánto levantaste la última vez y puedas superarlo.' },
