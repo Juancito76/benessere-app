@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-18-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-18-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -8609,10 +8609,61 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!pick || !hasN(pick)) { var alt = null; days.forEach(function(d) { if (!alt && hasN(d)) alt = d; }); pick = alt || pick; }
       return pick;
     }
-    function nutriHoyHome() {   // desde la pantalla principal: abre la alimentación de hoy sin preguntar por el entreno
+    // «🍽 Nutrición de hoy» (pantalla principal): elige el día, anota lo alcanzado de sus metas (calorías, agua, sueño, pasos) y ve una tablita con una columna por meta
+    var NH_DAY = '';
+    var NH_FIELDS = [['kcal', '🎯', 'Calorías'], ['agua', '💧', 'Agua'], ['sueno', '😴', 'Sueño'], ['pasos', '👟', 'Pasos']];
+    function nutriHoyHome() {
       var d = nutriTodayDay(); if (!d) return;
-      openDay(d.id, true);
-      try { switchDaySection(d.id, 'nutricion'); } catch (e) {}
+      NH_DAY = d.id; nutriHoyRender();
+    }
+    function nhHasDiet(d) { var f = (d && d.diet) || {}; return !!(String(f.desayuno || '').trim() || String(f.snack || '').trim() || String(f.almuerzo || '').trim() || String(f.cena || '').trim()); }
+    function nhSet(dayId, f, v) {   // lo que escribe aquí queda igual que si lo escribiera en «Objetivos del Día & Registro» del día
+      try { localStorage.setItem(tk('alc_' + f + '_' + dayId), v); } catch (e) {}
+      var el = document.getElementById('alc_' + f + '_' + dayId); if (el) el.value = v;
+      alcTouch({ id: 'alc_' + f + '_' + dayId, value: v });
+      try { nhTableRefresh(); } catch (e) {}
+    }
+    function nhPick(dayId) { NH_DAY = dayId; nutriHoyRender(); }
+    function nhMeals(dayId) { pendCloseOverlay('nutri_hoy'); openDay(dayId, true); try { switchDaySection(dayId, 'nutricion'); } catch (e) {} }
+    function nhCell(rec, f) {
+      var g = rec && rec[f]; if (!g || !(g.v > 0)) return '<td style="padding:6px 4px; text-align:center; color:#666;">–</td>';
+      var ok = g.t > 0 && g.v >= g.t;
+      return '<td style="padding:6px 4px; text-align:center; font-weight:800; color:' + (ok ? '#06d6a0' : '#fff') + ';">' + escHtml(String(g.v)) + (ok ? ' ✓' : '') + '</td>';
+    }
+    function nhTableHtml() {
+      var rows = '', n = 0, today = todayIso();
+      for (var k = 0; k < 14 && n < 7; k++) {
+        var iso = addDaysIso(today, -k), rec = dailyFor(iso);
+        if (!(rec && (rec.kcal || rec.agua || rec.sueno || rec.pasos))) continue;
+        n++;
+        rows += '<tr style="border-top:1px solid #2a2a2a;"><td style="padding:6px 4px; font-size:.72rem; color:#cfd6e6; white-space:nowrap;">' + (k === 0 ? 'Hoy' : k === 1 ? 'Ayer' : escHtml(fmtDateShort(iso))) + '</td>' +
+          NH_FIELDS.map(function(F) { return nhCell(rec, F[0]); }).join('') + '</tr>';
+      }
+      if (!rows) return '<div style="font-size:.78rem; color:var(--muted); padding:8px 0;">Aún no has anotado metas. Lo que escribas arriba aparece aquí.</div>';
+      return '<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="text-align:left; font-size:.68rem; color:var(--muted); padding:4px;">Día</th>' +
+        NH_FIELDS.map(function(F) { return '<th style="font-size:.68rem; color:var(--muted); padding:4px;">' + F[1] + '<br>' + F[2] + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+    function nhTableRefresh() { var b = document.getElementById('nh_table'); if (b) b.innerHTML = nhTableHtml(); }
+    function nutriHoyRender() {
+      var days = ((athleteActiveState && athleteActiveState.routineDays) || []).filter(nhHasDiet);
+      var cur = null; days.forEach(function(d) { if (d.id === NH_DAY) cur = d; }); if (!cur) cur = days[0]; if (!cur) return;
+      NH_DAY = cur.id;
+      var chips = days.map(function(d) {
+        var on = d.id === cur.id;
+        return '<button type="button" onclick="nhPick(\'' + d.id + '\')" style="margin:0 6px 6px 0; padding:8px 12px; border-radius:999px; font-size:.78rem; font-weight:800; cursor:pointer; border:1.5px solid ' + (on ? '#06d6a0' : '#444') + '; background:' + (on ? '#06d6a0' : 'transparent') + '; color:' + (on ? '#00281a' : '#ddd') + ';">' + escHtml(String(dayShownTitle(d, (athleteActiveState.routineDays || []).indexOf(d), athleteActiveState.routineDays) || d.title).split(':')[0]) + '</button>';
+      }).join('');
+      var h = cur.habits || {};
+      var fields = NH_FIELDS.map(function(F) {
+        var saved = ''; try { saved = localStorage.getItem(tk('alc_' + F[0] + '_' + cur.id)) || ''; } catch (e) {}
+        return '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><div style="flex:1; font-size:.85rem; font-weight:800;">' + F[1] + ' ' + F[2] + '<div style="font-size:.68rem; color:var(--muted); font-weight:600;">Meta: ' + escHtml(h[F[0]] || '-') + '</div></div>' +
+          '<input type="text" inputmode="decimal" value="' + escHtml(saved) + '" placeholder="Alcanzado" oninput="nhSet(\'' + cur.id + '\',\'' + F[0] + '\',this.value)" style="width:110px; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:.95rem; box-sizing:border-box;"></div>';
+      }).join('');
+      pendOverlay('nutri_hoy', '<div class="pend-ttl">🍽 Nutrición y metas</div>' +
+        '<div class="pend-txt" style="text-align:left;">¿A qué día le anotas lo que llevas?</div><div style="text-align:left; margin:6px 0 10px;">' + chips + '</div>' +
+        '<div style="text-align:left;">' + fields + '</div>' +
+        '<button type="button" class="pend-btn pend-go" style="margin-top:4px;" onclick="nhMeals(\'' + cur.id + '\')">🍳 Ver las comidas de este día</button>' +
+        '<div class="pend-txt" style="text-align:left; margin-top:12px; font-weight:800;">Tus metas por día</div><div id="nh_table" style="text-align:left;">' + nhTableHtml() + '</div>' +
+        '<button type="button" class="pend-btn pend-ok" style="margin-top:12px;" onclick="pendCloseOverlay(\'nutri_hoy\')">Listo</button>');
     }
     function startTodayPaint() {
       var box = document.getElementById('ath_start_today'); if (!box) return;
@@ -11782,8 +11833,24 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Tarjeta del día en la pantalla principal: si el día ya quedó completo hoy (entreno cerrado con sus marcas o todos los bloques hechos)
     // se opaca y su subtítulo pasa a «✔ Completado hoy».
+    // Entreno que el coach dejó completo desde la hoja (sesión con "cc":1 y la fecha corregida): la tarjeta dice «Completado ayer / hoy / el dd/mm» y no cuenta pendientes
+    function dayCoachDone(dayId) {
+      var dayEl = document.getElementById(dayId), dt = normName(dayEl ? (dayEl.getAttribute('data-day-title') || '') : ''), best = null;
+      if (!dt) return null;
+      loadWorkouts().forEach(function(x) { if (x && x.cc && normName(x.day) === dt && (!best || sessDateIso(x) > sessDateIso(best))) best = x; });
+      if (!best) return null;
+      var iso = sessDateIso(best), today = todayIso(), yest = addDaysIso(today, -1);
+      return { iso: iso, label: iso === today ? 'hoy' : iso === yest ? 'ayer' : 'el ' + fmtDateShort(iso) };
+    }
     function dayCardPaint(dayId) {
       var card = document.querySelector('#ath_capsuleGroup .cap-card[data-day="' + dayId + '"]'); if (!card) return;
+      var cd = null; try { cd = dayCoachDone(dayId); } catch (e) {}
+      if (cd) {
+        try { localStorage.removeItem(tk('gdleft_' + dayId)); } catch (e) {}
+        card.classList.remove('day-left'); card.classList.add('day-done');
+        var sc = card.querySelector('.cap-s'); if (sc) { if (!sc.getAttribute('data-o')) sc.setAttribute('data-o', sc.innerText); sc.innerText = '✔ Completado ' + cd.label; }
+        return;
+      }
       var done = false, left = 0;
       try { left = gdLeftCount(dayId); } catch (e) {}
       try { done = daySavedToday(dayId); } catch (e) {}
@@ -12805,6 +12872,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         j.sesiones.forEach(function(x) { remote[x.t] = true; });
         var added = 0;
         j.sesiones.forEach(function(x) { if (x && x.t && !have[x.t]) { local.push(x); have[x.t] = true; added++; } });
+        // Correcciones del coach hechas en la hoja (cc): reemplazan la copia de este celular (fecha y estado «completado»)
+        j.sesiones.forEach(function(x) {
+          if (!x || !x.t || !x.cc) return;
+          for (var li = 0; li < local.length; li++) if (local[li] && local[li].t === x.t && !local[li].cc) { local[li] = x; added++; }
+        });
         // Sesiones que solo estaban en este celular (anteriores al servicio): se suben una vez
         var q = loadPending(), queued = {};
         q.forEach(function(it) { try { queued[JSON.parse(it.s).t] = true; } catch (e) {} });
