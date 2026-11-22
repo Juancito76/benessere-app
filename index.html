@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-19-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-21-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -864,7 +864,7 @@
     .gm-box .gm-p { font-size: 1rem; color: #f0f0f0; line-height: 1.45; margin-bottom: 12px; }
     .gm-go { display: block; width: 100%; padding: 24px 10px; border: 0; border-radius: 18px; background: linear-gradient(135deg, #1fe0a8, #06c995); color: #00281a; font-family: inherit; font-size: 1.5rem; font-weight: 900; cursor: pointer; box-shadow: 0 8px 22px rgba(6,214,160,.35); }
     .gm-back { display: block; width: 100%; margin-top: 12px; padding: 14px; background: #1c1c1c; border: 1.5px solid #444; border-radius: 14px; color: #ddd; font-family: inherit; font-size: 1rem; font-weight: 800; cursor: pointer; }
-    #gm_end { position: fixed; inset: 0; z-index: 100040; background: rgba(0,0,0,.9); display: flex; align-items: center; justify-content: center; padding: 14px; }
+    #gm_end, #bye_end { position: fixed; inset: 0; z-index: 100040; background: rgba(0,0,0,.9); display: flex; align-items: center; justify-content: center; padding: 14px; }
     .gm-feel { flex: 1; padding: 14px 4px; background: #1f1f1f; border: 2px solid #3a3a3a; border-radius: 16px; color: #fff; font-family: inherit; font-size: .95rem; font-weight: 800; cursor: pointer; }
     .gm-feel span { display: block; font-size: 2.3rem; line-height: 1.15; }
     .gm-feel:active { border-color: #06d6a0; background: #0d2a1e; }
@@ -1396,7 +1396,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
             <input type="number" inputmode="numeric" id="cg_hr" placeholder="Pulso promedio" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">
           </div>
         </div>
-        <button class="btn-action-primary" style="margin-bottom:8px;" onclick="congratsAccept()">Aceptar y Continuar</button>
+        <button class="btn-action-primary" style="margin-bottom:8px;" onclick="congratsExit()">✅ Cerrar y salir</button>
+        <button type="button" class="gm-back" style="margin-top:0;" onclick="congratsAccept()">🏠 Quedarme en el inicio</button>
       </div>
     </div>
   </div>
@@ -6568,6 +6569,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
+      { id: '2026-11-21-cerrar', title: '✅ Cerrar tu entreno ahora es más rápido', text: 'Al completar el último bloque, tu entreno se guarda solo y sale una sola ventana final con tu tiempo, calorías y resumen de la semana. Ahí eliges «Cerrar y salir» o «Quedarme en el inicio» para ver otra cosa.' },
       { id: '2026-11-18-nutri-inicio', title: '🍽 Tu alimentación, directo desde el inicio', text: 'En la pantalla principal hay un botón «🍽 Nutrición de hoy» para anotar lo que comiste, sin pasar por el entreno. Y si hoy ya entrenaste, la app ya no te pregunta si vas a empezar.' },
       { id: '2026-11-13b-demo', title: '🎥 Ya sabes qué ejercicio estás viendo', text: 'La ventana de «Ver demostración» ahora muestra arriba el nombre del ejercicio, y si tu bloque sigue corriendo mientras ves el video, aparece cuánto tiempo falta.' },
       { id: '2026-11-13-pestanas', title: '🔢 Bloques más grandes y numerados', text: 'Las pestañas de cada bloque ahora son más altas, para tocarlas fácil, y llevan su número (1, 2, 3…). Cuando terminas un bloque, el número cambia a ✔. El parpadeo sigue igual: te muestra dónde vas.' },
@@ -7359,6 +7361,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       pushSession(s);   // se sube a la hoja para que el cliente (y su coach) lo vean en cualquier celular
     }
     function congratsAccept() { congratsCommit(); closeModal('modal_congrats'); }
+    function congratsExit() { congratsCommit(); closeModal('modal_congrats'); byeShow(); }   // «Cerrar y salir»: guarda igual y muestra la despedida
+    // Despedida: la app web no puede cerrarse sola en todos los celulares (iPhone, apps instaladas), así que se muestra una pantalla clara de «ya terminaste» y se intenta cerrar
+    function byeShow() {
+      try {
+        var old = document.getElementById('bye_end'); if (old) old.remove();
+        var nm = String((athleteActiveState && athleteActiveState.clientName) || '').trim().split(/\s+/)[0] || '';
+        var fr = ''; try { fr = fraseDiaHtml(); } catch (e0) {}
+        var w = document.createElement('div'); w.id = 'bye_end';
+        w.innerHTML = '<div class="gm-box" style="background:#151515; border:2px solid #06d6a0; border-radius:20px; padding:22px 18px; width:100%; max-width:440px; text-align:center;">' +
+          '<div style="font-size:3.2rem;">👏</div>' +
+          '<div class="gm-h" style="color:#06d6a0;">¡Buen trabajo' + (nm ? ', ' + escHtml(nm) : '') + '!</div>' +
+          '<div class="gm-p">Tu entreno quedó guardado.<br><b>Ya puedes cerrar la app.</b></div>' +
+          (fr ? '<div class="frase-dia" style="margin:0 auto 14px;">' + fr + '</div>' : '') +
+          '<button type="button" class="gm-back" style="margin-top:6px; font-size:.85rem; padding:10px;" onclick="byeClose()">Volver al inicio</button></div>';
+        document.body.appendChild(w);
+        try { window.scrollTo(0, 0); } catch (e1) {}
+        setTimeout(function() { try { window.close(); } catch (e2) {} }, 600);   // donde el navegador lo permita, se cierra sola
+      } catch (e) {}
+    }
+    function byeClose() { var w = document.getElementById('bye_end'); if (w) w.remove(); try { window.scrollTo(0, 0); wkHomeRefresh(); } catch (e) {} }
     async function loadDemoRoutine() {
       document.getElementById('clientName').value = 'Darshan Vera';
       document.getElementById('clientGender').value = 'o';
@@ -8332,23 +8354,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<input type="number" inputmode="numeric" id="wke_cal" placeholder="Calorías" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
           '<input type="number" inputmode="numeric" id="wke_hr" placeholder="Pulso promedio" style="flex:1; background:#0f0f0f; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; font-size:0.95rem; min-width:0;">' +
         '</div>' +
-        (closing ? '<div style="background:#0d2318; border:2px solid #00ff9c; border-radius:12px; padding:12px; margin-bottom:14px; font-size:0.88rem; font-weight:700; color:#d9ffe9; line-height:1.4;">' + (dayHasMarks(dayId) ? '💾 Al tocar <b>Listo</b> se guardan tus pesos y reps de hoy y queda cerrado el entreno.' : '✅ Al tocar <b>Listo</b> queda cerrado el entreno.') + '</div>' : '') +
+        (closing ? '<div style="background:#0d2318; border:2px solid #00ff9c; border-radius:12px; padding:12px; margin-bottom:14px; font-size:0.88rem; font-weight:700; color:#d9ffe9; line-height:1.4;">' + (dayHasMarks(dayId) ? '💾 Tus pesos y reps de hoy se guardan con cualquiera de los dos botones.' : '✅ El entreno queda cerrado con cualquiera de los dos botones.') + '</div>' : '') +
         '<div style="' + (closing ? 'display:none; ' : '') + 'background:#fff3cd; border:3px solid #ffb703; border-radius:12px; padding:14px 12px; margin-bottom:14px; text-align:center;">' +
           '<div style="font-size:1.6rem; line-height:1;">⚠️</div>' +
           '<div style="font-size:1.05rem; font-weight:900; color:#7a4b00; margin:4px 0; line-height:1.25;">¡No olvides actualizar tus pesos y reps!</div>' +
           '<div style="font-size:0.88rem; font-weight:700; color:#5c3a00; line-height:1.4;">Anota lo que levantaste en cada ejercicio y toca <span style="background:#ffb703; color:#000; padding:1px 6px; border-radius:6px;">💾 Guardar Día</span> para que tu próxima semana arranque con tus marcas.</div>' +
         '</div>' +
-        '<button type="button" class="btn-action-primary" onclick="wkEndSave(\'' + dayId + '\')">Listo</button></div>';
+        (closing
+          ? '<button type="button" class="btn-action-primary" onclick="wkEndSave(\'' + dayId + '\', 1)">✅ Cerrar y salir</button>' +
+            '<button type="button" class="gm-back" style="margin-top:8px;" onclick="wkEndSave(\'' + dayId + '\')">🏠 Quedarme en el inicio</button></div>'
+          : '<button type="button" class="btn-action-primary" onclick="wkEndSave(\'' + dayId + '\')">Listo</button></div>');
       m.classList.add('active');
     }
     function wkSummarySafe(secs, kc) { try { return wkWeekSummaryHtml(secs, kc); } catch (e) { return ''; } }
-    function wkEndSave(dayId) {
+    function wkEndSave(dayId, exitApp) {
       var c = parseInt((document.getElementById('wke_cal') || {}).value, 10), h = parseInt((document.getElementById('wke_hr') || {}).value, 10);
       var o = {}; if (c > 0 && c < 5000) o.c = c; if (h > 30 && h < 250) o.h = h;
       try { if (o.c || o.h) localStorage.setItem(tk('wkwatch_' + dayId), JSON.stringify(o)); } catch (e) {}
       wkNmCommit(o.c || 0, o.h || 0);
       closeModal('wk_end_modal');
-      if (CLOSE_PENDING === dayId) { dayCloseSave(dayId); return; }   // venía de "Cerrar entreno": se guardan las marcas solas
+      if (CLOSE_PENDING === dayId) { dayCloseSave(dayId); if (exitApp) byeShow(); return; }   // venía de "Cerrar entreno": se guardan las marcas solas
       // Lleva al cliente al botón "Terminar entreno" de la barra fija y lo hace palpitar para que no se le olvide actualizar sus marcas
       try {
         var sb = document.getElementById('day_bar_end_' + dayId);
@@ -11762,8 +11787,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (left > 0 && !(await appConfirm('Aún ' + (left === 1 ? 'te falta 1 bloque' : 'te faltan ' + left + ' bloques') + '. ¿Cerrar el entreno de todos modos?\n\nPodrás volver a este día y terminarlos hasta el domingo.'))) return;
       try { gdLeftSave(dayId, blocks, st); } catch (e) {}
       CLOSE_PENDING = dayId;
-      if (WK.start && WK.dayId === dayId) { wkEnd(dayId); return; }   // abre "¡Entreno terminado!"; al tocar "Listo" se guardan las marcas
+      if (WK.start && WK.dayId === dayId) {
+        if (dayHasMarks(dayId)) { wkEnd(dayId, true); dayCloseSave(dayId); return; }   // con marcas: una sola ventana final («Entrenamiento guardado», con tiempo, calorías y reloj)
+        wkEnd(dayId); return;   // sin marcas: la ventana final es «¡Entreno terminado!»
+      }
       dayCloseSave(dayId);
+    }
+    // Al completar el último bloque del día, el entreno se cierra solo y sale la ventana final (sin tocar «Cerrar entreno»)
+    function dayAutoClose(dayId) {
+      try {
+        if (guiadoOn() || CT.active) return;
+        var blocks = guideBlocks(dayId); if (!blocks.length) return;
+        if (gdStatus(dayId, blocks).some(function(x) { return x !== 'done'; })) return;   // quedan bloques: sigue el flujo normal
+        if (daySavedToday(dayId) || nmTodayFor(dayId)) return;   // ya estaba cerrado hoy
+        if (!((WK.start && WK.dayId === dayId) || dayHasMarks(dayId))) return;
+        dayClose(dayId);
+      } catch (e) { console.error(e); }
     }
     // Botón único de la barra fija: cierra el entreno (ya no se envía reporte por WhatsApp; el coach ve las marcas en la hoja)
     async function dayCloseAndReport(dayId) {
@@ -12141,7 +12180,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<button type="button" class="gm-feel" onclick="gmFeel(2)"><span>😐</span>Regular</button>' +
           '<button type="button" class="gm-feel" onclick="gmFeel(3)"><span>😓</span>Me costó</button>' +
         '</div></div>' +
-        '<button type="button" class="gm-back" style="margin-top:16px;" onclick="gmEndClose()">Volver al inicio</button></div>';
+        '<button type="button" class="gm-go" style="margin-top:16px; font-size:1.2rem; padding:18px 10px;" onclick="gmEndClose(); byeShow()">✅ Cerrar y salir</button>' +
+        '<button type="button" class="gm-back" style="margin-top:12px;" onclick="gmEndClose()">🏠 Quedarme en el inicio</button></div>';
       w.setAttribute('data-day', title);
       document.body.appendChild(w);
       try { tmrBeep(880, 250, 0); tmrBeep(1175, 500, 300); } catch (e) {}
@@ -12242,6 +12282,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (gk) { gdMark(gk.dayId, gk.key, 'c'); GD_OPEN[srId] = false; }
       if (CT.active && CT.srId === srId) ctClose(); else if (gk) { try { guidePaint(gk.dayId); } catch (e2) {} }
       if (gk) setTimeout(function() { try { var sec = document.getElementById('sec_rutina_' + gk.dayId), nx = sec && sec.querySelector('.gd-go .gd-head, .gd-pend .gd-head'); if (nx) nx.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e3) {} }, 450);
+      if (gk) setTimeout(function() { dayAutoClose(gk.dayId); }, 700);   // último bloque completo: pasa solo a la ventana final
     }
 
     // Anota un valor en la fila de registro de un ejercicio (lo usa el cuadro final de cargas)
@@ -16115,7 +16156,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       { sel: '#ath_install_btn', t: 'Instalar la app', x: 'Deja el ícono de Benessere en tu pantalla de inicio para abrirla con un toque, como cualquier app.' },
       { sel: '#ath_exit_btn', t: 'Salir', x: 'Cierra tu sesión en este dispositivo.' },
       { t: 'Dentro de un día: tu meta y la seguridad', x: 'Con «⚡ Montar marcas» llenas tu rutina con tus últimas marcas o las de otra fecha. Arriba de cada día ves la meta de la semana (cómo progresar con tus pesos y repeticiones). Al abrir el día, antes de iniciar el entreno, te recordamos los puntos de seguridad del día.' },
-      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque es una pestaña grande con su número (1, 2, 3…); cuando lo terminas, el número cambia a ✔. Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Verás el tiempo total y las calorías estimadas al terminar. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera. Si cierras el entreno con bloques sin hacer, la tarjeta del día dirá «Completado · N pendientes»: puedes volver a ese día hasta el domingo y terminarlos; ese día cuenta como una visita más.' },
+      { t: 'Dentro de un día de entreno: el cronómetro', x: 'Cada bloque es una pestaña grande con su número (1, 2, 3…); cuando lo terminas, el número cambia a ✔. Cada bloque se abre al tocarlo. Para arrancarlo toca «▶ Iniciar» en la franja de arriba o el botón «⏱ Iniciar temporizador» al final del bloque; hacen lo mismo. Mientras corre, la franja dice «📍 En curso». Antes, toca «Iniciar entreno» para activar el cronómetro. Al completar el último bloque tu entreno se guarda solo y sale una ventana final con tu tiempo, tus calorías y el resumen de la semana: ahí tocas «✅ Cerrar y salir» para terminar, o «🏠 Quedarme en el inicio» para ver otra cosa. Si sales de un bloque a medias queda «⏳ Pendiente»: ábrelo y toca «▶ Iniciar» para retomarlo. Si ya lo habías hecho, deja la pestaña cerrada y toca «✅ Completado» desde afuera. Si cierras el entreno con bloques sin hacer, la tarjeta del día dirá «Completado · N pendientes»: puedes volver a ese día hasta el domingo y terminarlos; ese día cuenta como una visita más.' },
       { t: 'Dentro de un día: registrar tus series', x: 'Cada ejercicio dice cuántas series y repeticiones hacer y qué tan pesado ir, por ejemplo «3 series × 14 reps · peso moderado». En cada ejercicio toca el botoncito «📝 Marcas anteriores»: se abre una ventana para anotar el peso y las repeticiones de cada serie. Arriba de esa ventana ves tu «Marca anterior» con su fecha y el botón «⤴️ Montar marca anterior» para llenarla con un toque. La app guarda lo que anotas para el próximo entreno. En el temporizador, bajo el ejercicio, ves tu «Marca anterior» de esa serie (por ejemplo «30 lbs × 8 reps»); si al anotar la superas, aparece una celebración corta 🏆.' },
       { t: 'Dentro de un día: «Ver demostración»', x: 'Cada ejercicio tiene su video. Si el video no se ve, toca «¿El video no se ve? Avisar al coach», debajo del ejercicio o en la ventana del video, y se le avisa automáticamente.' },
       { t: 'Dentro de un día: «¿Máquina ocupada?»', x: 'Si la máquina está ocupada, toca este botón para ver el ejercicio alternativo, con su propio video.' },
