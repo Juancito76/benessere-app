@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-23-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-23-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1346,6 +1346,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div class="metrics-grid" id="ath_metricsGrid"></div>
       <div id="ath_medBody"></div>
       <div id="ath_asist_box"></div>
+      <div id="ath_nutri_box"></div>
       <div id="ath_contact_box"></div>
       <details class="med-panel" id="med_add" style="margin-top:14px;">
         <summary id="med_add_sum" style="cursor:pointer; font-weight:800; color:var(--accent); font-size:0.9rem;">➕ Agregar una medición</summary>
@@ -1875,6 +1876,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         h += '<div class="med-sum">Días que entra por semana · últimas 12 semanas</div>' + asistChart(wk, 0) +
           '<div class="med-sum">Promedio: <b>' + (Math.round(avg * 10) / 10).toString().replace('.', ',') + '</b> días por semana' + (wk.some(function(x) { return x.partial; }) ? ' · la última barra (punteada) es la semana en curso' : '') + '</div>';
       }
+      h += '<div id="ficha_nutri"></div>';
       var ex = FICHA.extra || {}, tel = gv('f_tel'), les = gv('f_lesiones'), enf = gv('f_enfermedades');
       var info = [];
       if (tel) info.push('Teléfono: <b>' + escHtml(tel) + '</b>');
@@ -1885,6 +1887,86 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (ex.enfermedades_c) info.push('🩺 Nota del cliente · enfermedades/cirugías: <b>' + escHtml(ex.enfermedades_c) + '</b>');
       if (info.length) h += '<div class="med-h">📞 Datos de contacto y salud</div><div style="font-size:0.85rem; line-height:1.7;">' + info.join('<br>') + '</div>';
       el.innerHTML = h;
+      try { nucPaintFicha(); nucFichaLoad(nm); } catch (eN) {}
+    }
+
+    // ================= 🍽 NUTRICIÓN Y ACTIVIDAD: barras por día (calorías, agua, sueño, pasos y actividad extra) =================
+    // Lo que el cliente anota cada día se guarda con sus marcas y se ve aquí (en «Datos y asistencia» del cliente y en la ficha del coach). La línea amarilla es la meta.
+    var NUC_M = [
+      { k: 'kcal', n: '🎯 Calorías', u: '' }, { k: 'agua', n: '💧 Agua', u: '' }, { k: 'sueno', n: '😴 Sueño', u: ' h' },
+      { k: 'pasos', n: '👟 Pasos', u: '' }, { k: 'act', n: '🏃 Actividad', u: ' kcal' }
+    ];
+    var NUC_SEL = { cli: 'kcal', fi: 'kcal' }, NUC_DAYS = 14, FICHA_NUC = {};
+    function nucVal(rec, k) { if (!rec) return 0; if (k === 'act') return dailyActKcal(rec); return (rec[k] && rec[k].v > 0) ? rec[k].v : 0; }
+    function nucFmt(n) { return n >= 10000 ? (Math.round(n / 100) / 10).toString().replace('.', ',') + 'k' : String(Math.round(n * 10) / 10).replace('.', ','); }
+    function nucChartSvg(days, k) {
+      var W = 340, H = 170, pl = 8, pr = 8, pt = 20, pb = 30, n = days.length, iw = W - pl - pr, ih = H - pt - pb, slot = iw / n, bw = Math.min(slot * 0.66, 18);
+      var vals = days.map(function(x) { return nucVal(x.rec, k); }), tgt = 0;
+      days.forEach(function(x) { var t = x.rec && x.rec[k] && x.rec[k].t; if (t > 0) tgt = t; });
+      var mx = Math.max.apply(null, vals.concat([tgt, 1])) * 1.12;
+      var Y = function(v) { return pt + ih - ih * v / mx; };
+      var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:auto; display:block;" role="img" aria-label="Gráfico de barras por día">';
+      g += '<line x1="' + pl + '" y1="' + (pt + ih) + '" x2="' + (W - pr) + '" y2="' + (pt + ih) + '" stroke="#2c3340" stroke-width="1"/>';
+      days.forEach(function(x, i) {
+        var v = vals[i], cx = pl + slot * i + slot / 2, x0 = cx - bw / 2, today = i === n - 1;
+        if (v > 0) {
+          var y = Y(v), met = tgt > 0 && v >= tgt;
+          g += '<rect x="' + x0.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(pt + ih - y, 2).toFixed(1) + '" rx="3" fill="' + (met ? '#06d6a0' : (today ? '#00e5ff' : '#2b6f7a')) + '"/>';
+          g += '<text x="' + cx.toFixed(1) + '" y="' + (y - 4).toFixed(1) + '" text-anchor="middle" style="fill:#fff; font-size:8px; font-weight:700;">' + nucFmt(v) + '</text>';
+        } else g += '<rect x="' + x0.toFixed(1) + '" y="' + (pt + ih - 3) + '" width="' + bw.toFixed(1) + '" height="3" rx="1.5" fill="#1d222b"/>';
+        if (i % 2 === (n - 1) % 2) g += '<text x="' + cx.toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle" style="fill:#a3a3a3; font-size:8px;">' + escHtml(fmtDateShort(x.d)) + '</text>';
+      });
+      if (tgt > 0) g += '<line x1="' + pl + '" y1="' + Y(tgt).toFixed(1) + '" x2="' + (W - pr) + '" y2="' + Y(tgt).toFixed(1) + '" stroke="#ffd166" stroke-width="1.5" stroke-dasharray="5 4"/>';
+      return g + '</svg>';
+    }
+    function nucBlock(scope, getRec, selFn) {
+      var today = todayIso(), days = [];
+      for (var i = NUC_DAYS - 1; i >= 0; i--) { var d = addDaysIso(today, -i); days.push({ d: d, rec: getRec(d) }); }
+      var has = NUC_M.filter(function(m) { return days.some(function(x) { return nucVal(x.rec, m.k) > 0; }); });
+      if (!has.length) return '<div class="med-sum">Todavía no hay calorías, agua, sueño, pasos ni actividad anotados en los últimos ' + NUC_DAYS + ' días.</div>';
+      var k = NUC_SEL[scope]; if (!has.some(function(m) { return m.k === k; })) k = has[0].k;
+      var M = NUC_M.filter(function(m) { return m.k === k; })[0];
+      var chips = has.map(function(m) { return '<button type="button" class="med-chip' + (m.k === k ? ' active' : '') + '" onclick="' + selFn + '(\'' + m.k + '\')">' + m.n + '</button>'; }).join('');
+      var vs = days.map(function(x) { return nucVal(x.rec, k); }).filter(function(v) { return v > 0; });
+      var avg = vs.reduce(function(t, v) { return t + v; }, 0) / vs.length, tg = 0, met = 0, withT = 0;
+      days.forEach(function(x) { var v = nucVal(x.rec, k), t = x.rec && x.rec[k] && x.rec[k].t; if (t > 0) tg = t; if (v > 0 && t > 0) { withT++; if (v >= t) met++; } });
+      return '<div class="med-chips" style="display:flex; gap:6px; overflow-x:auto; margin-bottom:8px;">' + chips + '</div>' + nucChartSvg(days, k) +
+        '<div class="med-sum">Últimos ' + NUC_DAYS + ' días · ' + vs.length + ' con registro · promedio <b>' + nucFmt(avg) + M.u + '</b>' + (tg ? ' · línea amarilla = meta (' + nucFmt(tg) + M.u + ')' : '') + (withT ? ' · meta cumplida en <b>' + met + ' de ' + withT + '</b> días' : '') + '</div>';
+    }
+    function nucSel(k) { NUC_SEL.cli = k; nucPaintClient(); }
+    function nucPaintClient() {
+      var el = document.getElementById('ath_nutri_box'); if (!el || !athleteActiveState) return;
+      el.innerHTML = '<div style="background:#101010; border:1px solid #2c2c2c; border-radius:12px; padding:12px; margin-top:14px;"><div style="font-weight:900; color:var(--primary); margin-bottom:6px;">🍽 Nutrición y actividad</div>' + nucBlock('cli', dailyFor, 'nucSel') + '</div>';
+    }
+    // Ficha del coach: baja de la hoja lo que el cliente anotó (metas diarias) y lo grafica
+    function nucFiSel(k) { NUC_SEL.fi = k; nucPaintFicha(); }
+    function nucFichaMap(name) {
+      var k = normName(name), c = FICHA_NUC[k]; return c && c.map ? c.map : null;
+    }
+    function nucPaintFicha() {
+      var el = document.getElementById('ficha_nutri'); if (!el) return;
+      var nm = ((document.getElementById('clientName') || {}).value || FICHA.name || '').trim(), c = FICHA_NUC[normName(nm)];
+      var h = '<div class="med-h">🍽 Nutrición y actividad del cliente</div>';
+      if (!c) h += '<div class="med-sum">⏳ Trayendo lo que anotó el cliente…</div>';
+      else if (c.err) h += '<div class="med-sum">' + escHtml(c.err) + '</div>';
+      else h += nucBlock('fi', function(d) { return c.map[d] || {}; }, 'nucFiSel');
+      el.innerHTML = h;
+    }
+    function nucFichaLoad(nm) {
+      try {
+        var k = normName(nm); if (!k) return;
+        var c = FICHA_NUC[k]; if (c && (c.loading || (c.at && Date.now() - c.at < 120000))) return;
+        var ids = []; (clientRows || []).forEach(function(r) { if (r && r.id && normName(r.atleta) === k && ids.indexOf(r.id) < 0) ids.push(r.id); });
+        if (!ids.length) { FICHA_NUC[k] = { err: 'No encontré una rutina de este cliente. Abre «Mis clientes» una vez para cargar la lista y vuelve aquí.', at: Date.now() }; nucPaintFicha(); return; }
+        FICHA_NUC[k] = { loading: true, map: (c && c.map) || null };
+        Promise.all(ids.slice(0, 3).map(function(id) { return fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(id), { redirect: 'follow' }, 25000).catch(function() { return null; }); })).then(function(res) {
+          var best = {}, any = false;
+          res.forEach(function(j) { if (!j || !j.ok || !Array.isArray(j.sesiones)) return; any = true; j.sesiones.forEach(function(x) { if (x && x.g && isMetaSess(x) && x.d && (!best[x.d] || String(x.t) > String(best[x.d].t))) best[x.d] = x; }); });
+          var map = {}; Object.keys(best).forEach(function(d) { map[d] = best[d].g; });
+          FICHA_NUC[k] = any ? { map: map, at: Date.now() } : { err: 'No se pudo traer lo que anotó el cliente. Revisa la conexión.', at: Date.now() - 100000 };
+          nucPaintFicha();
+        });
+      } catch (e) {}
     }
     function renderMeasureLog() { try { renderMeasureLog0(); } finally { try { cliViewPaint(); } catch (e) {} } }
     function renderMeasureLog0() {
@@ -6622,6 +6704,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
+      { id: '2026-11-23-nutri-barras', title: '🍽 Tu nutrición y actividad en gráficas', text: 'En «Datos y asistencia» ahora ves barras por día con tus calorías, agua, sueño, pasos y actividad de los últimos 14 días, con la línea de tu meta. Tu coach también las ve en tu ficha.' },
       { id: '2026-11-23-recorrido', title: '🧭 Recorrido menos insistente', text: 'El recorrido por la app ahora empieza cuando tú lo aceptas («Iniciar recorrido por la app» o «Después»). Si lo cierras, se cierra del todo y no vuelven las ventanitas. Y en cada bloque quitamos el botón amarillo de abajo: para empezar usa «▶ INICIAR» de la franja de arriba.' },
       { id: '2026-11-21-cerrar', title: '✅ Cerrar tu entreno ahora es más rápido', text: 'Al completar el último bloque, tu entreno se guarda solo y sale una sola ventana final con tu tiempo, calorías y resumen de la semana. Ahí eliges «Cerrar y salir» o «Quedarme en el inicio» para ver otra cosa.' },
       { id: '2026-11-18-nutri-inicio', title: '🍽 Tu alimentación, directo desde el inicio', text: 'En la pantalla principal hay un botón «🍽 Nutrición de hoy» para anotar lo que comiste, sin pasar por el entreno. Y si hoy ya entrenaste, la app ya no te pregunta si vas a empezar.' },
@@ -14861,9 +14944,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function openDatosTab() {
       try { monthNowPaint(); } catch (e) {}
       try { asistBoxPaint(); } catch (e) {}
+      try { nucPaintClient(); } catch (e) {}
       try { contactBoxPaint(); } catch (e) {}
       openModal('ath_modal_medidas');
-      if (isCoachView()) setTimeout(function() { try { contactBoxPaint(); asistBoxPaint(); } catch (e) {} }, 2500);   // el historial del cliente baja en segundo plano
+      if (isCoachView()) setTimeout(function() { try { contactBoxPaint(); asistBoxPaint(); nucPaintClient(); } catch (e) {} }, 2500);   // el historial del cliente baja en segundo plano
     }
     function coachOpenDatos(id, medir) {   // medir: abre de una vez el formulario «Agregar una medición» con la fecha de hoy
       if (!COACH) { showToastTop('Entra primero a "Mis clientes" con tu PIN.'); return; }
