@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-21-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-22-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5361,6 +5361,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         SP.clear = function() { if (PRUEBA.on && this === window.localStorage) { PRUEBA.data = {}; return; } return oClr.apply(this, arguments); };
         SP.key = function(i) { if (PRUEBA.on && this === window.localStorage) { var ks = Object.keys(PRUEBA.data); return i < ks.length ? ks[i] : null; } return oKey.apply(this, arguments); };
         if (lenDesc && lenDesc.get) Object.defineProperty(SP, 'length', { configurable: true, get: function() { if (PRUEBA.on && this === window.localStorage) return Object.keys(PRUEBA.data).length; return lenDesc.get.call(this); } });
+        PRUEBA.rawSet = function(k, v) { oSet.call(window.localStorage, k, v); }; PRUEBA.rawGet = function(k) { return oGet.call(window.localStorage, k); };
         PRUEBA.snapshot = function() { var d = {}; for (var i = 0, n = lenDesc.get.call(window.localStorage); i < n; i++) { var k = oKey.call(window.localStorage, i); d[k] = oGet.call(window.localStorage, k); } return d; };
       } catch (e) {}
     })();
@@ -5383,13 +5384,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     })();
     // ===== DIAGNÓSTICO TEMPORAL (19/11/2026): en modo prueba, un aviso arriba anota qué pasa cuando el teclado se cierra solo. QUITAR cuando se encuentre la causa. =====
     (function() {
-      var box = null, lines = [], t0 = Date.now();
+      var box = null, lines = [], t0 = Date.now(), all = [];
+      try { var prev = PRUEBA.rawGet('benessere_diag_log'); if (prev) all = prev.split('\n').slice(-300); all.push('=== NUEVA SESION ' + new Date().toLocaleString() + ' ==='); } catch (eP) {}
       function nm(t) { return !t ? 'null' : (t.id || (t.className && String(t.className).split(' ')[0]) || t.tagName || '?'); }
       function st() { var e = new Error().stack || '', a = e.split('\n').slice(3, 6).map(function(x) { var m = x.match(/at\s+([^\s(]+)/); return m ? m[1] : '?'; }); return a.join('<'); }
       function log(m) {
         try {
           if (!PRUEBA.on) { if (box) { box.remove(); box = null; } return; }
-          lines.push(((Date.now() - t0) / 1000).toFixed(1) + ' ' + m); if (lines.length > 30) lines.shift();
+          var ln = ((Date.now() - t0) / 1000).toFixed(1) + ' ' + m; lines.push(ln); if (lines.length > 30) lines.shift();
+          all.push(new Date().toLocaleTimeString() + ' ' + ln); if (all.length > 400) all.shift();
+          try { PRUEBA.rawSet('benessere_diag_log', all.join('\n')); } catch (eS) {}
           if (!box) {
             box = document.createElement('div'); box.id = 'diag_box';
             box.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:100050;background:rgba(0,0,0,.88);color:#7CFC00;font:10px/1.25 monospace;padding:4px 6px;max-height:36vh;overflow:hidden;pointer-events:none;white-space:pre-wrap;';
@@ -5407,6 +5411,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       window.addEventListener('resize', function() { log('resize h=' + window.innerHeight + (vv ? ' vv=' + Math.round(vv.height) : '')); });
       if (vv) vv.addEventListener('resize', function() { log('vv.resize ' + Math.round(vv.height)); });
       document.addEventListener('touchstart', function(e) { log('touch ' + nm(e.target)); }, { capture: true, passive: true });
+      document.addEventListener('click', function(e) { var t = e.target; log('CLICK ' + nm(t) + ' "' + String(t && t.innerText || '').replace(/\s+/g, ' ').slice(0, 25) + '" defPrev=' + e.defaultPrevented); }, true);
+      window.addEventListener('error', function(e) { log('ERROR ' + (e.message || '') + ' @' + (e.lineno || '?')); });
+      window.addEventListener('unhandledrejection', function(e) { log('PROMESA ' + String(e.reason && e.reason.message || e.reason).slice(0, 80)); });
+      setInterval(function() { try { var nt = document.getElementById('nt_modal'); var top = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2); var k = (nt ? 'nt_modal ' : '') + 'centro=' + nm(top); if (k !== window.__dgK) { window.__dgK = k; log('ESTADO ' + k); } } catch (eT) {} }, 1000);
       var of = HTMLElement.prototype.focus, ob = HTMLElement.prototype.blur;
       HTMLElement.prototype.focus = function() { log('focus() ' + nm(this) + ' via ' + st()); return of.apply(this, arguments); };
       HTMLElement.prototype.blur = function() { log('blur() ' + nm(this) + ' via ' + st()); return ob.apply(this, arguments); };
@@ -5421,6 +5429,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           });
         }).observe(m, { subtree: true, childList: true, attributes: true, attributeFilter: ['style', 'class'] });
       } catch (e) {}
+    })();
+    // Botón para copiar el registro guardado del diagnóstico (se pega en el chat con Claude)
+    (function() {
+      function mk() {
+        var b = document.getElementById('diag_copy');
+        if (!PRUEBA.on) { if (b) b.remove(); return; }
+        if (b) return;
+        b = document.createElement('button'); b.type = 'button'; b.id = 'diag_copy'; b.innerText = '📋 Copiar diag';
+        b.style.cssText = 'position:fixed;right:8px;bottom:60px;z-index:100060;background:#7CFC00;color:#000;border:2px solid #000;border-radius:999px;padding:6px 10px;font-weight:900;font-size:.7rem;';
+        b.onclick = function(ev) {
+          ev.stopPropagation();
+          var txt = ''; try { txt = PRUEBA.rawGet('benessere_diag_log') || ''; } catch (e) {}
+          var done = function() { b.innerText = '✅ Copiado'; setTimeout(function() { b.innerText = '📋 Copiar diag'; }, 2000); };
+          try { navigator.clipboard.writeText(txt).then(done, function() { var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); done(); }); }
+          catch (e) { var ta2 = document.createElement('textarea'); ta2.value = txt; document.body.appendChild(ta2); ta2.select(); try { document.execCommand('copy'); } catch (e2) {} ta2.remove(); done(); }
+        };
+        document.body.appendChild(b);
+      }
+      setInterval(mk, 1000);
     })();
     async function pruebaToggle() {
       if (PRUEBA.preview) { previewExit(); return; }   // en la vista previa no se recarga la app: se vuelve al constructor tal como estaba
