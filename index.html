@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-21-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-22-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5380,47 +5380,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var set = function(on) { document.documentElement.classList.toggle('kb-typing', on); };
       document.addEventListener('focusin', function(e) { if (typing(e.target)) set(true); });
       document.addEventListener('focusout', function() { setTimeout(function() { set(typing(document.activeElement)); }, 150); });
-    })();
-    // ===== DIAGNÓSTICO TEMPORAL (19/11/2026): en modo prueba, un aviso arriba anota qué pasa cuando el teclado se cierra solo. QUITAR cuando se encuentre la causa. =====
-    (function() {
-      var box = null, lines = [], t0 = Date.now();
-      function nm(t) { return !t ? 'null' : (t.id || (t.className && String(t.className).split(' ')[0]) || t.tagName || '?'); }
-      function st() { var e = new Error().stack || '', a = e.split('\n').slice(3, 6).map(function(x) { var m = x.match(/at\s+([^\s(]+)/); return m ? m[1] : '?'; }); return a.join('<'); }
-      function log(m) {
-        try {
-          if (!PRUEBA.on) { if (box) { box.remove(); box = null; } return; }
-          lines.push(((Date.now() - t0) / 1000).toFixed(1) + ' ' + m); if (lines.length > 30) lines.shift();
-          if (!box) {
-            box = document.createElement('div'); box.id = 'diag_box';
-            box.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:100050;background:rgba(0,0,0,.88);color:#7CFC00;font:10px/1.25 monospace;padding:4px 6px;max-height:36vh;overflow:hidden;pointer-events:none;white-space:pre-wrap;';
-            document.body.appendChild(box);
-          }
-          box.textContent = 'DIAG (ultimas lineas abajo)\n' + lines.slice(-14).join('\n');
-        } catch (e) {}
-      }
-      var vv = window.visualViewport;
-      document.addEventListener('focusin', function(e) { log('IN ' + nm(e.target)); }, true);
-      document.addEventListener('focusout', function(e) { log('OUT ' + nm(e.target) + '>' + nm(e.relatedTarget) + ' hid=' + document.hidden); }, true);
-      document.addEventListener('visibilitychange', function() { log('visib ' + document.visibilityState); });
-      window.addEventListener('pagehide', function() { log('pagehide'); });
-      window.addEventListener('beforeunload', function() { log('beforeunload (recarga)'); });
-      window.addEventListener('resize', function() { log('resize h=' + window.innerHeight + (vv ? ' vv=' + Math.round(vv.height) : '')); });
-      if (vv) vv.addEventListener('resize', function() { log('vv.resize ' + Math.round(vv.height)); });
-      document.addEventListener('touchstart', function(e) { log('touch ' + nm(e.target)); }, { capture: true, passive: true });
-      var of = HTMLElement.prototype.focus, ob = HTMLElement.prototype.blur;
-      HTMLElement.prototype.focus = function() { log('focus() ' + nm(this) + ' via ' + st()); return of.apply(this, arguments); };
-      HTMLElement.prototype.blur = function() { log('blur() ' + nm(this) + ' via ' + st()); return ob.apply(this, arguments); };
-      var ost = window.scrollTo; window.scrollTo = function() { log('scrollTo via ' + st()); return ost.apply(this, arguments); };
-      try {
-        var m = document.getElementById('modal_clients');
-        new MutationObserver(function(ms) {
-          ms.forEach(function(r) {
-            var s = document.getElementById('cl_search');
-            if (r.type === 'attributes') { if (s && r.target.contains(s)) log('attr ' + r.attributeName + ' en ' + nm(r.target)); }
-            else { r.removedNodes.forEach(function(n) { if (n.nodeType === 1 && (n.id === 'cl_search' || (n.querySelector && n.querySelector('#cl_search')))) log('QUITADO ' + nm(n)); }); }
-          });
-        }).observe(m, { subtree: true, childList: true, attributes: true, attributeFilter: ['style', 'class'] });
-      } catch (e) {}
     })();
     async function pruebaToggle() {
       if (PRUEBA.preview) { previewExit(); return; }   // en la vista previa no se recarga la app: se vuelve al constructor tal como estaba
