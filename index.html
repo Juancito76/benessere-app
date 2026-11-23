@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-23-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-23-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1799,6 +1799,114 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       fichaTouch();
       var st = document.getElementById('med_status');
       if (st) st.innerText = '✅ Medición del ' + fmtDate(d) + ' guardada en el historial.';
+      setTimeout(function() { infGenerate(d); }, 250);   // informe: cambios, felicitación y en qué trabajar (queda en la ficha)
+    }
+
+    // ================= 📋 INFORME DE MEDICIÓN: al guardar una medición, cambios + felicitación + en qué trabajar. Queda en la ficha (FICHA.texts[fecha].inf) =================
+    // Solo lo ve el coach (para repasarlo con el cliente). Todo sale por reglas con los datos reales; el tono es siempre positivo.
+    // dir: -1 = bajar es bueno, 1 = subir es bueno, 'meta' = depende del objetivo (peso, muslos, pantorrillas), 0 = solo informativo
+    var INF_DIR = { m_peso_kg: 'meta', m_grasa: -1, m_musculo: 1, m_visceral: -1, m_edad_meta: -1, m_cintura1: -1, m_cintura2: -1, m_cadera: -1, m_muslo_der: 'meta', m_muslo_izq: 'meta', m_pant_der: 'meta', m_pant_izq: 'meta', m_pecho: 'gan', m_brazo_der: 'gan', m_brazo_izq: 'gan', m_espalda: 'gan', m_imc: 'meta' };
+    var INF_MIN = { m_peso_kg: 0.3, m_grasa: 0.2, m_musculo: 0.2, m_visceral: 0.5, m_edad_meta: 1, m_imc: 0.1 };   // cambios menores se leen como «se mantuvo» (cm: 0,5)
+    function infGoal() {   // 'perder' | 'ganar' | ''  según el objetivo escrito en la ficha
+      var o = normName((document.getElementById('m_objetivo') || {}).value || (FICHA.extra && FICHA.extra.objetivo) || '');
+      if (/ganar|masa|hipertrof|volumen|aument|muscul|fuerza/.test(o)) return 'ganar';
+      if (/baj|perd|defin|grasa|adelgaz|reduc|peso|cintura|tonific/.test(o)) return 'perder';
+      return '';
+    }
+    function infFmt(n) { return fmtNum(n).replace('.', ','); }
+    function infSigned(d) { return (d > 0 ? '+' : (d < 0 ? '−' : '')) + infFmt(Math.abs(d)); }
+    function infBuild(d) {
+      var log = normalizeMeasureLog(measureLog), i = indexOfDate(log, d); if (i < 0) return null;
+      var cur = log[i], prev = i > 0 ? log[i - 1] : null, first = log[0], goal = infGoal();
+      var nm = ((document.getElementById('clientName') || {}).value || FICHA.name || '').trim();
+      var good = [], bad = [], flat = [], L = [];
+      function judge(k, diff) {   // 1 = va bien, -1 = hay que trabajarlo, 0 = neutral
+        var dr = INF_DIR[k]; if (dr === undefined || dr === 0) return 0;
+        if (dr === 'meta') dr = goal === 'ganar' ? 1 : (goal === 'perder' ? -1 : 0);
+        else if (dr === 'gan') dr = goal === 'ganar' ? 1 : 0;
+        return dr === 0 ? 0 : (diff * dr > 0 ? 1 : -1);
+      }
+      var rows = [];
+      MEASURE_FIELDS.forEach(function(f) {
+        if (cur.v[f.k] == null || INF_DIR[f.k] === undefined) return;
+        var base = prev && prev.v[f.k] != null ? prev : (first !== cur && first.v[f.k] != null ? first : null); if (!base) return;
+        var diff = cur.v[f.k] - base.v[f.k], mn = INF_MIN[f.k] || (f.unit === 'cm' ? 0.5 : 0.2);
+        if (Math.abs(diff) < mn) { flat.push(f); return; }
+        var j = judge(f.k, diff), rel = Math.abs(diff) / Math.max(Math.abs(base.v[f.k]), 1);
+        var item = { f: f, diff: diff, rel: rel, from: base.v[f.k], to: cur.v[f.k], j: j };
+        rows.push(item); if (j > 0) good.push(item); else if (j < 0) bad.push(item);
+      });
+      good.sort(function(a, b) { return b.rel - a.rel; }); bad.sort(function(a, b) { return b.rel - a.rel; });
+      var line = function(x) { return '• ' + x.f.label + ': ' + infFmt(x.from) + ' → ' + withUnit(x.to, x.f.unit).replace('.', ',') + ' (' + infSigned(x.diff) + (x.f.unit === '%' ? ' pts' : (x.f.unit ? ' ' + x.f.unit : '')) + ')'; };
+      L.push('📋 INFORME DE MEDICIÓN · ' + fmtDate(d) + (nm ? ' · ' + nm : ''));
+      if (!prev) {
+        L.push('', 'Esta es tu primera medición: es tu punto de partida. Desde aquí vamos a ver cada avance.');
+      } else {
+        L.push('', 'Comparado con la medición del ' + fmtDate(prev.d) + (first !== prev && first !== cur ? ' (y desde el inicio, ' + fmtDate(first.d) + ')' : '') + ':');
+        L.push('📊 QUÉ CAMBIÓ');
+        if (!rows.length) L.push('• Tus medidas se mantuvieron estables.');
+        rows.forEach(function(x) { L.push(line(x) + (x.j > 0 ? ' ✅' : '')); });
+      }
+      // asistencia y nutrición (si están disponibles)
+      var att = null, nuc = null;
+      try { var wk = asistWeeksFor(nm, true).filter(function(x) { return x.n != null; }).slice(-4); if (wk.length) att = wk.reduce(function(t, x) { return t + x.n; }, 0) / wk.length; } catch (e) {}
+      try {
+        var mp = nucFichaMap(nm);
+        if (mp) { var t0 = todayIso(), nd = 0, kd = 0; for (var q = 0; q < 14; q++) { var r = mp[addDaysIso(t0, -q)]; if (r && (r.kcal || r.agua || r.sueno || r.pasos)) nd++; if (r && r.kcal) kd++; } nuc = { dias: nd, kcal: kd }; }
+        else nucFichaLoad(nm);
+      } catch (e) {}
+      // 🎉 felicitación
+      L.push('', '🎉 PARA FELICITAR');
+      var fel = good.slice(0, 3).map(function(x) {
+        var u = x.f.unit === '%' ? ' pts' : (x.f.unit ? ' ' + x.f.unit : '');
+        return (x.diff < 0 ? 'Bajaste ' : 'Subiste ') + infFmt(Math.abs(x.diff)) + u + ' en ' + x.f.label.toLowerCase().replace(/ \(.*\)/, '').replace(/^% /, '% de ');
+      });
+      if (fel.length) L.push('• ¡Muy bien! ' + fel.join('. ') + '. Eso es fruto de tu constancia.');
+      if (att != null && att >= 3) L.push('• Tu asistencia es excelente: vas ' + infFmt(Math.round(att * 10) / 10) + ' días por semana en promedio.');
+      if (nuc && nuc.dias >= 10) L.push('• Estás registrando tu nutrición casi todos los días: eso marca la diferencia.');
+      if (!fel.length && !(att != null && att >= 3) && !(nuc && nuc.dias >= 10)) L.push('• Medirte es parte del compromiso: ya diste el paso que muchos dejan para después. ¡Seguimos construyendo!');
+      // 🎯 trabajar
+      L.push('', '🎯 EN QUÉ TRABAJAR AHORA');
+      var work = [];
+      bad.slice(0, 2).forEach(function(x) { work.push('Retomar el avance en ' + x.f.label.toLowerCase().replace(/ \(.*\)/, '') + ': con constancia en el plan y la alimentación vuelve a ir hacia la meta.'); });
+      if (att != null && att < 2) work.push('Sumar un día más de entrenamiento por semana (hoy va en promedio ' + infFmt(Math.round(att * 10) / 10) + ').');
+      if (nuc && nuc.kcal < 7) work.push('Anotar las calorías cada día en la app: así ajustamos mejor tu plan.');
+      if (nuc === null && !(FICHA_NUC[normName(nm)] && FICHA_NUC[normName(nm)].map)) { /* sin datos de nutrición: no se afirma nada */ }
+      if (!work.length) work.push(goal === 'ganar' ? 'Mantener la proteína y progresar las cargas semana a semana.' : (goal === 'perder' ? 'Mantener el déficit suave, la proteína y los pasos diarios.' : 'Mantener el ritmo actual y progresar poco a poco en tus cargas.'));
+      work.slice(0, 2).forEach(function(w) { L.push('• ' + w); });
+      return L.join('\n');
+    }
+    function infHtml(txt) {
+      return String(txt || '').split('\n').map(function(l) {
+        if (!l.trim()) return '<div style="height:6px;"></div>';
+        var head = /^(📋|📊|🎉|🎯)/.test(l);
+        return '<div style="' + (head ? 'font-weight:900; color:var(--primary); margin-top:4px;' : 'line-height:1.45;') + '">' + escHtml(l) + '</div>';
+      }).join('');
+    }
+    function infShow(d, txt) {
+      var m = document.getElementById('inf_modal');
+      if (!m) { m = document.createElement('div'); m.id = 'inf_modal'; m.className = 'modal-overlay'; m.style.zIndex = '100045'; document.body.appendChild(m); }
+      m.innerHTML = '<div class="modal-inner" style="max-height:88vh; overflow:auto; text-align:left; font-size:.88rem;">' + infHtml(txt) +
+        '<div style="font-size:.72rem; color:var(--muted); margin-top:10px;">✅ Quedó guardado en la ficha (solo para ti).</div>' +
+        '<button type="button" class="btn-action-primary" style="margin-top:10px;" id="inf_copy">📋 Copiar informe</button>' +
+        '<button type="button" onclick="infClose()" style="display:block; width:100%; margin-top:8px; background:#1c1c1c; color:#fff; border:1px solid #444; border-radius:10px; padding:11px; font-weight:800; cursor:pointer;">Cerrar</button></div>';
+      m.classList.add('active');
+      document.getElementById('inf_copy').onclick = function() { try { navigator.clipboard.writeText(txt); showToastTop('Informe copiado.'); } catch (e) { showToastTop('No se pudo copiar.'); } };
+    }
+    function infClose() { var m = document.getElementById('inf_modal'); if (m) m.classList.remove('active'); }
+    function infGenerate(d) {   // genera, guarda en la ficha y muestra
+      try {
+        var txt = infBuild(d); if (!txt) return;
+        FICHA.texts = FICHA.texts || {}; FICHA.texts[d] = Object.assign({}, FICHA.texts[d] || {}, { inf: txt });
+        fichaTouch(); infShow(d, txt);
+        try { cliViewPaint(); } catch (e) {}
+      } catch (e) {}
+    }
+    function infListHtml() {   // informes guardados, para repasarlos desde la ficha
+      var ds = Object.keys(FICHA.texts || {}).filter(function(d) { return FICHA.texts[d] && FICHA.texts[d].inf; }).sort().reverse(); if (!ds.length) return '';
+      return '<div class="med-h">📝 Informes de medición</div>' + ds.slice(0, 8).map(function(d) {
+        return '<details style="background:#101010; border:1px solid #2c2c2c; border-radius:10px; padding:8px 10px; margin-bottom:6px;"><summary style="cursor:pointer; font-weight:800; font-size:.82rem;">' + escHtml(fmtDate(d)) + '</summary><div style="margin-top:6px; font-size:.82rem;">' + infHtml(FICHA.texts[d].inf) + '</div></details>';
+      }).join('');
     }
     // Antes de crear un enlace: que las medidas escritas en el formulario no se pierdan por olvidar "Guardar"
     async function ensureMeasureSaved() {
@@ -1877,6 +1985,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div class="med-sum">Promedio: <b>' + (Math.round(avg * 10) / 10).toString().replace('.', ',') + '</b> días por semana' + (wk.some(function(x) { return x.partial; }) ? ' · la última barra (punteada) es la semana en curso' : '') + '</div>';
       }
       h += '<div id="ficha_nutri"></div>';
+      h += infListHtml();
       var ex = FICHA.extra || {}, tel = gv('f_tel'), les = gv('f_lesiones'), enf = gv('f_enfermedades');
       var info = [];
       if (tel) info.push('Teléfono: <b>' + escHtml(tel) + '</b>');
