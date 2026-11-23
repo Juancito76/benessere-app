@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-22-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-22-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5415,6 +5415,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       window.addEventListener('error', function(e) { log('ERROR ' + (e.message || '') + ' @' + (e.lineno || '?')); });
       window.addEventListener('unhandledrejection', function(e) { log('PROMESA ' + String(e.reason && e.reason.message || e.reason).slice(0, 80)); });
       setInterval(function() { try { var nt = document.getElementById('nt_modal'); var top = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2); var k = (nt ? 'nt_modal ' : '') + 'centro=' + nm(top); if (k !== window.__dgK) { window.__dgK = k; log('ESTADO ' + k); } } catch (eT) {} }, 1000);
+      // ---- Congelamientos: vigilante de pausas largas, tareas largas y funciones lentas ----
+      try {
+        var lastTick = Date.now();
+        setInterval(function() { var n = Date.now(), gap = n - lastTick; lastTick = n; if (gap > 900) log('CONGELADO ' + (gap / 1000).toFixed(1) + ' s (la app no respondio)'); }, 250);
+      } catch (eW) {}
+      try {
+        if (window.PerformanceObserver) new PerformanceObserver(function(l) { l.getEntries().forEach(function(en) { if (en.duration > 200) log('TAREA LARGA ' + Math.round(en.duration) + ' ms'); }); }).observe({ entryTypes: ['longtask'] });
+      } catch (eL) {}
+      ['guidePaint', 'noticesMaybe', 'tipNext', 'saveTracker', 'loadTracker', 'autoPrefillAll', 'refreshSetSummary', 'renderAthleteApp', 'gdMark', 'renderHistorial', 'openClientRoutine', 'coachShowRoutine', 'fetchRoutine', 'tmrWakeOn', 'coachCacheSet', 'coachCacheGet'].forEach(function(fn) {
+        try {
+          var orig = window[fn]; if (typeof orig !== 'function' || orig.__dg) return;
+          var w = function() { var t = Date.now(); try { return orig.apply(this, arguments); } finally { var d = Date.now() - t; if (d > 120) log('LENTO ' + fn + ' ' + d + ' ms'); } };
+          w.__dg = true; window[fn] = w;
+        } catch (eF) {}
+      });
+      try { log('claves en prueba: ' + Object.keys(PRUEBA.data || {}).length); } catch (eK) {}
       var of = HTMLElement.prototype.focus, ob = HTMLElement.prototype.blur;
       HTMLElement.prototype.focus = function() { log('focus() ' + nm(this) + ' via ' + st()); return of.apply(this, arguments); };
       HTMLElement.prototype.blur = function() { log('blur() ' + nm(this) + ' via ' + st()); return ob.apply(this, arguments); };
