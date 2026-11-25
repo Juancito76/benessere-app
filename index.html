@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-25-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-25-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -13672,6 +13672,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           renderClientList();
           try { attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e) {}
           try { alertsScan(false); } catch (e4) {}
+          try { expdAutoSchedule(); } catch (e6) {}
         } else {
           if (j && j.error === 'pin') { try { localStorage.removeItem(COACH_PIN_KEY); } catch (e) {} }
           showClientLogin(clientsErrorText(j && j.error));
@@ -13684,7 +13685,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var pinAtStart = COACH.pin;
       postJson({ a: 'listar', pin: pinAtStart }).then(function(j) {
         if (!COACH || COACH.pin !== pinAtStart) return;   // cerró sesión o cambió de coach mientras tanto
-        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { alertsScan(true); } catch (e5) {} try { ASIST_MANUAL = true; ASIST_DONE = ''; attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e2) {} }
+        if (j && j.ok) { clientRows = j.rutinas || []; renderClientList(); try { alertsScan(true); } catch (e5) {} try { expdAutoSchedule(); } catch (e7) {} try { ASIST_MANUAL = true; ASIST_DONE = ''; attLoad(); attFromServer(function() { try { renderClientList(); } catch (e) {} try { asistAutoPush(); } catch (e3) {} }); } catch (e2) {} }
         else { var s2 = document.getElementById('cl_status'); if (s2) s2.innerText = clientsErrorText(j && j.error); }
       }).catch(function(e) { if (!COACH || COACH.pin !== pinAtStart) return; var s3 = document.getElementById('cl_status'); if (s3) s3.innerText = clientsErrorText(e && e.message); });
     }
@@ -17714,8 +17715,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ================= EXPEDIENTES PARA GEMINI (un Google Doc por cliente, en Drive) =================
     // Gemini solo LEE estos Docs para armar la renovación (ficha, mediciones, plan vigente, planes anteriores, asistencia y marcas). Aquí se arman y el script los guarda en Drive.
-    var EXPD = { busy: false };
-    function expdSet(msg, err) { var st = document.getElementById('cl_status'); if (st) { st.innerText = msg || ''; st.style.color = err ? '#ff9a9a' : 'var(--muted)'; } }
+    var EXPD = { busy: false, auto: false };
+    var EXPD_SIG_KEY = 'benessere_expd_sigs';
+    function expdSigs() { try { return JSON.parse(localStorage.getItem(EXPD_SIG_KEY) || '{}') || {}; } catch (e) { return {}; } }
+    function expdSigSave(o) { try { localStorage.setItem(EXPD_SIG_KEY, JSON.stringify(o)); } catch (e) {} }
+    function expdWeek() { var d = new Date(); var t = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); return String(Math.floor(t / 604800000)); }
+    // firma del cliente: cambia cuando hay rutina nueva, ficha nueva o pasa una semana (asistencia y marcas)
+    function expdSig(nm, fRow) { var r = expdRows(nm)[0]; return (r ? r.id + '|' + (r.f || '') : '') + '|' + (fRow ? (fRow.f || '') + '|' + String(fRow.p || '').length : '') + '|' + expdWeek(); }
+    var expdAutoTimer = null;
+    function expdAutoSchedule() {   // con la pestaña de clientes abierta, el administrador mantiene los expedientes al día solo
+      if (!COACH || !COACH.todos) return;
+      clearTimeout(expdAutoTimer);
+      expdAutoTimer = setTimeout(function() { try { expdRun(null, 0, true); } catch (e) {} }, 5000);
+    }
+    function expdSet(msg, err) { var st = document.getElementById(EXPD.auto ? 'cl_expd' : 'cl_status'); if (st) { st.innerText = msg || ''; st.style.color = err ? '#ff9a9a' : 'var(--muted)'; } }
     function expdNoVideo(t) { return String(t).replace(/\s*\|?\s*Video(?: alt\w*)?:\s*\S+/gi, ''); }
     function expdDayNames(days) {
       var out = [];
@@ -17808,11 +17821,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
     }
     // names: lista de nombres a actualizar (si no se da: todos los clientes activos); limit: máximo de clientes (para probar)
-    function expdRun(names, limit) {
+    function expdRun(names, limit, auto) {
       if (!COACH || EXPD.busy) return;
       var pin = vrepPin();
-      if (!COACH.todos) { expdSet('Solo el administrador puede generar los expedientes.', true); return; }
-      EXPD.busy = true; expdSet('⏳ Preparando expedientes…');
+      if (!COACH.todos) { if (!auto) expdSet('Solo el administrador puede generar los expedientes.', true); return; }
+      if (auto && !document.getElementById('cl_expd')) { var cs = document.getElementById('cl_status'); if (cs && cs.parentNode) { var ne = document.createElement('div'); ne.id = 'cl_expd'; ne.style.cssText = 'font-size:0.68rem; color:var(--muted); margin:-6px 0 10px;'; cs.parentNode.insertBefore(ne, cs.nextSibling); } }
+      EXPD.auto = !!auto; var pinAtStart = COACH.pin, sigs = expdSigs();
+      EXPD.busy = true; if (!auto) expdSet('⏳ Preparando expedientes…');
       var ok = 0, fail = [], todo = [];
       postJson({ a: 'fichas', pin: pin }, 30000).then(function(j) {
         var fl = (j && j.ok) ? (j.fichas || []) : [];
@@ -17830,15 +17845,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (names && names.map(normName).indexOf(k) < 0) return;
           seenN[k] = 1; todo.push(r.atleta);
         });
+        if (auto) todo = todo.filter(function(n) { return sigs[normName(n)] !== expdSig(n, findF(n)); });
         if (limit) todo = todo.slice(0, limit);
         var i = 0;
         function next() {
           if (i >= todo.length) return Promise.resolve();
+          if (!COACH || COACH.pin !== pinAtStart) return Promise.resolve();
           var nm = todo[i++];
           expdSet('⏳ Expediente ' + i + ' de ' + todo.length + ': ' + nm + '…');
           return expdBuild(nm, expdRows(nm), findF(nm), pin).then(function(txt) {
             return postJson({ a: 'expediente_guardar', pin: pin, n: nm, t: txt }, 60000).then(function(jj) {
-              if (jj && jj.ok) ok++;
+              if (jj && jj.ok) { ok++; sigs[normName(nm)] = expdSig(nm, findF(nm)); expdSigSave(sigs); }
               else { fail.push(nm + (jj && jj.error ? ' (' + jj.error + ')' : '')); if (jj && (jj.error === 'clave' || jj.error === 'servidor')) throw new Error('script'); }
             });
           }).catch(function(e) { if (e && e.message === 'script') throw e; fail.push(nm + ' (' + ((e && e.message === 'off') ? 'desconectado' : 'no se pudo leer') + ')'); }).then(next);
@@ -17846,9 +17863,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return next();
       }).then(function() {
         EXPD.busy = false;
+        if (auto) { expdSet(fail.length ? '📁 Expedientes: ' + ok + ' al día, fallaron ' + fail.length + '.' : (ok ? '📁 Expedientes al día (' + ok + ' actualizados).' : ''), !!fail.length); EXPD.auto = false; return; }
         expdSet((ok ? '✅ ' + ok + ' expediente(s) listos en Drive → «Expedientes de clientes».' : 'No se guardó ningún expediente.') + (fail.length ? ' ⚠️ Fallaron: ' + fail.join(', ') + '.' : ''), !ok);
       }).catch(function(e) {
         EXPD.busy = false;
+        if (auto) { EXPD.auto = false; return; }
         expdSet('⚠️ ' + ((e && e.message === 'script') ? 'Falta publicar la versión 10 del script de Google (la de los expedientes).' : 'No se pudo conectar.') + (ok ? ' Ya quedaron ' + ok + '.' : ''), true);
       });
     }
