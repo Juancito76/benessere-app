@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -13263,6 +13263,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '<div style="font-size:0.72rem; color:#ffd166; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escHtml(x.det) + (ago ? ' · ' + ago : '') + srcTag + '</div></div>' +
           '<button type="button" onclick="alertsWa(' + gi + ')" title="Recordar por WhatsApp" aria-label="Recordar por WhatsApp" style="flex:none; background:#25d366; border:none; color:#04251c; border-radius:8px; padding:8px 10px; font-size:0.9rem; font-weight:800; cursor:pointer;">💬</button>' +
           (x.id ? '<button type="button" onclick="alertsGo(' + gi + ')" style="flex:none; background:#4d8bff; border:none; color:#fff; border-radius:8px; padding:8px 11px; font-size:0.78rem; font-weight:800; cursor:pointer; white-space:nowrap;">' + (x.tipo === 'pesaje' ? '📋 Medir' : 'Abrir') + '</button>' : '') +
+          '<button type="button" onclick="alertsDisconnect(' + gi + ')" title="Desconectar a este cliente (ya no está en el gym)" aria-label="Desconectar cliente" style="flex:none; background:transparent; border:1px solid #8d99ae; color:#cfd6e0; border-radius:8px; padding:8px 8px; font-size:0.8rem; line-height:1; cursor:pointer;">🚫</button>' +
           '<button type="button" onclick="alertsTaskDone(' + gi + ')" title="' + (x.tipo === 'pesaje' ? 'Ya se pesó' : 'Ya está su rutina actualizada') + '" aria-label="' + (x.tipo === 'pesaje' ? 'Ya se pesó' : 'Ya está su rutina actualizada') + '" style="flex:none; background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:8px; padding:8px 11px; font-size:0.78rem; font-weight:800; cursor:pointer; white-space:nowrap;">✔ ' + (x.tipo === 'pesaje' ? 'Ya se pesó' : 'Listo') + '</button></div>';
       }
       function sect(title, list) {
@@ -13291,6 +13292,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener'); } catch (e) {}
     }
     // «✔»: cierra el aviso, venga de la app del cliente o del constructor (y sus repetidos)
+    // 🚫 en los avisos de pesaje y fin de ciclo: desconecta al cliente desde ahí (pide confirmación; luego desaparece de todos los avisos)
+    function alertsDisconnect(gi) {
+      var x = ALERTS_TASKS[gi]; if (!x) return;
+      coachToggleClientOff(x.name);
+    }
     function alertsTaskDone(gi) {
       var x = ALERTS_TASKS[gi]; if (!x) return;
       alertsCloseFor(x.tipo, x.name, x.id);
