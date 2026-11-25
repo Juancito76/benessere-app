@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-25-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-25-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -17898,9 +17898,60 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ESP.loading = true; espSet('Cargando planes en espera…');
       return postJson({ a: 'espera_lista', pin: pin }, 30000).then(function(j) {
         ESP.loading = false;
-        if (j && j.ok) { ESP.list = j.planes || []; ESP.listAt = Date.now(); espSet(ESP.list.length ? '' : 'No hay planes en espera.'); espRender(); }
+        if (j && j.ok) { ESP.list = j.planes || []; ESP.listAt = Date.now(); espSet(ESP.list.length ? '' : 'No hay planes en espera.'); espRender(); try { espDrainFichas(); } catch (eF) {} }
         else espSet('⚠️ ' + espErr(j), 'err');
       }).catch(function() { ESP.loading = false; espSet('⚠️ Sin conexión.', 'err'); });
+    }
+
+    // Fichas que deja Claude en Drive (archivos «FICHA - Nombre» de la carpeta «Planes en espera»): llegan a la cola y aquí se aplican solas a la ficha del cliente
+    var ESP_FDRAIN = false;
+    function espApplyFicha(pin, fileName, text) {
+      var P = fichaParseText(text), name = String(P.nombre || fileName || '').trim();
+      if (!name || (!P.entries.length && !Object.keys(P.perfil).length)) return Promise.resolve(false);
+      return Promise.resolve(fichaLoadList(true)).then(function() {
+        var f = fichaFind(name), who = fichaWho();
+        function entriesInto(log, notes, au, dcs) {
+          log = JSON.parse(JSON.stringify(log || [])); notes = notes || {}; au = au || {}; dcs = (dcs || []).slice();
+          P.entries.forEach(function(e) {
+            var i = indexOfDate(log, e.d);
+            if (i >= 0) { Object.keys(e.v).forEach(function(k) { log[i].v[k] = e.v[k]; }); } else log.push({ d: e.d, v: e.v });
+            if (e.n) notes[e.d] = e.n;
+            au[e.d] = e.by || fichaStampName(au[e.d], who);
+            dcs = dcs.filter(function(x) { return x !== e.d; });
+          });
+          return { log: normalizeMeasureLog(log), notes: notes, au: au, dcs: dcs };
+        }
+        if (!f) {
+          var r0 = entriesInto([], {}, {}, []), perfil0 = Object.assign({ nombre: name }, P.perfil);
+          return postJson({ a: 'ficha_guardar', pin: pin, n: name, p: fichaEncode(fichaBuild(perfil0, r0.log, r0.notes, {}, r0.au, [], [])), r: fichaSummary(perfil0, r0.log) }, 30000).then(function(j) { return !!(j && j.ok); });
+        }
+        return postJson({ a: 'ficha', pin: pin, c: f.c }, 30000).then(function(j) {
+          var d = (j && j.ok) ? fichaDecode(j.p) : null; if (!d) return false;
+          var r = entriesInto(d.log, Object.assign({}, d.notes), Object.assign({}, d.authors), d.dc), perfil = Object.assign({}, d.p);
+          Object.keys(P.perfil).forEach(function(k) { if (P.perfil[k]) perfil[k] = P.perfil[k]; });
+          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(perfil, r.log, r.notes, d.texts, r.au, r.dcs, (d.hist || []).concat(fichaDiff(d.log, r.log, who)).slice(-300))), rev: j.rev, r: fichaSummary(perfil, r.log) }, 30000).then(function(j2) { return !!(j2 && j2.ok); });
+        });
+      }).catch(function() { return false; });
+    }
+    function espDrainFichas() {
+      if (ESP_FDRAIN || !COACH || !COACH.todos) return;
+      var pin = fichaPin(); if (!pin) return;
+      var items = (ESP.list || []).filter(function(x) { return /^ficha\s*-\s*/i.test(x.n); });
+      if (!items.length) return;
+      ESP_FDRAIN = true;
+      var i = 0, ok = 0;
+      function nxt() {
+        if (i >= items.length) return Promise.resolve();
+        var it = items[i++];
+        return postJson({ a: 'espera_ver', pin: pin, c: it.c }, 30000).then(function(j) {
+          var text = (j && j.ok) ? espDec(j.p) : ''; if (!text) return;
+          return espApplyFicha(pin, it.n.replace(/^ficha\s*-\s*/i, ''), text).then(function(done) {
+            if (!done) return;
+            return postJson({ a: 'espera_listo', pin: pin, c: it.c, nota: 'ficha aplicada' }, 30000).then(function(r) { if (r && r.ok) { ok++; ESP.list = (ESP.list || []).filter(function(x) { return x.c !== it.c; }); } });
+          });
+        }).catch(function() {}).then(nxt);
+      }
+      nxt().then(function() { ESP_FDRAIN = false; if (ok) { FICHA.listAt = 0; try { espRender(); } catch (e) {} showToastTop('🗂️ ' + ok + ' ficha(s) actualizada(s) desde Drive'); } }, function() { ESP_FDRAIN = false; });
     }
     function espRender() {
       var n = ESP.list ? ESP.list.length : 0;
