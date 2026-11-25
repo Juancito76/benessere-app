@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-23-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -14160,7 +14160,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div><label>' + (isCirc ? 'Reps / tiempo' : 'Reps o tiempo') + '</label><input type="text" id="edx_' + p + '_' + sIdx + '_reps" value="' + edxAttr(sub.reps) + '"></div></div>';
       h += '<label>Notas</label><input type="text" id="edx_' + p + '_' + sIdx + '_notes" value="' + edxAttr(sub.notes) + '">';
       h += '<label>Video (enlace de YouTube, opcional)</label><input type="text" id="edx_' + p + '_' + sIdx + '_video" value="' + edxAttr(sub.video) + '">' +
-        '<div style="margin-top:6px;"><button type="button" class="btn-pick-ex" onclick="edxTestVideo(\'edx_' + p + '_' + sIdx + '_video\')" title="Ver este video en la ventana flotante para confirmar que se reproduce">▶ Probar</button></div>';
+        '<div style="margin-top:6px;"><button type="button" class="btn-pick-ex" onclick="edxTestVideo(\'edx_' + p + '_' + sIdx + '_video\')" title="Ver este video en la ventana flotante para confirmar que se reproduce">▶ Probar</button> ' +
+        '<button type="button" class="btn-pick-ex" onclick="edxOpenYouTube(\'edx_' + p + '_' + sIdx + '_name\')" title="Buscar este ejercicio en YouTube para copiar el link del video de reemplazo">▶️ YouTube</button></div>';
       h += '<div style="display:flex; gap:14px; margin-top:8px; font-size:0.78rem;">' +
         '<label style="margin:0; text-transform:none; font-size:0.78rem; color:#ddd;"><input type="checkbox" id="edx_' + p + '_' + sIdx + '_uni"' + (subIsUni(sub) ? ' checked' : '') + '> Unilateral</label>' +
         '<label style="margin:0; text-transform:none; font-size:0.78rem; color:#ddd;"><input type="checkbox" id="edx_' + p + '_' + sIdx + '_peso"' + (subUsesWeight(sub) ? ' checked' : '') + '> Usa peso</label></div></div>';
@@ -14173,6 +14174,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!/^https?:\/\//i.test(val)) { await appAlert('Ese texto no parece un link válido (debe empezar con http:// o https://).'); return; }
       if (demoFloatOpen(val, true, false, '', true)) return;
       window.open(val, '_blank', 'noopener');
+    }
+    // «▶️ YouTube» en el editor de ejercicio: abre YouTube con el nombre escrito en «Nombre» ya buscado, para copiar el link del video de reemplazo
+    function edxOpenYouTube(nameId) {
+      var el = document.getElementById(nameId), nm = el ? String(el.value || '').trim() : '';
+      var url = nm ? 'https://www.youtube.com/results?search_query=' + encodeURIComponent(nm + ' ejercicio') : 'https://www.youtube.com/';
+      window.open(url, '_blank', 'noopener');
     }
     function edxRestHtml(p, item) {
       if (item.type === 'circuito') return '';
