@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-p';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5297,6 +5297,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ];
       // Rutina en espera (posición 12): la próxima rutina del cliente, con su propia fecha de inicio. Sin ella, el enlace queda igual que siempre.
       if (Array.isArray(full.phases) && full.phases.length) out[13] = full.phases.map(function(x) { return [x[0], x[1] || 0, x[2]]; });   // fases del ciclo (posición 13)
+      if (full.pes && full.pes.d && full.pes.r) out[15] = [full.pes.d, full.pes.r];   // día en que a este cliente le toca ver el aviso de pesaje (posición 15)
       if (Array.isArray(full.msgs) && full.msgs.length) out[14] = full.msgs.map(function(m) { return [m.id, m.t, m.text, m.coach || '']; });   // mensajes directos del coach (posición 14)
       if (full.next && full.next.routineDays) {
         var nx = {}; Object.keys(full.next).forEach(function(k) { nx[k] = full.next[k]; }); nx.next = null;   // no se anidan más rutinas
@@ -5341,6 +5342,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         coachPhone: c[10] || '',
         phases: Array.isArray(c[13]) ? c[13].filter(Array.isArray).map(function(x) { return [parseInt(x[0], 10) || 1, parseInt(x[1], 10) || 0, String(x[2] || '')]; }) : [],
         next: nxState,
+        pes: (Array.isArray(c[15]) && isIsoDate(String(c[15][0])) && isIsoDate(String(c[15][1]))) ? { d: String(c[15][0]), r: String(c[15][1]) } : null,
         msgs: Array.isArray(c[14]) ? c[14].filter(Array.isArray).map(function(x) { return { id: String(x[0] || ''), t: String(x[1] || ''), text: String(x[2] || ''), coach: String(x[3] || '') }; }) : [],
         measureLog: normalizeMeasureLog((Array.isArray(c[11]) ? c[11] : []).filter(Array.isArray).map(function(r) {
           var v = {};
@@ -6416,7 +6418,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var total = parseInt(state.durationWeeks, 10) || 4, cur = Math.floor(diff / 7) + 1, R = remLoad(), coachV = isCoachView(), name = state.clientName || 'el cliente';
       var k = Math.floor(diff / 28);   // 1 = ya van 4 semanas, 2 = 8 semanas…
       var msgs = [];
-      if (k >= 1 && !R['pes' + k] && !(R.snz && R.snz > Date.now())) {
+      // El aviso al cliente sale el mismo día que le toca en la lista de la coach (que reparte máx. 5 por día). Si la coach aún no le asignó día, espera 7 días y sale igual.
+      var pesOk = coachV || (function() { var due = addDaysIso(state.startDate, 28 * k), pp = state.pes; return (pp && pp.d === due) ? todayIso() >= pp.r : diff >= 28 * k + 7; })();
+      if (k >= 1 && pesOk && !R['pes' + k] && !(R.snz && R.snz > Date.now())) {
         if (coachV) msgs.push('⚖️ Toca pesaje de ' + name + ' (van ' + (k * 4) + ' semanas).');
         else remPesoModal(k);
         if (!coachV && !R['sp' + k]) { R['sp' + k] = 1; remSave(R); remQueue('pesaje', 'Pesaje cada 4 semanas (semana ' + (k * 4) + ')'); }
@@ -13292,16 +13296,37 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Pesajes repartidos: como mucho 5 pesajes NUEVOS por día. Cada aviso guarda el día en que le tocó salir; los más atrasados salen primero
     // y el resto espera al día siguiente. Los que ya salieron siguen visibles hasta que se atienden.
-    var PES_CAP = 5, PES_SHOWN_KEY = 'benessere_pes_shown';
+    var PES_CAP = 5, PES_SHOWN_KEY = 'benessere_pes_shown', PES_SENT_KEY = 'benessere_pes_sent';
+    var PES_Q = [], PES_QBUSY = false, PES_QKEYS = {};
+    // Escribe en la rutina del cliente el día en que le toca el aviso de pesaje (una a una, para no saturar la hoja)
+    function pesQueueSet(id, due, rel, key) {
+      if (PES_QKEYS[key + rel] || !COACH) return; PES_QKEYS[key + rel] = 1;
+      PES_Q.push({ id: id, due: due, rel: rel, key: key }); pesQueueRun();
+    }
+    function pesQueueRun() {
+      if (PES_QBUSY || !PES_Q.length) return; PES_QBUSY = true;
+      var it = PES_Q.shift();
+      fetchRoutine(it.id).then(function(j) {
+        var sp = (j && j.ok && j.p) ? payloadSplit(j.p) : null; if (!sp) throw new Error('lectura');
+        for (var i = 0; i < 15; i++) if (sp.arr[i] === undefined) sp.arr[i] = null;
+        sp.arr[15] = [it.due, it.rel];
+        return postJson({ a: 'actualizar', id: it.id, p: payloadJoin(sp), pin: COACH.pin });
+      }).then(function(r) {
+        if (r && r.ok) { var sent = {}; try { sent = JSON.parse(localStorage.getItem(PES_SENT_KEY) || '{}') || {}; } catch (e) {} sent[it.key] = it.rel; try { localStorage.setItem(PES_SENT_KEY, JSON.stringify(sent)); } catch (e) {} }
+      }).catch(function() { delete PES_QKEYS[it.key + it.rel]; }).then(function() { PES_QBUSY = false; setTimeout(pesQueueRun, 400); });
+    }
     function pesajeCap(tasks) {
       var m = {}; try { m = JSON.parse(localStorage.getItem(PES_SHOWN_KEY) || '{}') || {}; } catch (e) {}
       var today = todayIso(), n = 0, changed = false, keep = [];
       Object.keys(m).forEach(function(k) { if (m[k] === today) n++; });
       tasks.sort(function(x, y) { return String(x.d).localeCompare(String(y.d)) || String(x.name).localeCompare(String(y.name)); });
+      var sent = {}; try { sent = JSON.parse(localStorage.getItem(PES_SENT_KEY) || '{}') || {}; } catch (e) {}
       tasks.forEach(function(x) {
         var k = normName(x.name) + '|' + String(x.d || '').slice(0, 10);
-        if (m[k]) { keep.push(x); return; }
-        if (n < PES_CAP) { m[k] = today; n++; changed = true; keep.push(x); }
+        if (m[k]) { keep.push(x); }
+        else if (n < PES_CAP) { m[k] = today; n++; changed = true; keep.push(x); }
+        else return;
+        if (x.src === 'al' && x.id && isIsoDate(x.d) && sent[k] !== m[k]) pesQueueSet(x.id, x.d, m[k], k);   // el cliente también se entera de su día
       });
       if (changed) {
         var cut = addDaysIso(today, -120); Object.keys(m).forEach(function(k) { if (m[k] < cut) delete m[k]; });
