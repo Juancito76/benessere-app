@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-25-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-25-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -17438,12 +17438,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }).catch(function() { FICHA.saving = false; fichaSet('⚠️ Sin conexión: la ficha se guarda cuando vuelva la señal (toca «Guardar ahora»).', 'err'); return false; });
     }
     // Si el cliente tiene enlace de rutina, trae a esa rutina las mediciones de la ficha (por fecha)
-    function fichaSyncRoutine(id, pin) {
+    function fichaSyncRoutine(id, pin, logOpt) {
       return fetchRoutine(id).then(function(jt) {
         var st = (jt && jt.ok && jt.p) ? decodePayload('q', jt.p) : null;
         if (!st) throw new Error('rutina');
         if (st.coachMsgTitle === '__CLASES__') return 'clases';
-        var cur = coachMeasureBase(st), merged = fichaUnion(normalizeMeasureLog(measureLog), cur);
+        var cur = coachMeasureBase(st), merged = fichaUnion(normalizeMeasureLog(logOpt || measureLog), cur);
         if (JSON.stringify(merged) === JSON.stringify(cur)) return 'igual';
         st.measureLog = merged;
         var p = encodePayload(buildUltraCompactState(st));
@@ -17905,6 +17905,20 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // Fichas que deja Claude en Drive (archivos «FICHA - Nombre» de la carpeta «Planes en espera»): llegan a la cola y aquí se aplican solas a la ficha del cliente
     var ESP_FDRAIN = false;
+    // Tras aplicar una ficha desde Drive, las mediciones nuevas pasan también a TODAS las rutinas (enlaces) de ese cliente, para que su perfil quede al día sin vincular a mano
+    function espSyncClientRoutines(pin, name, log) {
+      return lastLinkFor(name, pin).then(function() {
+        var n = normName(name), ids = [], nombres = {};
+        (clientRows || []).forEach(function(r) { if (r && r.id && normName(r.atleta) === n) ids.push(r.id); });
+        if (!ids.length) {   // nombre parcial: solo si todos los enlaces parecidos son de la misma persona
+          (clientRows || []).forEach(function(r) { if (r && r.id && nameLike(r.atleta, name)) { nombres[normName(r.atleta)] = 1; ids.push(r.id); } });
+          if (Object.keys(nombres).length !== 1) ids = [];
+        }
+        var i = 0;
+        function nxt() { if (i >= ids.length) return Promise.resolve(); return fichaSyncRoutine(ids[i++], pin, log).catch(function() {}).then(nxt); }
+        return nxt();
+      }).catch(function() {});
+    }
     function espApplyFicha(pin, fileName, text) {
       var P = fichaParseText(text), name = String(P.nombre || fileName || '').trim();
       if (!name || (!P.entries.length && !Object.keys(P.perfil).length)) return Promise.resolve(false);
@@ -17923,13 +17937,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         }
         if (!f) {
           var r0 = entriesInto([], {}, {}, []), perfil0 = Object.assign({ nombre: name }, P.perfil);
-          return postJson({ a: 'ficha_guardar', pin: pin, n: name, p: fichaEncode(fichaBuild(perfil0, r0.log, r0.notes, {}, r0.au, [], [])), r: fichaSummary(perfil0, r0.log) }, 30000).then(function(j) { return !!(j && j.ok); });
+          return postJson({ a: 'ficha_guardar', pin: pin, n: name, p: fichaEncode(fichaBuild(perfil0, r0.log, r0.notes, {}, r0.au, [], [])), r: fichaSummary(perfil0, r0.log) }, 30000).then(function(j) { if (!(j && j.ok)) return false; return espSyncClientRoutines(pin, name, r0.log).then(function() { return true; }); });
         }
         return postJson({ a: 'ficha', pin: pin, c: f.c }, 30000).then(function(j) {
           var d = (j && j.ok) ? fichaDecode(j.p) : null; if (!d) return false;
           var r = entriesInto(d.log, Object.assign({}, d.notes), Object.assign({}, d.authors), d.dc), perfil = Object.assign({}, d.p);
           Object.keys(P.perfil).forEach(function(k) { if (P.perfil[k]) perfil[k] = P.perfil[k]; });
-          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(perfil, r.log, r.notes, d.texts, r.au, r.dcs, (d.hist || []).concat(fichaDiff(d.log, r.log, who)).slice(-300))), rev: j.rev, r: fichaSummary(perfil, r.log) }, 30000).then(function(j2) { return !!(j2 && j2.ok); });
+          return postJson({ a: 'ficha_guardar', pin: pin, c: f.c, n: f.n, p: fichaEncode(fichaBuild(perfil, r.log, r.notes, d.texts, r.au, r.dcs, (d.hist || []).concat(fichaDiff(d.log, r.log, who)).slice(-300))), rev: j.rev, r: fichaSummary(perfil, r.log) }, 30000).then(function(j2) { if (!(j2 && j2.ok)) return false; return espSyncClientRoutines(pin, name, r.log).then(function() { return true; }); });
         });
       }).catch(function() { return false; });
     }
