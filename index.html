@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -12922,8 +12922,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function vrepInboxRefresh() {
       var pin = vrepPin(); if (!pin) return;
       postJson({ a: 'reportes', pin: pin }).then(function(j) {
-        if (j && j.ok && Array.isArray(j.reportes)) { VREP_INBOX = j.reportes; vrepBadge(); vrepInboxRender(); }
+        if (j && j.ok && Array.isArray(j.reportes)) {
+          // Un aviso que ya resolviste no vuelve a salir: si la hoja todavía lo trae (el «ok» no llegó), se filtra y se reenvía el «ok»
+          var rs = vrepResolvedLoad(), keepR = [];
+          j.reportes.forEach(function(r) {
+            if (r && r.t && rs[String(r.t)]) { postJson({ a: 'reporte_ok', pin: pin, t: r.t }).catch(function() {}); }
+            else keepR.push(r);
+          });
+          VREP_INBOX = keepR; vrepBadge(); vrepInboxRender();
+        }
       }).catch(function() {});
+    }
+    var VREP_RES_KEY = 'bn_vrep_resolved_v1';
+    function vrepResolvedLoad() { try { var o = JSON.parse(localStorage.getItem(VREP_RES_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+    function vrepResolvedAdd(t) {
+      try {
+        var o = vrepResolvedLoad(); o[String(t)] = Date.now();
+        var ks = Object.keys(o); if (ks.length > 400) { ks.sort(function(a, b) { return o[a] - o[b]; }).slice(0, ks.length - 400).forEach(function(k) { delete o[k]; }); }
+        localStorage.setItem(VREP_RES_KEY, JSON.stringify(o));
+      } catch (e) {}
     }
     // Ítem 30/47: el contador separa lo que ya confirmó un reporte del cliente (vrepGroups + tareas con src:'in', sincronizado por la
     // hoja de Google vía a:'reporte'/'reportes'/'reporte_ok') de lo que el coach calculó solo en este dispositivo y el cliente aún no
@@ -13022,7 +13039,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         else if (tries > 60) { clearInterval(iv); showToastTop('No se pudo abrir esa rutina. Revisa la conexión e inténtalo otra vez.'); }
       }, 500);
     }
-    var EDX_FROM_REP = false;
+    var EDX_FROM_REP = false, EDX_REP = null;
     function vrepEditFound(r) {
       var st = athleteActiveState, want = ytIdStrict(r.url), W = ATH_WEEK, best = null;
       // El mismo video puede estar en varios ejercicios (se reutilizan links). Se elige el que coincide con el aviso:
@@ -13043,6 +13060,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!best) { showToastTop('No encontré ese video en la rutina (quizá ya lo cambiaste). Revisa el ejercicio "' + (r.ej || '') + '".'); return; }
       openEditEx(best.di, best.ii);
       EDX_FROM_REP = true;   // vino desde un aviso de video: al guardar vuelve a «Mis clientes»
+      EDX_REP = r;           // el aviso que se está arreglando: al guardar con éxito se resuelve solo
       setTimeout(function() {
         var inps = document.querySelectorAll('#edx_modal input[id$="_video"]');
         for (var k = 0; k < inps.length; k++) {
@@ -13058,6 +13076,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       idxs.slice().sort(function(a, b) { return b - a; }).forEach(function(i) {
         var r = VREP_INBOX[i]; if (!r) return;
         VREP_INBOX.splice(i, 1);
+        vrepResolvedAdd(r.t);
         postJson({ a: 'reporte_ok', pin: pin, t: r.t }).catch(function() {});
         try { vrepHistAdd(r); } catch (e) {}
       });
@@ -14221,7 +14240,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }
     }
     function openEditEx(di, ii) {
-      EDX_FROM_REP = false;
+      EDX_FROM_REP = false; EDX_REP = null;
       var st = athleteActiveState; if (!st || !isCoachView()) return;
       var d = st.routineDays[di], it = d && d.items[ii]; if (!it) return;
       var W = ATH_WEEK, vd = parseInt(it.vigenciaDesde, 10) || 1, slot = parseInt(it.slot, 10) || (ii + 1);
@@ -14307,8 +14326,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           coachCacheSet(athleteRoutineId, payloadText);
           if (EDX_FROM_REP) {   // arregló un video reportado: de vuelta a «Mis clientes» para seguir con los demás avisos
             EDX_FROM_REP = false;
+            var repDone = false;
+            try {   // el aviso se resuelve solo al guardar el cambio (todos los avisos repetidos del mismo ejercicio)
+              if (EDX_REP) {
+                var rk = vrepDupKey(EDX_REP), ri = [];
+                VREP_INBOX.forEach(function(x, xi) { if (!vrepIsTask(x) && vrepDupKey(x) === rk) ri.push(xi); });
+                if (ri.length) { vrepResolveGroup(ri); repDone = true; }
+              }
+            } catch (e3) {}
+            EDX_REP = null;
             exitClientRoutine();
-            showToastTop('✅ Video cambiado en la rutina de ' + (st.clientName || 'el cliente') + '. Toca «Ya lo arreglé» en el aviso.');
+            showToastTop('✅ Video cambiado en la rutina de ' + (st.clientName || 'el cliente') + (repDone ? '. El aviso ya salió de la lista.' : '. Toca «Ya lo arreglé» en el aviso.'));
             return;
           }
           renderAthleteApp(st);
