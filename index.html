@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-25-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-25-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -17758,7 +17758,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           '- [FICHA] trae los datos personales (frecuencia, lesiones, enfermedades, experiencia, notas del coach) y las notas de cada medición. Respétalos al armar el plan.',
           '- [ATLETA] trae la medición más reciente; los bloques [MEDICION fecha] son las anteriores. Compara siempre la nueva contra la anterior.',
           '- CINTURA: antes de septiembre de 2026 la Cintura 1 se medía bajo el pecho (tórax inferior); desde entonces Cintura 1 es la cintura estrecha y Cintura 2 es justo sobre el ombligo. Para comparar con mediciones viejas usa la Cintura 2.',
-          '- [MENSAJE COACH] es la carta del plan vigente; [DIA n] son los días del plan vigente (ejercicios, series, reps, descansos, líneas Vigencia por semanas). Los videos se omiten a propósito.',
+          '- [MENSAJE COACH] es la carta del plan vigente; [DIA n] son los días del plan vigente (ejercicios, series, reps, descansos, líneas Vigencia por semanas). Cada ejercicio trae su link de video (campo Video) para que lo reutilices en el plan nuevo.',
           '- [ASISTENCIA] y [MARCAS ANTERIORES] muestran cómo ha respondido al plan vigente; [PLANES ANTERIORES] lista los ejercicios de planes previos.',
           '- Para el plan nuevo: no repetir más del 50 % de los ejercicios principales del plan vigente.', '', '=====================================================', '');
         var perfil = (ficha && ficha.p) || {};
@@ -17779,7 +17779,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           if (nl.length) { L.push('', '[NOTAS DE LAS MEDICIONES]'); nl.forEach(function(x) { L.push(x); }); }
         } else L.push('(Sin ficha en la hoja: las mediciones salen solo de lo guardado en el plan.)');
         L.push('');
-        L.push(expdNoVideo(buildExportTextFromState(state, (ficha && ficha.log) || [])).replace(/\s+$/, ''));
+        L.push(buildExportTextFromState(state, (ficha && ficha.log) || []).replace(/\s+$/, ''));
         // Asistencia y marcas (historial de sesiones del cliente)
         var ses = (hist && hist.ok && Array.isArray(hist.sesiones)) ? hist.sesiones.filter(function(x) { return x && !isMetaSess(x); }) : [];
         L.push('', '[ASISTENCIA]');
