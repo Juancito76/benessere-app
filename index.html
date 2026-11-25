@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-25-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -14031,9 +14031,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         { label: '📜 Reportes resueltos', desc: 'Historial de avisos ya atendidos en este dispositivo', fn: function() { vrepHistOpen(); } },
         { label: '🚪 Asistencia', fn: function() { openAttendance(); } },
         { label: '📈 Esta semana', fn: function() { openCoachWeek(); } },
+        { label: '📁 Expedientes: probar con 3', desc: 'Crea en Drive el expediente de 3 clientes para que Gemini los lea (solo administrador)', fn: function() { expdRun(null, 3); }, color: '#4dd0e1', hide: !(COACH && COACH.todos) },
+        { label: '📁 Expedientes: todos', desc: 'Crea o actualiza en Drive el expediente de cada cliente activo para Gemini (solo administrador)', fn: function() { expdRun(); }, color: '#4dd0e1', hide: !(COACH && COACH.todos) },
         { label: '🔄 Actualizar lista', fn: function() { refreshClientList(); }, color: '#8d99ae' },
         { label: 'Cerrar sesión', fn: function() { coachLogout(); }, color: '#aaa' }
-      ]);
+      ].filter(function(it) { return !it.hide; }));
     }
     function clientMenuOpen(k) {
       var c = CLMENU[k]; if (!c) return;
@@ -14041,6 +14043,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         { label: '🔎 Visor', desc: 'Link del cliente, todas sus rutinas, semana por semana e historial (solo ver)', fn: function() { cvOpen(c.key); } },
         { label: '📋 Datos y asistencia', desc: 'Ficha, medidas, asistencia y datos de contacto', fn: function() { coachOpenDatos(c.id); }, color: '#cfd6e0' },
         { label: '📤 Exportar a texto plano', desc: 'Todo lo guardado como texto para corregirlo y volver a subirlo', fn: function() { clientExportText(c.id, c.name); }, color: '#4dd0e1' },
+        { label: '📁 Actualizar su expediente', desc: 'Crea o actualiza en Drive el expediente de este cliente para que Gemini lo lea (solo administrador)', fn: function() { expdRun([c.name]); }, color: '#4dd0e1', hide: !(COACH && COACH.todos) },
         { label: '🧭 Habilitar recorrido', desc: 'Le vuelve a mostrar las ventanitas que explican cada botón', fn: function() { coachHabilitarRecorrido(c.name); }, color: '#ffd60a' },
         { label: '✏️ Corregir nombre', desc: 'Cambia el nombre con el que aparece en todos sus enlaces (no cambia la rutina ni el link)', fn: function() { coachRenameClient(c.name); }, color: '#cfd6e0' },
         { label: '🗑 Borrar sus enlaces', desc: 'Solo administrador. Quita este cliente de la lista; sus links dejan de funcionar. No se puede deshacer', fn: function() { coachDeleteClient(c.name); }, color: '#ff6b6b', hide: !(COACH && COACH.todos) },
@@ -17708,6 +17711,147 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       copyTextSilently(t); showToastTop('📋 Texto de la ficha copiado (' + log.length + ' fechas)');
     }
 
+
+    // ================= EXPEDIENTES PARA GEMINI (un Google Doc por cliente, en Drive) =================
+    // Gemini solo LEE estos Docs para armar la renovación (ficha, mediciones, plan vigente, planes anteriores, asistencia y marcas). Aquí se arman y el script los guarda en Drive.
+    var EXPD = { busy: false };
+    function expdSet(msg, err) { var st = document.getElementById('cl_status'); if (st) { st.innerText = msg || ''; st.style.color = err ? '#ff9a9a' : 'var(--muted)'; } }
+    function expdNoVideo(t) { return String(t).replace(/\s*\|?\s*Video(?: alt\w*)?:\s*\S+/gi, ''); }
+    function expdDayNames(days) {
+      var out = [];
+      (days || []).forEach(function(d) {
+        var names = [];
+        (d.items || []).forEach(function(it) { (it.sub || []).forEach(function(sb) { if (sb && sb.name) names.push(String(sb.name).trim()); }); });
+        if (names.length) out.push('  ' + (d.title || 'Día') + ': ' + names.join(' / '));
+      });
+      return out;
+    }
+    function expdRows(name) {   // enlaces del cliente, el más reciente primero (la lista ya viene así)
+      var k = normName(name), rows = [];
+      (clientRows || []).forEach(function(r) { if (r && r.id && normName(r.atleta) === k) rows.push(r); });
+      return rows;
+    }
+    function expdBuild(name, rows, fRow, pin) {
+      var state = null, ficha = null, hist = null;
+      var pFicha = fRow ? postJson({ a: 'ficha', pin: pin, c: fRow.c }, 30000).then(function(j) { if (j && j.ok && j.p) ficha = fichaDecode(j.p); }).catch(function() {}) : Promise.resolve();
+      var pRut = fetchRoutine(rows[0].id).then(function(j) {
+        if (!j || !j.ok || !j.p) throw new Error('lectura');
+        if (String(j.p).indexOf(OFF_PREFIX) === 0) throw new Error('off');
+        state = decodePayload('q', j.p); if (!state) throw new Error('lectura');
+        if (pendDue(state)) state = pendPromote(state);
+      });
+      var pHist = fetchJson(SHARE_SCRIPT_URL + '?a=historial&id=' + encodeURIComponent(rows[0].id), { redirect: 'follow' }, 25000).then(function(h) { hist = h; }).catch(function() {});
+      var prev = [];
+      var pPrev = Promise.all(rows.slice(1, 3).map(function(r) {
+        return fetchRoutine(r.id).then(function(j) {
+          if (!j || !j.ok || !j.p) return;
+          var s = decodePayload('q', String(j.p).replace(/^OFF_/, '')); if (!s) return;
+          var names = expdDayNames(s.routineDays);
+          if (names.length) prev.push('Plan guardado el ' + (r.f || '?') + ':\n' + names.join('\n'));
+        }).catch(function() {});
+      }));
+      return Promise.all([pFicha, pRut, pHist, pPrev]).then(function() {
+        var L = [];
+        L.push('EXPEDIENTE DE CLIENTE - Benessere Gym', 'Cliente: ' + name, 'Generado: ' + todayIso() + ' (automático desde el constructor)', 'Fuente: constructor de rutinas (ficha, mediciones, plan vigente, planes anteriores, asistencia y marcas)', '');
+        L.push('CÓMO LEER ESTE EXPEDIENTE (para Gemini):',
+          '- Es SOLO LECTURA: sirve de base para armar el plan nuevo. No se modifica; lo actualiza el constructor.',
+          '- [FICHA] trae los datos personales (frecuencia, lesiones, enfermedades, experiencia, notas del coach) y las notas de cada medición. Respétalos al armar el plan.',
+          '- [ATLETA] trae la medición más reciente; los bloques [MEDICION fecha] son las anteriores. Compara siempre la nueva contra la anterior.',
+          '- CINTURA: antes de septiembre de 2026 la Cintura 1 se medía bajo el pecho (tórax inferior); desde entonces Cintura 1 es la cintura estrecha y Cintura 2 es justo sobre el ombligo. Para comparar con mediciones viejas usa la Cintura 2.',
+          '- [MENSAJE COACH] es la carta del plan vigente; [DIA n] son los días del plan vigente (ejercicios, series, reps, descansos, líneas Vigencia por semanas). Los videos se omiten a propósito.',
+          '- [ASISTENCIA] y [MARCAS ANTERIORES] muestran cómo ha respondido al plan vigente; [PLANES ANTERIORES] lista los ejercicios de planes previos.',
+          '- Para el plan nuevo: no repetir más del 50 % de los ejercicios principales del plan vigente.', '', '=====================================================', '');
+        var perfil = (ficha && ficha.p) || {};
+        L.push('[FICHA]');
+        L.push('Nombre: ' + expClean(perfil.nombre || name));
+        [['Edad', 'edad'], ['Estatura', 'estatura', ' cm'], ['Objetivo', 'objetivo'], ['Frecuencia / tiempo por sesión', 'frecuencia'], ['Lesiones', 'lesiones'], ['Enfermedades', 'enfermedades'], ['Experiencia previa', 'experiencia'], ['Notas del coach', 'notas']].forEach(function(r) {
+          if (perfil[r[1]]) L.push(r[0] + ': ' + expClean(perfil[r[1]]) + (r[2] && /^\d+([.,]\d+)?$/.test(String(perfil[r[1]])) ? r[2] : ''));
+        });
+        if (ficha) {
+          var nl = [];
+          (ficha.log || []).forEach(function(e) {
+            var bits = [];
+            if (ficha.authors && ficha.authors[e.d]) bits.push('tomada por ' + expClean(ficha.authors[e.d]));
+            if (ficha.notes && ficha.notes[e.d]) bits.push('notas: ' + expClean(ficha.notes[e.d]));
+            if (ficha.texts && ficha.texts[e.d]) { try { Object.keys(ficha.texts[e.d]).forEach(function(k) { if (ficha.texts[e.d][k]) bits.push(k + ': ' + expClean(ficha.texts[e.d][k])); }); } catch (x) {} }
+            if (bits.length) nl.push('Medición ' + e.d + ': ' + bits.join(' | '));
+          });
+          if (nl.length) { L.push('', '[NOTAS DE LAS MEDICIONES]'); nl.forEach(function(x) { L.push(x); }); }
+        } else L.push('(Sin ficha en la hoja: las mediciones salen solo de lo guardado en el plan.)');
+        L.push('');
+        L.push(expdNoVideo(buildExportTextFromState(state, (ficha && ficha.log) || [])).replace(/\s+$/, ''));
+        // Asistencia y marcas (historial de sesiones del cliente)
+        var ses = (hist && hist.ok && Array.isArray(hist.sesiones)) ? hist.sesiones.filter(function(x) { return x && !isMetaSess(x); }) : [];
+        L.push('', '[ASISTENCIA]');
+        if (!ses.length) L.push('Sin entrenos registrados todavía en la app.');
+        else {
+          var byM = {}, last = '';
+          ses.forEach(function(x) { var d = String(x.d || String(x.t || '').slice(0, 10)); if (!isIsoDate(d)) return; var m = d.slice(0, 7); byM[m] = (byM[m] || 0) + 1; if (d > last) last = d; });
+          Object.keys(byM).sort().slice(-4).forEach(function(m) { L.push(m + ': ' + byM[m] + ' entreno(s) registrados'); });
+          L.push('Último entreno registrado: ' + last + ' | Total en el historial: ' + ses.length);
+        }
+        L.push('', '[MARCAS ANTERIORES]');
+        var seen = {}, nMark = 0;
+        ses.slice().sort(function(a, b) { return String(b.t || b.d || '').localeCompare(String(a.t || a.d || '')); }).forEach(function(x) {
+          (x.ex || []).forEach(function(e) {
+            var key = normName(e && e.n); if (!key || seen[key] || nMark >= 45) return;
+            var tx = ''; try { tx = exDetailText(e); } catch (er) {}
+            if (!tx || /^- series/.test(tx)) return;
+            seen[key] = 1; nMark++; L.push(e.n + ' (' + String(x.d || '').slice(0, 10) + '): ' + tx.replace(/ ⏱\S+/g, ''));
+          });
+        });
+        if (!nMark) L.push('Sin marcas de cargas registradas todavía.');
+        L.push('', '[PLANES ANTERIORES]');
+        if (prev.length) prev.forEach(function(x) { L.push(x); }); else L.push('No hay planes anteriores guardados.');
+        if (state.next) L.push('', 'Nota: este cliente tiene una rutina EN ESPERA que empieza el ' + (state.next.startDate || '?') + ' (no se incluye aquí).');
+        return L.join('\n') + '\n';
+      });
+    }
+    // names: lista de nombres a actualizar (si no se da: todos los clientes activos); limit: máximo de clientes (para probar)
+    function expdRun(names, limit) {
+      if (!COACH || EXPD.busy) return;
+      var pin = vrepPin();
+      if (!COACH.todos) { expdSet('Solo el administrador puede generar los expedientes.', true); return; }
+      EXPD.busy = true; expdSet('⏳ Preparando expedientes…');
+      var ok = 0, fail = [], todo = [];
+      postJson({ a: 'fichas', pin: pin }, 30000).then(function(j) {
+        var fl = (j && j.ok) ? (j.fichas || []) : [];
+        function findF(n) {
+          var k = normName(n), hit = null;
+          fl.forEach(function(f) { if (!hit && normName(f.n) === k) hit = f; });
+          if (hit) return hit;
+          var c = fl.filter(function(f) { return nameLike(f.n, n); });
+          return c.length === 1 ? c[0] : null;
+        }
+        var seenN = {};
+        (clientRows || []).forEach(function(r) {
+          if (!r || !r.id) return; var k = normName(r.atleta);
+          if (!k || k.indexOf('__') === 0 || seenN[k] || coachIsOff(r.atleta)) return;
+          if (names && names.map(normName).indexOf(k) < 0) return;
+          seenN[k] = 1; todo.push(r.atleta);
+        });
+        if (limit) todo = todo.slice(0, limit);
+        var i = 0;
+        function next() {
+          if (i >= todo.length) return Promise.resolve();
+          var nm = todo[i++];
+          expdSet('⏳ Expediente ' + i + ' de ' + todo.length + ': ' + nm + '…');
+          return expdBuild(nm, expdRows(nm), findF(nm), pin).then(function(txt) {
+            return postJson({ a: 'expediente_guardar', pin: pin, n: nm, t: txt }, 60000).then(function(jj) {
+              if (jj && jj.ok) ok++;
+              else { fail.push(nm + (jj && jj.error ? ' (' + jj.error + ')' : '')); if (jj && (jj.error === 'clave' || jj.error === 'servidor')) throw new Error('script'); }
+            });
+          }).catch(function(e) { if (e && e.message === 'script') throw e; fail.push(nm + ' (' + ((e && e.message === 'off') ? 'desconectado' : 'no se pudo leer') + ')'); }).then(next);
+        }
+        return next();
+      }).then(function() {
+        EXPD.busy = false;
+        expdSet((ok ? '✅ ' + ok + ' expediente(s) listos en Drive → «Expedientes de clientes».' : 'No se guardó ningún expediente.') + (fail.length ? ' ⚠️ Fallaron: ' + fail.join(', ') + '.' : ''), !ok);
+      }).catch(function(e) {
+        EXPD.busy = false;
+        expdSet('⚠️ ' + ((e && e.message === 'script') ? 'Falta publicar la versión 10 del script de Google (la de los expedientes).' : 'No se pudo conectar.') + (ok ? ' Ya quedaron ' + ok + '.' : ''), true);
+      });
+    }
 
     // ================= PLANES EN ESPERA (cola en la pestaña "Espera" de la hoja) =================
     var ESP = { list: null, loading: false, active: null };
