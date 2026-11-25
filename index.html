@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-l';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -5297,6 +5297,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       ];
       // Rutina en espera (posición 12): la próxima rutina del cliente, con su propia fecha de inicio. Sin ella, el enlace queda igual que siempre.
       if (Array.isArray(full.phases) && full.phases.length) out[13] = full.phases.map(function(x) { return [x[0], x[1] || 0, x[2]]; });   // fases del ciclo (posición 13)
+      if (Array.isArray(full.msgs) && full.msgs.length) out[14] = full.msgs.map(function(m) { return [m.id, m.t, m.text, m.coach || '']; });   // mensajes directos del coach (posición 14)
       if (full.next && full.next.routineDays) {
         var nx = {}; Object.keys(full.next).forEach(function(k) { nx[k] = full.next[k]; }); nx.next = null;   // no se anidan más rutinas
         out[12] = buildUltraCompactState(nx);
@@ -5340,6 +5341,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         coachPhone: c[10] || '',
         phases: Array.isArray(c[13]) ? c[13].filter(Array.isArray).map(function(x) { return [parseInt(x[0], 10) || 1, parseInt(x[1], 10) || 0, String(x[2] || '')]; }) : [],
         next: nxState,
+        msgs: Array.isArray(c[14]) ? c[14].filter(Array.isArray).map(function(x) { return { id: String(x[0] || ''), t: String(x[1] || ''), text: String(x[2] || ''), coach: String(x[3] || '') }; }) : [],
         measureLog: normalizeMeasureLog((Array.isArray(c[11]) ? c[11] : []).filter(Array.isArray).map(function(r) {
           var v = {};
           MEASURE_FIELDS.forEach(function(f, i) { if (r[i + 1] !== '' && r[i + 1] != null) v[f.k] = r[i + 1]; });
@@ -5464,6 +5466,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         n.measureLog = normalizeMeasureLog((n.measureLog || []).concat((st.measureLog || []).filter(function(e) { return !have[e.d]; })));
       } catch (e) {}
       n.next = null;
+      if (st.msgs && st.msgs.length) n.msgs = st.msgs;   // los mensajes del coach no se pierden al cambiar de rutina
       return n;
     }
     // Arreglo base para guardar una rutina nueva en espera sobre lo que ya tiene el cliente: lo que él ve hoy pasa a ser la rutina principal
@@ -6309,11 +6312,44 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         kill.forEach(function(k) { localStorage.removeItem(k); });
       } catch (e) {}
     }
+    // ----- Mensajes directos del coach: se guardan en la rutina del cliente (posición 14) y se muestran una vez al abrir la app -----
+    function msgShowNew(st) {
+      var all = (st && st.msgs) || [], seen = {};
+      try { seen = JSON.parse(localStorage.getItem(tk('msg_seen')) || '{}') || {}; } catch (e) {}
+      var fresh = all.filter(function(m) { return m.id && !seen[m.id]; });
+      if (!fresh.length) return;
+      var body = fresh.map(function(m) {
+        var d = ''; try { d = new Date(m.t).toLocaleDateString('es-CR', { day: 'numeric', month: 'short' }); } catch (e) {}
+        return '<div style="text-align:left;background:#11151d;border-radius:10px;padding:10px 12px;margin-top:8px;"><div style="font-size:.72rem;color:#8a93a6;margin-bottom:4px;">' + escHtml(displayCoach(m.coach || st.coachName)) + (d ? ' · ' + escHtml(d) : '') + '</div><div style="font-size:.92rem;line-height:1.5;white-space:pre-line;">' + escHtml(m.text) + '</div></div>';
+      }).join('');
+      setTimeout(function() {
+        var markSeen = function() { fresh.forEach(function(m) { seen[m.id] = 1; }); try { localStorage.setItem(tk('msg_seen'), JSON.stringify(seen)); } catch (e) {} };
+        var m = pendOverlay('msg_coach', '<button type="button" id="msg_coach_x" aria-label="Cerrar" style="position:absolute;top:8px;right:10px;background:transparent;border:none;color:#8a93a6;font-size:1.5rem;line-height:1;cursor:pointer;">✕</button>' +
+          '<div style="font-size:2.2rem;">💬</div><div class="pend-ttl">Tu coach te escribió</div>' + body +
+          '<div id="msg_coach_rbox" style="display:none;margin-top:10px;"><textarea id="msg_coach_rt" rows="3" placeholder="Escribe tu respuesta…" style="width:100%;box-sizing:border-box;background:#11151d;color:#fff;border:1px solid #2a3142;border-radius:10px;padding:10px;font-size:.9rem;font-family:inherit;"></textarea>' +
+          '<button type="button" class="pend-btn pend-go" id="msg_coach_send" style="margin-top:8px;">📤 Enviar respuesta</button></div>' +
+          '<button type="button" class="pend-btn pend-go" id="msg_coach_reply" style="margin-top:12px;">↩️ Responder</button>');
+        var box = m.querySelector('.pend-box'); if (box) box.style.position = 'relative';
+        var close = function() { markSeen(); pendCloseOverlay('msg_coach'); };
+        document.getElementById('msg_coach_x').onclick = close;
+        document.getElementById('msg_coach_reply').onclick = function() {
+          this.style.display = 'none';
+          document.getElementById('msg_coach_rbox').style.display = 'block';
+          document.getElementById('msg_coach_rt').focus();
+        };
+        document.getElementById('msg_coach_send').onclick = function() {
+          var t = document.getElementById('msg_coach_rt').value.trim(); if (!t) return;
+          try { remQueue('aviso', '💬 Responde a tu mensaje: ' + t); } catch (e) {}
+          close(); showToastTop('✅ Respuesta enviada a tu coach.');
+        };
+      }, 1200);
+    }
     function pendAfterRender(st) {
       var box = document.getElementById('ath_pend_box');
       if (box) { box.style.display = 'none'; box.innerHTML = ''; }
       if (!st || st.off) return;
       var coach = isCoachView();
+      if (!coach) { try { msgShowNew(st); } catch (eM) {} }
       if (st.promoted) {   // llegó el día: «hoy iniciamos nueva rutina» (una sola vez por celular)
         if (st.promoFirst && !coach) {
           try { localStorage.setItem(tk('promo_seen'), st.startDate); } catch (e) {}
@@ -13316,7 +13352,40 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var x = ALERTS_TASKS[gi]; if (!x) return;
       var motTxt = x.tipo === 'pesaje' ? ('pesarte y medirte (' + (x.det || 'toca pesaje') + ')') : 'preparar tu nueva rutina, que tu ciclo ya casi termina';
       var msg = 'Hola ' + (x.name || '') + ', te escribe tu coach de Benessere Gym 💪. Te recuerdo ' + motTxt + ' cuando puedas. ¡Avísame!';
-      try { window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener'); } catch (e) {}
+      msgComposeOpen(x.id, x.name, msg);
+    }
+    // Escribirle a un cliente: por WhatsApp (como antes) o «directo», que queda en su rutina y le sale al abrir su app
+    function msgComposeOpen(id, name, text) {
+      var m = pendOverlay('msg_compose', '<div class="pend-ttl">💬 Escribirle a ' + escHtml(name || 'el cliente') + '</div>' +
+        '<textarea id="msg_compose_t" rows="5" style="width:100%;box-sizing:border-box;margin-top:8px;background:#11151d;color:#fff;border:1px solid #2a3142;border-radius:10px;padding:10px;font-size:.9rem;font-family:inherit;"></textarea>' +
+        '<button type="button" class="pend-btn pend-go" id="msg_compose_app" style="margin-top:10px;">📥 Directo en su app</button>' +
+        '<button type="button" class="pend-btn" id="msg_compose_wa" style="margin-top:8px;background:#25d366;color:#04251c;font-weight:800;">📲 Por WhatsApp</button>' +
+        '<button type="button" class="pend-btn pend-ok" id="msg_compose_x" style="margin-top:8px;">Cancelar</button>');
+      var ta = document.getElementById('msg_compose_t'); ta.value = text || '';
+      document.getElementById('msg_compose_x').onclick = function() { pendCloseOverlay('msg_compose'); };
+      document.getElementById('msg_compose_wa').onclick = function() {
+        var t = ta.value.trim(); if (!t) return;
+        try { window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener'); } catch (e) {}
+        pendCloseOverlay('msg_compose');
+      };
+      document.getElementById('msg_compose_app').onclick = function() {
+        var t = ta.value.trim(); if (!t) return;
+        if (!id) { showToastTop('Este cliente no tiene rutina enlazada.'); return; }
+        var b = this; b.disabled = true; b.textContent = 'Enviando…';
+        msgSendDirect(id, t).then(function() { pendCloseOverlay('msg_compose'); showToastTop('✅ Mensaje enviado: lo verá al abrir su app.'); })
+          .catch(function() { b.disabled = false; b.textContent = '📥 Directo en su app'; showToastTop('No se pudo enviar. Intenta de nuevo.'); });
+      };
+    }
+    function msgSendDirect(id, text) {
+      if (!COACH) return Promise.reject(new Error('coach'));
+      return fetchRoutine(id).then(function(j) {
+        var sp = (j && j.ok && j.p) ? payloadSplit(j.p) : null; if (!sp) throw new Error('lectura');
+        var cur = Array.isArray(sp.arr[14]) ? sp.arr[14].slice() : [];
+        cur.push(['m' + Date.now().toString(36), new Date().toISOString(), text, COACH.name || '']);
+        sp.arr[14] = cur.slice(-10);
+        for (var i = 0; i < 14; i++) if (sp.arr[i] === undefined) sp.arr[i] = null;
+        return postJson({ a: 'actualizar', id: id, p: payloadJoin(sp), pin: COACH.pin });
+      }).then(function(r) { if (!r || !r.ok) throw new Error('guardar'); return r; });
     }
     // «✔»: cierra el aviso, venga de la app del cliente o del constructor (y sus repetidos)
     // 🚫 en los avisos de pesaje y fin de ciclo: desconecta al cliente desde ahí (pide confirmación; luego desaparece de todos los avisos)
