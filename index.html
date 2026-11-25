@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -13042,6 +13042,48 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       }, 500);
     }
     var EDX_FROM_REP = false, EDX_REP = null;
+    // Cuando arreglas un video desde un aviso, los avisos de OTROS clientes con ese mismo link también se arreglan:
+    // se cambia el video en la rutina de cada uno (y en su rutina en espera, si tiene) y se cierran sus avisos.
+    function vrepSwapOthers(swaps, curRid) {
+      var pin = vrepPin(); if (!pin || !swaps || !swaps.length) return Promise.resolve({ ok: 0, fail: 0 });
+      var byRid = {};
+      (VREP_INBOX || []).forEach(function(r) {
+        if (!r || vrepIsTask(r) || !r.id || r.id === curRid) return;
+        var oid = ytIdStrict(r.url); if (!oid) return;
+        swaps.forEach(function(sw) { if (sw.o === oid) { (byRid[r.id] = byRid[r.id] || {})[oid] = sw; } });
+      });
+      var rids = Object.keys(byRid), res = { ok: 0, fail: 0 };
+      function swapIn(rd, sw) {
+        var n = 0;
+        (rd || []).forEach(function(d) { (d.items || []).forEach(function(it) { (it.sub || []).forEach(function(sb) {
+          if (ytIdStrict(sb.video) === sw.o) { sb.video = sw.url; n++; }
+          if (ytIdStrict(sb.altVideo) === sw.o) { sb.altVideo = sw.url; n++; }
+        }); }); });
+        return n;
+      }
+      function one(rid) {
+        return fetchRoutine(rid).then(function(j) {
+          if (!j || !j.ok || !j.p || String(j.p).indexOf(OFF_PREFIX) === 0) throw new Error('sin rutina');
+          var state = decodePayload('q', j.p); if (!state) throw new Error('dañada');
+          var n = 0, olds = Object.keys(byRid[rid]);
+          olds.forEach(function(o) { var sw = byRid[rid][o]; n += swapIn(state.routineDays, sw); if (state.next) n += swapIn(state.next.routineDays, sw); });
+          var done = function() {
+            // cierra los avisos de este cliente que tenían esos links
+            var ri = []; (VREP_INBOX || []).forEach(function(x, xi) { if (x && !vrepIsTask(x) && x.id === rid && byRid[rid][ytIdStrict(x.url)]) ri.push(xi); });
+            if (ri.length) vrepResolveGroup(ri);
+            res.ok++;
+          };
+          if (!n) { done(); return; }   // ya no tenía ese video: el aviso quedó viejo
+          var np = encodePayload(buildUltraCompactState(state));
+          return postJson({ a: 'actualizar', id: rid, p: np, pin: pin }).then(function(jj) {
+            if (!(jj && jj.ok)) throw new Error('no guardó');
+            try { coachCacheSet(rid, np); } catch (e) {}
+            done();
+          });
+        }).catch(function() { res.fail++; });
+      }
+      return rids.reduce(function(chain, rid) { return chain.then(function() { return one(rid); }); }, Promise.resolve()).then(function() { return res; });
+    }
     function vrepEditFound(r) {
       var st = athleteActiveState, want = ytIdStrict(r.url), W = ATH_WEEK, best = null;
       // El mismo video puede estar en varios ejercicios (se reutilizan links). Se elige el que coincide con el aviso:
@@ -14347,7 +14389,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           coachCacheSet(athleteRoutineId, payloadText);
           if (EDX_FROM_REP) {   // arregló un video reportado: de vuelta a «Mis clientes» para seguir con los demás avisos
             EDX_FROM_REP = false;
-            var repDone = false;
+            var rid0 = athleteRoutineId, repDone = false;
             try {   // el aviso se resuelve solo al guardar el cambio (todos los avisos repetidos del mismo ejercicio)
               if (EDX_REP) {
                 var rk = vrepDupKey(EDX_REP), ri = [];
@@ -14356,8 +14398,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
               }
             } catch (e3) {}
             EDX_REP = null;
+            var othersP = null; try { othersP = vrepSwapOthers(vidSwaps, rid0); } catch (e4) {}
             exitClientRoutine();
             showToastTop('✅ Video cambiado en la rutina de ' + (st.clientName || 'el cliente') + (repDone ? '. El aviso ya salió de la lista.' : '. Toca «Ya lo arreglé» en el aviso.'));
+            if (othersP) othersP.then(function(r2) {
+              if (r2 && (r2.ok || r2.fail)) showToastTop('✅ También cambié ese video en ' + r2.ok + ' cliente' + (r2.ok === 1 ? '' : 's') + ' más con el mismo aviso' + (r2.fail ? ' (' + r2.fail + ' no se pudo; sus avisos siguen en la lista)' : '') + '.', 6000);
+            });
             return;
           }
           renderAthleteApp(st);
