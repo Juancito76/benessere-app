@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-f';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-g';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -3255,7 +3255,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!COACH) { showToastTop('Primero entra con tu PIN.'); return; }
       if (VIGSCAN.busy) return;
       var rows = [], seen = {};
-      (clientRows || []).forEach(function(r) { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; rows.push(r); } });
+      (clientRows || []).forEach(function(r) { if (r && r.id && !seen[r.id] && !coachIsOff(r.atleta)) { seen[r.id] = 1; rows.push(r); } });
       if (!rows.length) { showToastTop('No hay clientes cargados.'); return; }
       VIGSCAN.busy = true; VIGSCAN.res = []; VIGSCAN.total = rows.length; VIGSCAN.fails = 0;
       var done = 0, fails = 0, i = 0, closed = false;
@@ -9266,8 +9266,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var run = ++CW.run;
       var groups = {}, order = [], cut = new Date(); cut.setDate(cut.getDate() - 90);
       var cutIso = isoOfDate(cut);
-      clientRows.forEach(function(r) {   // la más nueva de cada cliente; se ignoran rutinas de hace más de 90 días
+      clientRows.forEach(function(r) {   // la más nueva de cada cliente; se ignoran rutinas de hace más de 90 días y los clientes desconectados
         var k = normName(r.atleta); if (!k || k.indexOf('__') === 0 || groups[k]) return;
+        if (coachIsOff(r.atleta)) return;
         groups[k] = r; if (String(r.f || '').slice(0, 10) >= cutIso) order.push(k);
       });
       CW.rows = order.map(function(k) { var r = groups[k]; return { name: r.atleta, id: r.id, goal: cwGoalFor(r.id), st: null, err: false }; });
@@ -9516,10 +9517,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       Object.keys(D.p).forEach(function(k) { D.p[k].d = D.p[k].d.filter(function(x) { return x >= cutIso; }); D.p[k].x = (D.p[k].x || []).filter(function(x) { return x >= cutIso; }); if (!D.p[k].d.length && !D.p[k].x.length) delete D.p[k]; });
       ATT.data = D; attSave();
     }
-    function attClients() {   // mismos clientes que en «Esta semana»: la rutina más nueva de cada uno, de los últimos 90 días
+    function attClients(withOff) {   // mismos clientes que en «Esta semana»: la rutina más nueva de cada uno, de los últimos 90 días (sin los desconectados)
       var groups = {}, out = [], cut = new Date(); cut.setDate(cut.getDate() - 90); var cutIso = isoOfDate(cut);
       (clientRows || []).forEach(function(r) {
         var k = normName(r.atleta); if (!k || k.indexOf('__') === 0 || groups[k]) return;
+        if (!withOff && coachIsOff(r.atleta)) return;
         groups[k] = r; if (String(r.f || '').slice(0, 10) >= cutIso) out.push({ key: k, name: r.atleta, id: r.id });
       });
       return out;
@@ -12965,6 +12967,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var map = {}, order = [];
       VREP_INBOX.forEach(function(r, i) {
         if (vrepIsTask(r)) return;   // pesaje/ciclo van aparte: alertsPaint ya los agrupa con su propio arreglo "dup"
+        if (coachIsOff(r.cli)) return;   // cliente desconectado: sus avisos no se muestran
         var k = vrepDupKey(r);
         if (!map[k]) { map[k] = { rep: r, idxs: [i] }; order.push(map[k]); }
         else { map[k].idxs.push(i); if (new Date(r.t) > new Date(map[k].rep.t)) map[k].rep = r; }
@@ -13175,7 +13178,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function alertsOpen() {
       var o = alertsLoad(), inbox = VREP_INBOX || [];
       return o.list.filter(function(a) {
-        if (o.done[a.key]) return false;
+        if (o.done[a.key] || coachIsOff(a.name)) return false;
         return !inbox.some(function(r) { return r.tipo === a.tipo && normName(r.cli) === normName(a.name); });   // si el propio cliente ya avisó, sale solo ese
       });
     }
@@ -13202,10 +13205,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var o = alertsLoad();
       if (!force && Date.now() - o.ts < 3 * 3600 * 1000) { alertsPaint(); return; }
       ALERTS_BUSY = true;
-      var clients = attClients(), list = [], i = 0, running = 0;
+      var clients = attClients(true), list = [], i = 0, running = 0, offChanged = false;
       function one(c) {
         return fetchRoutine(c.id).then(function(j) {
           var st = (j && j.ok && j.p) ? decodePayload('q', j.p) : null;
+          // la hoja manda: si la rutina está desconectada allá, aquí también (así vale en cualquier celular o PC); si se reconectó, también
+          if (st) { var k0 = normName(c.name), was = !!coachOffGet()[k0]; if (!!st.off !== was) { coachOffSet(k0, !!st.off); offChanged = true; } }
+          if (coachIsOff(c.name)) return;
           alertsFor(c, st).forEach(function(a) { list.push(a); });
         }).catch(function() {});
       }
@@ -13214,6 +13220,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var fresh = alertsLoad(); fresh.list = list; fresh.ts = Date.now();
         var keep = {}; list.forEach(function(a) { if (fresh.done[a.key]) keep[a.key] = fresh.done[a.key]; }); fresh.done = keep;   // se olvidan los atendidos que ya no aplican
         alertsSave(fresh); ALERTS_BUSY = false; vrepBadge(); alertsPaint();
+        if (offChanged) { try { vrepInboxRender(); renderClientList(); } catch (e6) {} }
       }).catch(function() { ALERTS_BUSY = false; });
     }
     // 13/11/2026 · Una sola bandeja: arriba «Avisos de los clientes» (videos, datos); aquí las tareas del coach en listas compactas,
@@ -13222,7 +13229,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function alertsTasks() {
       var out = [], seen = {};
       (VREP_INBOX || []).forEach(function(r, i) {
-        if (!vrepIsTask(r)) return;
+        if (!vrepIsTask(r) || coachIsOff(r.cli)) return;
         var k = r.tipo + '|' + normName(r.cli); if (seen[k]) { out.forEach(function(o) { if (o.k === k) o.dup.push(i); }); return; }
         seen[k] = 1;
         var wk = (String(r.mot || '').match(/semana\s+(\d+)/i) || [])[1];
@@ -13490,13 +13497,15 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       });
       order.sort(function(a, b) { return groups[a].name.toLowerCase() < groups[b].name.toLowerCase() ? -1 : 1; });
       var shown = order.filter(function(k) { return !q || k.indexOf(q) !== -1; });
+      var offSet0 = coachOffGet();
       pruebaLabel();
       document.getElementById('cl_who').innerText = (COACH.todos ? 'Todos los clientes' : 'Tus clientes') + ' · ' + COACH.name;
-      document.getElementById('cl_status').innerText = shown.length + ' de ' + order.length + ' clientes';
-      var html = '';
+      document.getElementById('cl_status').innerText = shown.filter(function(k) { return !offSet0[k]; }).length + ' de ' + order.filter(function(k) { return !offSet0[k]; }).length + ' clientes';
+      var html = '', htmlOff = '', nOff = 0;
       var offSet = coachOffGet();
       shown.forEach(function(k) {
         var g = groups[k], last = g.list[0], isOff = !!offSet[k];
+        var htmlMain = html; if (isOff) { html = ''; nOff++; }   // los desconectados van aparte, en «🔌 Desconectados»
         html += '<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--primary); border-radius:10px; padding:12px; margin-bottom:8px;">' +
           '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">' +
           '<div style="flex:1 1 180px; min-width:0;"><div style="font-weight:800; color:#fff; font-size:0.95rem;">' + escHtml(g.name) + '</div>' +
@@ -13515,7 +13524,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
           html += '</div>';
         }
         html += '</div>';
+        if (isOff) { htmlOff += html; html = htmlMain; }
       });
+      if (nOff) html += '<details style="margin-top:14px;"' + (q ? ' open' : '') + '><summary style="cursor:pointer; color:#8d99ae; font-weight:800; font-size:0.85rem; padding:6px 2px;">🔌 Desconectados (' + nOff + ') — no aparecen en avisos ni reportes</summary><div style="opacity:0.85; margin-top:8px;">' + htmlOff + '</div></details>';
       if (!shown.length) html = '<div style="text-align:center; color:var(--muted); font-size:0.85rem; padding:24px 8px;">' + (order.length ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay rutinas enviadas' + (COACH.todos ? '.' : ' a tu nombre.')) + '</div>';
       document.getElementById('cl_list').innerHTML = html;
       vrepInboxRender();
@@ -13777,6 +13788,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // La rutina de la hoja se guarda con el prefijo "OFF_" (la original queda debajo). El cliente, al abrir la app o recibir la actualización, ve solo un mensaje de despedida.
     var COACH_OFF_KEY = 'benessere_off_clients';
     function coachOffGet() { try { return JSON.parse(localStorage.getItem(COACH_OFF_KEY) || '{}') || {}; } catch (e) { return {}; } }
+    // ¿Este cliente está desconectado? Un cliente desconectado desaparece de todas las listas y avisos (menos de «🔌 Desconectados» en Mis clientes, para poder reconectarlo)
+    function coachIsOff(name) { try { var k = normName(name); return !!k && !!coachOffGet()[k]; } catch (e) { return false; } }
     function coachOffSet(k, on) { try { var o = coachOffGet(); if (on) o[k] = 1; else delete o[k]; localStorage.setItem(COACH_OFF_KEY, JSON.stringify(o)); } catch (e) {} }
     // ----- Menú «Opciones»: agrupa los botoncitos en una ventana flotante (general y por cliente) -----
     var CLMENU = {}, CLMENU_ACT = [];
@@ -13902,7 +13915,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!ids.length) { showToastTop('No encontré rutinas de ' + name + '.'); return; }
       var wantOff = !coachOffGet()[k];
       var ask = wantOff
-        ? '🔌 Desconectar a ' + name + '\n\nYa no verá la rutina interactiva ni recibirá actualizaciones del constructor; al abrir la app verá un mensaje de despedida cariñoso con tu WhatsApp.\n\nNo se borra nada: su historial queda en la hoja y puedes reconectarlo cuando regrese.\n\n¿Desconectar?'
+        ? '🔌 Desconectar a ' + name + '\n\nYa no verá la rutina interactiva ni recibirá actualizaciones del constructor; al abrir la app verá un mensaje de despedida cariñoso con tu WhatsApp.\n\nDesaparece de los avisos, pesajes, asistencia, «Esta semana» y demás listas (queda en «🔌 Desconectados», al final de Mis clientes).\n\nNo se borra nada: su rutina, sus marcas y su historial quedan guardados y puedes reconectarlo cuando regrese.\n\n¿Desconectar?'
         : '🔗 Reconectar a ' + name + '\n\nVolverá a ver su rutina y a recibir las actualizaciones.\n\n¿Reconectar?';
       if (!(await appConfirm(ask))) return;
       coachOffBusy = true;
@@ -13910,7 +13923,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       function next() {
         if (i >= ids.length) {
           coachOffBusy = false;
-          if (!failed) coachOffSet(k, wantOff);
+          if (!failed) {
+            coachOffSet(k, wantOff);
+            if (wantOff) {   // sus avisos pendientes salen de todas las bandejas (en la hoja también, para que no vuelvan)
+              var pinO = COACH && COACH.pin, keepR = [];
+              (VREP_INBOX || []).forEach(function(r) { if (normName(r.cli) === k) { if (pinO) postJson({ a: 'reporte_ok', pin: pinO, t: r.t }).catch(function() {}); vrepResolvedAdd(r.t); } else keepR.push(r); });
+              VREP_INBOX = keepR;
+              try { var oa = alertsLoad(); oa.list = (oa.list || []).filter(function(a) { return normName(a.name) !== k; }); alertsSave(oa); } catch (eA) {}
+              try { vrepBadge(); vrepInboxRender(); } catch (eB) {}
+            } else { try { alertsScan(true); } catch (eC) {} }
+          }
           renderClientList();
           var s2 = document.getElementById('cl_status');
           if (failed) { if (s2) s2.innerText = '⚠️ No se pudo ' + (wantOff ? 'desconectar' : 'reconectar') + ' del todo a ' + name + ' (' + failed + ' de ' + ids.length + ' con error). Inténtalo de nuevo.'; }
@@ -15816,7 +15838,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ¿Quién la ve? y programación por fecha
     function clsClientNames() {
       var seen = {}, out = [];
-      (clientRows || []).forEach(function(r) { var k = normName(r.atleta); if (!k || k.indexOf('__') === 0 || seen[k]) return; seen[k] = 1; out.push(r.atleta); });
+      (clientRows || []).forEach(function(r) { var k = normName(r.atleta); if (!k || k.indexOf('__') === 0 || seen[k] || coachIsOff(r.atleta)) return; seen[k] = 1; out.push(r.atleta); });
       return out.sort(function(a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
     }
     function clsAudienceHtml(c) {
