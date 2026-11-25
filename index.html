@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-25-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-25-d';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -17723,7 +17723,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // firma del cliente: cambia cuando hay rutina nueva, ficha nueva o pasa una semana (asistencia y marcas)
     function expdSig(nm, fRow) { var r = expdRows(nm)[0]; return (r ? r.id + '|' + (r.f || '') : '') + '|' + (fRow ? (fRow.f || '') + '|' + String(fRow.p || '').length : '') + '|' + expdWeek(); }
     var expdAutoTimer = null;
-    function expdAutoSchedule() {   // con la pestaña de clientes abierta, el administrador mantiene los expedientes al día solo
+    function expdAutoSchedule() {   // y de paso trae a la cola los planes revisados que haya en la carpeta «Planes en espera» de Drive
+      try { if (COACH && COACH.todos) espLoad(true); } catch (e0) {}   // con la pestaña de clientes abierta, el administrador mantiene los expedientes al día solo
       if (!COACH || !COACH.todos) return;
       clearTimeout(expdAutoTimer);
       expdAutoTimer = setTimeout(function() { try { expdRun(null, 0, true); } catch (e) {} }, 5000);
