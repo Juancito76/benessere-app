@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-q';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -13296,54 +13296,48 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Pesajes repartidos: como mucho 5 pesajes NUEVOS por día. Cada aviso guarda el día en que le tocó salir; los más atrasados salen primero
     // y el resto espera al día siguiente. Los que ya salieron siguen visibles hasta que se atienden.
-    var PES_CAP = 5, PES_SHOWN_KEY = 'benessere_pes_shown', PES_SENT_KEY = 'benessere_pes_sent';
-    var PES_Q = [], PES_QBUSY = false, PES_QKEYS = {}, PES_SNZ_KEY = 'benessere_pes_snooze';
-    function pesSnoozeGet() { try { return JSON.parse(localStorage.getItem(PES_SNZ_KEY) || '{}') || {}; } catch (e) { return {}; } }
-    // Pospone el pesaje de un cliente (no llegó, etc.): su lugar del día lo toma el siguiente, y a él le vuelve a tocar cuando se cumple la fecha
-    function pesPostpone(x, days) {
-      var k = normName(x.name) + '|' + String(x.d || '').slice(0, 10), until = addDaysIso(todayIso(), days);
-      var z = pesSnoozeGet(); z[k] = until;
-      var cut = addDaysIso(todayIso(), -60); Object.keys(z).forEach(function(q) { if (z[q] < cut) delete z[q]; });
-      try { localStorage.setItem(PES_SNZ_KEY, JSON.stringify(z)); } catch (e) {}
-      try { var m = JSON.parse(localStorage.getItem(PES_SHOWN_KEY) || '{}') || {}; delete m[k]; localStorage.setItem(PES_SHOWN_KEY, JSON.stringify(m)); } catch (e) {}   // libera el lugar
-      if (x.src === 'al' && x.id && isIsoDate(x.d)) pesQueueSet(x.id, x.d, until, k);   // el cliente tampoco recibe su aviso hasta esa fecha
-    }
-    // Escribe en la rutina del cliente el día en que le toca el aviso de pesaje (una a una, para no saturar la hoja)
-    function pesQueueSet(id, due, rel, key) {
-      if (PES_QKEYS[key + rel] || !COACH) return; PES_QKEYS[key + rel] = 1;
-      PES_Q.push({ id: id, due: due, rel: rel, key: key }); pesQueueRun();
+    var PES_CAP = 5, PES_Q = [], PES_QBUSY = false;
+    // El reparto vive en la rutina de cada cliente (posición 15: [fecha del pesaje, día en que le toca]), así que todos tus dispositivos lo comparten.
+    // Cada día se asignan como mucho 5 pesajes nuevos; los más atrasados primero. Lo que cambies en un dispositivo lo ven los demás al actualizar las alertas.
+    function pesQueueSet(id, due, rel) {
+      PES_Q = PES_Q.filter(function(q) { return q.id !== id; });
+      PES_Q.push({ id: id, due: due, rel: rel }); pesQueueRun();
     }
     function pesQueueRun() {
-      if (PES_QBUSY || !PES_Q.length) return; PES_QBUSY = true;
+      if (PES_QBUSY || !PES_Q.length || !COACH) return; PES_QBUSY = true;
       var it = PES_Q.shift();
       fetchRoutine(it.id).then(function(j) {
         var sp = (j && j.ok && j.p) ? payloadSplit(j.p) : null; if (!sp) throw new Error('lectura');
         for (var i = 0; i < 15; i++) if (sp.arr[i] === undefined) sp.arr[i] = null;
         sp.arr[15] = [it.due, it.rel];
         return postJson({ a: 'actualizar', id: it.id, p: payloadJoin(sp), pin: COACH.pin });
-      }).then(function(r) {
-        if (r && r.ok) { var sent = {}; try { sent = JSON.parse(localStorage.getItem(PES_SENT_KEY) || '{}') || {}; } catch (e) {} sent[it.key] = it.rel; try { localStorage.setItem(PES_SENT_KEY, JSON.stringify(sent)); } catch (e) {} }
-      }).catch(function() { delete PES_QKEYS[it.key + it.rel]; }).then(function() { PES_QBUSY = false; setTimeout(pesQueueRun, 400); });
+      }).catch(function() {}).then(function() { PES_QBUSY = false; setTimeout(pesQueueRun, 400); });
+    }
+    function pesSetLocal(a, rel) {
+      var o = alertsLoad();
+      o.list.forEach(function(q) { if (q.tipo === 'pesaje' && q.key === a.key) q.pes = { d: q.t, r: rel }; });
+      alertsSave(o);
+    }
+    // Pospone el pesaje de un cliente: su lugar de hoy lo toma otro y a él (en su app también) le vuelve a tocar en esa fecha
+    function pesPostpone(x, days) {
+      var nn = normName(x.name), o = alertsLoad(), a = null, until = addDaysIso(todayIso(), days);
+      o.list.forEach(function(q) { if (q.tipo === 'pesaje' && normName(q.name) === nn) a = q; });
+      if (!a || !a.id) return false;
+      pesSetLocal(a, until); pesQueueSet(a.id, a.t, until);
+      return true;
     }
     function pesajeCap(tasks) {
-      var m = {}; try { m = JSON.parse(localStorage.getItem(PES_SHOWN_KEY) || '{}') || {}; } catch (e) {}
-      var today = todayIso(), n = 0, changed = false, keep = [];
-      Object.keys(m).forEach(function(k) { if (m[k] === today) n++; });
+      var o = alertsLoad(), today = todayIso(), byN = {}, n = 0;
+      o.list.forEach(function(a) { if (a.tipo === 'pesaje') byN[normName(a.name)] = a; });
+      o.list.forEach(function(a) { if (a.tipo === 'pesaje' && !o.done[a.key] && !coachIsOff(a.name) && a.pes && a.pes.d === a.t && a.pes.r === today) n++; });
       tasks.sort(function(x, y) { return String(x.d).localeCompare(String(y.d)) || String(x.name).localeCompare(String(y.name)); });
-      var sent = {}; try { sent = JSON.parse(localStorage.getItem(PES_SENT_KEY) || '{}') || {}; } catch (e) {}
-      var snz = pesSnoozeGet();
+      var keep = [];
       tasks.forEach(function(x) {
-        var k = normName(x.name) + '|' + String(x.d || '').slice(0, 10);
-        if (snz[k] && snz[k] > today) return;   // pospuesto: no sale ni ocupa lugar en el día
-        if (m[k]) { keep.push(x); }
-        else if (n < PES_CAP) { m[k] = today; n++; changed = true; keep.push(x); }
-        else return;
-        if (x.src === 'al' && x.id && isIsoDate(x.d) && sent[k] !== m[k]) pesQueueSet(x.id, x.d, m[k], k);   // el cliente también se entera de su día
+        var a = byN[normName(x.name)], rel = (a && a.pes && a.pes.d === a.t) ? a.pes.r : '';
+        if (rel && rel > today) return;                 // pospuesto, o con un día futuro
+        if (x.src === 'in' || rel) { keep.push(x); return; }   // el cliente ya avisó, o ya le tocó
+        if (a && a.id && n < PES_CAP) { n++; pesSetLocal(a, today); pesQueueSet(a.id, a.t, today); keep.push(x); }
       });
-      if (changed) {
-        var cut = addDaysIso(today, -120); Object.keys(m).forEach(function(k) { if (m[k] < cut) delete m[k]; });
-        try { localStorage.setItem(PES_SHOWN_KEY, JSON.stringify(m)); } catch (e) {}
-      }
       return keep;
     }
     // Revisa un cliente: devuelve los avisos que le tocan hoy
@@ -13357,7 +13351,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var k = Math.floor(diff / 28);
       if (k >= 1 && diff <= total * 7 + 14) {
         var due = addDaysIso(st.startDate, 28 * k), measured = normalizeMeasureLog(st.measureLog || []).some(function(e) { return e.d >= due; });
-        if (!measured) out.push({ key: c.id + '|pesaje|' + st.startDate + '|' + k, id: c.id, name: c.name, tipo: 'pesaje', mot: 'Van ' + (k * 4) + ' semanas desde que empezó su rutina: toca pesarlo y medirlo.', t: due });
+        if (!measured) out.push({ key: c.id + '|pesaje|' + st.startDate + '|' + k, id: c.id, name: c.name, tipo: 'pesaje', mot: 'Van ' + (k * 4) + ' semanas desde que empezó su rutina: toca pesarlo y medirlo.', t: due, pes: (st.pes && st.pes.d === due) ? st.pes : null });
       }
       if (total >= 2 && cur >= total && cur <= total + 3 && !st.next) {
         out.push({ key: c.id + '|ciclo|' + st.startDate, id: c.id, name: c.name, tipo: 'ciclo', mot: (cur > total ? 'Su ciclo ya terminó' : 'Está en la última semana de su ciclo') + ': prepara su nueva rutina.', t: addDaysIso(st.startDate, (total - 1) * 7) });
@@ -13367,7 +13361,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     function alertsScan(force) {
       if (!COACH || ALERTS_BUSY) return;
       var o = alertsLoad();
-      if (!force && Date.now() - o.ts < 3 * 3600 * 1000) { alertsPaint(); return; }
+      if (!force && Date.now() - o.ts < 30 * 60 * 1000) { alertsPaint(); return; }
       ALERTS_BUSY = true;
       var clients = attClients(true), list = [], i = 0, running = 0, offChanged = false;
       function one(c) {
@@ -13505,7 +13499,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<button type="button" class="pend-btn pend-ok" id="pes_post_x" style="margin-top:8px;">Cancelar</button>');
       document.getElementById('pes_post_x').onclick = function() { pendCloseOverlay('pes_post'); };
       document.querySelectorAll('#pes_post [data-d]').forEach(function(b) {
-        b.onclick = function() { pesPostpone(x, parseInt(b.getAttribute('data-d'), 10)); pendCloseOverlay('pes_post'); showToastTop('⏭ Pospuesto: vuelve a tocar el ' + fechaLargaEs(addDaysIso(todayIso(), parseInt(b.getAttribute('data-d'), 10))) + '.'); alertsPaint(); };
+        b.onclick = function() { var okP = pesPostpone(x, parseInt(b.getAttribute('data-d'), 10)); pendCloseOverlay('pes_post'); if (!okP) { showToastTop('No pude posponerlo: actualiza las alertas e intenta de nuevo.'); return; } showToastTop('⏭ Pospuesto: vuelve a tocar el ' + fechaLargaEs(addDaysIso(todayIso(), parseInt(b.getAttribute('data-d'), 10))) + '.'); alertsPaint(); };
       });
     }
     function alertsTaskDone(gi) {
