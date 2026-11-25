@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-n';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-o';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6858,6 +6858,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
     var APP_NOTICES = [
+      { id: '2026-11-24-mensajes', title: '💬 Tu coach puede escribirte', text: 'Cuando tu coach te deje un mensaje, te sale al abrir la app. Puedes tocar «Responder» para contestarle ahí mismo o cerrar la ventana con la ✕.' },
+      { id: '2026-11-24-pesaje-mes', title: '🗓️ Elige cuándo pesarte', text: 'En el aviso «Toca pesarte y medirte» hay un botón nuevo: «Prefiero el próximo mes». Lo pospone unos 30 días y tu coach recibe el aviso.' },
       { id: '2026-11-23-nutri-barras', title: '🍽 Tu nutrición y actividad en gráficas', text: 'En «Datos y asistencia» ahora ves barras por día con tus calorías, agua, sueño, pasos y actividad de los últimos 14 días, con la línea de tu meta. Tu coach también las ve en tu ficha.' },
       { id: '2026-11-23-recorrido', title: '🧭 Recorrido menos insistente', text: 'El recorrido por la app ahora empieza cuando tú lo aceptas («Iniciar recorrido por la app» o «Después»). Si lo cierras, se cierra del todo y no vuelven las ventanitas. Y en cada bloque quitamos el botón amarillo de abajo: para empezar usa «▶ INICIAR» de la franja de arriba.' },
       { id: '2026-11-21-cerrar', title: '✅ Cerrar tu entreno ahora es más rápido', text: 'Al completar el último bloque, tu entreno se guarda solo y sale una sola ventana final con tu tiempo, calorías y resumen de la semana. Ahí eliges «Cerrar y salir» o «Quedarme en el inicio» para ver otra cosa.' },
@@ -6890,11 +6892,26 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         document.body.appendChild(m); m.classList.add('active');
       } catch (e) {}
     }
+    // Las novedades se agrupan por fecha (la fecha va al inicio del id) en pestañitas cerradas: se abre la que se quiera ver
+    function ntByDate(list) {
+      var groups = [], idx = {};
+      list.forEach(function(n) {
+        var d = String(n.id).slice(0, 10); if (!isIsoDate(d)) d = '';
+        if (idx[d] == null) { idx[d] = groups.length; groups.push({ d: d, items: [] }); }
+        groups[idx[d]].items.push(n);
+      });
+      return groups.map(function(g) {
+        var lbl = g.d ? fechaLargaEs(g.d) : 'Otras', cnt = g.items.length;
+        return '<details style="text-align:left; margin-top:8px; background:#11151d; border:1px solid #2a3142; border-radius:10px; padding:0 12px;">' +
+          '<summary style="cursor:pointer; padding:11px 0; font-weight:800; color:#fff; font-size:.9rem;">📅 ' + escHtml(lbl) + ' <span style="color:#8a93a6; font-weight:700;">(' + cnt + ')</span></summary>' +
+          g.items.map(function(n) { return '<div class="nt-item"><b>' + escHtml(n.title) + '</b><p>' + escHtml(n.text) + '</p></div>'; }).join('') + '</details>';
+      }).join('');
+    }
     // «Ver cambios»: la ventanita pasa a mostrar la lista completa, con su «No mostrar más»
     function noticesExpand() {
       var m = document.getElementById('nt_modal'), list = NT_LIST; if (!m || !list.length) return;
       m.innerHTML = '<div class="modal-inner" style="text-align:center; max-height:86vh; overflow:auto;"><div style="font-size:1.1rem; font-weight:900; color:var(--primary);">📢 Novedades en la app</div>' +
-        list.map(function(n) { return '<div class="nt-item"><b>' + escHtml(n.title) + '</b><p>' + escHtml(n.text) + '</p></div>'; }).join('') +
+        ntByDate(list) +
         '<label style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; font-size:.85rem; font-weight:800; color:#fff;"><input type="checkbox" id="nt_off_all" data-nt-ids="' + escHtml(list.map(function(n) { return n.id; }).join(',')) + '" style="width:20px; height:20px; accent-color:#06d6a0;"> No mostrar más</label>' +
         '<button type="button" class="btn-action-primary" style="margin-top:10px;" onclick="noticesClose()">Entendido</button></div>';
     }
