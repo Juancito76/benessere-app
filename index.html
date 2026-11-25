@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -2380,7 +2380,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // Normaliza un nombre de ejercicio para comparar sin importar mayúsculas/minúsculas
     // ni espacios de más (p. ej. "Sentadilla Búlgara" y "sentadilla búlgara " son lo mismo).
-    function normKey(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+    function normKey(s) { return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' '); }   // sin mayúsculas, tildes ni espacios de más
 
     function getVideoLibrary() {
       try { return JSON.parse(localStorage.getItem(VIDEO_LIBRARY_KEY) || '{}') || {}; } catch (e) { return {}; }
@@ -2395,6 +2395,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       video = String(video || '').trim();
       if (!name || !video) return;
       var lib = getVideoLibrary();
+      // Si ya existe el mismo ejercicio escrito distinto (mayúsculas, tildes, espacios), se actualiza esa entrada en vez de crear otra
+      var nk = normKey(name);
+      if (!Object.prototype.hasOwnProperty.call(lib, name)) { for (var ek in lib) { if (Object.prototype.hasOwnProperty.call(lib, ek) && normKey(ek) === nk) { name = ek; break; } } }
       var changed = lib[name] !== video;
       lib[name] = video;
       setVideoLibrary(lib);
