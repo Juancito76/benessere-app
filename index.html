@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-r';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-s';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -1874,12 +1874,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (nuc === null && !(FICHA_NUC[normName(nm)] && FICHA_NUC[normName(nm)].map)) { /* sin datos de nutrición: no se afirma nada */ }
       if (!work.length) work.push(goal === 'ganar' ? 'Mantener la proteína y progresar las cargas semana a semana.' : (goal === 'perder' ? 'Mantener el déficit suave, la proteína y los pasos diarios.' : 'Mantener el ritmo actual y progresar poco a poco en tus cargas.'));
       work.slice(0, 2).forEach(function(w) { L.push('• ' + w); });
+      var coachNote = String((FICHA.notes && FICHA.notes[d]) || '').trim();   // nota del Coach (observaciones de la ficha antropométrica)
+      if (coachNote) L.push('', '📝 NOTA DEL COACH', coachNote);
       return L.join('\n');
     }
     function infHtml(txt) {
       return String(txt || '').split('\n').map(function(l) {
         if (!l.trim()) return '<div style="height:6px;"></div>';
-        var head = /^(📋|📊|🎉|🎯)/.test(l);
+        var head = /^(📋|📊|🎉|🎯|📝 NOTA)/.test(l);
         return '<div style="' + (head ? 'font-weight:900; color:var(--primary); margin-top:4px;' : 'line-height:1.45;') + '">' + escHtml(l) + '</div>';
       }).join('');
     }
