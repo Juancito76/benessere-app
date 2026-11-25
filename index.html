@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-k';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -6401,11 +6401,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         '<div style="font-size:.85rem;color:#c9d1e0;line-height:1.4;">Ya llevas ' + (k * 4) + ' semanas. Pésate en ayunas y avísale a tu coach para ver tu avance.</div>' +
         '<div style="display:flex;gap:8px;margin-top:14px;"><button type="button" id="rem_later" style="flex:1;background:transparent;border:1px solid #6b7488;color:#c9d1e0;border-radius:8px;padding:9px;font-weight:700;font-size:0.82rem;">Luego</button>' +
         '<button type="button" id="rem_week" style="flex:1;background:transparent;border:1px solid #ffb703;color:#ffb703;border-radius:8px;padding:9px;font-weight:700;font-size:0.82rem;">📅 1 semana</button></div>' +
+        '<button type="button" id="rem_month" style="width:100%;margin-top:8px;background:transparent;border:1px solid #4d8bff;color:#4d8bff;border-radius:8px;padding:9px;font-weight:700;font-size:0.82rem;">🗓️ Prefiero el próximo mes</button>' +
         '<button type="button" id="rem_ok" style="width:100%;margin-top:8px;background:#06d6a0;border:none;color:#04251c;border-radius:8px;padding:9px;font-weight:900;">Ya me pesé</button></div>';
       document.body.appendChild(d);
       document.getElementById('rem_later').onclick = function() { var R = remLoad(); R.snz = Date.now() + 86400000; remSave(R); d.remove(); };
       // Ítem 49: posponer el aviso de pesaje recurrente una semana completa (no solo hasta mañana como «Luego»)
       document.getElementById('rem_week').onclick = function() { var R = remLoad(); R.snz = Date.now() + 7 * 86400000; remSave(R); d.remove(); };
+      // El cliente decide pesarse el próximo mes: se pospone ~30 días y a la coach le llega un aviso
+      document.getElementById('rem_month').onclick = function() {
+        var R = remLoad(); R.snz = Date.now() + 30 * 86400000; remSave(R); d.remove();
+        try { remQueue('aviso', 'Prefiere pesarse el próximo mes (a partir del ' + fechaLargaEs(addDaysIso(todayIso(), 30)) + ').'); showToastTop('Listo, te lo recordamos el próximo mes 👍'); } catch (e) {}
+      };
       document.getElementById('rem_ok').onclick = function() { var R = remLoad(); R['pes' + k] = 1; remSave(R); d.remove(); };
     }
 
@@ -13182,22 +13188,25 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return !inbox.some(function(r) { return r.tipo === a.tipo && normName(r.cli) === normName(a.name); });   // si el propio cliente ya avisó, sale solo ese
       });
     }
-    // Pesajes repartidos: a cada cliente le toca siempre el mismo día de la semana (lunes a sábado, fijo por su nombre) para pesarse.
-    // El aviso de pesaje no sale el día que se cumplen las 4 semanas, sino el primer día de su turno desde entonces (a lo sumo 6 días después),
-    // así los que empezaron juntos no caen todos el mismo día.
-    function pesajeSlot(name) {
-      var t = normName(name), h = 0;
-      for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 100003;
-      return 1 + (h % 6);   // 1 = lunes … 6 = sábado
+    // Pesajes repartidos: como mucho 5 pesajes NUEVOS por día. Cada aviso guarda el día en que le tocó salir; los más atrasados salen primero
+    // y el resto espera al día siguiente. Los que ya salieron siguen visibles hasta que se atienden.
+    var PES_CAP = 5, PES_SHOWN_KEY = 'benessere_pes_shown';
+    function pesajeCap(tasks) {
+      var m = {}; try { m = JSON.parse(localStorage.getItem(PES_SHOWN_KEY) || '{}') || {}; } catch (e) {}
+      var today = todayIso(), n = 0, changed = false, keep = [];
+      Object.keys(m).forEach(function(k) { if (m[k] === today) n++; });
+      tasks.sort(function(x, y) { return String(x.d).localeCompare(String(y.d)) || String(x.name).localeCompare(String(y.name)); });
+      tasks.forEach(function(x) {
+        var k = normName(x.name) + '|' + String(x.d || '').slice(0, 10);
+        if (m[k]) { keep.push(x); return; }
+        if (n < PES_CAP) { m[k] = today; n++; changed = true; keep.push(x); }
+      });
+      if (changed) {
+        var cut = addDaysIso(today, -120); Object.keys(m).forEach(function(k) { if (m[k] < cut) delete m[k]; });
+        try { localStorage.setItem(PES_SHOWN_KEY, JSON.stringify(m)); } catch (e) {}
+      }
+      return keep;
     }
-    function pesajeRelease(name, dueIso) {
-      if (!isIsoDate(dueIso)) return dueIso;
-      var slot = pesajeSlot(name);
-      for (var d = 0; d < 7; d++) { var iso = addDaysIso(dueIso, d); if (new Date(iso + 'T12:00:00').getDay() === slot) return iso; }
-      return dueIso;
-    }
-    function pesajeVisible(name, dueIso) { return !isIsoDate(dueIso) || todayIso() >= pesajeRelease(name, dueIso); }
-    var PES_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     // Revisa un cliente: devuelve los avisos que le tocan hoy
     function alertsFor(c, st) {
       var out = [], today = todayIso();
@@ -13209,7 +13218,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var k = Math.floor(diff / 28);
       if (k >= 1 && diff <= total * 7 + 14) {
         var due = addDaysIso(st.startDate, 28 * k), measured = normalizeMeasureLog(st.measureLog || []).some(function(e) { return e.d >= due; });
-        if (!measured && pesajeVisible(c.name, due)) out.push({ key: c.id + '|pesaje|' + st.startDate + '|' + k, id: c.id, name: c.name, tipo: 'pesaje', mot: 'Van ' + (k * 4) + ' semanas desde que empezó su rutina: toca pesarlo y medirlo.', t: due });
+        if (!measured) out.push({ key: c.id + '|pesaje|' + st.startDate + '|' + k, id: c.id, name: c.name, tipo: 'pesaje', mot: 'Van ' + (k * 4) + ' semanas desde que empezó su rutina: toca pesarlo y medirlo.', t: due });
       }
       if (total >= 2 && cur >= total && cur <= total + 3 && !st.next) {
         out.push({ key: c.id + '|ciclo|' + st.startDate, id: c.id, name: c.name, tipo: 'ciclo', mot: (cur > total ? 'Su ciclo ya terminó' : 'Está en la última semana de su ciclo') + ': prepara su nueva rutina.', t: addDaysIso(st.startDate, (total - 1) * 7) });
@@ -13246,17 +13255,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var out = [], seen = {};
       (VREP_INBOX || []).forEach(function(r, i) {
         if (!vrepIsTask(r) || coachIsOff(r.cli)) return;
-        if (r.tipo === 'pesaje' && !pesajeVisible(r.cli, String(r.t || '').slice(0, 10))) return;   // espera su día de la semana
         var k = r.tipo + '|' + normName(r.cli); if (seen[k]) { out.forEach(function(o) { if (o.k === k) o.dup.push(i); }); return; }
         seen[k] = 1;
         var wk = (String(r.mot || '').match(/semana\s+(\d+)/i) || [])[1];
-        out.push({ k: k, tipo: r.tipo, name: r.cli || 'Cliente', id: r.rid || '', d: String(r.t || '').slice(0, 10), det: r.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') + ' · su día: ' + PES_DIAS[pesajeSlot(r.cli)] : (r.mot || ''), src: 'in', idx: i, dup: [] });
+        out.push({ k: k, tipo: r.tipo, name: r.cli || 'Cliente', id: r.rid || '', d: String(r.t || '').slice(0, 10), det: r.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') : (r.mot || ''), src: 'in', idx: i, dup: [] });
       });
       alertsOpen().forEach(function(x, i) {
         var k = x.tipo + '|' + normName(x.name); if (seen[k]) return; seen[k] = 1;
         var wk = (String(x.mot || '').match(/Van\s+(\d+)\s+semanas/i) || [])[1];
-        out.push({ k: k, tipo: x.tipo, name: x.name, id: x.id, d: x.t || '', det: x.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') + ' · su día: ' + PES_DIAS[pesajeSlot(x.name)] : String(x.mot || '').replace(/: prepara su nueva rutina\.?$/, ''), src: 'al', idx: i, dup: [] });
+        out.push({ k: k, tipo: x.tipo, name: x.name, id: x.id, d: x.t || '', det: x.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') : String(x.mot || '').replace(/: prepara su nueva rutina\.?$/, ''), src: 'al', idx: i, dup: [] });
       });
+      var pes = pesajeCap(out.filter(function(o) { return o.tipo === 'pesaje'; }));   // máx. 5 pesajes nuevos por día
+      out = out.filter(function(o) { return o.tipo !== 'pesaje' || pes.indexOf(o) >= 0; });
       out.sort(function(a, b) { return String(a.d).localeCompare(String(b.d)); });   // el más atrasado primero
       return out;
     }
