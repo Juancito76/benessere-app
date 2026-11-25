@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-24-h';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-24-j';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -13182,6 +13182,22 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         return !inbox.some(function(r) { return r.tipo === a.tipo && normName(r.cli) === normName(a.name); });   // si el propio cliente ya avisó, sale solo ese
       });
     }
+    // Pesajes repartidos: a cada cliente le toca siempre el mismo día de la semana (lunes a sábado, fijo por su nombre) para pesarse.
+    // El aviso de pesaje no sale el día que se cumplen las 4 semanas, sino el primer día de su turno desde entonces (a lo sumo 6 días después),
+    // así los que empezaron juntos no caen todos el mismo día.
+    function pesajeSlot(name) {
+      var t = normName(name), h = 0;
+      for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 100003;
+      return 1 + (h % 6);   // 1 = lunes … 6 = sábado
+    }
+    function pesajeRelease(name, dueIso) {
+      if (!isIsoDate(dueIso)) return dueIso;
+      var slot = pesajeSlot(name);
+      for (var d = 0; d < 7; d++) { var iso = addDaysIso(dueIso, d); if (new Date(iso + 'T12:00:00').getDay() === slot) return iso; }
+      return dueIso;
+    }
+    function pesajeVisible(name, dueIso) { return !isIsoDate(dueIso) || todayIso() >= pesajeRelease(name, dueIso); }
+    var PES_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     // Revisa un cliente: devuelve los avisos que le tocan hoy
     function alertsFor(c, st) {
       var out = [], today = todayIso();
@@ -13193,7 +13209,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var k = Math.floor(diff / 28);
       if (k >= 1 && diff <= total * 7 + 14) {
         var due = addDaysIso(st.startDate, 28 * k), measured = normalizeMeasureLog(st.measureLog || []).some(function(e) { return e.d >= due; });
-        if (!measured) out.push({ key: c.id + '|pesaje|' + st.startDate + '|' + k, id: c.id, name: c.name, tipo: 'pesaje', mot: 'Van ' + (k * 4) + ' semanas desde que empezó su rutina: toca pesarlo y medirlo.', t: due });
+        if (!measured && pesajeVisible(c.name, due)) out.push({ key: c.id + '|pesaje|' + st.startDate + '|' + k, id: c.id, name: c.name, tipo: 'pesaje', mot: 'Van ' + (k * 4) + ' semanas desde que empezó su rutina: toca pesarlo y medirlo.', t: due });
       }
       if (total >= 2 && cur >= total && cur <= total + 3 && !st.next) {
         out.push({ key: c.id + '|ciclo|' + st.startDate, id: c.id, name: c.name, tipo: 'ciclo', mot: (cur > total ? 'Su ciclo ya terminó' : 'Está en la última semana de su ciclo') + ': prepara su nueva rutina.', t: addDaysIso(st.startDate, (total - 1) * 7) });
@@ -13230,15 +13246,16 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var out = [], seen = {};
       (VREP_INBOX || []).forEach(function(r, i) {
         if (!vrepIsTask(r) || coachIsOff(r.cli)) return;
+        if (r.tipo === 'pesaje' && !pesajeVisible(r.cli, String(r.t || '').slice(0, 10))) return;   // espera su día de la semana
         var k = r.tipo + '|' + normName(r.cli); if (seen[k]) { out.forEach(function(o) { if (o.k === k) o.dup.push(i); }); return; }
         seen[k] = 1;
         var wk = (String(r.mot || '').match(/semana\s+(\d+)/i) || [])[1];
-        out.push({ k: k, tipo: r.tipo, name: r.cli || 'Cliente', id: r.rid || '', d: String(r.t || '').slice(0, 10), det: r.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') : (r.mot || ''), src: 'in', idx: i, dup: [] });
+        out.push({ k: k, tipo: r.tipo, name: r.cli || 'Cliente', id: r.rid || '', d: String(r.t || '').slice(0, 10), det: r.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') + ' · su día: ' + PES_DIAS[pesajeSlot(r.cli)] : (r.mot || ''), src: 'in', idx: i, dup: [] });
       });
       alertsOpen().forEach(function(x, i) {
         var k = x.tipo + '|' + normName(x.name); if (seen[k]) return; seen[k] = 1;
         var wk = (String(x.mot || '').match(/Van\s+(\d+)\s+semanas/i) || [])[1];
-        out.push({ k: k, tipo: x.tipo, name: x.name, id: x.id, d: x.t || '', det: x.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') : String(x.mot || '').replace(/: prepara su nueva rutina\.?$/, ''), src: 'al', idx: i, dup: [] });
+        out.push({ k: k, tipo: x.tipo, name: x.name, id: x.id, d: x.t || '', det: x.tipo === 'pesaje' ? (wk ? 'semana ' + wk : 'toca pesaje') + ' · su día: ' + PES_DIAS[pesajeSlot(x.name)] : String(x.mot || '').replace(/: prepara su nueva rutina\.?$/, ''), src: 'al', idx: i, dup: [] });
       });
       out.sort(function(a, b) { return String(a.d).localeCompare(String(b.d)); });   // el más atrasado primero
       return out;
