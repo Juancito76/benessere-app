@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Benessere · Envíos por WhatsApp</title>
+<title>Envíos de WhatsApp</title>
+<link rel="manifest" href="envios.webmanifest">
+<meta name="theme-color" content="#071315">
+<meta name="apple-mobile-web-app-title" content="Envíos de WhatsApp">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/envios-192.png">
+<link rel="apple-touch-icon" href="icons/envios-192.png">
 <style>
 :root{--bg:#071315;--card:#0f2326;--line:#1e3f44;--tq:#18c5cd;--or:#ff7a1a;--tx:#f2fbfc;--mu:#8fb2b6}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,Arial,sans-serif}
@@ -18,7 +23,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;p
 #msg2{color:var(--or);font-weight:600;min-height:1.4em;margin:8px 0 0}
 @media(max-width:640px){.two{grid-template-columns:1fr}.two img{max-width:200px}}
 </style></head><body><main>
-<h1><b>Benessere</b> · Envíos por WhatsApp</h1>
+<div class="row" style="justify-content:space-between"><h1><b>Benessere</b> · Envíos de WhatsApp</h1><button id="install" class="ok">📲 Instalar app</button></div>
+<div id="installHelp" class="mu" role="status" hidden>En Chrome abre el menú ⋮, entra a «Transmitir, guardar y compartir» y elige «Instalar página como app».</div>
 <section><h2>1. Lista</h2>
 <input type="file" id="file" accept=".xlsx,.csv"> <span class="mu" id="loaded">Carga tu archivo de lista (Excel o CSV). Se guarda solo en este dispositivo; no se sube a internet.</span></section>
 <section><h2>2. Mensaje e imagen</h2><div class="two"><div>
@@ -86,4 +92,10 @@ $('fEstado').onchange=()=>{cur=null;render()};$('q').oninput=render;
 $('export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({log,people})],{type:'application/json'}));a.download='respaldo_envios_'+today()+'.json';a.click()};
 $('restore').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!d.log||!Array.isArray(d.people))throw 0;log=Object.assign({},d.log,log);people=d.people;cur=null;store.set('log',log);store.set('people2',people);render();say('Respaldo restaurado.')}catch(x){say('Ese archivo no es un respaldo válido.')}};
 render();
+let instEvt=null;
+const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+if(installed())$('install').hidden=true;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEvt=e;$('installHelp').hidden=true});
+window.addEventListener('appinstalled',()=>{instEvt=null;$('install').hidden=true;$('installHelp').hidden=true});
+$('install').onclick=async()=>{if(!instEvt){$('installHelp').hidden=false;return}const e=instEvt;instEvt=null;e.prompt();await e.userChoice};
 </script></body></html>
