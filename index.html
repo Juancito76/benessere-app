@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-27-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-27-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -679,9 +679,9 @@
     .home-head .brand-slogan { margin: 2px 0 8px; letter-spacing: .3px; }
     .home-head .client-title { font-size: 1.35rem; line-height: 1.2; margin: 0; overflow-wrap: anywhere; }
     .home-head .home-logo { flex: none; width: 92px; max-width: 26vw; margin: 0; }
-    .home-pills { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; max-width: 380px; margin-bottom: 10px; text-align: left; }
-    .home-screen .home-pills .week-tracker-pill { margin: 0; padding: 8px 14px; }
-    .manual-pill { background: #161616; color: #ffd166; border: 1px solid #ffd166; border-radius: 999px; padding: 8px 14px; font-size: .8rem; font-weight: 800; cursor: pointer; }
+    .home-pills { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; gap: 8px; width: 100%; max-width: 380px; margin-bottom: 10px; }
+    .home-screen .home-pills .week-tracker-pill, .home-pills .manual-pill { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 40px; margin: 0; padding: 8px 10px; font-size: .8rem; line-height: 1.25; text-align: center; box-sizing: border-box; }
+    .manual-pill { background: #161616; color: #ffd166; border: 1px solid #ffd166; border-radius: 999px; font-weight: 800; cursor: pointer; }
     /* Clases y retos (portada del cliente) */
     .cls-head { text-align: center; margin: 4px 0 2px; }
     .cls-head img { width: 84px; height: auto; display: block; margin: 0 auto 6px; filter: drop-shadow(0 0 10px rgba(0,229,255,.35)); }
