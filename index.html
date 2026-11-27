@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-27-b';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-27-c';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -272,6 +272,15 @@
     .frase-dia .fd-lbl { font-size: 0.66rem; font-weight: 800; letter-spacing: .06em; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
     .frase-dia .fd-txt { font-size: 0.92rem; font-weight: 700; color: #f2f2f2; line-height: 1.4; }
     .frase-dia .fd-aut { font-size: 0.74rem; color: var(--muted); margin-top: 4px; }
+    .preg-dia { width: 100%; max-width: 380px; margin: 0 0 18px; padding: 12px 14px; border-radius: 12px; border: 1px solid #2c2c2c; border-left: 4px solid var(--primary); background: #141414; text-align: left; box-sizing: border-box; }
+    .preg-dia .pg-lbl { font-size: 0.66rem; font-weight: 800; letter-spacing: .06em; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; }
+    .preg-dia .pg-txt { font-size: 0.95rem; font-weight: 800; color: #f2f2f2; line-height: 1.35; }
+    .preg-dia .pg-ops { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+    .preg-dia .pg-op { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; padding: 8px; background: #1e1e1e; color: #fff; border: 1px solid #3a3a3a; border-radius: 10px; font-size: 0.82rem; font-weight: 700; line-height: 1.2; text-align: center; cursor: pointer; }
+    .preg-dia .pg-op:active { border-color: var(--primary); }
+    .preg-dia .pg-op:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .preg-dia .pg-nota { font-size: 0.72rem; color: var(--muted); margin-top: 8px; line-height: 1.35; }
+    .preg-dia .pg-mas { margin-top: 10px; width: 100%; min-height: 42px; background: transparent; color: #ffd166; border: 1px solid #ffd166; border-radius: 10px; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
     @keyframes nutriBlink { 0%,100% { color: #06d6a0; text-shadow: 0 0 8px rgba(6,214,160,.8); } 50% { color: rgba(6,214,160,.35); text-shadow: none; } }
     .nutri-hoy-link { display: block; width: 100%; background: none; border: none; text-align: center; font-size: 1rem; font-weight: 900; text-decoration: underline; cursor: pointer; padding: 6px 0 14px; color: #06d6a0; animation: nutriBlink 1s ease-in-out infinite; }
     .nutri-hoy-link.seen { animation: none; }
@@ -364,13 +373,8 @@
     .capsule-btn.cap-card.day-on .cap-s { color: #06d6a0; font-weight: 800; }
     @media (prefers-reduced-motion: reduce) { .capsule-group .cap-card.day-sug { animation: none; box-shadow: var(--shadow-card), 0 0 0 2px var(--c); } }
     #ath_start_today { margin: 2px 0 14px; }
-    .start-today-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: none; border-radius: 16px; background: linear-gradient(135deg, #06d6a0, #00b4d8); color: #00281a; font-size: 1.02rem; font-weight: 900; cursor: pointer; box-shadow: 0 4px 18px rgba(6,214,160,.35); animation: vsIn .3s ease-out backwards, startTodayPulse 2.6s ease-in-out .4s infinite; }
-    .start-today-btn:active { transform: scale(.97); filter: brightness(.95); }
     .nutri-home-btn { width: 100%; margin-top: 10px; padding: 13px; border-radius: 14px; border: 1.5px solid #ffb703; background: transparent; color: #ffb703; font-size: .95rem; font-weight: 800; cursor: pointer; }
     .nutri-home-btn:active { transform: scale(.97); }
-    .start-today-sub { text-align: center; font-size: 0.74rem; color: var(--muted); margin-top: 6px; }
-    @keyframes startTodayPulse { 0%, 100% { box-shadow: 0 4px 18px rgba(6,214,160,.35); } 50% { box-shadow: 0 4px 26px rgba(6,214,160,.6); } }
-    @media (prefers-reduced-motion: reduce) { .start-today-btn { animation: none; } }
     .gd-legend { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin: 4px 0 10px; text-align: center; }
     .gd-guide { background: #14130a; border: 2px solid #ffee00; border-radius: 12px; padding: 12px; margin: 8px 0 10px; text-align: left; font-size: 0.82rem; color: #eee; line-height: 1.5; }
     .gd-guide b { color: #ffee00; }
@@ -680,8 +684,10 @@
     .home-head .client-title { font-size: 1.35rem; line-height: 1.2; margin: 0; overflow-wrap: anywhere; }
     .home-head .home-logo { flex: none; width: 92px; max-width: 26vw; margin: 0; }
     .home-pills { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; gap: 8px; width: 100%; max-width: 380px; margin-bottom: 10px; }
-    .home-screen .home-pills .week-tracker-pill, .home-pills .manual-pill { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 40px; margin: 0; padding: 8px 10px; font-size: .8rem; line-height: 1.25; text-align: center; box-sizing: border-box; }
+    .home-screen .home-pills .week-tracker-pill, .home-pills .manual-pill, .home-pills .coach-pill { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 40px; margin: 0; padding: 8px 10px; font-size: .8rem; line-height: 1.25; text-align: center; box-sizing: border-box; }
     .manual-pill { background: #161616; color: #ffd166; border: 1px solid #ffd166; border-radius: 999px; font-weight: 800; cursor: pointer; }
+    .coach-pill { background: #161616; color: #ff9e00; border: 1px solid #ff9e00; border-radius: 999px; font-weight: 800; cursor: pointer; }
+    .coach-pill.coach-note-pill { color: #ff8a3d; border-color: #ff6d00; }
     /* Clases y retos (portada del cliente) */
     .cls-head { text-align: center; margin: 4px 0 2px; }
     .cls-head img { width: 84px; height: auto; display: block; margin: 0 auto 6px; filter: drop-shadow(0 0 10px rgba(0,229,255,.35)); }
@@ -1281,10 +1287,13 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div class="home-pills">
         <div class="week-tracker-pill" id="ath_weekDisplay">Semana 1</div>
         <button type="button" id="ath_manual_btn" class="manual-pill" onclick="manualOpen()">📖 Cómo usar la app</button>
+        <button type="button" id="ath_avisar_btn" class="coach-pill" onclick="athAvisarOpen()">📣 Comentarle a mi Coach</button>
+        <button type="button" id="ath_note_btn" class="coach-pill coach-note-pill" onclick="openModal('ath_modal_coach')">💬 Nota del Coach</button>
       </div>
       <div id="ath_weekPanel" style="display:none;"></div>
       <div id="ath_pend_box" style="display:none;"></div>
       <div class="frase-dia" id="ath_frase" style="display:none;"></div>
+      <div class="preg-dia" id="ath_preg" style="display:none;"></div>
       <div id="ath_start_today" style="display:none;"></div>
       <div class="capsule-group" id="ath_capsuleGroup"></div>
       <div style="text-align:center; margin:14px 0 6px;">
@@ -1311,7 +1320,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     <div id="ath_modal_avisar" class="view-screen">
       <div class="top-nav-bar">
         <button class="back-btn" onclick="closeModal('ath_modal_avisar')">← Volver</button>
-        <div class="view-title">Avisar a mi coach</div>
+        <div class="view-title">Comentarle a mi Coach</div>
         <div style="width:50px;"></div>
       </div>
       <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px;">
@@ -1327,7 +1336,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         <label class="med-lbl">Cuéntale a tu coach</label>
         <textarea id="av_comment" class="med-in" rows="4" maxlength="500" placeholder="Escribe aquí los detalles…"></textarea>
         <div id="av_msg" style="font-size:0.78rem; min-height:16px; margin:6px 0; color:var(--muted);"></div>
-        <button type="button" class="btn-action-primary" onclick="athAvisarSend()">📣 Enviar aviso</button>
+        <button type="button" class="btn-action-primary" onclick="athAvisarSend()">📣 Enviar comentario</button>
       </div>
     </div>
 
@@ -6072,6 +6081,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('athlete_client_view').style.display = 'block';
 
       try { fraseDiaPaint(); } catch (e) {}
+      try { pregPaint(); } catch (e) {}
       document.getElementById('ath_clientTitle').innerText = saludoInicio(state.clientName);
       document.getElementById('ath_coachMsgTitle').innerText = state.coachMsgTitle || 'Nota del Coach';
       document.getElementById('ath_coachMsgBody').innerText = state.coachMsgBody || '';
@@ -6080,8 +6090,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var isDemos = state.configFeatures ? (state.configFeatures.demos === true) : false;
 
       var dayColors = ['#2f69ff', '#8338ec', '#00b4d8', '#06d6a0', '#ef476f'];
-      var capsuleHtml = capCard('#ff6d00', '💬', 'Nota del Coach', 'Un mensaje para ti', "openModal('ath_modal_coach')");
-      if (!isCoachView()) capsuleHtml += capCard('#ff9e00', '📣', 'Avisar a mi coach', 'Duda, molestia o cualquier aviso', 'athAvisarOpen()');
+      var capsuleHtml = '';
+      // «Comentarle a mi Coach» es solo del cliente; en la vista de coach la Nota ocupa toda la fila
+      var avBtn = document.getElementById('ath_avisar_btn'), ntBtn = document.getElementById('ath_note_btn');
+      avBtn.style.display = isCoachView() ? 'none' : ''; ntBtn.style.gridColumn = isCoachView() ? '1 / -1' : '';
       var nTr = 0, restIds = [];
       state.routineDays.forEach(function(d, i) {
         if (d.rest) { restIds.push(d.id); return; }   // los descansos van juntos en una sola tarjeta
@@ -6881,7 +6893,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       return 'Hola, ' + (compuesto ? p[0] + ' ' + p[1] : p[0]);
     }
     var APP_NOTICES = [
-      { id: '2026-11-27-inicio', title: '🏠 Inicio renovado', text: 'El botón «📖 Cómo usar la app» ahora está arriba, junto a la semana de tu rutina. Tócalo cuando quieras repasar cómo se usa.' },
+      { id: '2026-11-27-pregunta', title: '💭 Pregunta del día', text: 'En el inicio, debajo de la frase del día, hay una pregunta corta. Respóndela con un toque: tu coach ve tu respuesta.' },
+      { id: '2026-11-27-inicio', title: '🏠 Inicio renovado', text: 'Arriba, bajo tu nombre, quedaron cuatro botones: tu semana, «📖 Cómo usar la app», «📣 Comentarle a mi Coach» (antes «Avisar a mi coach») y «💬 Nota del Coach». Para entrenar, toca la tarjeta del día que dice «Te toca hoy».' },
       { id: '2026-11-24-mensajes', title: '💬 Tu coach puede escribirte', text: 'Cuando tu coach te deje un mensaje, te sale al abrir la app. Puedes tocar «Responder» para contestarle ahí mismo o cerrar la ventana con la ✕.' },
       { id: '2026-11-24-pesaje-mes', title: '🗓️ Elige cuándo pesarte', text: 'En el aviso «Toca pesarte y medirte» hay un botón nuevo: «Prefiero el próximo mes». Lo pospone unos 30 días y tu coach recibe el aviso.' },
       { id: '2026-11-23-nutri-barras', title: '🍽 Tu nutrición y actividad en gráficas', text: 'En «Datos y asistencia» ahora ves barras por día con tus calorías, agua, sueño, pasos y actividad de los últimos 14 días, con la línea de tu meta. Tu coach también las ve en tu ficha.' },
@@ -7583,7 +7596,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       try { if (sess && !isMetaSess(sess) && !sess.nu) { var nu0 = nuSnap(sess.d || todayIso()); if (nu0) sess.nu = nu0; } } catch (eNu) {}
       var a = loadSessions();
       a.push(sess);
-      if (a.length > 300) a = a.slice(a.length - 300);
+      a = recortarSesiones(a);
       try { localStorage.setItem(sessKey(), JSON.stringify(a)); } catch (e) {}
     }
     var histView = 'date', histExSel = 0;
@@ -8459,6 +8472,477 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var h = fraseDiaHtml();
       box.innerHTML = h; box.style.display = h ? 'block' : 'none';
     }
+    // ----- Pregunta del día: una pregunta corta bajo la frase, se responde con un toque -----
+    // Opciones: [texto, marca]. Marcas: 'm' molestia y 'a' pide ayuda (avisan al coach de una vez); 'b' cansancio/ánimo bajo (avisa si se repite 3 veces seguidas).
+    // Se alternan por fecha: un día «cómo estás» (PREG_ESTADO) y otro de metas y pertenencia (PREG_PARTE): alcanza para un año sin repetir.
+    // Cada línea: pregunta|opción|opción~marca. Las nuevas se agregan al final de su lista.
+    function pregBanco(pref, lineas) {
+      return lineas.map(function(l, i) { var p = l.split('|'); return { id: pref + (i + 1), q: p[0], o: p.slice(1).map(function(x) { return x.split('~'); }) }; });
+    }
+    var PREG_ESTADO = pregBanco('e', [
+      "¿Cómo llegas hoy?|💪 Con energía|🙂 Normal|😴 Con cansancio~b|🤕 Con una molestia~m",
+      "¿Cómo amaneció tu cuerpo hoy?|🔥 Con todo|🙂 Bien|🥱 Pesado~b|🤕 Algo me duele~m",
+      "¿Qué tal dormiste anoche?|🌙 Muy bien|🙂 Más o menos|🥱 Poco o mal~b",
+      "¿Cómo anda tu ánimo hoy?|😄 Muy bien|🙂 Normal|😕 Bajo~b",
+      "¿Cómo quedaste después de tu último entreno?|💪 Muy bien|🙂 Normal|🥵 Con mucho cansancio~b|🤕 Con una molestia~m",
+      "¿Cuánta energía tienes hoy?|⚡ Mucha|🙂 La de siempre|🪫 Poca~b",
+      "¿Cómo está tu espalda hoy?|👌 Sin molestias|🙂 Algo cargada|🤕 Me duele~m",
+      "¿Cuánto estrés traes hoy?|😌 Poco|😐 Algo|🤯 Mucho~b",
+      "¿Tienes ganas de entrenar hoy?|🤩 Muchas|🙂 Normales|😮‍💨 Pocas~b",
+      "¿Cómo vas con el agua hoy?|💧 Muy bien|🙂 Más o menos|🏜️ Se me olvidó",
+      "¿Cómo sientes las piernas hoy?|🦵 Fuertes|🙂 Bien|🥵 Pesadas~b|🤕 Con dolor~m",
+      "¿Comiste algo antes de venir?|🍽️ Sí, bien|🍌 Algo ligero|⏳ Todavía no",
+      "¿Cómo va tu día hasta ahora?|😄 Excelente|🙂 Tranquilo|😵 Complicado~b",
+      "¿Cómo están tus hombros hoy?|👌 Libres|🙂 Algo tensos|🤕 Me molestan~m",
+      "¿Descansaste lo suficiente estos días?|😴 Sí|🙂 Casi|🥱 No mucho~b",
+      "¿Cómo sientes tu cabeza hoy?|🧠 Despejada|🙂 Normal|🌀 Saturada~b",
+      "¿Cómo respondieron tus músculos al último entreno?|💪 Muy bien|🙂 Un poco adoloridos|🥵 Todavía cargados~b|🤕 Algo duele de más~m",
+      "¿Cómo están tus rodillas hoy?|👌 Perfectas|🙂 Bien|🤕 Con molestia~m",
+      "Si tu energía fuera una batería, ¿cómo está?|🔋 Llena|🙂 A la mitad|🪫 Casi vacía~b",
+      "¿Te sientes con calma hoy?|😌 Sí|🙂 Más o menos|😣 No tanto~b",
+      "¿Cómo está tu cuello hoy?|👌 Relajado|🙂 Algo tenso|🤕 Me duele~m",
+      "¿A qué hora te acostaste anoche?|🌙 Temprano|🙂 A mi hora|🦉 Muy tarde~b",
+      "¿Cómo te levantaste esta mañana?|☀️ Con ganas|🙂 Normal|🥱 Con sueño~b",
+      "¿Qué tan flexible sientes tu cuerpo hoy?|🤸 Bastante|🙂 Normal|🪨 Poco",
+      "¿Cómo está tu concentración hoy?|🎯 Muy buena|🙂 Normal|💭 Dispersa~b",
+      "¿Necesitas bajar la intensidad hoy?|🔥 No, voy con todo|🙂 Un poco|🙋 Sí, ayúdame~a",
+      "¿Cómo están tus muñecas hoy?|👌 Sin problema|🙂 Algo cansadas|🤕 Me molestan~m",
+      "¿Cómo salió tu jornada de trabajo o estudio?|😄 Muy bien|🙂 Normal|😮‍💨 Pesada~b",
+      "¿Qué palabra describe tu día?|⚡ Activo|🌿 Tranquilo|🌪️ Intenso|😴 Lento~b",
+      "¿Cómo está tu cadera hoy?|👌 Suelta|🙂 Algo rígida|🤕 Con dolor~m",
+      "¿Tomaste un respiro para ti hoy?|✅ Sí|🙂 Un ratito|⏳ Todavía no",
+      "¿Cómo está tu humor?|😁 De buenas|🙂 Normal|😤 Con poca paciencia~b",
+      "¿Cómo sientes el cuerpo después del descanso?|💪 Con fuerza|🙂 Bien|🥱 Con pereza~b",
+      "¿Cómo están tus tobillos y pies hoy?|👟 Perfectos|🙂 Algo cansados|🤕 Me duelen~m",
+      "¿Cómo vienes de ánimo para sudar?|💦 A tope|🙂 Con calma|😕 Me cuesta hoy~b",
+      "¿Qué tal tu desayuno de hoy?|🍳 Completo|🥐 Rápido|⏭️ No desayuné",
+      "¿Qué tan ligero sientes el cuerpo hoy?|🪶 Muy ligero|🙂 Normal|🧱 Pesado~b",
+      "¿Dormiste de corrido anoche?|😴 Sí|🙂 Me desperté una vez|👀 Varias veces~b",
+      "¿Cómo está tu respiración al entrenar?|🌬️ Muy bien|🙂 Mejorando|😮‍💨 Me canso pronto~b|🙋 Quiero revisarlo~a",
+      "¿Hay algo que te preocupe del entreno de hoy?|👌 Nada|🤔 Un ejercicio~a|🤕 Una molestia~m",
+      "¿Cómo describirías tu semana hasta hoy?|🚀 Genial|🙂 Bien|🧗 Cuesta arriba~b",
+      "¿Cómo está tu zona lumbar hoy?|👌 Sin molestias|🙂 Algo cargada|🤕 Me duele~m",
+      "¿Te dio tiempo de comer bien ayer?|✅ Sí|🙂 Más o menos|⏳ No mucho",
+      "¿Con cuánta fuerza te sientes hoy?|🦁 Mucha|🙂 La normal|🍃 Poca~b",
+      "¿Cómo está tu paciencia hoy?|🧘 Intacta|🙂 Normal|🧨 Justita~b",
+      "¿Pasaste muchas horas en una silla hoy?|🚶 No|🙂 Algunas|🪑 Casi todo el día",
+      "¿Cómo están tus codos hoy?|👌 Bien|🙂 Algo cansados|🤕 Con molestia~m",
+      "¿Qué te pide el cuerpo hoy?|🔥 Intensidad|🚶 Algo suave|🛌 Descanso~b",
+      "¿Cuánto te costó venir hoy?|😎 Nada|🙂 Un poquito|🧗 Bastante~b",
+      "¿Cómo está tu postura hoy?|🧍 Derecha|🙂 Normal|🐢 Encorvada",
+      "¿Cómo te sientes contigo hoy?|😊 Muy bien|🙂 Bien|😕 No tanto~b",
+      "¿Traes algún dolor de ayer?|👌 Ninguno|🙂 Solo cansancio normal|🤕 Sí, un dolor~m",
+      "¿Cómo recuperaste en tu último descanso?|🔋 Recargué|🙂 Algo|🪫 Casi nada~b",
+      "¿Cuánta motivación traes?|🚀 Mucha|🙂 Suficiente|🐌 Poca~b",
+      "¿Cómo va tu hidratación esta semana?|💧 Excelente|🙂 Regular|🏜️ Floja",
+      "¿Cómo sientes los brazos hoy?|💪 Fuertes|🙂 Bien|🥵 Cansados~b|🤕 Con dolor~m",
+      "¿Dónde está hoy tu mente?|🎯 En el entreno|🙂 A medias|🌀 Lejos~b",
+      "¿Qué tal fue tu noche?|🌙 Reparadora|🙂 Normal|🥱 Corta~b",
+      "¿Cómo está tu abdomen hoy?|👌 Bien|🙂 Algo adolorido|🤢 Con malestar~m",
+      "¿Llegas con prisa o con tiempo?|⏱️ Con prisa|🙂 Lo justo|🧘 Con calma",
+      "¿Cómo está tu energía de la tarde?|⚡ Alta|🙂 Normal|📉 Bajando~b",
+      "¿Cuánto descanso sienten tus piernas?|🦵 Como nuevas|🙂 Bastante|🥵 Todavía cargadas~b",
+      "¿Sientes tensión en alguna parte?|👌 No|🙂 Un poco|🤕 Sí, me molesta~m",
+      "¿Cómo te cae el clima de estos días?|😎 Bien|🙂 Se aguanta|🥵 Me agota~b",
+      "¿Cómo vas de sueño esta semana?|😴 Muy bien|🙂 Regular|🥱 Me falta~b",
+      "¿Qué cara tiene tu día?|😄|🙂|😐|😕~b",
+      "¿Cómo sientes tu equilibrio hoy?|🦩 Muy firme|🙂 Normal|🌊 Inestable|🙋 Quiero practicarlo~a",
+      "¿Hoy te sientes capaz de retarte?|🔥 Claro|🙂 Un poco|🛡️ Prefiero ir suave~b",
+      "¿Cómo está tu pecho y hombros tras el último empuje?|👌 Bien|🙂 Algo adoloridos|🤕 Con molestia~m",
+      "¿Qué tal te sentó el calentamiento la última vez?|🔥 Muy bien|🙂 Bien|⏱️ Me faltó|🙋 No sé hacerlo~a",
+      "¿Cargaste energías hoy?|🔋 Sí|🙂 A medias|🪫 No~b",
+      "¿Cómo está tu ánimo comparado con ayer?|📈 Mejor|➡️ Igual|📉 Peor~b",
+      "¿Amaneciste con agujetas?|👌 Nada|🙂 Un poco|🥵 Bastante~b",
+      "¿Cuántas ganas de moverte tienes?|💃 Muchísimas|🙂 Normales|🛋️ Pocas~b",
+      "¿Te sientes en forma para tu rutina de hoy?|✅ Sí|🙂 Creo que sí|🤔 Con dudas~a|🤕 Algo me duele~m",
+      "¿Cómo está tu estómago hoy?|👌 Tranquilo|🙂 Algo lleno|🤢 Con malestar~m",
+      "¿Cuánto sueño tienes ahora mismo?|👀 Nada|🙂 Un poco|😪 Mucho~b",
+      "¿Tuviste un momento bueno hoy?|🌟 Varios|🙂 Uno|🤷 Todavía no",
+      "¿Cómo vienen tus manos hoy?|✊ Con buen agarre|🙂 Normales|🤕 Con molestia~m",
+      "¿Qué tal tu cuerpo al subir gradas hoy?|🚀 Ligero|🙂 Normal|🥵 Me costó~b",
+      "¿Cómo está tu confianza hoy?|😎 Alta|🙂 Normal|🌱 Baja~b",
+      "¿Hoy necesitas un empujón?|💪 Voy bien|🙂 No me vendría mal|🙋 Sí, por favor~a",
+      "¿Cuánto te duró la energía ayer?|☀️ Todo el día|🙂 Hasta la tarde|🌥️ Poco~b",
+      "¿Cómo sientes tus glúteos hoy?|🍑 Fuertes|🙂 Algo adoloridos|🥵 Muy cargados~b",
+      "¿Estás respirando con calma hoy?|🌬️ Sí|🙂 A ratos|😮‍💨 Con prisa~b",
+      "¿Qué tal tu merienda de hoy?|🍎 Muy bien|🙂 Algo rápido|⏭️ La salté",
+      "¿Cómo llevas el cansancio de la semana?|💪 Ni se nota|🙂 Manejable|🥱 Se siente~b",
+      "¿Algo te molesta al agacharte?|👌 Nada|🙂 Un poco de rigidez|🤕 Sí, duele~m",
+      "¿Hoy tu cuerpo está de acuerdo con entrenar?|🤝 Totalmente|🙂 Casi|🙅 Protesta~b",
+      "¿Cómo vienes de paciencia con tu proceso?|🌳 Mucha|🙂 Normal|⏳ Poca~a",
+      "¿Cómo fue tu mañana?|☀️ Productiva|🙂 Normal|🌧️ Pesada~b",
+      "¿Qué tal tu fuerza en el último entreno?|📈 Subió|➡️ Igual|📉 Bajó~b",
+      "¿Cómo está tu garganta y tu salud hoy?|👌 Todo bien|🤧 Algo de gripe~m|🤕 No me siento bien~m",
+      "¿Qué tanto te relajaste ayer?|🛀 Bastante|🙂 Un poco|🏃 Nada~b",
+      "¿Cómo está tu core hoy?|🧱 Firme|🙂 Normal|🥵 Cansado~b",
+      "¿Te sientes con el tiempo a favor hoy?|⏰ Sí|🙂 Más o menos|🏃 Todo a la carrera~b",
+      "¿Cómo amaneció tu ánimo?|🌞 Radiante|🙂 Estable|🌫️ Nublado~b",
+      "¿Algún ejercicio te dejó molestia esta semana?|👌 Ninguno|🤔 Quiero revisarlo~a|🤕 Sí, me dolió~m",
+      "¿Cómo sientes tu cuerpo ahora mismo?|✨ Genial|🙂 Bien|🫠 Sin pilas~b",
+      "¿Tomaste agua al despertar?|💧 Sí|⏳ Después|🙈 Lo olvidé",
+      "¿Cómo está tu semana de descanso nocturno?|🌙 Ordenada|🙂 Variable|🦉 Desordenada~b",
+      "¿Qué tan fuerte sientes tu espalda hoy?|🦍 Muy fuerte|🙂 Normal|🤕 Con molestia~m",
+      "¿Cómo llevas hoy la carga del día?|🎈 Ligera|🙂 Normal|🏋️ Muy pesada~b",
+      "¿Qué tal tu recuperación tras la última clase?|🔋 Rápida|🙂 Normal|🐢 Lenta~b",
+      "¿Hoy te acompaña el buen humor?|😁 Sí|🙂 A ratos|😕 Hoy no~b",
+      "¿Alguna zona pide cuidado especial hoy?|👌 Ninguna|🦵 Piernas~m|🔙 Espalda~m|💪 Hombros o brazos~m",
+      "¿Cómo vienes después de la jornada?|⚡ Con pilas|🙂 Normal|😮‍💨 Sin gasolina~b",
+      "¿Tu cuerpo entró en calor rápido la última vez?|🔥 Enseguida|🙂 Normal|🧊 Me costó",
+      "¿Cómo está tu concentración al contar repeticiones?|🎯 Perfecta|🙂 Normal|💭 Me pierdo~a",
+      "¿Qué te dice tu energía hoy?|🏔️ A por todo|🚶 Paso a paso|🛌 Pide pausa~b",
+      "¿Qué tan bien comiste esta semana?|🥗 Muy bien|🙂 Regular|🍟 Desordenado",
+      "¿Algo te incomoda al levantar los brazos?|👌 Nada|🙂 Un poco de rigidez|🤕 Sí, duele~m",
+      "¿Cómo vas de tranquilidad esta semana?|🌿 Muy bien|🙂 Normal|🌪️ Poca~b",
+      "¿Hoy sientes el cuerpo descansado?|😌 Totalmente|🙂 Bastante|🥱 Para nada~b",
+      "¿Cómo te sientes antes de empezar?|🚀 Con emoción|🙂 En calma|😬 Con nervios~a",
+      "¿Qué tal tus pantorrillas hoy?|👌 Bien|🙂 Algo tensas|🤕 Con dolor~m",
+      "¿Qué tan presente te sientes hoy?|🧘 Muy presente|🙂 Normal|📱 Con la mente lejos~b",
+      "¿Cómo está tu ritmo hoy?|🐆 Rápido|🚶 Normal|🐢 Lento~b",
+      "¿Dormiste las horas que querías?|✅ Sí|🙂 Casi|❌ No~b",
+      "¿Qué tanta comodidad siente tu cuerpo hoy?|😌 Mucha|🙂 Normal|😖 Poca~m",
+      "¿Cómo va tu ánimo en estos días?|📈 Arriba|➡️ Estable|📉 Abajo~b",
+      "¿Sientes la fatiga acumulada?|👌 No|🙂 Algo|🥵 Bastante~b",
+      "¿Hoy qué te gustaría sentir al terminar?|💪 Fuerza|😌 Calma|⚡ Energía",
+      "¿Cómo están tus muslos hoy?|🦵 Muy bien|🙂 Algo adoloridos|🥵 Muy cargados~b|🤕 Con dolor~m",
+      "¿Qué tal tu energía al despertar?|⚡ Alta|🙂 Normal|🪫 Baja~b",
+      "¿Con quién se te antoja entrenar hoy?|🎧 A mi ritmo|👥 En compañía|🧑‍🏫 Con guía~a",
+      "¿Cómo recibió tu cuerpo el aumento de peso o reps?|💪 Muy bien|🙂 Normal|🥵 Me exigió mucho~b|🤕 Me molestó~m",
+      "¿Qué color le pones a tu ánimo hoy?|💚 Muy bueno|💛 En calma|💙 Bajito~b",
+      "¿Te estiraste después del último entreno?|✅ Sí|🙂 Un poco|⏭️ No",
+      "¿Qué tan despejada está tu agenda de preocupaciones?|🌤️ Bastante|🙂 Normal|⛈️ Muy llena~b",
+      "¿Cómo está tu pecho hoy?|👌 Bien|🙂 Algo adolorido|🤕 Me molesta~m",
+      "¿Cuánto sol y aire fresco tuviste hoy?|🌳 Bastante|🙂 Un poco|🏢 Nada",
+      "¿Cómo vienes de ganas?|🔥 Encendidas|🙂 Normales|🧊 Frías~b",
+      "¿Qué tal aguanta tu cuerpo las horas de hoy?|💪 Muy bien|🙂 Normal|🥱 Pide cama~b",
+      "¿Sientes algún mareo o malestar hoy?|👌 Nada|🤏 Muy leve~m|🤕 Sí~m",
+      "¿Cómo está tu ánimo para aprender algo nuevo?|🤓 Con ganas|🙂 Normal|😴 Hoy mejor lo conocido~b",
+      "¿Qué tan pareja sientes tu energía esta semana?|📊 Estable|🎢 Sube y baja|📉 Va bajando~b",
+      "¿Cómo descansaron tus pies hoy?|👟 Muy bien|🙂 Normal|🥵 Muy cansados~b",
+      "¿Qué tal te fue con las pantallas antes de dormir?|📴 Poco uso|🙂 Normal|📱 Hasta muy tarde~b",
+      "¿Hoy te sientes fuerte por dentro?|🦁 Sí|🙂 Bastante|🌱 No mucho~b",
+      "¿Cómo está tu cuerpo para saltar hoy?|🐇 Con ganas|🙂 Normal|🙅 Mejor sin saltos~a",
+      "¿Qué tal tu ánimo al ver tu rutina de hoy?|🤩 Emoción|🙂 Normal|😅 Un poco de miedo~a",
+      "¿Cuánta tensión sientes en los hombros por el trabajo?|👌 Nada|🙂 Algo|🪨 Mucha~b",
+      "¿Cómo está tu apetito hoy?|🍽️ Normal|🐺 Mucha hambre|🤏 Poca",
+      "¿Qué tal tu sueño de los últimos días?|😴 Delicioso|🙂 Normal|👀 Dormí poco~b",
+      "¿Cómo te recibe el cuerpo hoy?|🚀 Con impulso|🙂 Normal|🐌 Lento~b",
+      "¿Hay algo que quieras que tu coach sepa de tu cuerpo?|👌 Todo en orden|🙋 Quiero comentarlo~a|🤕 Tengo una molestia~m",
+      "¿Cómo está tu ánimo para terminar el día?|🎉 Arriba|🙂 Bien|🥱 Sin fuerzas~b",
+      "¿Qué tan fresca sientes la mente?|❄️ Muy fresca|🙂 Normal|🔥 Recalentada~b",
+      "¿Cómo te fue con las molestias que traías?|✅ Ya no tengo|📉 Van mejorando~m|🤕 Siguen igual~m|👌 No tenía",
+      "¿Te sientes con aire para el cardio hoy?|🏃 Mucho|🙂 Normal|😮‍💨 Poco~b",
+      "¿Cómo amaneció tu espalda alta?|👌 Suelta|🙂 Algo rígida|🤕 Con dolor~m",
+      "¿Qué tal tu equilibrio entre trabajo y descanso?|⚖️ Bien|🙂 Regular|🌪️ Desbalanceado~b",
+      "¿Cuánto disfrutaste moverte ayer?|🤩 Mucho|🙂 Algo|🛋️ No me moví",
+      "¿Cómo está tu ánimo cuando suena la alarma?|⏰ Arriba de una|🙂 Poco a poco|😵 Me cuesta mucho~b",
+      "¿Qué tal tu cuerpo con el último ejercicio nuevo?|👍 Me gustó|🙂 Normal|🤔 No me salió~a|🤕 Me molestó~m",
+      "¿Sientes hoy las piernas listas para sentadillas?|🏋️ Sí|🙂 Con calentamiento|🥵 Cargadas~b|🤕 Algo duele~m",
+      "¿Cuánta calma te dejó ayer?|🌊 Mucha|🙂 Algo|⚡ Ninguna~b",
+      "¿Qué tan bien te sientes para correr hoy?|🏃 Muy bien|🙂 Trote suave|🚶 Mejor caminar~b",
+      "¿Cómo va tu energía entre semana?|🔋 Se mantiene|🙂 Regular|🪫 Se me agota~b",
+      "¿Hoy te duele la cabeza?|👌 No|🤏 Un poco~m|🤕 Sí~m",
+      "¿Cómo está tu cuerpo después de días activos?|🏆 Fuerte|🙂 Bien|🥱 Pide descanso~b",
+      "¿Qué tal tu ánimo para sonreír hoy?|😁 Fácil|🙂 Normal|😶 Cuesta~b",
+      "¿Sientes el agarre cansado hoy?|✊ Firme|🙂 Normal|🫳 Cansado~b",
+      "¿Cómo comenzaste el día?|🧘 Con calma|☕ Con un café|🏃 A las carreras~b",
+      "¿Te quedó energía después de ayer?|⚡ Sobró|🙂 Justa|🪫 Nada~b",
+      "¿Qué tan suelto está tu cuerpo hoy?|🤸 Muy suelto|🙂 Normal|🪵 Con rigidez",
+      "¿Cómo llevas el clima de hoy para entrenar?|☀️ Perfecto|🌧️ Me da pereza~b|🙂 Me da igual",
+      "¿Qué tal tu pausa de hoy para respirar?|🌬️ La tomé|🙂 Cortita|⏳ Aún no",
+      "¿Cuánta energía te queda en reserva?|🔋 Bastante|🙂 La justa|🪫 En rojo~b",
+      "¿Hay alguna articulación que te moleste?|👌 Ninguna|🤏 Una, leve~m|🤕 Sí, bastante~m",
+      "¿Cuánto descansó tu mente anoche?|🌙 Mucho|🙂 Algo|💭 Poco~b",
+      "¿Cómo te sientes para aceptar un reto?|🚀 Con ganas|🙂 Con calma|😅 Con dudas~a",
+      "¿Tu cuerpo agradeció el último estiramiento?|🙌 Mucho|🙂 Algo|⏭️ Lo salté",
+      "¿Qué tal tu estado general hoy?|🌟 Excelente|👍 Bien|😐 Regular~b|🤕 Mal~m",
+      "¿Cómo se portó tu cuerpo durante la noche?|😌 Descansó|🙂 Normal|🥱 Amaneció sin fuerzas~b",
+      "¿Cómo vienes hoy de optimismo?|🌈 Mucho|🙂 Normal|🌫️ Poco~b",
+      "¿Sientes rigidez al levantarte de la silla?|👌 Nada|🙂 Un poco|🤕 Con dolor~m",
+      "¿Cómo está tu aguante hoy?|🏔️ Alto|🙂 Normal|🍂 Bajo~b",
+      "¿Tu semana te ha dejado dormir tranquilo?|😴 Sí|🙂 A ratos|👀 Casi no~b",
+      "¿Qué tan bien responde hoy tu cuerpo?|🎯 Al cien|🙂 Bien|🐌 Lento~b|🤕 Con una molestia~m",
+      "¿Cómo te sientes justo ahora?|😁 Con alegría|😌 En calma|😮‍💨 Con agobio~b",
+      "¿Te gustaría revisar con tu coach cómo te has sentido?|👌 Todo va bien|🤔 Más adelante|🙋 Sí, quiero~a"
+    ]);
+    var PREG_PARTE = pregBanco('p', [
+      "¿Qué te gustaría lograr esta semana?|📅 Venir mis días|🏋️ Subir un peso|🧘 Sentirme mejor",
+      "¿Qué te da más orgullo esta semana?|📅 Mi constancia|💪 Mi esfuerzo|🌱 Volver a empezar",
+      "¿Qué te gustaría mejorar?|🏋️ Fuerza|🏃 Resistencia|🤸 Movilidad",
+      "¿Cómo te sientes en el gym?|🤩 Como en casa|🙂 Bien|🙋 Me falta confianza~a",
+      "¿Qué te motiva más hoy?|❤️ Mi salud|💪 Sentirme fuerte|😌 Despejar la mente",
+      "¿Cómo vas con los ejercicios de tu rutina?|✅ Los domino|🙂 Voy aprendiendo|🙋 Necesito ayuda~a",
+      "¿Qué parte del entreno disfrutas más?|🏋️ Las pesas|🏃 El cardio|👥 Entrenar en grupo",
+      "¿Qué música te pone a entrenar?|🔥 Reguetón|🎸 Rock|🎧 Electrónica|💃 Latina",
+      "¿A qué hora rindes mejor?|🌅 Mañana|☀️ Mediodía|🌆 Tarde|🌙 Noche",
+      "¿Qué ejercicio te hace sentir imparable?|🦵 Sentadilla|🏋️ Peso muerto|💪 Press|🏃 Cardio",
+      "¿Qué esperas sentir al salir hoy?|🏆 Logro|😌 Paz|⚡ Energía",
+      "¿Qué te ayuda más a no faltar?|⏰ Un horario fijo|👥 Un compañero|🎯 Una meta",
+      "¿Quién te anima a entrenar?|👨‍👩‍👧 Mi familia|👥 Mis amigos|🙋 Yo",
+      "¿Qué clase te llama más?|🔥 Cardio|🍑 GAP|⚔️ Espartacus|🤔 Quiero saber de ellas~a",
+      "¿Qué te gustaría que te saliera mejor?|🏋️ La técnica|⚖️ El equilibrio|🌬️ La respiración",
+      "¿Cuál es tu meta de este mes?|📅 Constancia|💪 Fuerza|❤️ Salud",
+      "¿Qué celebras hoy?|🎉 Que vine|💪 Que me esfuerzo|🌱 Que sigo aquí",
+      "¿Te gusta cómo va tu rutina?|😍 Mucho|🙂 Bien|🔄 Quiero cambios~a",
+      "¿Qué prefieres en un entreno?|🔁 Circuitos|🏋️ Series con peso|🎲 Variedad",
+      "¿Qué te cuesta más?|⏰ Llegar|🚀 Empezar|🏁 Terminar|🙋 Algún ejercicio~a",
+      "¿Cómo te das ánimo cuando algo pesa?|🗣️ Me hablo bonito|🎧 Con música|🔢 Contando reps",
+      "¿Qué logro reciente te gustó?|🏋️ Más peso|🔁 Más reps|📅 Más días",
+      "¿Qué palabra quieres que defina tu semana?|🔥 Energía|🌳 Constancia|😌 Equilibrio",
+      "¿Saludaste a alguien en el gym últimamente?|👋 Sí|🙂 De lejos|🙈 Todavía no",
+      "¿Qué te gustaría aprender?|🏋️ Técnica de pesas|🤸 Estiramientos|🥗 Comer mejor|🙋 Quiero guía~a",
+      "¿Cómo quieres que te acompañe tu coach?|👀 Revisando técnica~a|💬 Con mensajes|👌 Así voy bien",
+      "¿Qué te gusta más al terminar?|🚿 La ducha|😌 La calma|🏆 Saber que cumplí",
+      "¿Con quién te gustaría entrenar un día?|👨‍👩‍👧 Con mi familia|👥 Con amigos|🧑‍🏫 Con mi coach",
+      "¿Qué grupo muscular disfrutas trabajar?|🦵 Piernas|💪 Brazos|🔙 Espalda|🧱 Core",
+      "¿Qué grupo muscular te reta más?|🦵 Piernas|💪 Brazos|🔙 Espalda|🧱 Core",
+      "¿Qué hábito quieres cuidar esta semana?|💧 Agua|😴 Sueño|🚶 Pasos",
+      "¿Cuántos días quieres venir esta semana?|2️⃣ Dos|3️⃣ Tres|4️⃣ Cuatro|🔥 Cinco o más",
+      "¿Qué te hizo empezar en el gym?|❤️ Salud|🪞 Sentirme bien|😌 Soltar estrés|👥 Compañía",
+      "¿La razón por la que empezaste sigue contigo?|✅ Más que nunca|🔄 Cambió|🤔 La estoy buscando~a",
+      "¿Qué te gustaría poder hacer pronto?|🤸 Una lagartija más|🏃 Correr más|🏋️ Cargar más",
+      "¿Qué tan clara tienes tu meta?|🎯 Muy clara|🙂 Más o menos|🙋 Quiero definirla~a",
+      "¿Qué premio sano te darías por cumplir?|🛀 Descanso|👟 Algo deportivo|🎬 Un plan rico",
+      "¿Qué ejercicio nuevo quisieras probar?|🪢 TRX|🏐 Balón medicinal|🔔 Pesa rusa|🥊 Boxeo",
+      "¿Cómo prefieres calentar?|🚶 Caminadora|🚴 Bicicleta|🤸 Movilidad",
+      "¿Qué te ayuda a concentrarte?|🎧 Audífonos|🤫 Silencio|👥 El ambiente",
+      "¿Anotas tus marcas?|📝 Siempre|🙂 A veces|🙋 No sé cómo~a",
+      "¿Qué tan fácil te resulta usar la app?|😎 Muy fácil|🙂 Normal|🙋 Me cuesta~a",
+      "¿Qué te gustaría ver más en las clases?|🔥 Cardio|🏋️ Fuerza|🤸 Movilidad|🎲 Retos",
+      "¿Te animarías a un reto del gym?|🏆 Claro|🙂 Tal vez|🤔 Cuéntenme más~a",
+      "¿Qué sientes cuando subes de peso en la barra?|🤩 Orgullo|⚡ Adrenalina|😬 Un poco de nervios",
+      "¿Qué frase te va hoy?|🚀 Voy con todo|🐢 Paso a paso|🌱 Hoy sumo",
+      "¿Qué te gustaría agradecerle a tu cuerpo?|🦵 Que me mueve|❤️ Que me sostiene|💪 Que responde",
+      "¿Qué hace especial tu hora de entreno?|🧘 Es mi espacio|👥 La gente|🏆 Mis avances",
+      "¿Cómo celebras una marca nueva?|🙌 Por dentro|📣 Lo cuento|📝 La anoto",
+      "¿Qué tan importante es hoy tu entreno?|🔝 Mucho|🙂 Bastante|🤏 Hago lo que pueda",
+      "¿Qué te anima en un día difícil?|🎧 Música|👥 La gente|🎯 Mi meta|💬 Un mensaje~a",
+      "¿Cuál es tu equipo favorito?|🏋️ Mancuernas|🪢 Bandas|⚙️ Máquinas|🔔 Pesas rusas",
+      "¿Prefieres entrenar con guía o por tu cuenta?|🧑‍🏫 Con guía~a|🎧 Por mi cuenta|⚖️ Un poco de ambas",
+      "¿Qué esperas lograr de aquí a tres meses?|💪 Más fuerza|🏃 Más aire|📅 Un hábito firme",
+      "¿Qué te ha sorprendido de ti?|🔁 Mi constancia|💪 Mi fuerza|🧠 Mi actitud",
+      "¿Cómo calificas tu esfuerzo reciente?|🌟 Excelente|👍 Bueno|🌱 Puedo dar más",
+      "¿Qué te gustaría repetir de la semana pasada?|📅 Los días que vine|💤 Mi descanso|💧 El agua",
+      "¿Qué quieres dejar atrás esta semana?|😴 La pereza|⏰ Las prisas|🤔 Las dudas",
+      "¿Qué te motiva de ver avanzar a otros?|🔥 Me contagia|👏 Me alegra|🎯 Me reta",
+      "¿Le recomendarías entrenar a alguien?|👍 Ya lo hice|🙂 Sí, pronto|🤔 Aún no",
+      "¿Qué te gusta del ambiente del gym?|👥 La gente|🎶 La música|🧑‍🏫 Los coaches",
+      "¿Qué sugerencia tienes para el gym?|👌 Así está bien|💬 Tengo una idea~a|🎶 Más sobre música",
+      "¿Qué superpoder usarías hoy?|⚡ Energía sin fin|💪 Súper fuerza|🧘 Calma total",
+      "¿Qué animal describe tu entreno de hoy?|🦁 León|🐆 Guepardo|🐢 Tortuga|🐂 Toro",
+      "¿Cuál es tu momento favorito del entreno?|🚀 El arranque|🔥 El punto fuerte|🏁 El final",
+      "¿Qué te haría el entreno más divertido?|🎶 Mejor música|👥 Compañía|🎲 Retos nuevos",
+      "¿Qué tanto conoces el porqué de tus ejercicios?|🤓 Bastante|🙂 Algo|🙋 Quiero saber más~a",
+      "¿Qué prefieres para seguir avanzando?|➕ Más peso|🔁 Más reps|⏱️ Menos descanso|🙋 Que me orienten~a",
+      "¿Qué te gustaría medir de tu progreso?|🏋️ Cargas|📏 Medidas|📅 Asistencia",
+      "¿Qué día de la semana disfrutas más entrenar?|🚀 Lunes|⚖️ Entre semana|🎉 Viernes|🌤️ Fin de semana",
+      "¿Qué te dirías antes de empezar?|💪 Tú puedes|😌 A tu ritmo|🔥 Dale con todo",
+      "¿Qué consejo darías a alguien que empieza?|📅 Sé constante|🐢 Ve con calma|🙋 Pregunta sin pena",
+      "¿Cómo quieres sentirte al cerrar el mes?|🔥 Con energía|💪 Con fuerza|😌 En equilibrio",
+      "¿Qué actividad fuera del gym disfrutas?|🚶 Caminar|🚴 Bici|🏊 Nadar|⚽ Deporte en equipo",
+      "¿Qué te gustaría que mejorara tu entreno en tu vida diaria?|🛍️ Cargar sin esfuerzo|🪜 Subir gradas|😴 Dormir mejor",
+      "¿Cuánto acompañamiento sientes en tu proceso?|🤝 Mucho|🙂 Bastante|🙋 Me gustaría más~a",
+      "¿Qué ejercicio ya no te da miedo?|🦵 Zancadas|🏋️ Peso muerto|🧱 Planchas|🤔 Alguno todavía sí~a",
+      "¿Qué meta pequeña cumples hoy?|✅ Terminar todo|🎯 Cuidar la técnica|💧 Tomar mi agua",
+      "¿Qué te recuerda que vas bien?|👕 Cómo me siento|🏋️ Mis cargas|😴 Mi descanso",
+      "¿Qué te gustaría preguntarle a tu coach?|👌 Nada por ahora|🏋️ Sobre técnica~a|🥗 Sobre comida~a",
+      "¿Cómo prefieres tus descansos?|⏱️ Con reloj|🌬️ Respirando|💬 Conversando",
+      "¿Qué pondrías en tu lista de logros?|📅 No rendirme|💪 Ganar fuerza|🧠 Cuidar mi mente",
+      "¿Qué tan retadora sientes tu rutina?|🎯 En su punto|😎 Quiero más~a|🥵 Me exige mucho~a",
+      "¿Qué te anima a madrugar o salir tarde por entrenar?|🎯 Mi meta|😌 Cómo me deja|📅 El hábito",
+      "¿Qué color tiene tu energía hoy?|🔴 Intensa|🟢 En equilibrio|🔵 Serena|🟡 Alegre",
+      "¿Qué quisieras fortalecer además del cuerpo?|🧠 La mente|⏰ La disciplina|❤️ La paciencia",
+      "¿Qué te gustaría que no faltara en tu rutina?|🍑 Glúteos|🧱 Core|💪 Brazos|🔙 Espalda",
+      "¿Cómo te gusta que te corrijan?|👀 Al momento|💬 Por mensaje|🧑‍🏫 Con un ejemplo",
+      "¿Qué te gustaría probar con tu coach?|🏋️ Revisar técnica~a|🎯 Definir meta~a|👌 Sigo así",
+      "¿Qué te hace volver al gym?|😌 Cómo me siento|👥 La gente|🏆 Los resultados",
+      "¿Cuál es tu mayor aliado para entrenar?|⏰ El horario|🎒 El bolso preparado|👥 La compañía",
+      "¿Preparaste tu ropa de entreno con tiempo?|🎒 Sí|🏃 A última hora|😅 Improvisando",
+      "¿Qué te gustaría lograr antes de fin de mes?|📅 No faltar|🏋️ Una marca nueva|💧 Un mejor hábito",
+      "¿Qué es para ti un buen entreno?|💦 Sudar mucho|🎯 Hacerlo bien|😌 Salir feliz",
+      "¿Qué ejercicio te divierte?|🪢 Cuerda|🏋️ Pesas|🥊 Golpes|💃 Baile",
+      "¿Qué tanto disfrutas los retos?|🔥 Me encantan|🙂 De vez en cuando|🌿 Prefiero mi ritmo",
+      "¿Qué le dirías a tu yo del primer día?|👏 Qué bueno que empezaste|🐢 Ten paciencia|💪 Vas a poder",
+      "¿Qué quieres que crezca este mes?|💪 Fuerza|🫀 Resistencia|😎 Confianza",
+      "¿Cómo te preparas antes de una serie pesada?|🌬️ Respiro|🧠 Me concentro|🙋 Pido apoyo~a",
+      "¿Qué te gustaría compartir con la comunidad?|🏆 Un logro|💡 Un consejo|😊 Una sonrisa",
+      "¿Quién del gym te ha inspirado?|🧑‍🏫 Un coach|👥 Un compañero|🙋 Yo",
+      "¿Qué hora te gustaría tener más libre para ti?|🌅 La mañana|🌆 La tarde|🌙 La noche",
+      "¿Cuál es tu plan para no soltar el hábito?|📅 Días fijos|👥 Acompañarme|🎯 Metas cortas|🙋 Ayúdame a armarlo~a",
+      "¿Qué tanto te gustan tus avances?|🤩 Mucho|🙂 Bastante|🤔 Quiero conversarlo~a",
+      "¿Qué te gustaría escuchar de tu coach?|👏 Cómo voy|🎯 Qué mejorar~a|💪 Un empujón~a",
+      "¿Qué te gusta hacer para recuperarte?|😴 Dormir|🚶 Caminar|🤸 Estirar|🛀 Un baño rico",
+      "¿Qué fruta le pondrías a tu semana?|🍍 Piña|🍌 Banano|🥭 Mango|🍓 Fresa",
+      "¿Qué desayuno te deja mejor para entrenar?|🍳 Huevo|🥣 Avena|🍌 Fruta|🤔 Quiero ideas~a",
+      "¿Qué bebida te acompaña al entrenar?|💧 Agua|🥥 Agua de pipa|⚡ Hidratante",
+      "¿Qué te gustaría mejorar al comer?|🥗 Más vegetales|🍽️ Mis horarios|💧 Más agua|🙋 Quiero orientación~a",
+      "¿Qué movimiento haces mejor?|🏋️ Empujar|🚣 Jalar|🦵 Agacharme|🏃 Correr",
+      "¿Qué tanto cuidas la técnica?|🎯 Muchísimo|🙂 Bastante|🙋 Quiero que la revisen~a",
+      "¿Qué te gustaría lograr con tu respiración?|🌬️ Controlarla|🏃 Cansarme menos|😌 Relajarme",
+      "¿Qué distancia te ilusiona completar?|🚶 3 km caminando|🏃 5 km corriendo|🚴 20 km en bici",
+      "¿Qué reto suave aceptas hoy?|💧 Un vaso más|🤸 Estirar 5 minutos|🚶 Más pasos",
+      "¿Qué te ayuda a descansar mejor?|📴 Dejar el celular|📖 Leer|🎵 Música suave",
+      "¿Qué cualidad tuya sale al entrenar?|🦁 Valentía|🐜 Disciplina|😁 Alegría",
+      "¿Qué significa para ti ser constante?|📅 Aparecer|🔄 Volver tras una pausa|🎯 Hacerlo con intención",
+      "¿Qué pequeño avance notaste?|🛍️ Cargo mejor|🪜 Subo mejor|😴 Duermo mejor|🌱 Aún lo busco",
+      "¿Qué te gustaría celebrar en equipo?|🏆 Un reto cumplido|🎂 Un cumpleaños|📅 Un mes sin faltar",
+      "¿Qué actividad especial te gustaría en el gym?|🌳 Entreno al aire libre|🏆 Torneo amistoso|🧘 Día de movilidad",
+      "¿Qué tan útil te es la frase del día?|🤩 Mucho|🙂 Bastante|🤷 Poco",
+      "¿Qué te gusta saber de tu rutina?|🎯 Para qué sirve|📈 Cómo voy|⏱️ Cuánto dura",
+      "¿Cómo va tu rutina con tu horario?|👌 Encaja bien|🙂 Más o menos|⏰ Necesito ajustarla~a",
+      "¿Cuánto dura tu entreno ideal?|⚡ 30 min|⏱️ 45 min|🏋️ 60 min|🔥 Más de una hora",
+      "¿Qué te gustaría entrenar en pareja o grupo?|🏐 Lanzamientos|🔁 Circuitos|🏃 Relevos",
+      "¿Qué te hace sentir que perteneces aquí?|👋 Que me saluden|🧑‍🏫 La atención|👥 Los compañeros|🙋 Quiero integrarme más~a",
+      "¿Qué te gustaría que supiéramos de ti?|😊 Me gusta venir|🎯 Tengo una meta~a|💬 Quiero conversar~a",
+      "¿Cómo quieres empezar la próxima semana?|🚀 Con fuerza|📅 Sin faltar|😌 Con calma",
+      "¿Qué te está dejando el gym?|💪 Fuerza|🧠 Disciplina|👥 Amistades",
+      "¿Qué propósito suena a ti?|🏃 Moverme más|😴 Descansar mejor|🥗 Comer mejor",
+      "¿Cuánta seguridad sientes con las pesas libres?|😎 Mucha|🙂 Bastante|🙋 Quiero práctica~a",
+      "¿Qué máquina te gustaría aprender a usar bien?|🚣 Poleas|🦵 Prensa|🏃 Caminadora|👌 Ya las manejo",
+      "¿Qué te gustaría hacer después de entrenar?|🍽️ Comer rico|🛀 Relajarme|👥 Compartir",
+      "¿Qué te hace sonreír en el gym?|😂 Las bromas|🎶 Una buena canción|🏆 Un logro",
+      "¿Qué canción mental te mueve hoy?|🔥 Una con fuerza|😌 Una tranquila|💃 Una para bailar",
+      "¿Qué lugar le das hoy a tu bienestar?|🥇 El primero|🥈 Uno importante|🌱 Quiero darle más",
+      "¿Qué te gustaría mejorar de tu constancia?|⏰ El horario|🚀 Las ganas|📅 La frecuencia",
+      "¿Qué prefieres cuando el tiempo es corto?|⚡ Circuito rápido|🏋️ Lo principal|🙋 Que me adapten la rutina~a",
+      "¿Qué te enorgullece contar?|📅 Que entreno|💪 Cuánto avancé|😌 Cómo me siento",
+      "¿Qué elegirías para un reto de 7 días?|💧 Agua|🚶 Pasos|😴 Sueño|🤸 Estiramientos",
+      "¿Qué te hace falta para dar el siguiente paso?|⏰ Tiempo|🚀 Motivación|🧑‍🏫 Orientación~a",
+      "¿Cómo ha cambiado tu confianza desde que entrenas?|📈 Creció|🙂 Algo mejor|🌱 Va en camino",
+      "¿Qué te gusta más de tu fuerza?|🛍️ Me sirve cada día|🏋️ Verla crecer|😎 La seguridad que da",
+      "¿Qué ejercicio saludarías como viejo amigo?|🦵 Sentadilla|💪 Curl|🧱 Plancha|🚴 Bici",
+      "¿Qué quieres que tenga tu próximo ciclo?|🏋️ Más fuerza|🏃 Más cardio|🤸 Más movilidad|💬 Quiero opinar~a",
+      "¿Qué tal si hoy animas a alguien?|👏 Cuenta conmigo|🙂 Si se da|🙈 Me da pena",
+      "¿Qué te gustaría que te preguntemos más?|💪 Mi entreno|😴 Mi descanso|🎯 Mis metas",
+      "¿Cuál es tu mejor excusa vencida?|🌧️ La lluvia|🥱 La pereza|⏰ La falta de tiempo",
+      "¿Qué harías con una hora extra hoy?|😴 Descansar|🚶 Moverme|👨‍👩‍👧 Compartir",
+      "¿Qué detalle del gym te ayuda más?|🎥 Los videos|⏱️ El temporizador|📝 Mis marcas|🧑‍🏫 Los coaches",
+      "¿Entiendes bien los videos de tus ejercicios?|🎥 Muy bien|🙂 Casi siempre|🙋 Necesito que me expliquen~a",
+      "¿Qué tanto usas el temporizador?|⏱️ Siempre|🙂 A veces|🙋 No sé usarlo~a",
+      "¿Qué te impulsa a terminar la última serie?|🔥 El orgullo|🎯 La meta|👥 Que me ven",
+      "¿Qué actitud eliges hoy?|😁 Alegría|🧘 Calma|🔥 Determinación",
+      "¿Qué hace que un día de gym valga la pena?|💦 El esfuerzo|👥 La gente|😌 La calma de después",
+      "¿Qué sueño deportivo tienes?|🏃 Una carrera|⛰️ Una caminata larga|🏋️ Un gran levantamiento",
+      "¿Qué parte de tu rutina cambiarías?|👌 Ninguna|🔁 El orden|🔄 Algún ejercicio~a",
+      "¿Qué aprendiste de ti entrenando?|🐜 Que persevero|🦁 Que me atrevo|😌 Que me hace bien",
+      "¿Qué te gustaría ofrecerle hoy a tu entreno?|🎯 Atención|🔥 Ganas|😁 Buen humor",
+      "¿Qué te da energía antes de venir?|☕ Un café|🍌 Algo de comer|🎵 Música|😴 Una siesta",
+      "¿Cuándo sientes más tu avance?|🏋️ Al cargar|🏃 Al respirar|👕 En mi día a día",
+      "¿Qué tan a gusto estás con tu horario de gym?|👌 Muy bien|🙂 Bien|⏰ Quiero cambiarlo~a",
+      "¿Qué te gustaría mejorar de tu postura?|🧍 Al estar de pie|🪑 Al sentarme|🏋️ Al levantar",
+      "¿Qué te motiva de las clases grupales?|🔥 La energía|👥 La gente|🧑‍🏫 La guía|🤔 Quiero probar una~a",
+      "¿Con qué te quedas de hoy?|💪 Mi esfuerzo|😌 La calma|😁 El buen rato",
+      "¿Qué meta compartirías con tu coach?|🏋️ De fuerza~a|🏃 De resistencia~a|📅 De constancia|👌 Luego la cuento",
+      "¿Qué tanto te escuchas cuando entrenas?|👂 Mucho|🙂 Bastante|🤔 Debo escucharme más",
+      "¿Qué te gustaría que dijeran de tu esfuerzo?|👏 Que no se rinde|😁 Que lo disfruta|🎯 Que lo hace bien",
+      "¿Qué esperas de los próximos meses?|💪 Más fuerza|❤️ Más salud|🌱 Seguir aquí",
+      "¿Qué te gustaría dominar con tu propio peso?|🤸 Lagartijas|🦵 Sentadillas|🧱 Planchas|🔝 Dominadas",
+      "¿Qué te anima a probar algo nuevo?|🤓 La curiosidad|🎯 El reto|🧑‍🏫 Una buena guía",
+      "¿Qué tan presente estás cuando entrenas?|🎯 Mucho|🙂 Bastante|📱 Me distrae el celular",
+      "¿Qué te gustaría que tu rutina cuide?|🔙 La espalda|🦵 Las rodillas|💪 Los hombros|🙋 Tengo una molestia~m",
+      "¿Qué logro te gustaría ver en tu historial?|📅 Un mes completo|🏋️ Una carga récord|🔁 Más repeticiones",
+      "¿Cómo te gusta que te saluden al llegar?|👋 Con la mano|✊ Con el puño|😁 Con una sonrisa",
+      "¿Qué te ayuda a organizar tu semana de gym?|📆 Un calendario|⏰ Una alarma|🧠 La memoria",
+      "¿Qué te gustaría celebrar de ti hoy?|💪 La fuerza|🐜 La paciencia|🔥 Las ganas",
+      "¿Qué tema de salud te interesa más?|😴 Sueño|🥗 Alimentación|🧘 Estrés|🦵 Articulaciones",
+      "¿Qué tan fácil te resulta pedir ayuda en el gym?|😎 Muy fácil|🙂 Si hace falta|🙈 Me da pena~a",
+      "¿Qué te gustaría que tuviera tu entreno de hoy?|🔥 Intensidad|🎯 Precisión|😁 Diversión",
+      "¿Qué te da más satisfacción?|🏁 Terminar|📈 Mejorar|🤝 Compartirlo",
+      "¿Qué ritmo le pones a este mes?|🚀 Rápido|🚶 Constante|🐢 Suave",
+      "¿Qué te gustaría mejorar en las piernas?|🏋️ Fuerza|🏃 Resistencia|⚖️ Equilibrio",
+      "¿Qué te gustaría mejorar en los brazos y hombros?|🏋️ Fuerza|🤸 Movilidad|🎯 Técnica",
+      "¿Qué te gustaría contarle a tu coach?|🏆 Un logro|👌 Todo bien|🙋 Necesito hablar~a",
+      "¿Cuánto orgullo sientes por seguir?|🤩 Muchísimo|🙂 Bastante|🌱 Va creciendo",
+      "¿Qué te hace falta para disfrutar más el gym?|👌 Nada|👥 Compañía|🎲 Variedad|💬 Quiero contarlo~a"
+    ]);
+    function pregDeFecha(iso) {
+      var p = String(iso).split('-'), n = Math.round((Date.UTC(+p[0], +p[1] - 1, +p[2]) - Date.UTC(2026, 10, 27)) / 86400000);
+      var lista = n % 2 === 0 ? PREG_ESTADO : PREG_PARTE, k = Math.floor(n / 2) % lista.length;
+      return lista[(k + lista.length) % lista.length];
+    }
+    // Respuestas por fecha: las guardadas en este celular más las que llegaron de la hoja (otro celular o vista del coach)
+    function pregTodas() {
+      var map = {};
+      loadSessions().forEach(function(x) { if (x && x.pq && x.pq.q && x.d && (!map[x.d] || String(x.t) > map[x.d].t)) map[x.d] = { d: x.d, t: String(x.t), pq: x.pq }; });
+      try { var l = JSON.parse(localStorage.getItem(tk('preg_hist')) || '{}') || {}; Object.keys(l).forEach(function(d) { if (l[d] && l[d].q) map[d] = { d: d, t: '', pq: l[d] }; }); } catch (e) {}
+      return Object.keys(map).sort().map(function(d) { return map[d]; });
+    }
+    function pregDe(iso) { var r = pregTodas().filter(function(x) { return x.d === iso; })[0]; return r ? r.pq : null; }
+    function pregPaint() {
+      var box = document.getElementById('ath_preg'); if (!box) return;
+      var st = athleteActiveState;
+      if (!st || st.off || isCoachView() || (!athleteRoutineId && !PRUEBA.on)) { box.style.display = 'none'; box.innerHTML = ''; return; }   // sin enlace la respuesta no le llegaría al coach
+      var hoy = todayIso(), r = pregDe(hoy), nom = String(st.clientName || '').trim().split(/\s+/)[0] || '';
+      var h = '<div class="pg-lbl">💭 Pregunta del día</div>';
+      if (r) {
+        var ayuda = r.f === 'm' || r.f === 'a';
+        h += '<div class="pg-txt">¡Gracias' + (nom ? ', ' + escHtml(nom) : '') + '! 💛</div><div class="pg-nota">Respondiste: ' + escHtml(r.a) + '. ' +
+          (ayuda ? 'Tu coach lo va a saber.' : (r.f === 'b' ? 'Escucha a tu cuerpo y ve a tu ritmo.' : 'Qué bueno tenerte aquí.')) + '</div>' +
+          (ayuda ? '<button type="button" class="pg-mas" onclick="pregContar(\'' + r.f + '\')">📣 Comentarle a mi Coach</button>' : '');
+      } else {
+        var q = pregDeFecha(hoy);
+        h += '<div class="pg-txt">' + escHtml(q.q) + '</div><div class="pg-ops">' +
+          q.o.map(function(o, i) { return '<button type="button" class="pg-op" onclick="pregResponder(\'' + q.id + '\',' + i + ')">' + escHtml(o[0]) + '</button>'; }).join('') +
+          '</div><div class="pg-nota">Toca una respuesta. Tu coach la ve.</div>';
+      }
+      box.innerHTML = h; box.style.display = 'block';
+    }
+    function pregResponder(id, i) {
+      if (!athleteActiveState || isCoachView()) return;
+      var q = PREG_ESTADO.concat(PREG_PARTE).filter(function(x) { return x.id === id; })[0]; if (!q || !q.o[i]) return;
+      var hoy = todayIso(); if (pregDe(hoy)) { pregPaint(); return; }
+      var r = { id: q.id, q: q.q, a: q.o[i][0], f: q.o[i][1] || '' };
+      try {
+        var l = JSON.parse(localStorage.getItem(tk('preg_hist')) || '{}') || {}; l[hoy] = r;
+        var ks = Object.keys(l).sort(); while (ks.length > 60) delete l[ks.shift()];
+        localStorage.setItem(tk('preg_hist'), JSON.stringify(l));
+      } catch (e) {}
+      try {   // viaja a la hoja dentro de un registro 'meta' (no cuenta como entreno)
+        if (athleteRoutineId) {
+          var s = { d: hoy, t: new Date().toISOString(), k: 'meta', ex: [], pq: r };
+          var a = loadSessions(); a.push(s);
+          localStorage.setItem(sessKey(), JSON.stringify(recortarSesiones(a)));
+          pushSession(s);
+        }
+      } catch (e) {}
+      try { pregAvisar(hoy, r); } catch (e) {}
+      pregPaint();
+    }
+    // Al coach solo le llega aviso por una molestia, un pedido de ayuda o 3 respuestas seguidas con cansancio o ánimo bajo
+    function pregAvisar(hoy, r) {
+      if (!athleteRoutineId || PRUEBA.on) return;
+      var mot = '';
+      if (r.f === 'm' || r.f === 'a') mot = 'Respondió: ' + r.a;
+      else if (r.f === 'b') {
+        var estado = pregTodas().filter(function(x) { return x.d <= hoy && String(x.pq.id || '').charAt(0) === 'e'; }).reverse(), seg = [];
+        for (var i = 0; i < estado.length; i++) {
+          if (!estado[i].pq.f || estado[i].pq.f === 'a' || (seg.length && addDaysIso(estado[i].d, 8) < seg[seg.length - 1].d)) break;   // una respuesta buena o más de 8 días sin responder cortan la racha
+          seg.push(estado[i]);
+        }
+        if (seg.length && seg.length % 3 === 0) mot = '3 veces seguidas con cansancio o ánimo bajo: ' + seg.slice(0, 3).reverse().map(function(x) { return x.pq.a; }).join(' · ');
+      }
+      if (!mot) return;
+      var st = athleteActiveState || {};
+      var rp = { t: new Date().toISOString(), k: 'rep', tipo: 'pregunta', cli: st.clientName || '', dia: r.q, ej: '', url: '', rid: athleteRoutineId,
+        coach: st.coachName ? displayCoach(st.coachName) : '', mot: mot, n: 0 };
+      var cola = vrepQ(); cola.push(rp); vrepSaveQ(cola); vrepFlush();
+    }
+    function pregContar(f) {
+      athAvisarOpen();
+      var mo = document.getElementById('av_motivo'); if (mo) mo.value = f === 'm' ? 'molestia' : 'otro';
+    }
+    // El coach contesta desde el aviso (mensaje directo o WhatsApp)
+    function pregCoachResponder(i) {
+      var r = VREP_INBOX[i]; if (!r) return;
+      var nom = String(r.cli || '').trim().split(/\s+/)[0] || '';
+      msgComposeOpen(r.rid || r.id, r.cli, 'Hola ' + nom + ', vi tu respuesta de hoy. ');
+    }
+    // El historial guarda hasta 300 registros: al llenarse, primero salen las visitas y los registros diarios viejos, para no perder marcas de entrenos
+    function recortarSesiones(a) {
+      var sobra = a.length - 300; if (sobra <= 0) return a;
+      var corte = addDaysIso(todayIso(), -45);
+      a = a.filter(function(x) { if (sobra > 0 && x && (x.k === 'vis' || (x.k === 'meta' && x.pq && !x.g && !x.md && !x.ct)) && String(x.d || '') < corte) { sobra--; return false; } return true; });
+      return a.length > 300 ? a.slice(a.length - 300) : a;
+    }
     // Lleva a la nutrición del día (la que armó el coach en el constructor); deja de parpadear una vez tocado
     // Comida en bloques claros: "Orden: …; Porciones: …; Ejemplo: …" se muestra como Cómo comerlo / Cuánto / Ejemplo
     function nutriFmt(txt) {
@@ -8896,9 +9380,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var s = { d: today, t: new Date().toISOString(), k: 'meta', ex: [], md: ownMeasuresPayload() };
         var ct0 = contactLoad(); if (ct0) s.ct = ct0;
         if (rec.kcal || rec.pasos || rec.agua || rec.sueno || (rec.act && rec.act.length)) s.g = rec;   // sin metas del día no se pone "g" para no tapar las metas anteriores
+        var pq0 = pregDe(today); if (pq0) s.pq = pq0;
         var a = loadSessions().filter(function(x) { return !(isMetaSess(x) && x.d === today); });
         a.push(s);
-        try { localStorage.setItem(sessKey(), JSON.stringify(a.slice(-300))); } catch (e) {}
+        try { localStorage.setItem(sessKey(), JSON.stringify(recortarSesiones(a))); } catch (e) {}
         pushSession(s);
       } catch (e) {}
     }
@@ -8919,10 +9404,11 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var sig = JSON.stringify(rec); if (localStorage.getItem(tk('metasig_' + today)) === sig) return;
         localStorage.setItem(tk('metasig_' + today), sig);
         var s = { d: today, t: new Date().toISOString(), k: 'meta', ex: [], g: rec };
+        var pq1 = pregDe(today); if (pq1) s.pq = pq1;
         if (COACH) s.o = COACH.name; else { s.md = ownMeasuresPayload(); var ct1 = contactLoad(); if (ct1) s.ct = ct1; }   // las mediciones propias y los datos de contacto del cliente viajan en el mismo registro (el coach los ve)
         var a = loadSessions().filter(function(x) { return !(isMetaSess(x) && x.d === today); });   // en el celular solo queda el último del día
         a.push(s);
-        try { localStorage.setItem(sessKey(), JSON.stringify(a.slice(-300))); } catch (e) {}
+        try { localStorage.setItem(sessKey(), JSON.stringify(recortarSesiones(a))); } catch (e) {}
         pushSession(s);
       } catch (e) {}
     }
@@ -9106,7 +9592,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     }
     // Sugerencia del día en la pantalla principal (sin ventana emergente): la tarjeta del día que le toca parpadea suave y dice «Te toca hoy».
     // Si hoy ya entrenó, está entrenando ahora o es la vista del coach, no se marca nada (no se le insiste).
-    // Botón destacado «▶ Empezar mi entreno de hoy» en la pantalla principal: un toque abre directo el día que le toca
+    // Bajo la pregunta del día: botón «🍽 Nutrición de hoy» (el día que toca se marca en su tarjeta)
     function nutriTodayDay() {   // día cuya alimentación toca hoy: el que entrenó hoy; si no, el que le toca; con alimentación escrita
       var days = (athleteActiveState && athleteActiveState.routineDays) || [], today = todayIso(), pick = null;
       var hasN = function(d) { var f = (d && d.diet) || {}; return !!(String(f.desayuno || '').trim() || String(f.snack || '').trim() || String(f.almuerzo || '').trim() || String(f.cena || '').trim()); };
@@ -9176,14 +9662,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       var box = document.getElementById('ath_start_today'); if (!box) return;
       try {
         if (!athleteActiveState || isCoachView() || WK.start) { box.style.display = 'none'; box.innerHTML = ''; return; }
-        var days = athleteActiveState.routineDays || [], idx = wkNextDayIndex(), html = '';
-        var today = todayIso();
-        var trainedToday = loadWorkouts().some(function(s) { return sessDateIso(s) === today; });   // hoy ya entrenó: no se le insiste con el entreno
-        if (!(idx < 0 || !days[idx] || days[idx].rest || trainedToday)) {
-          var d = days[idx];
-          html += '<button type="button" class="start-today-btn" onclick="openDay(\'' + d.id + '\')">▶ Empezar mi entreno de hoy</button>' +
-            '<div class="start-today-sub">' + escHtml(dayNameOf(d) || 'Tu entrenamiento') + '</div>';
-        }
+        var html = '';
         if (nutriOn() && nutriTodayDay()) html += '<button type="button" class="nutri-home-btn" onclick="nutriHoyHome()">🍽 Nutrición de hoy</button>';
         box.style.display = html ? 'block' : 'none'; box.innerHTML = html;
       } catch (e) {}
@@ -9221,11 +9700,12 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         if (gym[iso] || app[iso]) n++;
       }
       var goal = wkWeekGoal(), falta = Math.max(0, goal - n);
-      box.style.cssText = 'display:block; text-align:center; margin:10px auto 0; font-size:0.9rem; font-weight:800; color:#e8e8e8;';
+      box.style.cssText = 'display:block; text-align:center; margin:10px auto 12px; font-size:0.9rem; font-weight:800; color:#e8e8e8;';
       box.innerHTML = '🚪 Días de gym: <b style="color:#06d6a0;">' + n + '</b>' + (goal ? (falta > 0 ? ' · faltan <b style="color:#ffd166;">' + falta + '</b>' : ' · <span style="color:#06d6a0;">¡meta cumplida! 🎉</span>') : '');
     }
     function wkHomeRefresh() {
       try { athWeekPanel(); } catch (e) {}
+      try { pregPaint(); } catch (e) {}
       wkSuggestPaint();
     }
     // Resumen de la semana para la ventana "Entrenamiento Guardado"
@@ -9312,6 +9792,10 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         dt.setDate(dt.getDate() - 1);
       }
       h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:12px 0 2px;">METAS DIARIAS (ÚLTIMOS 7 DÍAS)</div>' + (gl || '<div style="font-size:0.8rem; color:var(--muted);">Sin registros.</div>');
+      var pgs = pregTodas().slice(-14).reverse();
+      h += '<div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin:12px 0 2px;">PREGUNTA DEL DÍA (ÚLTIMAS RESPUESTAS)</div>' + (pgs.length ? pgs.map(function(x) {
+        return '<div style="padding:6px 0; border-top:1px solid var(--border); font-size:0.8rem; line-height:1.4;"><div style="color:var(--muted);">' + fmtDate(x.d) + ' · ' + escHtml(x.pq.q) + '</div><div style="font-weight:800; color:' + (x.pq.f ? '#ffb703' : '#fff') + ';">' + escHtml(x.pq.a) + '</div></div>';
+      }).join('') : '<div style="font-size:0.8rem; color:var(--muted);">Sin respuestas.</div>');
       h += '<button type="button" class="btn-action-primary" style="margin-top:14px;" onclick="closeModal(\'coach_sum_modal\')">Cerrar</button></div>';
       coachSumEl().innerHTML = h;
     }
@@ -13084,9 +13568,19 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
               '<div style="display:flex; gap:8px; margin-top:6px;">' + (r.rid ? '<button type="button" onclick="openClientRoutine(\'' + escHtml(r.rid) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">Abrir cliente</button>' : '') +
               '<button type="button" onclick="vrepResolveGroup(' + idxsLit + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Visto</button></div></div>';
           }
+          if (r.tipo === 'pregunta') {   // pregunta del día: molestia, pedido de ayuda o cansancio repetido
+            return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
+              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · 💭 Pregunta del día' + cntTag + '</div>' +
+              (r.dia ? '<div style="color:var(--muted);">' + escHtml(r.dia) + '</div>' : '') +
+              '<div style="color:#ff9a93;">' + escHtml(r.mot || '') + '</div>' +
+              '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + '</div>' +
+              '<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">' + (r.rid ? '<button type="button" onclick="pregCoachResponder(' + i + ')" style="background:#06d6a0; border:none; color:#04251c; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">💬 Responder</button>' +
+              '<button type="button" onclick="openClientRoutine(\'' + escHtml(r.rid) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">Abrir cliente</button>' : '') +
+              '<button type="button" onclick="vrepResolveGroup(' + idxsLit + ')" style="background:transparent; border:1px solid #06d6a0; color:#06d6a0; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">✔ Visto</button></div></div>';
+          }
           if (r.tipo === 'aviso') {   // ítem 33: aviso libre del cliente (motivo + comentario, con día/ejercicio si lo dio)
             return '<div style="border-top:1px solid #5a2a24; padding:8px 0; font-size:0.82rem; line-height:1.4;">' +
-              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · 📣 Avisó a su coach' + (r.dia ? ' · ' + escHtml(r.dia) : '') + cntTag + '</div>' +
+              '<div><b>' + escHtml(r.cli || 'Cliente') + '</b> · 📣 Comentario a su coach' + (r.dia ? ' · ' + escHtml(r.dia) : '') + cntTag + '</div>' +
               '<div style="color:#ff9a93;">' + escHtml(r.mot || '') + '</div>' +
               '<div style="color:var(--muted); font-size:0.72rem;">' + escHtml(when) + '</div>' +
               '<div style="display:flex; gap:8px; margin-top:6px;">' + (r.rid ? '<button type="button" onclick="openClientRoutine(\'' + escHtml(r.rid) + '\')" style="background:#4d8bff; border:none; color:#fff; border-radius:6px; padding:3px 10px; font-size:0.74rem; font-weight:800; cursor:pointer;">Abrir cliente</button>' : '') +
@@ -13282,7 +13776,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       if (!a.length) { box.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); padding:10px 0;">Todavía no hay reportes resueltos en este dispositivo.</div>'; return; }
       box.innerHTML = a.map(function(h) {
         var when = ''; try { when = new Date(h.resuelto).toLocaleString('es-CR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
-        var tipoTxt = h.tipo === 'pesaje' ? '⚖️ Pesaje' : h.tipo === 'ciclo' ? '⏰ Fin de ciclo' : h.tipo === 'datos' ? '📝 Datos' : h.tipo === 'sentir' ? '🙂 Sentir' : h.tipo === 'aviso' ? '📣 Aviso' : '🎥 Video';
+        var tipoTxt = h.tipo === 'pesaje' ? '⚖️ Pesaje' : h.tipo === 'ciclo' ? '⏰ Fin de ciclo' : h.tipo === 'datos' ? '📝 Datos' : h.tipo === 'sentir' ? '🙂 Sentir' : h.tipo === 'pregunta' ? '💭 Pregunta del día' : h.tipo === 'aviso' ? '📣 Aviso' : '🎥 Video';
         return '<div style="border-top:1px solid #2a2a2a; padding:7px 0; font-size:0.8rem; line-height:1.4;">' +
           '<div><b>' + escHtml(h.cli || 'Cliente') + '</b> · ' + tipoTxt + (h.dia ? ' · ' + escHtml(h.dia) : '') + (h.ej ? ' · ' + escHtml(h.ej) : '') + '</div>' +
           (h.mot ? '<div style="color:var(--muted);">' + escHtml(h.mot) + '</div>' : '') +
@@ -13630,13 +14124,14 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
         var lastGym = {}; local.forEach(function(x) { if (x && x.k === 'gym' && (!lastGym[x.w] || String(x.at || '') > String(lastGym[x.w].at || ''))) lastGym[x.w] = x; });
         local = local.filter(function(x) { return !(x && x.k === 'gym') || lastGym[x.w] === x; });   // de los avisos del gym solo se conserva el más nuevo de cada semana
         local.sort(function(a, b) { return a.t < b.t ? -1 : (a.t > b.t ? 1 : 0); });
-        if (local.length > 300) local = local.slice(local.length - 300);
+        local = recortarSesiones(local);
         try { localStorage.setItem(sessKey(), JSON.stringify(local)); } catch (e) {}
         var hm = document.getElementById('ath_modal_historial');
         if (added && hm && hm.classList.contains('active')) renderHistorial();
         if (added) wkHomeRefresh();
         try { var mm = document.getElementById('ath_modal_medidas'); if (added && mm && mm.classList.contains('active')) renderAthleteMeasures(); } catch (e) {}
         coachSummaryRefresh();
+        try { pregPaint(); } catch (e) {}
         if (up) flushPending();
       }).catch(function() { HSYNC = { s: 'fail', e: 'sin conexión' }; histSyncUi(); /* sin internet: se queda lo que hay en el celular */ });
     }
@@ -16860,7 +17355,9 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     // MANTENER AL DÍA: cada vez que un cambio afecte lo que ve o hace el cliente, se actualiza esta lista.
     var MANUAL_STEPS = [
       { sel: '#ath_weekDisplay', t: 'Tu semana', x: 'Aquí ves en qué semana de tu rutina vas. Cada semana puede traer cambios en las series o las repeticiones.' },
-      { sel: '#ath_capsuleGroup .capsule-btn[onclick*="ath_modal_coach"]', t: 'Nota del Coach', x: 'Un mensaje de tu coach para ti: objetivos, ajustes y recomendaciones.' },
+      { sel: '#ath_avisar_btn', t: 'Comentarle a mi Coach', x: 'Cuéntale una duda, una molestia, que no puedes asistir o lo que necesites. Le llega a tu coach.' },
+      { sel: '#ath_note_btn', t: 'Nota del Coach', x: 'Un mensaje de tu coach para ti: objetivos, ajustes y recomendaciones.' },
+      { sel: '#ath_preg', t: 'Pregunta del día', x: 'Cada día hay una pregunta corta sobre cómo estás o cómo vas. Respóndela con un toque: tu coach ve tu respuesta. Si marcas una molestia o pides ayuda, le llega un aviso.' },
       { sel: '#ath_capsuleGroup .capsule-btn[data-day]', t: 'Tus días de entrenamiento', x: 'Cada tarjeta es un día de entrenamiento de tu rutina. Tócala para ver tus ejercicios. El día que estás haciendo dice «Entrenando hoy», para que si sales de la app lo encuentres fácil.' },
       { sel: '#ath_start_today .nutri-home-btn', t: 'Nutrición de hoy', x: 'Toca este botón para ver tu alimentación del día y anotar lo que llevas (calorías, agua, sueño y pasos), sin tener que abrir el entreno. Si ya entrenaste hoy, la app no te pregunta si vas a empezar.' },
       { sel: '#ath_capsuleGroup .capsule-btn[onclick*="openRestDays"]', t: 'Días de descanso', x: 'Una sola tarjeta para todos tus descansos: ahí encuentras tu nutrición y recomendaciones de recuperación. Si hoy toca descanso, te lo avisa.' },
@@ -16881,6 +17378,7 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
     ];
     var MANUAL_GM = [   // modo guiado: el recorrido es corto, porque la app lleva sola el entreno
       { sel: '#gm_home_btn', t: 'Empieza aquí', x: 'Toca este botón verde cada vez que vengas a entrenar. La app abre el entreno que te toca hoy.' },
+      { sel: '#ath_preg', t: 'Pregunta del día', x: 'Toca una respuesta. Tu coach la ve.' },
       { t: 'Sigue la pantalla', x: 'Después de tocar «Empezar», la pantalla te dice qué ejercicio hacer, te muestra el video, cuenta el tiempo y te avisa cuándo descansar. No tienes que tocar nada más.' },
       { t: 'Si necesitas parar', x: 'Toca «⏸ Pausar» para detener el tiempo y otra vez para seguir. Con «⏭ Saltar» pasas a lo que sigue. Si sales, al volver tocas «Continuar» y sigues donde ibas.' },
       { t: 'Al terminar', x: 'Tu entreno se guarda solo. Solo te preguntamos cómo te sentiste, para que tu coach lo sepa.' },
