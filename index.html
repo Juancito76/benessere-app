@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <script>
-    var APP_VERSION = '2026-11-25-e';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
+    var APP_VERSION = '2026-11-27-a';   // se cambia en cada entrega. IMPORTANTE: esta debe ser la PRIMERA vez que aparece este texto en el archivo (así se lee la versión publicada)
     // Manifest para Android armado al abrir la página: así el ícono y el nombre salen bien y, al instalarla, se abre ESTA misma rutina (su enlace), no la página en blanco
     (function() {
       try {
@@ -673,6 +673,15 @@
     .btn-historial { background: linear-gradient(180deg, #1c1c1c, #151515); box-shadow: 0 0 14px rgba(0,229,255,.12); }
     .btn-intercambios { background: linear-gradient(135deg, #00c2e8, #0096c7); box-shadow: 0 4px 14px rgba(0,180,216,.28); }
     .week-tracker-pill { background: rgba(0,229,255,.08); }
+    .home-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 380px; margin-bottom: 12px; text-align: left; }
+    .home-head-txt { flex: 1; min-width: 0; }
+    .home-head .brand-top { line-height: 1.15; letter-spacing: 1px; }
+    .home-head .brand-slogan { margin: 2px 0 8px; letter-spacing: .3px; }
+    .home-head .client-title { font-size: 1.35rem; line-height: 1.2; margin: 0; overflow-wrap: anywhere; }
+    .home-head .home-logo { flex: none; width: 92px; max-width: 26vw; margin: 0; }
+    .home-pills { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; max-width: 380px; margin-bottom: 10px; text-align: left; }
+    .home-screen .home-pills .week-tracker-pill { margin: 0; padding: 8px 14px; }
+    .manual-pill { background: #161616; color: #ffd166; border: 1px solid #ffd166; border-radius: 999px; padding: 8px 14px; font-size: .8rem; font-weight: 800; cursor: pointer; }
     /* Clases y retos (portada del cliente) */
     .cls-head { text-align: center; margin: 4px 0 2px; }
     .cls-head img { width: 84px; height: auto; display: block; margin: 0 auto 6px; filter: drop-shadow(0 0 10px rgba(0,229,255,.35)); }
@@ -1261,14 +1270,18 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
   <!-- ================= 2. MODO ATLETA (SMARTWOD - CERO MODO COACH) ================= -->
   <div id="athlete_client_view">
     <div class="home-screen">
-      <img class="home-logo" src="icons/logo.png" alt="Benessere Gym" onerror="this.style.display='none'">
-      <div class="brand-top" style="font-size:1.5rem;">Benessere Gym</div>
-      <div class="brand-slogan">Juntos somos más fuertes</div>
-      <div class="welcome-box">
-        <div class="welcome-label" id="ath_welcomeWord">Bienvenido</div>
-        <div class="client-title" id="ath_clientTitle">Atleta Benessere</div>
+      <div class="home-head">
+        <div class="home-head-txt">
+          <div class="brand-top">Benessere Gym</div>
+          <div class="brand-slogan">Juntos somos más fuertes</div>
+          <div class="client-title" id="ath_clientTitle">Hola</div>
+        </div>
+        <img class="home-logo" src="icons/logo.png" alt="Benessere Gym" onerror="this.style.display='none'">
       </div>
-      <div class="week-tracker-pill" id="ath_weekDisplay">Semana 1</div>
+      <div class="home-pills">
+        <div class="week-tracker-pill" id="ath_weekDisplay">Semana 1</div>
+        <button type="button" id="ath_manual_btn" class="manual-pill" onclick="manualOpen()">📖 Cómo usar la app</button>
+      </div>
       <div id="ath_weekPanel" style="display:none;"></div>
       <div id="ath_pend_box" style="display:none;"></div>
       <div class="frase-dia" id="ath_frase" style="display:none;"></div>
@@ -1276,7 +1289,6 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       <div class="capsule-group" id="ath_capsuleGroup"></div>
       <div style="text-align:center; margin:14px 0 6px;">
         <button type="button" id="ath_upd_btn" onclick="manualUpdate()" style="background:#161616; color:#fff; border:1px solid #444; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:700; cursor:pointer;">🔄 Actualizar</button>
-        <button type="button" id="ath_manual_btn" onclick="manualOpen()" style="background:#161616; color:#ffd166; border:1px solid #ffd166; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:800; cursor:pointer; margin-left:8px;">📖 Cómo usar la app</button>
         <button type="button" id="ath_install_btn" onclick="installApp()" style="display:none; background:#0d2a22; color:#06d6a0; border:1px solid #06d6a0; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:800; cursor:pointer; margin-left:8px;">📲 Instalar la app</button>
         <button type="button" id="ath_exit_btn" onclick="salirApp()" style="background:#161616; color:#fff; border:1px solid #444; border-radius:999px; padding:9px 20px; font-size:0.85rem; font-weight:700; cursor:pointer; margin-left:8px;">✖ Salir</button>
         <div id="ath_upd_msg" style="font-size:0.78rem; color:var(--muted); margin-top:6px; min-height:1em;"></div>
@@ -6059,10 +6071,8 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
       document.getElementById('athlete_message_view').style.display = 'none';
       document.getElementById('athlete_client_view').style.display = 'block';
 
-      var welcomeWord = state.clientGender === 'a' ? 'Bienvenida' : 'Bienvenido';
-      document.getElementById('ath_welcomeWord').innerText = welcomeWord;
       try { fraseDiaPaint(); } catch (e) {}
-      document.getElementById('ath_clientTitle').innerText = state.clientName;
+      document.getElementById('ath_clientTitle').innerText = saludoInicio(state.clientName);
       document.getElementById('ath_coachMsgTitle').innerText = state.coachMsgTitle || 'Nota del Coach';
       document.getElementById('ath_coachMsgBody').innerText = state.coachMsgBody || '';
 
@@ -6861,7 +6871,17 @@ Estacion: Sentadilla sumo | Reps: 40 s | Video: https://youtu.be/..." style="wid
 
     // ----- Novedades de uso: ventanita al abrir un bloque que avisa de cambios en la interfaz del cliente -----
     // CADA cambio que afecte cómo usa la app el cliente debe agregar una entrada aquí (id único). Sale una vez por apertura de la app hasta que marque «No mostrar más».
+    // Saludo de la pantalla de inicio: «Hola, Lynette» (conserva nombres compuestos como «María José»)
+    function saludoInicio(nombre) {
+      var p = String(nombre || '').trim().split(/\s+/);
+      if (!p[0]) return 'Hola';
+      var plano = function(x) { return String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); };
+      var compuesto = /^(maria|jose|juan|ana|luis|carlos|marco)$/.test(plano(p[0])) &&
+        /^(jose|maria|carlos|pablo|luis|diego|david|andres|manuel|antonio|gabriel|daniel|esteban|felipe|miguel|fernando|fernanda|paula|isabel|elena|laura|lucia|sofia|cristina|eugenia|alejandra|alejandro|nela|paz|angel)$/.test(plano(p[1]));
+      return 'Hola, ' + (compuesto ? p[0] + ' ' + p[1] : p[0]);
+    }
     var APP_NOTICES = [
+      { id: '2026-11-27-inicio', title: '🏠 Inicio renovado', text: 'El botón «📖 Cómo usar la app» ahora está arriba, junto a la semana de tu rutina. Tócalo cuando quieras repasar cómo se usa.' },
       { id: '2026-11-24-mensajes', title: '💬 Tu coach puede escribirte', text: 'Cuando tu coach te deje un mensaje, te sale al abrir la app. Puedes tocar «Responder» para contestarle ahí mismo o cerrar la ventana con la ✕.' },
       { id: '2026-11-24-pesaje-mes', title: '🗓️ Elige cuándo pesarte', text: 'En el aviso «Toca pesarte y medirte» hay un botón nuevo: «Prefiero el próximo mes». Lo pospone unos 30 días y tu coach recibe el aviso.' },
       { id: '2026-11-23-nutri-barras', title: '🍽 Tu nutrición y actividad en gráficas', text: 'En «Datos y asistencia» ahora ves barras por día con tus calorías, agua, sueño, pasos y actividad de los últimos 14 días, con la línea de tu meta. Tu coach también las ve en tu ficha.' },
